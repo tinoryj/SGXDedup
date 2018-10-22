@@ -42,3 +42,91 @@ class Chunk {
         // any additional function of chunk
 
 };
+
+Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, std::string metaData, std::string chunkHash) {
+    _ID = ID;
+    _type = type;
+    _logicDataSize = logicDataSize;
+    _logicData = logicData;
+    _metaData = metaData;
+    _chunkHash = chunkHash;
+}
+
+uint64_t Chunk::getID() {
+
+    return _ID;
+}
+
+uint64_t Chunk::getType() {
+
+    return _type;
+}
+
+uint64_t Chunk::getLogicDataSize() {
+
+    return _logicDataSize;
+}
+
+std::string Chunk::getLogicData() {
+
+    return _logicData;
+}
+
+std::string Chunk::getChunkHash() {
+
+    return _chunkHash;
+}
+
+std::string Chunk::getMetaData() {
+
+    return _metaData;
+}
+
+std::string Chunk::getEncryptKey() {
+
+    return _encryptKey;
+}
+
+bool Chunk::editType(uint64_t type) {
+
+    _type = type;
+    if (_type == type) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool Chunk::editLogicData(std::string newLogicData) {
+
+    _logicData = newLogicData;
+    if (_logicData == newLogicData) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool Chunk::editLogicDataSize(uint64_t newSize) {
+
+    _logicDataSize = newSize;
+    if (_logicDataSize == newSize) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool Chunk::editEncryptKey(std::string newKey) {
+
+    _encryptKey = newKey;
+    if (_encryptKey == newKey) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
