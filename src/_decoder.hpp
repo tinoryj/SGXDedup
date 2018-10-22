@@ -15,27 +15,26 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 #include "leveldb/db.h"
 
-using namespace std;
-
-class DataSR {
-    friend class Configure;
-    friend class Chunk;
+class _Decoder {
     private:
         MessageQueue _inputMQ;
         MessageQueue _outputMQ;
+        std::ofstream decodeRecoder;
         // any additional info
     public:
-        DataSR();
-        ~DataSR();
-        virtual bool receiveData() = 0; 
-        virtual bool sendData() = 0; 
-        bool workloadProgress(); // main function for epoll S/R and threadPool schedule (insertMQ & extractMQ threads).
+        _Decoder();
+        ~_Decoder();
+        bool extractMQ();
         bool insertMQ(); 
-        bool extractMQ(); 
+        virtual bool getKey(Chunk newChunk) = 0;
+        virtual bool decodeChunk(Chunk newChunk) = 0;
+        virtual bool outputDecodeRecoder() = 0;
+        MessageQueue getInputMQ();
+        MessageQueue getOutputMQ();
         // any additional functions
 };

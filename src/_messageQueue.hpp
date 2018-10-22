@@ -15,11 +15,8 @@
 #include<queue>
 #include <boost/interprocess/ipc/message_queue.hpp> 
 
-#include "_configure.h"
-#include "_chunk.h"
-
-
-using namespace std;
+#include "configure.hpp"
+#include "chunk.hpp"
 
 class MessageQueue {
     private:

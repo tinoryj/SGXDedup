@@ -15,28 +15,26 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 #include "leveldb/db.h"
 
-using namespace std;
-
-class KeyManager {
-    friend class Configure;
-    friend class Chunk;
+class _KeyManager {
     private:
-        deque<Chunk> receiveQue;
-        deque<Chunk> sendQue;
+        std::deque<Chunk> receiveQue;
+        std::deque<Chunk> sendQue;
         // any additional info
     public:
-        KeyManager();
-        ~KeyManager();
+        _KeyManager();
+        ~_KeyManager();
         virtual bool receiveData() = 0; 
         virtual bool sendData() = 0; 
         virtual bool keyGen() = 0;
         bool workloadProgress(); // main function for epoll S/R and threadPool schedule (insertQue & extractQue threads).
         bool insertQue(); 
         bool extractQue(); 
+        std::deque<Chunk> getReceiveQue();
+        std::deque<Chunk> getSendQue();
         // any additional functions
 };

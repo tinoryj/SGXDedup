@@ -15,28 +15,25 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 #include "leveldb/db.h"
 
-using namespace std;
-
-class Decoder {
-    friend class Configure;
-    friend class Chunk;
+class _DedupCore {
     private:
         MessageQueue _inputMQ;
         MessageQueue _outputMQ;
-        ofstream decodeRecoder;
+        std::vector<leveldb::DB> _dbSet;
         // any additional info
     public:
-        Decoder();
-        ~Decoder();
-        bool extractMQ();
+        _DedupCore();
+        ~_DedupCore();
         bool insertMQ(); 
-        virtual bool getKey(Chunk newChunk) = 0;
-        virtual bool decodeChunk(Chunk newChunk) = 0;
-        virtual bool outputDecodeRecoder() = 0;
+        bool extractMQ(); 
+        virtual bool dataDedup() = 0;
+        MessageQueue getInputMQ();
+        MessageQueue getOutputMQ();
+        leveldb::DB getDBObject(int dbPosition);
         // any additional functions
 };

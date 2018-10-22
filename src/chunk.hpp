@@ -14,31 +14,31 @@
 #include <map>
 #include <queue>
 
-using namespace std;
-
 class Chunk {
     private: 
         uint64_t _ID;
         uint64_t _type;
         uint64_t _logicDataSize;
-        string _logicData;
-        string _metaData;
-        string _chunkHash;
-        string _encryptKey;
+        std::string _logicData;
+        std::string _metaData;
+        std::string _chunkHash;
+        std::string _encryptKey;
         // any additional info of chunk
         
     public:
-        Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, string logicData, string metaData, string chunkHash);
+        Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, std::string metaData, std::string chunkHash);
         ~Chunk();
         uint64_t getID();
         uint64_t getType();
         uint64_t getLogicDataSize();
-        string getLogicData();
-        string getChunkHash();
+        std::string getLogicData();
+        std::string getChunkHash();
+        std::string getMetaData();
+        std::string getEncryptKey();
         bool editType(uint64_t type);
-        bool editLogicData(string newLogicData);
+        bool editLogicData(std::string newLogicData);
         bool editLogicDataSize(uint64_t newSize);
-        bool editEncryptKey(string newKey);
+        bool editEncryptKey(std::string newKey);
         // any additional function of chunk
 
 };
