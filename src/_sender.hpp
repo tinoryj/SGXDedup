@@ -15,26 +15,20 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
-#include "leveldb/db.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 
-using namespace std;
-
-class DedupCore {
-    friend class Configure;
-    friend class Chunk;
+class _Sender {
     private:
         MessageQueue _inputMQ;
-        MessageQueue _outputMQ;
-        vector<leveldb::DB> _dbSet;
         // any additional info
     public:
-        DedupCore();
-        ~DedupCore();
-        bool insertMQ(); 
+        _Sender();
+        ~_Sender();
         bool extractMQ(); 
-        virtual bool dataDedup() = 0;
+        //Implemented in a derived class and implements different types of transmissions by overloading the function
+        virtual bool sendData() = 0; 
+        MessageQueue getInputMQ();
         // any additional functions
 };

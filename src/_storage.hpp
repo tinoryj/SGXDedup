@@ -15,29 +15,31 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 #include "leveldb/db.h"
-using namespace std;
 
-class StorageCore {
-    friend class Configure;
-    friend class Chunk;
+class _StorageCore {
     private:
         MessageQueue _inputMQ;
         MessageQueue _outputMQ;
-        vector<leveldb::DB> _dbSet;
-        vector<ifstream> _intputContainerSet;
-        vector<ofstream> _outputContainerSet; 
+        std::vector<leveldb::DB> _dbSet;
+        std::vector<std::ifstream> _intputContainerSet;
+        std::vector<std::ofstream> _outputContainerSet; 
         // any additional info
     public:
-        StorageCore();
-        ~StorageCore();
+        _StorageCore();
+        ~_StorageCore();
         bool insertMQ(); 
         bool extractMQ(); 
         virtual bool createContainer() = 0;
         virtual bool writeContainer() = 0;
         virtual bool readContainer() = 0;
+        MessageQueue getInputMQ();
+        MessageQueue getOutputMQ();
+        std::vector<leveldb::DB> _dbSet;
+        std::vector<std::ifstream> getIntputContainerSet();
+        std::vector<std::ofstream> getOutputContainerSet(); 
         // any additional functions
 };

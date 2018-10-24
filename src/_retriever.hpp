@@ -15,23 +15,21 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 #include "leveldb/db.h"
 
-using namespace std;
-
 class Retriever {
-    friend class Configure;
-    friend class Chunk;
     private:
-        ofstream _retrieveFile;
+        MessageQueue _inputMQ;
+        std::ofstream _retrieveFile;
         // any additional info 
     public:
         Retriever();
         ~Retriever();
         virtual bool Retrieve() = 0;
         bool extractMQ();
+        MessageQueue getInputMQ();
         // any additional functions
 };

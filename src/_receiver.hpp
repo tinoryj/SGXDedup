@@ -15,23 +15,22 @@
 #include <queue>
 #include <fstream>
 
-#include "_messageQueue.h"
-#include "_configure.h"
-#include "_chunk.h"
+#include "_messageQueue.hpp"
+#include "configure.hpp"
+#include "chunk.hpp"
 
-using namespace std;
-
-class Sender {
+class _Receiver {
     friend class Configure;
     friend class Chunk;
     private:
-        MessageQueue _inputMQ;
+        MessageQueue _outputMQ;
         // any additional info
     public:
-        Sender();
-        ~Sender();
-        bool extractMQ(); 
+        _Receiver();
+        ~_Receiver();
+        bool insertMQ(); 
         //Implemented in a derived class and implements different types of transmissions by overloading the function
-        virtual bool sendData() = 0; 
+        virtual bool receiveData() = 0; 
+        MessageQueue getOutputMQ();
         // any additional functions
 };
