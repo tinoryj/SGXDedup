@@ -119,6 +119,8 @@ void Configure::readConf(std::string path) {
     ptree root;
     read_json<ptree>(path, root);
 
+
+    //chunker configure
     _chunkerType = root.get<uint64_t>\
     ("ChunkerConfig._chunkerType");
     _runningType = root.get<uint64_t>\
@@ -133,9 +135,9 @@ void Configure::readConf(std::string path) {
     ("ChunkerConfig._slidingWinSize");
     _segmentSize = root.get<uint64_t>\
     ("ChunkerConfig._segmentSize");
-
     _averageChunkSize = root.get<uint64_t>\
     ("ChunkerConfig._avgChunkSize");
+
 
     _keyServerNumber = root.get<uint64_t>\
     ("KeyServerConfig._keyServerNumber");

@@ -3,6 +3,12 @@ Usage:
 	app chunking_file configure_file
 */
 
+#define DEBUG
+
+#ifdef DEBUG
+	#include<unistd.h>
+#endif
+
 #include "SimpleChunker.hpp"
 #include "RabinChunker.hpp"
 #include "configure.hpp"
@@ -28,7 +34,19 @@ int main(int argv, char *argc[]) {
         chunker = new RabinChunker(argc[1]);
     }
 
+    #ifdef DEBUG
+    	clock_t end,stat=clock();
+    	double dur,per=CLOCKS_PER_SEC;
+    #endif
+
     chunker->chunking();
+
+    #ifdef DEBUG
+    	end=clock();
+    	dur=end-stat;
+    	cout<<"time: "<<dur/per<<endl;
+    #endif
+
 //	boost::thread th1(chunker->chunking);
 //	th1.detach();
     return 0;

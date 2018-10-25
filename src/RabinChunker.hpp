@@ -1,8 +1,6 @@
 #ifndef RABINCHUNKER_HPP
 #define RABINCHUNKER_HPP
 
-#define DEBUG
-
 #include "chunk.hpp"
 #include "_chunker.hpp"
 #include "configure.hpp"
@@ -29,7 +27,6 @@ private:
     uint32_t _polyMOD;
     /*note: to avoid overflow, _polyMOD*255 should be in the range of "uint32_t"*/
     /*      here, 255 is the max value of "unsigned char"                       */
-    uint32_t _polyInv;
     /*the lookup table for accelerating the power calculation in rolling hash*/
     uint32_t *_powerLUT;
     /*the lookup table for accelerating the byte remove in rolling hash*/
@@ -144,20 +141,12 @@ RabinChunker::RabinChunker(std::string path) {
         /*initialize the base and modulus for calculating the fingerprint of a window*/
         /*these two values were employed in open-vcdiff: "http://code.google.com/p/open-vcdiff/"*/
         _polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
-        _polyMOD = (1 << 23) - 1; /*_polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
 
-        /*_polyInv=$_polyBase^{\phi (_polyMOD)} mod _polyMOD$*/
-        {
-            _polyInv = 1;
-            long long a = _polyBase, b = _polyMOD;
-            while (b) {
-                if (b & 1)_polyInv *= a;
-                b >>= 1;
-                a *= a;
-                _polyInv %= _polyMOD;
-                a %= _polyMOD;
-            }
-        }
+
+//        _polyMOD = (1 << 23) - 1; /*_polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
+        _polyMOD = (1 << 23) - 1;
+
+
 
         /*initialize the lookup table for accelerating the power calculation in rolling hash*/
         _powerLUT = (uint32_t *) malloc(sizeof(uint32_t) * _slidingWinSize);
@@ -165,7 +154,12 @@ RabinChunker::RabinChunker(std::string path) {
         _powerLUT[0] = 1;
         for (int i = 1; i < _slidingWinSize; i++) {
             /*_powerLUT[i] = (_powerLUT[i-1] * _polyBase) mod _polyMOD*/
-            _powerLUT[i] = (_powerLUT[i - 1] * _polyBase) & (_polyMOD - 1);
+
+
+            //_powerLUT[i] = (_powerLUT[i - 1] * _polyBase) & (_polyMOD - 1);
+            _powerLUT[i] = (_powerLUT[i - 1] * _polyBase) % (_polyMOD - 1);
+
+
         }
         /*initialize the lookup table for accelerating the byte remove in rolling hash*/
 
@@ -175,7 +169,12 @@ RabinChunker::RabinChunker(std::string path) {
 
         for (int i = 0; i < 256; i++) {
             /*_removeLUT[i] = (- i * _powerLUT[_slidingWinSize-1]) mod _polyMOD*/
-            _removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) & (_polyMOD - 1);
+
+
+            //_removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) & (_polyMOD - 1);
+            _removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) % (_polyMOD - 1);
+
+
             if (_removeLUT[i] != 0) {
 
                 _removeLUT[i] = _polyMOD - _removeLUT[i];
@@ -246,75 +245,87 @@ void RabinChunker::varSizeChunking() {
 #endif
 
     unsigned short int mask = 0x1ff, magic = 0x2B, x = 40320;
-    unsigned short int hashval;
-    char readBuffer[128], *chunkBuffer;
+    unsigned short int winFp;
+    unsigned char readBuffer[512], *chunkBuffer;
     unsigned long long chunkBufferCnt, chunkIDCnt = 0;
     unsigned long long maxChunkSize = config.getMaxChunkSize();
     unsigned long long minChunkSize = config.getMinChunkSize();
     unsigned long long slidingWinSize = config.getSlidingWinSize();
 
-    chunkBuffer = new char(maxChunkSize);
+    chunkBuffer = new unsigned char(maxChunkSize);
     Chunk *tmpchunk;
 
     ifstream &fin = getChunkingFile();
 
     while (1) {
-        fin.read(readBuffer, sizeof(readBuffer));
+        fin.read((char *) readBuffer, sizeof(readBuffer));
         int i, len = fin.gcount();
         for (i = 0; i < len; i++) {
             chunkBuffer[chunkBufferCnt] = readBuffer[i];
+
+            /*full fill sliding window*/
             if (chunkBufferCnt < slidingWinSize) {
-                hashval = (hashval + chunkBuffer[chunkBufferCnt] * _powerLUT[chunkBufferCnt]) & _polyMOD;
+                winFp = winFp + (chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - chunkBufferCnt]) & _polyMOD;
                 chunkBufferCnt++;
                 continue;
             }
-            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize];
-            hashval = (hashval - v + _polyMOD) & _polyMOD;
-            hashval = (hashval + chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - 1]) & _polyMOD;
+            winFp &= (_polyMOD);
+
+            /*slide window*/
+            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize];//queue
+            winFp = ((winFp + _removeLUT[v]) * _polyBase +chunkBuffer[chunkBufferCnt]) & _polyMOD;//remove queue front and add queue tail
             chunkBufferCnt++;
+
+            /*chunk's size less than minchunksize*/
             if (chunkBufferCnt < minChunkSize)continue;
-            if ((hashval & _anchorMask) == _anchorValue) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, chunkBuffer);
+
+            /*find chunk pattern*/
+            if ((winFp & _anchorMask) == _anchorValue) {
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//                  cout<<chunkBufferCnt<<endl;
+//                cout<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
 
 
-                chunkBufferCnt = hashval = 0;
+                chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
                 delete tmpchunk;
             }
+
+            /*chunk's size exceed maxchunksize*/
             if (chunkBufferCnt >= maxChunkSize) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, chunkBuffer);
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//                  cout<<chunkBufferCnt<<endl;
+//                cout<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
 
 
-                chunkBufferCnt = hashval = 0;
+                chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
                 delete tmpchunk;
             }
         }
         if (fin.eof())break;
     }
+
+    /*add final chunk*/
     if (!chunkBufferCnt) {
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, chunkBuffer);
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//          cout<<chunkBufferCnt<<endl;
+//        cout<<chunkBufferCnt<<endl;
         tot += chunkBufferCnt;
         cnt += 1;
 #endif
 
 
-        chunkBufferCnt = hashval = 0;
+        chunkBufferCnt = winFp = 0;
         //mq1.push(*tmpchunk);
         delete tmpchunk;
     }

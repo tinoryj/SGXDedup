@@ -29,7 +29,6 @@ private:
     // any additional info of chunk
 
 public:
-    Chunk();
 
     Chunk(uint64_t ID, uint64_t type = 0, uint64_t logicDataSize = 0, std::string logicData = "", \
                 std::string metaData = "", std::string chunkHash = "");
@@ -61,8 +60,6 @@ public:
 };
 
 Chunk::~Chunk() {}
-
-Chunk::Chunk() {}
 
 Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, \
                 std::string metaData, std::string chunkHash) {

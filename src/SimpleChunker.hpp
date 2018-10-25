@@ -1,8 +1,6 @@
 #ifndef SIMPLECHUNKER_HPP
 #define SIMPLECHUNKER_HPP
 
-#define DEBUG
-
 #include "chunk.hpp"
 #include "_chunker.hpp"
 
@@ -46,20 +44,24 @@ bool SimpleChunker::chunking() {
         len = fin.gcount();
         for (i = 0; i < len; i++) {
 
+            /*full fill sildingwindow*/
             hashval ^= readBuffer[i];
             chunkBuffer[chunkBufferCnt++] = readBuffer[i];
-
-            if (chunkBufferCnt < slidingWinSize)continue;       //if the window not full, don't need to add chunk
-            //else slide window
-            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize];
+            if (chunkBufferCnt < slidingWinSize)continue;
+            
+            /*slide window*/
+            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize];//queue
             hashval ^= v;
-            if (chunkBufferCnt < minChunkSize)continue;       //this chunk is small than minum chunk size
 
-            if ((hashval & mask) == magic) {                     //find a chunk bound
+            /*chunk's size less than minchunksize*/
+            if (chunkBufferCnt < minChunkSize)continue;
+
+            /*find chunk pattern*/
+            if ((hashval & mask) == magic) {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//              cout<<chunkBufferCnt<<endl;
+//                cout<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
@@ -69,11 +71,13 @@ bool SimpleChunker::chunking() {
                 delete tmpchunk;
                 continue;
             }
-            if (chunkBufferCnt >= maxChunkSize) {                //this chunk is bigger than maxnum chunk size
+
+            /*chunk's size exceed maxchunksize*/
+            if (chunkBufferCnt >= maxChunkSize) {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//                  cout<<chunkBufferCnt<<endl;
+//              cout<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
@@ -91,7 +95,7 @@ bool SimpleChunker::chunking() {
         tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//          cout<<chunkBufferCnt<<endl;
+//        cout<<chunkBufferCnt<<endl;
         tot += chunkBufferCnt;
         cnt += 1;
 #endif
