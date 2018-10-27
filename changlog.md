@@ -1,5 +1,13 @@
-October 25 2018:
+October 27 2018:
+> tinoryj
+* mv compile.sh to ../ & edit compile.sh for moving
+* mv changlog.txt to changlog.md
+* add typename for messageQueue define in _sender.hpp & _storage.hpp
+* delete redefine construct function
 
+
+October 25 2018:
+> wsq
 * add Configure::readConf(string path)
 * add Configure::Configure()
 * change Configure::Configure(ifstream &chunkFile) to Configure::Configure(string path)

@@ -21,7 +21,7 @@
 
 class _Sender {
     private:
-        MessageQueue _inputMQ;
+        MessageQueue<Chunk> _inputMQ;
         // any additional info
     public:
         _Sender();
@@ -29,6 +29,6 @@ class _Sender {
         bool extractMQ(); 
         //Implemented in a derived class and implements different types of transmissions by overloading the function
         virtual bool sendData() = 0; 
-        MessageQueue getInputMQ();
+        MessageQueue<Chunk> getInputMQ();
         // any additional functions
 };

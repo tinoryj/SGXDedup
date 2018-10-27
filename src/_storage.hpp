@@ -22,8 +22,8 @@
 
 class _StorageCore {
     private:
-        MessageQueue _inputMQ;
-        MessageQueue _outputMQ;
+        MessageQueue<Chunk> _inputMQ;
+        MessageQueue<Chunk> _outputMQ;
         std::vector<leveldb::DB> _dbSet;
         std::vector<std::ifstream> _intputContainerSet;
         std::vector<std::ofstream> _outputContainerSet; 
@@ -36,8 +36,8 @@ class _StorageCore {
         virtual bool createContainer() = 0;
         virtual bool writeContainer() = 0;
         virtual bool readContainer() = 0;
-        MessageQueue getInputMQ();
-        MessageQueue getOutputMQ();
+        MessageQueue<Chunk> getInputMQ();
+        MessageQueue<Chunk> getOutputMQ();
         std::vector<leveldb::DB> _dbSet;
         std::vector<std::ifstream> getIntputContainerSet();
         std::vector<std::ofstream> getOutputContainerSet(); 
