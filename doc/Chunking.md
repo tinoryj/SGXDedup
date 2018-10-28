@@ -19,14 +19,14 @@
 
 * test result
 
-  2GB:
+  2 GB:
 
-  ​	S:  9.3s
+  ​	S: 4 s
 
-  ​	R: 14s
+  ​	R: 6 s
 
-  4GB:
+  4 GB:
 
-  ​	S: 18.6s
+  ​	S: 8 s
 
-  ​	R: 28.4s
+  ​	R: 11.5 s

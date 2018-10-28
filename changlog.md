@@ -1,4 +1,12 @@
+October 28 2018:
+
+> wsq
+
+* fix bug in Simple Chunker and Rabin Chunker(-_- new char()->new char[])
+* add _ReadSize in Configure
+
 October 27 2018:
+
 > tinoryj
 * mv compile.sh to ../ & edit compile.sh for moving
 * mv changlog.txt to changlog.md

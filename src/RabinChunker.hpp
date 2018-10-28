@@ -141,43 +141,23 @@ RabinChunker::RabinChunker(std::string path) {
         /*initialize the base and modulus for calculating the fingerprint of a window*/
         /*these two values were employed in open-vcdiff: "http://code.google.com/p/open-vcdiff/"*/
         _polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
-
-
-//        _polyMOD = (1 << 23) - 1; /*_polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
-        _polyMOD = (1 << 23) - 1;
-
-
-
+        _polyMOD = (1 << 23) - 1; /*_polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
         /*initialize the lookup table for accelerating the power calculation in rolling hash*/
         _powerLUT = (uint32_t *) malloc(sizeof(uint32_t) * _slidingWinSize);
         /*_powerLUT[i] = power(_polyBase, i) mod _polyMOD*/
         _powerLUT[0] = 1;
         for (int i = 1; i < _slidingWinSize; i++) {
             /*_powerLUT[i] = (_powerLUT[i-1] * _polyBase) mod _polyMOD*/
-
-
-            //_powerLUT[i] = (_powerLUT[i - 1] * _polyBase) & (_polyMOD - 1);
-            _powerLUT[i] = (_powerLUT[i - 1] * _polyBase) % (_polyMOD - 1);
-
-
+            _powerLUT[i] = (_powerLUT[i-1] * _polyBase) & _polyMOD; 
         }
         /*initialize the lookup table for accelerating the byte remove in rolling hash*/
-
-
         _removeLUT = (uint32_t *) malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
-
-
         for (int i = 0; i < 256; i++) {
             /*_removeLUT[i] = (- i * _powerLUT[_slidingWinSize-1]) mod _polyMOD*/
-
-
-            //_removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) & (_polyMOD - 1);
-            _removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) % (_polyMOD - 1);
-
-
+            _removeLUT[i] = (i * _powerLUT[_slidingWinSize-1]) & _polyMOD; 
             if (_removeLUT[i] != 0) {
-
-                _removeLUT[i] = _polyMOD - _removeLUT[i];
+                
+                _removeLUT[i] = (_polyMOD - _removeLUT[i] + 1) & _polyMOD;
             }
             /*note: % is a remainder (rather than modulus) operator*/
             /*      if a < 0,  -_polyMOD < a % _polyMOD <= 0       */
@@ -185,27 +165,28 @@ RabinChunker::RabinChunker(std::string path) {
 
         /*initialize the mask for depolytermining an anchor*/
         /*note: power(2, numOfMaskBits) = _avgChunkSize*/
-        numOfMaskBits = 1;
+        numOfMaskBits = 1;      
         while ((_avgChunkSize >> numOfMaskBits) != 1) {
-
+            
             numOfMaskBits++;
         }
         _anchorMask = (1 << numOfMaskBits) - 1;
         /*initialize the value for depolytermining an anchor*/
-        _anchorValue = 0;
-        cerr << endl << "A variable-size chunker has been constructed!" << endl;
-        cerr << "Parameters: " << endl;
-        cerr << setw(6) << "_avgChunkSize: " << _avgChunkSize << endl;
-        cerr << setw(6) << "_minChunkSize: " << _minChunkSize << endl;
-        cerr << setw(6) << "_maxChunkSize: " << _maxChunkSize << endl;
-        cerr << setw(6) << "_slidingWinSize: " << _slidingWinSize << endl;
-        cerr << setw(6) << "_polyBase: 0x" << hex << _polyBase << endl;
-        cerr << setw(6) << "_polyMOD: 0x" << hex << _polyMOD << endl;
-        cerr << setw(6) << "_anchorMask: 0x" << hex << _anchorMask << endl;
-        cerr << setw(6) << "_anchorValue: 0x" << hex << _anchorValue << endl;
-        cerr << endl;
-    }
+        _anchorValue = 0;       
+        cerr<<endl<<"A variable-size chunker has been constructed!"<<endl;
+        cerr<<"Parameters: "<<endl; 
+        cerr<<setw(6)<<"_avgChunkSize: "<<_avgChunkSize<<endl;      
+        cerr<<setw(6)<<"_minChunkSize: "<<_minChunkSize<<endl;  
+        cerr<<setw(6)<<"_maxChunkSize: "<<_maxChunkSize<<endl;
+        cerr<<setw(6)<<"_slidingWinSize: "<<_slidingWinSize<<endl;      
+        cerr<<setw(6)<<"_polyBase: 0x"<<hex<<_polyBase<<endl;   
+        cerr<<setw(6)<<"_polyMOD: 0x"<<hex<<_polyMOD<<endl;
+        cerr<<setw(6)<<"_anchorMask: 0x"<<hex<<_anchorMask<<endl;
+        cerr<<setw(6)<<"_anchorValue: 0x"<<hex<<_anchorValue<<endl; 
+        cerr<<endl;
+    }   
 }
+
 
 /*
 	function: destructor of Chunker
@@ -246,26 +227,36 @@ void RabinChunker::varSizeChunking() {
 
     unsigned short int mask = 0x1ff, magic = 0x2B, x = 40320;
     unsigned short int winFp;
-    unsigned char readBuffer[512], *chunkBuffer;
-    unsigned long long chunkBufferCnt, chunkIDCnt = 0;
+    unsigned char *readBuffer, *chunkBuffer;
+    unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
     unsigned long long maxChunkSize = config.getMaxChunkSize();
     unsigned long long minChunkSize = config.getMinChunkSize();
     unsigned long long slidingWinSize = config.getSlidingWinSize();
+    unsigned long long ReadSize = config.getReadSize();
 
-    chunkBuffer = new unsigned char(maxChunkSize);
+    ReadSize = ReadSize * 1024 * 1024 / 8;
+
+    readBuffer = new unsigned char[ReadSize];
+    chunkBuffer = new unsigned char[maxChunkSize];
+    if (readBuffer == NULL || chunkBuffer == NULL) {
+        cerr << "Memory Error << endl";
+        exit(1);
+    }
+
     Chunk *tmpchunk;
 
     ifstream &fin = getChunkingFile();
 
     while (1) {
-        fin.read((char *) readBuffer, sizeof(readBuffer));
+        fin.read((char *) readBuffer, sizeof(unsigned char) * ReadSize);
         int i, len = fin.gcount();
         for (i = 0; i < len; i++) {
+
             chunkBuffer[chunkBufferCnt] = readBuffer[i];
 
             /*full fill sliding window*/
             if (chunkBufferCnt < slidingWinSize) {
-                winFp = winFp + (chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - chunkBufferCnt]) & _polyMOD;
+                winFp = winFp + (chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - chunkBufferCnt - 1]) & _polyMOD;//Refer to doc/Chunking.md hash function:RabinChunker
                 chunkBufferCnt++;
                 continue;
             }
@@ -329,6 +320,9 @@ void RabinChunker::varSizeChunking() {
         //mq1.push(*tmpchunk);
         delete tmpchunk;
     }
+
+    delete readBuffer;
+    delete chunkBuffer;
 
 #ifdef DEBUG
     cout << tot / cnt << endl;

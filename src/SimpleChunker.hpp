@@ -10,63 +10,96 @@ extern Configure config;
 //extern MessageQueue<Chunk>mq1;
 
 class SimpleChunker:public _Chunker{
+private:
+    void varSizeChunking();
+
+    //void fixSizeChunking();
+
 public:
     SimpleChunker();
+    
     SimpleChunker(std::string path);
+    
     bool chunking();
 };
 
-
 SimpleChunker::SimpleChunker(){}
+
 SimpleChunker::SimpleChunker(std::string path):_Chunker(path){}
 
-bool SimpleChunker::chunking() {
-#ifdef DEBUG
+bool SimpleChunker::chunking(){    
+    /*fixed-size chunker*/
+    if (config.getChunkingType() == FIX_SIZE_TYPE) {
+
+        //fixSizeChunking();
+    }
+    /*variable-size chunker*/
+    if (config.getChunkingType() == VAR_SIZE_TYPE) {
+
+        varSizeChunking();
+    }
+}
+
+void SimpleChunker::varSizeChunking() {
     using namespace std;
+
+#ifdef DEBUG
     double tot = 0, cnt = 0;
 #endif
 
-    unsigned short int mask = 0x7ff, magic = 0x2B;
-    unsigned short int hashval;
-    unsigned char readBuffer[128], *chunkBuffer;
+    unsigned short int mask = 0xff, magic = 0x2B;
+    unsigned short int winFp;
+    unsigned char *readBuffer, *chunkBuffer;
     unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
     unsigned long long maxChunkSize = config.getMaxChunkSize();
     unsigned long long minChunkSize = config.getMinChunkSize();
     unsigned long long slidingWinSize = config.getSlidingWinSize();
+    unsigned long long ReadSize  = config.getReadSize();
 
-    chunkBuffer = new unsigned char(maxChunkSize);
+    ReadSize = ReadSize * 1024 * 1024 / 8;
+
+    readBuffer = new unsigned char[ReadSize];
+    chunkBuffer = new unsigned char[maxChunkSize];
+    if (readBuffer == NULL || chunkBuffer == NULL){
+        cerr << "Memory Error\n" << endl;
+        exit(1);
+    }
+
+
     Chunk *tmpchunk;
     std::ifstream &fin = getChunkingFile();
+    int rig=0;
 
     while (1) {
-        fin.read((char *) readBuffer, sizeof(readBuffer));              //read 128 byte from file
+        fin.read((char *) readBuffer, sizeof(unsigned char) * ReadSize);              //read ReadSize byte from file every times
         int len, i;
         len = fin.gcount();
         for (i = 0; i < len; i++) {
+            rig++;
 
             /*full fill sildingwindow*/
-            hashval ^= readBuffer[i];
+            winFp ^= readBuffer[i];
             chunkBuffer[chunkBufferCnt++] = readBuffer[i];
             if (chunkBufferCnt < slidingWinSize)continue;
             
             /*slide window*/
             unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize];//queue
-            hashval ^= v;
+            winFp ^= v;
 
             /*chunk's size less than minchunksize*/
             if (chunkBufferCnt < minChunkSize)continue;
 
             /*find chunk pattern*/
-            if ((hashval & mask) == magic) {
+            if ((winFp & mask) == magic) {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//                cout<<chunkBufferCnt<<endl;
+//        cout<<"chunk "<<chunkIDCnt<<" : "<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
 
-                chunkBufferCnt = hashval = 0;
+                chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
                 delete tmpchunk;
                 continue;
@@ -77,12 +110,12 @@ bool SimpleChunker::chunking() {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//              cout<<chunkBufferCnt<<endl;
+//        cout<<"chunk "<<chunkIDCnt<<" : "<<chunkBufferCnt<<endl;
                 tot += chunkBufferCnt;
                 cnt += 1;
 #endif
 
-                chunkBufferCnt = hashval = 0;
+                chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
                 delete tmpchunk;
             }
@@ -95,18 +128,21 @@ bool SimpleChunker::chunking() {
         tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) chunkBuffer);
 
 #ifdef DEBUG
-//        cout<<chunkBufferCnt<<endl;
+//        cout<<"chunk "<<chunkIDCnt<<" : "<<chunkBufferCnt<<endl;
         tot += chunkBufferCnt;
         cnt += 1;
 #endif
 
-        chunkBufferCnt = hashval = 0;
+        chunkBufferCnt = winFp = 0;
         //mq1.push(*tmpchunk);
         delete tmpchunk;
     }
 #ifdef DEBUG
     cout << tot / cnt << endl;
 #endif
+
+    delete readBuffer;
+    delete chunkBuffer;
 }
 
 #endif

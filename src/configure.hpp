@@ -39,6 +39,7 @@ private:
     uint64_t _averageChunkSize;
     uint64_t _slidingWinSize;
     uint64_t _segmentSize;  // if exist segment function
+    uint64_t _ReadSize;
     // key management settings
     uint64_t _keyServerNumber;
     std::vector<std::string> _keyServerIP;
@@ -80,6 +81,8 @@ public:
 
     uint64_t getSegmentSize();
 
+    uint64_t getReadSize();
+
     // key management settings
     uint64_t getKeyServerNumber();
 
@@ -120,7 +123,7 @@ void Configure::readConf(std::string path) {
     read_json<ptree>(path, root);
 
 
-    //chunker configure
+    //Chunker Configure
     _chunkerType = root.get<uint64_t>\
     ("ChunkerConfig._chunkerType");
     _runningType = root.get<uint64_t>\
@@ -137,8 +140,11 @@ void Configure::readConf(std::string path) {
     ("ChunkerConfig._segmentSize");
     _averageChunkSize = root.get<uint64_t>\
     ("ChunkerConfig._avgChunkSize");
+    _ReadSize = root.get<uint64_t>\
+    ("ChunkerConfig._ReadSize");
 
 
+    //Server Provider Configure
     _keyServerNumber = root.get<uint64_t>\
     ("KeyServerConfig._keyServerNumber");
     _storageServerNumber = root.get<uint64_t>\
@@ -150,6 +156,7 @@ void Configure::readConf(std::string path) {
     ("ChunkerConfig._chunkerType");
 
 
+    //Key Server Congigure
     std::vector<std::string> _keyServerIP;
     for (ptree::value_type &it:root.get_child("KeyServerConfig._keyServerIP")) {
         _keyServerIP.push_back(it.second.data());
@@ -160,6 +167,7 @@ void Configure::readConf(std::string path) {
         _keyServerPort.push_back(it.second.get_value<int>());
     }
 
+    
     std::vector<std::string> _storageServerIP;
     for (ptree::value_type &it:root.get_child("SPConfig._storageServerIP")) {
         _storageServerIP.push_back(it.second.data());
@@ -209,7 +217,7 @@ uint64_t Configure::getAverageChunkSize() {
     return _averageChunkSize;
 }
 
-uint64_t Configure::getSlidingWinSize(){
+uint64_t Configure::getSlidingWinSize() {
 
     return _slidingWinSize;
 }
@@ -217,6 +225,10 @@ uint64_t Configure::getSlidingWinSize(){
 uint64_t Configure::getSegmentSize() {
 
     return _segmentSize;
+}
+
+uint64_t Configure::getReadSize() {
+    return _ReadSize;
 }
 
 // key management settings

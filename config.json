@@ -1,13 +1,14 @@
 {
 	"ChunkerConfig":{
-		"_chunkerType":1,
+		"_chunkerType":0,
 		"_runningType":0,
 		"_chunkingType":1,
 		"_minChunkSize":512,
 		"_avgChunkSize":1024,
 		"_maxChunkSize":2048,
 		"_slidingWinSize":256,
-		"_segmentSize":6666
+		"_segmentSize":6666,
+		"_ReadSize":128
 	},
 	"KeyServerConfig":{
 		"_keyServerNumber":6666,

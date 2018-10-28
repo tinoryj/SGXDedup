@@ -57,7 +57,11 @@ void _Chunker::loadChunkFile(std::string path) {
     }
 }
 
-_Chunker::~_Chunker() {}
+_Chunker::~_Chunker() {
+    if (_chunkingFile.is_open()) {
+        _chunkingFile.close();
+    }
+}
 
 _Chunker::_Chunker() {}
 
