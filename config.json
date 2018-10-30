@@ -1,6 +1,5 @@
 {
 	"ChunkerConfig":{
-		"_chunkerType":0,
 		"_runningType":0,
 		"_chunkingType":1,
 		"_minChunkSize":512,
@@ -26,7 +25,8 @@
 		],
 		"_storageServerPort":[
 			6667
-		]
+		],
+		"_maxContainerSize":6666
 	},
 	"ClientConfig":{
 		"_maxThreadLimits":6

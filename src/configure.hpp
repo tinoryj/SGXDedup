@@ -28,12 +28,11 @@
 
 class Configure {
 private:
-    uint64_t _chunkerType;      //simpleChunker \ rabinChunker
     // following settings configure by macro set 
     uint64_t _runningType;      // localDedup \ serverDedup 
     uint64_t _maxThreadLimits;  // threadPool auto configure baseline
     // chunking settings
-    uint64_t _chunkingType;     // varSize \ fixedSize
+    uint64_t _chunkingType;     // varSize \ fixedSize \ simple
     uint64_t _maxChunkSize;
     uint64_t _minChunkSize;
     uint64_t _averageChunkSize;
@@ -61,8 +60,6 @@ public:
     ~Configure();
 
     void readConf(std::string path);
-
-    uint64_t getChunkerType();
 
     uint64_t getRunningType();
 
@@ -124,8 +121,6 @@ void Configure::readConf(std::string path) {
 
 
     //Chunker Configure
-    _chunkerType = root.get<uint64_t>\
-    ("ChunkerConfig._chunkerType");
     _runningType = root.get<uint64_t>\
     ("ChunkerConfig._runningType");
     _chunkingType = root.get<uint64_t>\
@@ -153,7 +148,7 @@ void Configure::readConf(std::string path) {
     ("ClientConfig._maxThreadLimits");
 
     _maxContainerSize = root.get<uint64_t>\
-    ("ChunkerConfig._chunkerType");
+    ("SPConfig._maxContainerSize");
 
 
     //Key Server Congigure
@@ -178,11 +173,6 @@ void Configure::readConf(std::string path) {
         _storageServerPort.push_back(it.second.get_value<int>());
     }
 
-}
-
-uint64_t Configure::getChunkerType() {
-
-    return _chunkerType;
 }
 
 uint64_t Configure::getRunningType() {

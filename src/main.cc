@@ -9,9 +9,10 @@ Usage:
 	#include<unistd.h>
 #endif
 
-#include "SimpleChunker.hpp"
-#include "RabinChunker.hpp"
 #include "configure.hpp"
+#include "chunk.hpp"
+#include "_chunker.hpp"
+#include "chunker.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -22,24 +23,20 @@ Usage:
 using namespace std;
 
 //MessageQueue<Chunk>mq1;
-_Chunker *chunker;
+_Chunker *Chunker;
 Configure config;
 
 int main(int argv, char *argc[]) {
     config.readConf(argc[2]);
 
-    if (config.getChunkerType() == SIMPLE_CHUNKER) {
-        chunker = new SimpleChunker(argc[1]);
-    } else {
-        chunker = new RabinChunker(argc[1]);
-    }
+    Chunker=new chunker(argc[1]);
 
     #ifdef DEBUG
     	clock_t end,stat=clock();
     	double dur,per=CLOCKS_PER_SEC;
     #endif
 
-    chunker->chunking();
+    Chunker->chunking();
 
     #ifdef DEBUG
     	end=clock();

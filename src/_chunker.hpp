@@ -43,6 +43,10 @@ public:
 
 std::ifstream &_Chunker::getChunkingFile() {
 
+    if(!_chunkingFile.is_open()) {
+        std::cerr<<"chunking file open failed\n";
+        exit(1);
+    }
     return _chunkingFile;
 }
 
