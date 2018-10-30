@@ -19,14 +19,16 @@
 
 * test result
 
-  2 GB:
+  2GB/4GB/8GB
 
-  ​	S: 4 s
+  130~140 MB/s
 
-  ​	R: 6 s
+* code logic:
 
-  4 GB:
+  1、read chunking file to `waitingChunkingFile`
 
-  ​	S: 8 s
+  2、process every bytes in `waitingChunkingFile` and copy to `chunkBuffer`
 
-  ​	R: 11.5 s
+  3、if the condition satisfying,add a chunk
+
+  4、break if file EOF,else goto1
