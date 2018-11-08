@@ -57,6 +57,17 @@ public:
 
     bool editEncryptKey(std::string newKey);
     // any additional function of chunk
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & _ID;
+        ar & _type;
+        ar & _logicDataSize;
+        ar & _logicData;
+        ar & _metaData;
+        ar & _chunkHash;
+        ar & _encryptKey;
+    }
 };
 
 Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, \

@@ -38,3 +38,7 @@ class _KeyManager {
         std::deque<Chunk> getSendQue();
         // any additional functions
 };
+
+_KeyManager::_KeyManager(){
+    
+}

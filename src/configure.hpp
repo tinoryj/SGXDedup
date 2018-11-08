@@ -226,7 +226,7 @@ uint64_t Configure::getKeyServerNumber() {
 
     return _keyServerNumber;
 }
-
+/*
 std::vector<std::string> Configure::getkeyServerIP() {
 
     return _keyServerIP;
@@ -235,6 +235,16 @@ std::vector<std::string> Configure::getkeyServerIP() {
 std::vector<int> Configure::getKeyServerPort() {
 
     return _keyServerPort;
+}
+
+*/
+
+string Configure::getkeyServerIP(){
+    return _keyServerIP[0];
+}
+
+int Configure::getKeyServerPort(){
+    return _keyServerPort[0];
 }
 
 // storage management settings
