@@ -23,20 +23,36 @@ Usage:
 using namespace std;
 
 //MessageQueue<Chunk>mq1;
-_Chunker *Chunker;
+chunker *Chunker;
 Configure config;
+keyClient *kex;
+encoder *coder;
 
 int main(int argv, char *argc[]) {
     config.readConf(argc[2]);
 
     Chunker=new chunker(argc[1]);
+    kex=new keyClient();
+    coder=new encoder();
 
     #ifdef DEBUG
     	clock_t end,stat=clock();
     	double dur,per=CLOCKS_PER_SEC;
     #endif
 
-    Chunker->chunking();
+    boost::thread th(boost::bind(&chunker::chunking,Chunker));
+    th.detach();
+    
+    for(int i=0;i<config.getMaxThreadLimit();i++){
+        boost::thread th(boost::bind(&keyClient::run,kex));
+        th.detach();
+    }
+
+    for(int i=0;i<config,getMaxThreadLimit();i++){
+        boost::thread th(boost::bind(&encoder::run,coder));
+        th.detach();
+    }
+
 
     #ifdef DEBUG
     	end=clock();

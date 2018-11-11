@@ -13,7 +13,7 @@
 #include <deque>
 #include <map>
 #include <queue>
-#include <fstream>
+#include <string>
 
 #include "_messageQueue.hpp"
 #include "configure.hpp"
@@ -22,6 +22,8 @@
 
 class _KeyManager {
     private:
+        _messageQueue* _receiveMq
+        _messageQueue* _sendMq;
         std::deque<Chunk> receiveQue;
         std::deque<Chunk> sendQue;
         // any additional info
@@ -30,15 +32,26 @@ class _KeyManager {
         ~_KeyManager();
         virtual bool receiveData() = 0; 
         virtual bool sendData() = 0; 
-        virtual bool keyGen() = 0;
+        virtual bool keyGen(string hash,string &key) = 0;
         bool workloadProgress(); // main function for epoll S/R and threadPool schedule (insertQue & extractQue threads).
-        bool insertQue(); 
-        bool extractQue(); 
+        bool insertQue();
+        bool extractQue();
         std::deque<Chunk> getReceiveQue();
         std::deque<Chunk> getSendQue();
         // any additional functions
 };
 
-_KeyManager::_KeyManager(){
-    
+bool _KeyManager::workloadProgress(){
+
+
+    return true;
+}
+bool _KeyManager::insertQue(){
+
+    return true;
+}
+
+bool _KeyManager::extractQue(){
+
+    return true;
 }

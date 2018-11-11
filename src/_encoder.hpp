@@ -22,32 +22,21 @@
 
 class _Encoder {
     private:
-        MessageQueue<Chunk> _inputMQ;
-        MessageQueue<Chunk> _outputMQ;
+        MessageQueue _inputMQ;
+        MessageQueue _outputMQ;
         std::ofstream encodeRecoder;
         // any additional info
     public:
         _Encoder();
         ~_Encoder();
-        bool extractMQ();
-        bool insertMQ(); 
+        bool extractMQ(Chunk &data);
+        bool insertMQ(Chunk &data); 
         virtual bool getKey(Chunk newChunk) = 0;
         virtual bool encodeChunk(Chunk newChunk) = 0;
         virtual bool outputEncodeRecoder() = 0;
         
-        void getInputMQ();
-        void getOutputMQ();
-        /*
+    
         MessageQueue getInputMQ();
         MessageQueue getOutputMQ();
-        */
         // any additional functions
 };
-
-void _Encoder::getInputMQ(){
-    _inputMQ.createQueue("Chunker2Encoder",READ_MESSAGE,100);
-}
-
-void _Encoder::getOutputMQ(){
-    _inputMQ.createQueue("Encoder2SGX",WRITE_MESSAGE,100);
-}

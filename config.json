@@ -9,6 +9,10 @@
 		"_segmentSize":6666,
 		"_ReadSize":128
 	},
+	"MessageQueue":{
+		"_messageQueueCnt":400,
+		"_messageQueueUnitSize"
+	},
 	"KeyServerConfig":{
 		"_keyServerNumber":6666,
 		"_keyServerIP":[
