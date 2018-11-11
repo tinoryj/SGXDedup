@@ -14,6 +14,8 @@
 		"_messageQueueUnitSize"
 	},
 	"KeyServerConfig":{
+		"_keyBatchSizeMin":10000,
+		"_keyBatchSizeMax":20000,
 		"_keyServerNumber":6666,
 		"_keyServerIP":[
 			"127.0.0.1"

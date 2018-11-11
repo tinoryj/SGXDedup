@@ -40,6 +40,11 @@ void Configure::readConf(std::string path) {
     //Server Provider Configure
     _keyServerNumber = root.get<uint64_t>\
     ("KeyServerConfig._keyServerNumber");
+    _keyBatchSizeMin = root.get<uint64_t>\
+    ("KeyServerConfig._keyBatchSizeMin");
+    _keyBatchSizeMax = root.get<uint64_t>\
+    ("KeyServerConfig._keyBatchSizeMax");
+
     _storageServerNumber = root.get<uint64_t>\
     ("SPConfig._storageServerNumber");
     _maxThreadLimits = root.get<uint64_t>\
@@ -135,6 +140,18 @@ uint64_t Configure::getKeyServerNumber() {
 
     return _keyServerNumber;
 }
+
+
+uint64_t Configure::getKeyBatchSizeMin(){
+
+    return _keyBatchSizeMin;
+}
+
+uint64_t Configure::getKeyBatchSizeMax(){
+
+    return _keyBatchSizeMax;
+}
+
 /*
 std::vector<std::string> Configure::getkeyServerIP() {
 
@@ -148,7 +165,7 @@ std::vector<int> Configure::getKeyServerPort() {
 
 */
 
-string Configure::getkeyServerIP(){
+std::string Configure::getKeyServerIP(){
     return _keyServerIP[0];
 }
 
@@ -162,15 +179,26 @@ uint64_t Configure::getStorageServerNumber() {
     return _storageServerNumber;
 }
 
+std::string Configure::getStorageServerIP() {
+
+    return _storageServerIP[0];
+}
+/*
 std::vector<std::string> Configure::getStorageServerIP() {
 
     return _storageServerIP;
+}*/
+
+int Configure::getStorageServerPort() {
+
+    return _storageServerPort[0];
 }
 
+/*
 std::vector<int> Configure::getStorageServerPort() {
 
     return _storageServerPort;
-}
+}*/
 
 uint64_t Configure::getMaxContainerSize() {
 

@@ -13,7 +13,7 @@
 class chunker : public _Chunker {
 private:
 
-    CryptoPrimitive *_cryptoObj
+    CryptoPrimitive *_cryptoObj;
     
     //chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
     bool _chunkerType;

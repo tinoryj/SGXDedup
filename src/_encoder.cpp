@@ -1,13 +1,14 @@
-#include "_encoder.cpp"
+#include "_encoder.hpp"
 
-MessageQueue _Encoder::getInputMQ(){
+extern Configure config;
+
+_messageQueue _Encoder::getInputMQ(){
 	return _inputMQ;
 }
 
-MessageQueue _Encoder::getOutputMQ(){
+_messageQueue _Encoder::getOutputMQ(){
 	return _outputMQ;
 }
-
 
 bool _Encoder::extractMQ(Chunk &data){
     _inputMQ.pop(data);
@@ -19,12 +20,12 @@ bool _Encoder::insertMQ(Chunk data){
     return true;
 }
 
-_Encoder()::_Encoder(){
-    _inputMQ=new _messageQueue("keyClient to encoder",READ_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
-    _outputMQ=new _messageQueue("encoder to sender",WRITE_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
+_Encoder::_Encoder(){
+    _inputMQ.createQueue("keyClient to encoder",READ_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
+    _outputMQ.createQueue("encoder to sender",WRITE_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
     //ofstream=
 }
 
-_Encoder::~Encoder(){
+_Encoder::~_Encoder(){
     //close mq
 }

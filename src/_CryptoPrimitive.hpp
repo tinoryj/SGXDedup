@@ -1,10 +1,7 @@
 #ifndef _CRYPTOPRIMITIVE
 #define _CRYPTOPRIMITIVE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h> /*for uint32_t*/
-#include <string.h>
+#include <string>
 
 /*for the use of OpenSSL*/
 #include <openssl/evp.h>
@@ -34,10 +31,10 @@ private:
 
 		int _cryptoType;
 
-		EVP_mdCTX _mdCTX;
+		EVP_MD_CTX _mdCTX;
 		const EVP_MD *_md;
 
-		EVP_cipherCTX _cipherctx;
+		EVP_CIPHER_CTX _cipherctx;
 		const EVP_CIPHER *_cipher;
 
 		unsigned char _iv[16];
@@ -53,9 +50,9 @@ public:
 	int getKeySize();
 	int getBlockSize();
 
-	virtual bool generaHash(string data,string& hash)=0;
-	virtual bool encryptWithKey(string data,string key,string& cipherText)=0;
-	virtual bool decryptWithKey(string data,string key,string& plaintText)=0;
+	virtual string generaHash(std::string data);
+	virtual bool encryptWithKey(std::string data,std::string key,std::string& cipherText)=0;
+	virtual bool decryptWithKey(std::string data,std::string key,std::string& plaintText)=0;
 };
 
 

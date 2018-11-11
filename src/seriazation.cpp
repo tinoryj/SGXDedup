@@ -8,15 +8,15 @@ string serialize(Chunk data){
 	stringstream buffer;
 	text_oarchive out(buffer);
 	out<<data;
-	ans=outBuffer.str()
+	ans=buffer.str();
 	return ans;
 }
 
 Chunk deserialize(string data){
 	Chunk ans;
-	stringstream buffer
+	stringstream buffer;
 	buffer.str(data);
-	ext_iarchive in(inBuffer);
+	text_iarchive in(buffer);
 	in>>ans;
 	return ans;
 }

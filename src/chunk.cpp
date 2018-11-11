@@ -1,5 +1,20 @@
 #include "chunk.hpp"
 
+Chunk::Chunk(){}
+
+Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, \
+                std::string metaData, std::string chunkHash) {
+//    logicData.resize(logicDataSize);
+
+    this->_ID = ID;
+    this->editType(type);
+//  this->editLogicDataSize(logicDataSize);
+//  this->editLogicData(logicData);
+    this->editLogicData(logicData, logicDataSize);
+    this->_metaData = metaData;
+    this->_chunkHash = chunkHash;
+}
+
 uint64_t Chunk::getID() {
     
     return this->_ID;

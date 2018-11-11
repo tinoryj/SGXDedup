@@ -1,21 +1,7 @@
 #ifndef CHUNK_HPP
 #define CHUNK_HPP
 
-#include <cstdio>
-#include <cstring>
-#include <algorithm>
-#include <iostream>
 #include <string>
-#include <vector>
-#include <stack>
-#include <bitset>
-#include <cstdlib>
-#include <cmath>
-#include <set>
-#include <list>
-#include <deque>
-#include <map>
-#include <queue>
 
 class Chunk {
 private:
@@ -29,6 +15,8 @@ private:
     // any additional info of chunk
 
 public:
+
+    Chunk();
 
     Chunk(uint64_t ID, uint64_t type = 0, uint64_t logicDataSize = 0, std::string logicData = "", \
                 std::string metaData = "", std::string chunkHash = "");
@@ -70,17 +58,5 @@ public:
     }
 };
 
-Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, \
-                std::string metaData, std::string chunkHash) {
-//    logicData.resize(logicDataSize);
-
-    this->_ID = ID;
-    this->editType(type);
-//  this->editLogicDataSize(logicDataSize);
-//  this->editLogicData(logicData);
-    this->editLogicData(logicData, logicDataSize);
-    this->_metaData = metaData;
-    this->_chunkHash = chunkHash;
-}
 
 #endif

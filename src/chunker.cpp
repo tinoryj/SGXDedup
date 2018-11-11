@@ -8,7 +8,7 @@ chunker::chunker(std::string path) {
     loadChunkFile(path);
     chunkerInit();
 
-    _cryptoObj=new CryptoPrimitive();
+    _cryptoObj=new CryptoPrimitive(HIGH_SEC_PAIR_TYPE);
 }
 
 chunker::~chunker() {
@@ -118,6 +118,8 @@ void chunker::fixSizeChunking() {
     std::ifstream &fin = getChunkingFile();
     unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
 
+    memset(_chunkBuffer,0,sizeof(char)*_maxChunkSize);
+
     /*start chunking*/
     while (1) {
         fin.read((char *) _waitingForChunkingBuffer, sizeof(char) * _ReadSize);
@@ -128,7 +130,7 @@ void chunker::fixSizeChunking() {
             x += y;
             chunkBufferCnt += y;
             if (chunkBufferCnt >= _avgChunkSize) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj.genHash(_chunkBuffer));
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
                 //mq.insert(tmpchunk);
                 delete tmpchunk;
 
@@ -142,9 +144,8 @@ void chunker::fixSizeChunking() {
         if (fin.eof())break;
     }
     if (chunkBufferCnt != 0) {
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj.genHash(_chunkBuffer)
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
         std::cout<<chunkBufferCnt<<std::endl;
-#endif
 
         //mq.insert(tmpchunk);
         delete tmpchunk;
@@ -188,11 +189,9 @@ void chunker::varSizeChunking() {
 
             /*find chunk pattern*/
             if ((winFp & _anchorMask) == _anchorValue) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer);
+                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
 
-#ifdef DEBUG
-                std::cout<<chunkBufferCnt<<std::endl;
-#endif
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
                 chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
@@ -201,7 +200,9 @@ void chunker::varSizeChunking() {
 
             /*chunk's size exceed _maxChunkSize*/
             if (chunkBufferCnt >= _maxChunkSize) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj.genHash(_chunkBuffer));
+                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
                 chunkBufferCnt = winFp = 0;
                 //mq1.push(*tmpchunk);
@@ -213,7 +214,9 @@ void chunker::varSizeChunking() {
 
     /*add final chunk*/
     if (chunkBufferCnt != 0) {
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer);
+        memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
 #ifdef DEBUG
         std::cout<<chunkBufferCnt<<std::endl;
@@ -256,7 +259,9 @@ void chunker::simpleChunking() {
 
             /*find chunk pattern*/
             if ((winFp & _anchorMask) == _anchorValue) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer);
+                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
 #ifdef DEBUG
                 std::cout<<chunkBufferCnt<<std::endl;
@@ -270,7 +275,9 @@ void chunker::simpleChunking() {
 
             /*chunk's size exceed _maxChunkSize*/
             if (chunkBufferCnt >= _maxChunkSize) {
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer);
+                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
 #ifdef DEBUG
                 std::cout<<chunkBufferCnt<<std::endl;
@@ -286,7 +293,9 @@ void chunker::simpleChunking() {
 
     //add final chunk
     if (chunkBufferCnt != 0) {
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer);
+        memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",_cryptoObj->generaHash(_chunkBuffer));
 
 #ifdef DEBUG
         std::cout<<chunkBufferCnt<<std::endl;

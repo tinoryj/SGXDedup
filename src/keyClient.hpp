@@ -14,31 +14,23 @@ private:
 	_messageQueue _inputMQ;
 	_messageQueue _outputMQ;
 	ssl* _keySecurityChannel;
-	int _minhashBatchSize;
+	int _keyBatchSizeMin,_keyBatchSizeMax;
 
 
 	RSA* _rsa;
 	BIO* _key;
 	BN_CTX *_bnCTX;
-	BIGNUM* _r,_invr;
+	BIGNUM* _r,invr;
 	BIGNUM* _h;
 
 public:
 	keyClient();
 	~keyClient();
 	void run();
-	void runForReceiveKey();
-	string kex(SSL* connection,Chunk champion);
+	string keyExchange(SSL* connection,Chunk champion);
 	string elimination(string hash);
 	string decoration(string key);
 }
 
-string keyClient::elimination(string hash){
-
-}
-
-string keyClient::decoration(string hash){
-
-}
 
 #endif

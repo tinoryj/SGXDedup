@@ -1,6 +1,6 @@
 #include "CryptoPrimitive.hpp"
 
-CryptoPrimitive::CryptoPrimitive(int cryptoType){
+CryptoPrimitive::CryptoPrimitive(int cryptoType):_CryptoPrimitive(_cryptoType){
 	_cryptoType = cryptoType;
 
 	if (_cryptoType == HIGH_SEC_PAIR_TYPE) {
@@ -66,8 +66,9 @@ CryptoPrimitive::~CryptoPrimitive(){
 
 
 
-bool CryptoPrimitive::generateHash(string data,string hash){
+string CryptoPrimitive::generateHash(string data){
 	int hashSize;
+	string hash;
 
 	EVP_DigestInit_ex(&_mdCTX, _md, NULL);
 	EVP_DigestUpdate(&_mdCTX, data, data.length());

@@ -3,6 +3,7 @@ November 11 2018:
 > quantu_zo
 >
 > * add configure.messageQueueCnt and configure.messageQueueUintSize
+> * add configure.keyBatchSizeMin and configure._keyBatchSizeMax
 > * add invasive Chunk serialize
 > * change bool keyManger::keyGen() to bool keyManger::keyGen(string hash,string key)
 > * move all implements in hpp to cpp

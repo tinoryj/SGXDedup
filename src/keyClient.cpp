@@ -2,12 +2,12 @@
 
 extern Configure config;
 
-
 keyClient::keyClient(){
-	_keySecurityChannel=new ssl(config.getkeyServerIP()[0],config.getkeyServerPort[0],CLIENTSIZE);
+	_keySecurityChannel=new ssl(config.getkeyServerIP()[0],config.getkeyServerPort[0],CLIENTSIDE);
 	_inputMQ.createQueue("chunker to keyClient",READ_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
 	_outputMQ.createQueue("keyClient to encoder",WRITE_MESSAGE,config.getMessageQueueCnt(),config.getMessageQueueUnitSize());
-	_minhashBatchSize=100;
+	_keyBatchSizeMin=config.getKeyBatchSizeMin();
+	_keyBatchSizeMax=config.getKeyBatchSizeMax();
 
 	_bnCTX=BN_CTX_new();
 	_rsa=RSA_new();
@@ -16,29 +16,42 @@ keyClient::keyClient(){
 }
 
 keyClient::~keyClient(){
-	delete _securityChannel;
-	delete _outputMQ;
-	delete _inputMQ;
+	delete _keySecurityChannel;
 
 	BIO_free_all(_key);
 	RSA_free(_rsa);
 }
 
 void keyClient::run(){
-	SSL* connection=_securityChannel.sslConnect();
+	SSL* connection=_keySecurityChannel->sslConnect();
+
 	while(1){
-		vector<Chunk>chunkList(_minhashBatchSize);
-		Chunk tmpChunk;
+		vector<Chunk>chunkList(100);
 		string segmentKey;
-		string minHash="";
-		int minHashIndex=0,it=0;
-		for(it<_minhashBatchSize){
+		char minHash[32];
+		char mask[32];
+		int segmentSize;
+		int minHashIndex,it;
+
+		memset(mask,'0',sizeof(mask));
+		memset(minHash,255,sizeof(minHash));
+
+		for(it=segmentSize=minHashIndex=0;segmentSize<_keyBatchSizeMax;it++){
 			//may jam here
-			_inputMQ.pop(tmpChunk);
-			if(tmpChunk.getChunkHash()<minHash){
-				minHash=tmpChunk.getChunkHash();
+			_inputMQ.pop(chunkList[it]);
+
+			segmentSize+=chunkList[it].getLogicDataSize();
+			if(memcmp((void*)chunkList[it].getChunkHash().c_str(),minHash,sizeof(minHash))<0){
+				memcpy(minHash,chunkList[it].getChunkHash().c_str,sizeof(minHash));
 				minHashIndex=it;
 			}
+
+			if(memcmp(chunkList[it].getChunkHash().c_str()+(32-9),mask,9)==0&&segmentSize>_keyBatchSizeMax){
+				break;
+			}
+			/*
+			if is end chunk break;
+			*/
 		}
 
 		//search key cache
@@ -51,7 +64,7 @@ void keyClient::run(){
 		}
 		*/
 
-		segmentKey=keyExchange(connection,tmpChunk);
+		segmentKey=keyExchange(connection,chunkList[minHashIndex]);
 
 		//write to hash cache
 
@@ -64,11 +77,10 @@ void keyClient::run(){
 }
 
 string keyClient::keyExchange(SSL* connection,Chunk champion){
-	string key;
-	char buffer[1024];
+	string key,buffer;
 	key=decoration(champion.getChunkHash());
-	_keySecurityChannel.sslWrite(connection,key);
-	_keySecurityChannel.sslRead(connection,buffer);
+	_keySecurityChannel->sslWrite(connection,key);
+	_keySecurityChannel->sslRead(connection,buffer);
 	key=elimination(buffer);
 	return key;
 }
@@ -78,14 +90,14 @@ string keyClient::decoration(string hash){
 	char result[128];
 	memset(result,0,sizeof(result));
 
-	BN_prseude_rand(_r,256,-1,0);
-	BN_bin2bn(hash.c_str(),32,_h);
+	BN_pseudo_rand(_r,256,-1,0);
+	BN_bin2bn((const unsigned char*)hash.c_str(),32,_h);
 
 	//tmp=hash*r^e mod n
 	BN_mod_exp(tmp,_r,_rsa->e,_rsa->n,_bnCTX);
 	BN_mod_mul(tmp,_h,tmp,_rsa->n,_bnCTX);
 	
-	BN_bn2bin(tmp,result+(128-BN_num_bytes(tmp)));
+	BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 
 	return result;
 }
@@ -96,13 +108,13 @@ string keyClient::elimination(string key){
 	char result[128];
 	memset(result,0,sizeof(result));
 
-	BN_bin2bn(key.c_str(),128,_h);
-	BN_mod_inverse(_invr,_r,_rsa->n,_bnCTX);
+	BN_bin2bn((const unsigned char*)key.c_str(),128,_h);
+	BN_mod_inverse(invr,_r,_rsa->n,_bnCTX);
 
 	//tmp=key*r^-1 mod n
-	BN_mod_mul(tmp,_h,_invr,_rsa->n,_bnCTX);
+	BN_mod_mul(tmp,_h,invr,_rsa->n,_bnCTX);
 
-	BN_bn2bin(tmp,result+(128-BN_num_bytes(tmp)));
+	BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 
 	return result;
 }

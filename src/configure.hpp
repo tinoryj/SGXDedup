@@ -48,6 +48,9 @@ private:
     uint64_t _keyServerNumber;
     std::vector<std::string> _keyServerIP;
     std::vector<int> _keyServerPort;
+    uint64_t _keyBatchSizeMax;
+    uint64_t _keyBatchSizeMin;
+
     // storage management settings
     uint64_t _storageServerNumber;
     std::vector<std::string> _storageServerIP;
@@ -88,21 +91,29 @@ public:
     // message queue settions
     uint64_t getMessageQueueCnt();
 
-    uint64_t getMessageUnitSize();
+    uint64_t getMessageQueueUnitSize();
 
     // key management settings
     uint64_t getKeyServerNumber();
 
-    std::vector<std::string> getkeyServerIP();
+    uint64_t getKeyBatchSizeMin();
 
-    std::vector<int> getKeyServerPort();
+    uint64_t getKeyBatchSizeMax();
+
+    std::string getKeyServerIP();
+    //std::vector<std::string> getkeyServerIP();
+
+    int getKeyServerPort();
+    //std::vector<int> getKeyServerPort();
 
     // storage management settings
     uint64_t getStorageServerNumber();
 
-    std::vector<std::string> getStorageServerIP();
+    std::string getStorageServerIP();
+    //std::vector<std::string> getStorageServerIP();
 
-    std::vector<int> getStorageServerPort();
+    int getStorageServerPort();
+    //std::vector<int> getStorageServerPort();
 
     uint64_t getMaxContainerSize();
     // any additional configure function

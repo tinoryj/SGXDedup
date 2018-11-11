@@ -1,8 +1,6 @@
 #include <cstdio>
-#include <cstring>
 #include <algorithm>
 #include <iostream>
-#include <string>
 #include <vector>
 #include <stack>
 #include <bitset>
@@ -18,40 +16,23 @@
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "chunk.hpp"
-#include "leveldb/db.h"
+//#include "leveldb/db.h"
 
-class _KeyManager {
+class _keyManager {
     private:
-        _messageQueue* _receiveMq
-        _messageQueue* _sendMq;
         std::deque<Chunk> receiveQue;
         std::deque<Chunk> sendQue;
         // any additional info
     public:
-        _KeyManager();
-        ~_KeyManager();
-        virtual bool receiveData() = 0; 
-        virtual bool sendData() = 0; 
-        virtual bool keyGen(string hash,string &key) = 0;
-        bool workloadProgress(); // main function for epoll S/R and threadPool schedule (insertQue & extractQue threads).
+        _keyManager();
+        ~_keyManager();
+        //virtual bool receiveData() = 0; 
+        //virtual bool sendData() = 0; 
+        virtual bool keyGen(std::string hash,std::string &key) = 0;
+        bool workloadProgress(std::string hash,std::string &key); // main function for epoll S/R and threadPool schedule (insertQue & extractQue threads).
         bool insertQue();
         bool extractQue();
-        std::deque<Chunk> getReceiveQue();
-        std::deque<Chunk> getSendQue();
+        //std::deque<Chunk> getReceiveQue();
+        //std::deque<Chunk> getSendQue();
         // any additional functions
 };
-
-bool _KeyManager::workloadProgress(){
-
-
-    return true;
-}
-bool _KeyManager::insertQue(){
-
-    return true;
-}
-
-bool _KeyManager::extractQue(){
-
-    return true;
-}

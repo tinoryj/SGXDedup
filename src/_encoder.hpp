@@ -1,42 +1,30 @@
-#include <cstdio>
-#include <cstring>
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <stack>
-#include <bitset>
-#include <cstdlib>
-#include <cmath>
-#include <set>
-#include <list>
-#include <deque>
-#include <map>
-#include <queue>
-#include <fstream>
+#ifndef _ENCODER_HPP
+#define _ENCODER_HPP
 
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "chunk.hpp"
-#include "leveldb/db.h"
+//#include "leveldb/db.h"
 
 class _Encoder {
     private:
-        MessageQueue _inputMQ;
-        MessageQueue _outputMQ;
+        _messageQueue _inputMQ;
+        _messageQueue _outputMQ;
         std::ofstream encodeRecoder;
         // any additional info
     public:
         _Encoder();
         ~_Encoder();
         bool extractMQ(Chunk &data);
-        bool insertMQ(Chunk &data); 
+        bool insertMQ(Chunk data); 
         virtual bool getKey(Chunk newChunk) = 0;
         virtual bool encodeChunk(Chunk newChunk) = 0;
         virtual bool outputEncodeRecoder() = 0;
         
     
-        MessageQueue getInputMQ();
-        MessageQueue getOutputMQ();
+        _messageQueue getInputMQ();
+        _messageQueue getOutputMQ();
         // any additional functions
 };
+
+#endif
