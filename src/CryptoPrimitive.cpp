@@ -1,6 +1,6 @@
-#include "CryptoPrimitive.hpp"
+#include "cryptoPrimitive.hpp"
 
-CryptoPrimitive::CryptoPrimitive(int cryptoType):_CryptoPrimitive(_cryptoType){
+cryptoPrimitive::cryptoPrimitive(int cryptoType):_cryptoPrimitive(_cryptoType){
 	_cryptoType = cryptoType;
 
 	if (_cryptoType == HIGH_SEC_PAIR_TYPE) {
@@ -51,7 +51,7 @@ CryptoPrimitive::CryptoPrimitive(int cryptoType):_CryptoPrimitive(_cryptoType){
 
 	}	
 }
-CryptoPrimitive::~CryptoPrimitive(){
+cryptoPrimitive::~cryptoPrimitive(){
 	if ((_cryptoType == HIGH_SEC_PAIR_TYPE) || (_cryptoType == LOW_SEC_PAIR_TYPE)) {
 		EVP__mdCTX_cleanup(&_mdCTX);
 
@@ -66,7 +66,7 @@ CryptoPrimitive::~CryptoPrimitive(){
 
 
 
-string CryptoPrimitive::generateHash(string data){
+string cryptoPrimitive::generateHash(string data){
 	int hashSize;
 	string hash;
 
@@ -85,7 +85,7 @@ string CryptoPrimitive::generateHash(string data){
 }
 
 
-bool CryptoPrimitive::encryptWithKey(string data,string key,string& cipherText) {
+bool cryptoPrimitive::encryptWithKey(string data,string key,string& cipherText) {
 	int cipherTextSize, cipherTextTailSize;	
 	
 	/**********************************/
@@ -119,7 +119,7 @@ bool CryptoPrimitive::encryptWithKey(string data,string key,string& cipherText) 
 	return 1;
 }
 
-bool CryptoPrimitive::decryptWithKey(string data,string key,string &plaintText){
+bool cryptoPrimitive::decryptWithKey(string data,string key,string &plaintText){
 	int plaintTextSize, plaintTextTailSize;	
 
 	/******************************/
@@ -151,14 +151,14 @@ bool CryptoPrimitive::decryptWithKey(string data,string key,string &plaintText){
 }
 
 
-int CryptoPrimitive::getHashSize() {
+int cryptoPrimitive::getHashSize() {
 	return _hashSize;
 }
 
-int CryptoPrimitive::getKeySize() {
+int cryptoPrimitive::getKeySize() {
 	return keySize_;
 }
 
-int CryptoPrimitive::getBlockSize() {
+int cryptoPrimitive::getBlockSize() {
 	return blockSize_;
 }

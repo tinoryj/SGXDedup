@@ -26,7 +26,7 @@
 
 using namespace std;
 
-class _CryptoPrimitive{
+class _cryptoPrimitive{
 private:
 
 		int _cryptoType;
@@ -44,8 +44,8 @@ private:
 		int _blockSize;
 
 public:
-	_CryptoPrimitive(int cryptoType);
-	~_CryptoPrimitive();
+	_cryptoPrimitive(int cryptoType);
+	~_cryptoPrimitive();
 	int getHashSize();
 	int getKeySize();
 	int getBlockSize();

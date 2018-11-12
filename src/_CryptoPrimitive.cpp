@@ -1,8 +1,8 @@
-#include "_CryptoPrimitive.hpp"
+#include "_cryptoPrimitive.hpp"
 
-_CryptoPrimitive::_CryptoPrimitive(int cryptoType){}
+_cryptoPrimitive::_cryptoPrimitive(int cryptoType){}
 
-_CryptoPrimitive::~_CryptoPrimitive(){
+_cryptoPrimitive::~_cryptoPrimitive(){
 	if ((_cryptoType == HIGH_SEC_PAIR_TYPE) || (_cryptoType == LOW_SEC_PAIR_TYPE)) {
 		EVP_MD_CTX_cleanup(&_mdCTX);
 
@@ -15,14 +15,14 @@ _CryptoPrimitive::~_CryptoPrimitive(){
 	}
 }
 
-int _CryptoPrimitive::getHashSize(){
+int _cryptoPrimitive::getHashSize(){
 	return _hashSize;
 }
 
-int _CryptoPrimitive::getKeySize(){
+int _cryptoPrimitive::getKeySize(){
 	return _keySize;
 }
 
-int _CryptoPrimitive::getBlockSize(){
+int _cryptoPrimitive::getBlockSize(){
 	return _blockSize;
 }
