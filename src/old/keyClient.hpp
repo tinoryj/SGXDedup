@@ -30,7 +30,7 @@ public:
 	string keyExchange(SSL* connection,Chunk champion);
 	string elimination(string hash);
 	string decoration(string key);
-}
+};
 
 
 #endif
