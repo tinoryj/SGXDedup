@@ -1,3 +1,6 @@
+* input: chunking file path
+* output: message queue (chunker to keyClient) 
+
 * SimpleChunking
 
   hash function: winFp = win[0] xor win[1] xor .... xor win[slidingWinSize-1]
@@ -23,7 +26,7 @@
 
   130~140 MB/s
 
-* code logic:
+* code logic(Single Thread):
 
   1、read chunking file to `waitingChunkingFile`
 
@@ -32,3 +35,4 @@
   3、if the condition satisfying,add a chunk
 
   4、break if file EOF,else goto1
+  

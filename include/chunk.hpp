@@ -50,6 +50,7 @@ public:
     bool editEncryptKey(std::string newKey);
     // any additional function of chunk
 
+
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
         ar & _ID;

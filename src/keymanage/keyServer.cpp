@@ -5,6 +5,7 @@
 #include <sys/epoll.h>
 #include "keyServer.hpp"
 extern Configure config;
+extern util::keyCache kCache;
 
 keyServer::keyServer(){
     _keySecurityChannel=new ssl(config.getKeyServerIP(),config.getKeyServerPort(),SERVERSIDE);
@@ -14,7 +15,6 @@ keyServer::keyServer(){
 
     _bnCTX=BN_CTX_new();
     config.readConf("../config.json");
-    kCache=new boost::compute::detail::lru_cache<string,string>(config.getKeyCacheSize());
     config.readConf("../config.json");
 }
 
@@ -23,7 +23,7 @@ keyServer::~keyServer(){
     RSA_free(_rsa);
 }
 
-void keyServer::run(){
+void keyServer::runRecv(){
     _messageQueue mq("epoll to workload",WRITE_MESSAGE);
     epoll_event ev,event[100];
     int epfd,fd;
@@ -33,11 +33,15 @@ void keyServer::run(){
     msg->epfd=epfd;
     ev.data.ptr=(void*)msg;
     epoll_ctl(epfd,EPOLL_CTL_ADD,_keySecurityChannel->listenFd,&ev);
+
     while(1){
         int nfd=epoll_wait(epfd,event,20,-1);
         for(int i=0;i<nfd;i++){
+
+            //msg 存在耦合，在数据发送后将 msg 删除
             msg=(message*)event[i].data.ptr;
             if(msg->con.fd==_keySecurityChannel->listenFd){
+
                 message* msg1=new message();
                 *msg1=*msg;
                 msg->con=_keySecurityChannel->sslListen();
@@ -60,8 +64,14 @@ void keyServer::run(){
             }
         }
     }
+    /*
+    for(auto it:thList){
+        it->join();
+    }
+    */
 }
-void keyServer::threadHandle(){
+
+void keyServer::runKeyGen(){
     std::string key;
     epoll_event ev;
     _messageQueue mq("epoll to workload",READ_MESSAGE);
@@ -77,8 +87,8 @@ void keyServer::threadHandle(){
 }
 
 bool keyServer::keyGen(std::string hash,std::string& key){
-    if(util::keyCache::existsKeyinCache(*kCache,hash)){
-        key=util::keyCache::getKeyFromCache(*kCache,hash);
+    if(kCache.existsKeyinCache(hash)){
+        key=kCache.getKeyFromCache(hash);
         return true;
     }
 
@@ -93,5 +103,5 @@ bool keyServer::keyGen(std::string hash,std::string& key){
     BN_bn2bin(result,(unsigned char*)buffer+(128-BN_num_bytes(result)));
     key=buffer;
 
-    util::keyCache::insertKeyToCache(*kCache,hash,key);
+    kCache.insertKeyToCache(hash,key);
 }

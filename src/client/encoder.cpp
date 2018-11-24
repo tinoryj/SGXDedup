@@ -16,14 +16,12 @@ encoder::~encoder(){
 }
 
 void encoder::run(){
-    _messageQueue in=getInputMQ();
-    _messageQueue out=getOutputMQ();
 
     while(1){
         Chunk tmpChunk;
-        in.pop(tmpChunk);
+        extractMQ(tmpChunk);
         encodeChunk(tmpChunk);
-        out.push(tmpChunk);
+        insertMQ(tmpChunk);
     }
 }
 

@@ -12,6 +12,7 @@ chunker::chunker(std::string path) {
     loadChunkFile(path);
     chunkerInit();
 
+    _outputMq.createQueue("chunker to keyClient",WRITE_MESSAGE);
     _cryptoObj=new CryptoPrimitive(HIGH_SEC_PAIR_TYPE);
 }
 
@@ -28,10 +29,10 @@ void chunker::chunkerInit() {
 
     int numOfMaskBits;
 
-    _avgChunkSize = config.getAverageChunkSize();
-    _minChunkSize = config.getMinChunkSize();
-    _maxChunkSize = config.getMaxChunkSize();
-    _slidingWinSize = config.getSlidingWinSize();
+    _avgChunkSize = (int) config.getAverageChunkSize();
+    _minChunkSize = (int) config.getMinChunkSize();
+    _maxChunkSize = (int) config.getMaxChunkSize();
+    _slidingWinSize = (int) config.getSlidingWinSize();
     _ReadSize = config.getReadSize();
     _ReadSize = _ReadSize * 1024 * 1024 / 8;
     _waitingForChunkingBuffer = new unsigned char[_ReadSize];
@@ -129,7 +130,7 @@ void chunker::fixSizeChunking() {
         fin.read((char *) _waitingForChunkingBuffer, sizeof(char) * _ReadSize);
         int len = fin.gcount(), x = 0, y;
         while (x < len) {
-            y = std::min((long long) (_avgChunkSize - chunkBufferCnt), (long long) (len - x));
+            y = std::min((int)(_avgChunkSize - chunkBufferCnt), (int)(len - x));
             memcpy(chunkBufferCnt + _chunkBuffer, _waitingForChunkingBuffer + x, sizeof(char) * y);
             x += y;
             chunkBufferCnt += y;
@@ -137,7 +138,7 @@ void chunker::fixSizeChunking() {
                 string hash;
                 _cryptoObj->generaHash((char*)_chunkBuffer,hash);
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",hash);
-                //mq.insert(tmpchunk);
+                insertMQ(*tmpchunk);
                 delete tmpchunk;
 
 #ifdef DEBUG
@@ -155,7 +156,7 @@ void chunker::fixSizeChunking() {
         tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",hash);
         std::cout<<chunkBufferCnt<<std::endl;
 
-        //mq.insert(tmpchunk);
+        insertMQ(*tmpchunk);
         delete tmpchunk;
     }
 }
@@ -203,7 +204,7 @@ void chunker::varSizeChunking() {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",hash);
 
                 chunkBufferCnt = winFp = 0;
-                //mq1.push(*tmpchunk);
+                insertMQ(*tmpchunk);
                 delete tmpchunk;
             }
 
@@ -215,7 +216,7 @@ void chunker::varSizeChunking() {
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, (char *) _chunkBuffer,"",hash);
 
                 chunkBufferCnt = winFp = 0;
-                //mq1.push(*tmpchunk);
+                insertMQ(*tmpchunk);
                 delete tmpchunk;
             }
         }
@@ -234,7 +235,7 @@ void chunker::varSizeChunking() {
         std::cout<<chunkBufferCnt<<std::endl;
 #endif
 
-        //mq.insert(tmpchunk);
+        insertMQ(*tmpchunk);
         delete tmpchunk;
     }
 
@@ -281,7 +282,7 @@ void chunker::simpleChunking() {
 #endif
 
                 chunkBufferCnt = winFp = 0;
-                //mq1.push(*tmpchunk);
+                insertMQ(*tmpchunk);
                 delete tmpchunk;
                 continue;
             }
@@ -298,7 +299,7 @@ void chunker::simpleChunking() {
 #endif
 
                 chunkBufferCnt = winFp = 0;
-                //mq1.push(*tmpchunk);
+                insertMQ(*tmpchunk);
                 delete tmpchunk;
             }
         }
@@ -316,7 +317,14 @@ void chunker::simpleChunking() {
         std::cout<<chunkBufferCnt<<std::endl;
 #endif
 
-        //mq.insert(tmpchunk);
+        insertMQ(*tmpchunk);
         delete tmpchunk;
     }
+}
+
+
+
+bool chunker::insertMQ(Chunk newChunk) {
+    _outputMq.push(newChunk);
+    return true;
 }

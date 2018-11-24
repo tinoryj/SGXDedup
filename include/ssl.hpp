@@ -30,11 +30,6 @@
 struct connection{
     SSL* ssl;
     int fd;
-    template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-        ar & ssl;
-        ar & fd;
-    }
 };
 
 class ssl{

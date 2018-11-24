@@ -6,14 +6,14 @@
 
 
 extern Configure config;
-extern boost::compute::detail::lru_cache<std::string,std::string>* kCache;
+extern util::keyCache kCache;
 
 keyClient::keyClient(){
     _keySecurityChannel=new ssl(config.getKeyServerIP(),config.getKeyServerPort(),CLIENTSIDE);
     _inputMQ.createQueue("chunker to keyClient",READ_MESSAGE);
     _outputMQ.createQueue("keyClient to encoder",WRITE_MESSAGE);
-    _keyBatchSizeMin=config.getKeyBatchSizeMin();
-    _keyBatchSizeMax=config.getKeyBatchSizeMax();
+    _keyBatchSizeMin=(int)config.getKeyBatchSizeMin();
+    _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
 
     _bnCTX=BN_CTX_new();
     _rsa=RSA_new();
@@ -60,8 +60,8 @@ void keyClient::run(){
             */
         }
 
-        if(util::keyCache::existsKeyinCache(*kCache,minHash)){
-            segmentKey=util::keyCache::getKeyFromCache(*kCache,minHash);
+        if(kCache.existsKeyinCache(minHash)){
+            segmentKey=kCache.getKeyFromCache(minHash);
             for(auto it:chunkList){
                 it.editEncryptKey(segmentKey);
             }
@@ -71,7 +71,7 @@ void keyClient::run(){
         segmentKey=keyExchange(con.ssl,chunkList[minHashIndex]);
 
         //write to hash cache
-        util::keyCache::insertKeyToCache(*kCache,minHash,segmentKey);
+        kCache.insertKeyToCache(minHash,segmentKey);
 
         for(auto it:chunkList){
             it.editEncryptKey(segmentKey);

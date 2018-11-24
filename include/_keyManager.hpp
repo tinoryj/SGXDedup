@@ -22,12 +22,15 @@
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "chunk.hpp"
+#include "message.hpp"
 //#include "leveldb/db.h"
 
 class _keyManager {
 private:
-    std::deque<Chunk> receiveQue;
-    std::deque<Chunk> sendQue;
+    _messageQueue receiveQue;
+//  _messageQueue sendQue;
+//    std::deque<Chunk> receiveQue;
+//    std::deque<Chunk> sendQue;
     // any additional info
 
 public:

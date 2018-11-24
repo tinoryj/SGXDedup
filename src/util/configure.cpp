@@ -53,12 +53,17 @@ void Configure::readConf(std::string path) {
 
     _storageServerNumber = root.get<uint64_t>\
     ("SPConfig._storageServerNumber");
-    _maxThreadLimits = root.get<uint64_t>\
-    ("ClientConfig._maxThreadLimits");
 
     _maxContainerSize = root.get<uint64_t>\
     ("SPConfig._maxContainerSize");
 
+    //muti thread settings;
+    _encodeThreadLimit=root.get<int>\
+    ("mutiThread._encodeThreadLimit");
+    _keyClientThreadLimit=root.get<int>\
+    ("mutiThread._keyClientThreadLimit");
+    _keyServerThreadLimit=root.get<int>\
+    ("mutiThread._keyServerThreadLimit");
 
     //Key Server Congigure
     std::vector<std::string> _keyServerIP;
@@ -88,12 +93,6 @@ uint64_t Configure::getRunningType() {
 
     return _runningType;
 }
-
-uint64_t Configure::getMaxThreadLimits() {
-
-    return _maxThreadLimits;
-}
-
 
 // chunking settings
 uint64_t Configure::getChunkingType() {
@@ -181,6 +180,19 @@ std::string Configure::getKeyServerIP(){
 
 int Configure::getKeyServerPort(){
     return _keyServerPort[0];
+}
+
+//muti thread settings
+int Configure::getEncoderThreadLimit() {
+    return _encodeThreadLimit;
+}
+
+int Configure::getKeyClientThreadLimit() {
+    return _keyClientThreadLimit;
+}
+
+int Configure::getKeyServerThreadLimit() {
+    return _keyServerThreadLimit;
 }
 
 // storage management settings

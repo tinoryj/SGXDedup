@@ -20,3 +20,6 @@ target_link_libraries(_messageQueue ${SYSTEM_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ} s
 
 #target_link_libraries(CryptoPrimitive crypto)
 target_link_libraries(CryptoPrimitive ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})
+
+#target_link_libraries(cache boost_thread pthread)
+target_link_libraries(cache ${BOOST_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})

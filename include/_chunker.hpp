@@ -27,6 +27,7 @@
 class _Chunker {
 private:
     std::ifstream _chunkingFile;
+
     // any additional info
 public:
     _Chunker();
@@ -41,7 +42,7 @@ public:
 
     std::ifstream &getChunkingFile();
 
-    bool insertMQ();
+    virtual bool insertMQ(Chunk newChunk) = 0;
     // any additional functions
 };
 

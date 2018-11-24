@@ -6,6 +6,7 @@
 #define GENERALDEDUPSYSTEM__CHUNKER_HPP
 
 #include <iostream>
+#include "_messageQueue.hpp"
 #include "chunk.hpp"
 #include "CryptoPrimitive.hpp"
 #include "_chunker.hpp"
@@ -17,6 +18,7 @@
 class chunker : public _Chunker {
 private:
 
+    _messageQueue _outputMq;
     CryptoPrimitive *_cryptoObj;
 
     //chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
@@ -54,6 +56,8 @@ private:
 
     void chunkerInit();
 
+    bool insertMQ(Chunk newChunk);
+
 public:
     bool chunking();
 
@@ -62,6 +66,8 @@ public:
     chunker();
 
     chunker(std::string path);
+
 };
+
 
 #endif //GENERALDEDUPSYSTEM_CHUNKER_HPP

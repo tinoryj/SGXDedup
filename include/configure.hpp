@@ -34,7 +34,6 @@ class Configure {
 private:
     // following settings configure by macro set
     uint64_t _runningType;      // localDedup \ serverDedup
-    uint64_t _maxThreadLimits;  // threadPool auto configure baseline
     // chunking settings
     uint64_t _chunkingType;     // varSize \ fixedSize \ simple
     uint64_t _maxChunkSize;
@@ -42,7 +41,7 @@ private:
     uint64_t _averageChunkSize;
     uint64_t _slidingWinSize;
     uint64_t _segmentSize;  // if exist segment function
-    uint64_t _ReadSize;
+    uint64_t _ReadSize;     //128M per time
 
     // message queue settings
     uint64_t _messageQueueCnt;
@@ -56,13 +55,17 @@ private:
     uint64_t _keyBatchSizeMin;
     uint64_t _keyCacheSize;
 
+    //muti thread settings
+    int _encodeThreadLimit;
+    int _keyClientThreadLimit;
+    int _keyServerThreadLimit;
+
     // storage management settings
     uint64_t _storageServerNumber;
     std::vector<std::string> _storageServerIP;
     std::vector<int> _storageServerPort;
     uint64_t _maxContainerSize;
     // any additional settings
-    std::ifstream _configureFile;
 
 public:
     //  Configure(std::ifstream& confFile); // according to setting json to init configure class
@@ -112,6 +115,11 @@ public:
 
     int getKeyServerPort();
     //std::vector<int> getKeyServerPort();
+
+    //muti thread settings
+    int getEncoderThreadLimit();
+    int getKeyClientThreadLimit();
+    int getKeyServerThreadLimit();
 
     // storage management settings
     uint64_t getStorageServerNumber();

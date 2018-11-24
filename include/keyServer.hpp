@@ -29,11 +29,10 @@ private:
     BN_CTX* _bnCTX;
 
 public:
-    boost::compute::detail::lru_cache<string,string>* kCache;
     keyServer();
     ~keyServer();
-    void run();
-    void threadHandle();
+    void runRecv();
+    void runKeyGen();
     bool keyGen(std::string hash,std::string& key);
 };
 

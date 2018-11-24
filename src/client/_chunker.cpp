@@ -36,7 +36,4 @@ _Chunker::_Chunker(std::string path) {
     loadChunkFile(path);
 }
 
-bool _Chunker::insertMQ() {
-
-}
 

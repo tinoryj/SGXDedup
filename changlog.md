@@ -1,3 +1,11 @@
+November 24 2018:
+
+> quantu_zo
+> 
+> * delete _maxThreadLimit in configure
+> * add muti thread settings in configure(include _encoderThreadLimit,_keyClientThreadLimt,_keyServerThreadLimt)
+> * change _chunker::inserMQ() to virtual _chunker::insertMQ(chunk)
+
 November 11 2018:
 
 > quantu_zo

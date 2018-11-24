@@ -18,6 +18,7 @@ Usage:
 #include "chunker.hpp"
 #include "keyClient.hpp"
 #include "encoder.hpp"
+#include "cache.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -25,51 +26,50 @@ Usage:
 
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/queue.hpp>
-#include <boost/compute/detail/lru_cache.hpp>
 
 using namespace std;
 
 //MessageQueue<Chunk>mq1;
-chunker *Chunker;
 Configure config;
+util::keyCache kCache;
+
+chunker *Chunker;
 keyClient *kex;
 encoder *coder;
-boost::compute::detail::lru_cache<string,string>*kCache;
 
+
+
+//argc[1]: file path
+//argc[2]: config file path
 int main(int argv, char *argc[]) {
+
+    vector<boost::thread*>thList;
+    boost::thread *th;
     config.readConf(argc[2]);
 
     Chunker=new chunker(argc[1]);
     kex=new keyClient();
     coder=new encoder();
-    kCache=new boost::compute::detail::lru_cache<string,string>(config.getKeyCacheSize());
 
-#ifdef DEBUG
-    clock_t end,stat=clock();
-    double dur,per=CLOCKS_PER_SEC;
-#endif
+    //start chunking thread
+    th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
+    thList.push_back(th);
 
-    boost::thread th(boost::bind(&chunker::chunking,Chunker));
-    th.detach();
 
-    for(int i=0;i<config.getMaxThreadLimits();i++){
-        boost::thread th(boost::bind(&keyClient::run,kex));
-        th.detach();
+    //start key client thread
+    for(int i=0;i<config.getKeyClientThreadLimit();i++){
+        th=new boost::thread(boost::bind(&keyClient::run,kex));
+        thList.push_back(th);
     }
 
-    for(int i=0;i<config.getMaxThreadLimits();i++){
-        boost::thread th(boost::bind(&encoder::run,coder));
-        th.detach();
+    //start encode thread
+    for(int i=0;i<config.getEncoderThreadLimit();i++){
+        th=new boost::thread(boost::bind(&encoder::run,coder));
+        thList.push_back(th);
     }
 
-
-#ifdef DEBUG
-    end=clock();
-    dur=end-stat;
-    cout<<"time: "<<dur/per<<endl;
-#endif
-//
-//	boost::thread th1(Chunker->chunking);
-//	th1.detach();
+    for(auto it:thList){
+        it->join();
+    }
     return 0;
 }

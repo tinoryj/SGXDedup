@@ -20,14 +20,13 @@ bool _Encoder::extractMQ(Chunk &data){
 }
 
 bool _Encoder::insertMQ(Chunk data){
-    _inputMQ.push(data);
+    _outputMQ.push(data);
     return true;
 }
 
 _Encoder::_Encoder(){
     _inputMQ.createQueue("keyClient to encoder",READ_MESSAGE);
     _outputMQ.createQueue("encoder to sender",WRITE_MESSAGE);
-    //ofstream=
 }
 
 _Encoder::~_Encoder(){

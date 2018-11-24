@@ -6,8 +6,28 @@
 
 keyServer ks;
 Configure config;
+util::keyCache kCache;
 
-int main(){
-    ks.run();
+//argc[1] : config file name
+int main(int argv,char** argc){
+    config.readConf(argc[1]);
+    vector<boost::thread*>thList;
+    boost::thread* th;
+
+    //keyServer start to recv keyGen request
+    for(int i=0;i<config.getKeyServerThreadLimit();i++){
+        th=new boost::thread(boost::bind(&keyServer::runRecv,&ks));
+        thList.push_back(th);
+    }
+
+    //start keyServer keyGen thread
+    for(int i=0;i<1;i++){
+        th=new boost::thread(boost::bind(&keyServer::runKeyGen,&ks));
+        thList.push_back(th);
+    }
+
+    for(auto it:thList){
+        it->join();
+    }
     return 0;
 }

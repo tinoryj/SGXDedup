@@ -34,7 +34,9 @@
 		],
 		"_maxContainerSize":6666
 	},
-	"ClientConfig":{
-		"_maxThreadLimits":6
+	"mutiThread":{
+		"_encodeThreadLimit":10,
+		"_keyClientThreadLimit":10,
+		"_keyServerThreadLimit":10
 	}
 }
