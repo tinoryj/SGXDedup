@@ -2,11 +2,20 @@
 // Created by a on 11/17/18.
 //
 
+
 #include "ssl.hpp"
+
+SSL* connection::getsslSocket() {
+    return (SSL*)sslSocket;
+}
+
+void connection::setsslSocket(void *ptr) {
+    this->sslSocket=(SSL*)ptr;
+}
 
 ssl::ssl(std::string ip,int port,int scSwitch){
     this->_serverIP=ip;
-    this->port=port;
+    this->_port=port;
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
@@ -19,24 +28,37 @@ ssl::ssl(std::string ip,int port,int scSwitch){
     switch(scSwitch){
         case SERVERSIDE:{
             _ctx=SSL_CTX_new(TLSv1_server_method());
-            keyFile=SECRT;
-            crtFile=SEKEY;
+            SSL_CTX_set_mode(_ctx,SSL_MODE_AUTO_RETRY);
+            crtFile=SECRT;
+            keyFile=SEKEY;
             _sockAddr.sin_addr.s_addr=htons(INADDR_ANY);
             bind(listenFd,(sockaddr*)&_sockAddr,sizeof(_sockAddr));
             listen(listenFd,10);
+            break;
         }
         case CLIENTSIDE:{
             _ctx=SSL_CTX_new(TLSv1_client_method());
             keyFile=CLKEY;
             crtFile=CLCRT;
             _sockAddr.sin_addr.s_addr=inet_addr(ip.c_str());
+            break;
         };
     }
 
+
     SSL_CTX_set_verify(_ctx,SSL_VERIFY_PEER,NULL);
-    SSL_CTX_load_verify_locations(_ctx,CACRT,NULL);
-    SSL_CTX_use_certificate_file(_ctx,crtFile.c_str(),SSL_FILETYPE_PEM);
-    SSL_CTX_use_PrivateKey_file(_ctx,keyFile.c_str(),SSL_FILETYPE_PEM);
+    if(!SSL_CTX_load_verify_locations(_ctx,CACRT,NULL)){
+        std::cerr<<"Wrong CA crt file at ssl.cpp:ssl(ip,port)\n";
+        exit(1);
+    }
+    if(!SSL_CTX_use_certificate_file(_ctx,crtFile.c_str(),SSL_FILETYPE_PEM)){
+        std::cerr<<"Wrong crt file at ssl.cpp:ssl(ip,port)\n";
+        exit(1);
+    }
+    if(!SSL_CTX_use_PrivateKey_file(_ctx,keyFile.c_str(),SSL_FILETYPE_PEM)){
+        std::cerr<<"Wrong key file at ssl.cpp:ssl(ip,port)\n";
+        exit(1);
+    }
     if(!SSL_CTX_check_private_key(_ctx)){
         std::cerr<<"1\n";
         exit(1);
@@ -52,8 +74,8 @@ ssl::~ssl(){
         SSL_free(sslConection);
     }*/
 }
-
-connection ssl::sslConnect(){
+connection ssl::sslConnect() {
+//std::pair<int,SSL*> ssl::sslConnect(){
     int fd;
     SSL* sslConection;
 
@@ -65,10 +87,12 @@ connection ssl::sslConnect(){
 
     //_fdList.push_back(fd);
     //_sslList.push_back(sslConection);
-    return (connection){sslConection,fd};
+    //return std::make_pair(fd,sslConection);
+    return (connection){fd,sslConection};
 }
 
-connection ssl::sslListen(){
+connection ssl::sslListen() {
+//std::pair<int,SSL*> ssl::sslListen(){
     int fd;
     fd=accept(listenFd,(struct sockaddr*)NULL,NULL);
     SSL* sslConection=SSL_new(_ctx);
@@ -77,7 +101,8 @@ connection ssl::sslListen(){
 
     //_fdList.push_back(fd);
     //_sslList.push_back(sslConection);
-    return (connection){sslConection,fd};
+    //return std::make_pair(fd,sslConection);;
+    return (connection){fd,sslConection};
 }
 
 void ssl::sslRead(SSL* connection,std::string& data){

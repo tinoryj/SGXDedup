@@ -20,6 +20,9 @@ void encoder::run(){
     while(1){
         Chunk tmpChunk;
         extractMQ(tmpChunk);
+#ifdef DEBUG
+    std::cout<<"encode chunk\n";
+#endif
         encodeChunk(tmpChunk);
         insertMQ(tmpChunk);
     }

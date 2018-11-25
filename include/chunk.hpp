@@ -5,6 +5,8 @@
 #ifndef GENERALDEDUPSYSTEM_CHUNK_HPP
 #define GENERALDEDUPSYSTEM_CHUNK_HPP
 
+#define CHUNKING_DONE -1
+
 #include <string>
 
 class Chunk {

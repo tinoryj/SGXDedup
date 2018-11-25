@@ -159,6 +159,11 @@ void chunker::fixSizeChunking() {
         insertMQ(*tmpchunk);
         delete tmpchunk;
     }
+
+    //add end flag
+    tmpchunk=new Chunk(0,CHUNKING_DONE,0,(char *) _chunkBuffer,"","");
+    insertMQ(*tmpchunk);
+    delete tmpchunk;
 }
 
 void chunker::varSizeChunking() {
@@ -239,6 +244,10 @@ void chunker::varSizeChunking() {
         delete tmpchunk;
     }
 
+    //add end flag
+    tmpchunk=new Chunk(0,CHUNKING_DONE,0,(char *) _chunkBuffer,"","");
+    insertMQ(*tmpchunk);
+    delete tmpchunk;
 }
 
 
@@ -320,6 +329,11 @@ void chunker::simpleChunking() {
         insertMQ(*tmpchunk);
         delete tmpchunk;
     }
+
+    //add end flag
+    tmpchunk=new Chunk(0,CHUNKING_DONE,0,(char *) _chunkBuffer,"","");
+    insertMQ(*tmpchunk);
+    delete tmpchunk;
 }
 
 

@@ -7,6 +7,7 @@
 #include "ssl.hpp"
 
 struct message{
+    //std::pair<int,SSL*> con;
     connection con;
     int epfd;
     char hash[16];

@@ -14,8 +14,8 @@
 #include "openssl/err.h"
 using namespace std;
 
-#define CACERT "key/cacert.crt"
-#define SECERT "key/server.crt"
+#define CACERT "key/cacert.pem"
+#define SECERT "key/servercert.pem"
 #define SEKEY  "key/server.key"
 
 #define PORT 6666
@@ -34,11 +34,11 @@ int main(){
 	SSL_CTX_set_mode(ctx,SSL_MODE_AUTO_RETRY);
 	SSL_CTX_set_verify(ctx,SSL_VERIFY_PEER,NULL);
 	//SSL_set_verify_depth(ctx,1);
-	SSL_CTX_load_verify_locations(ctx,CACERT,NULL);
+	cout<<SSL_CTX_load_verify_locations(ctx,CACERT,NULL)<<endl;
 
-	SSL_CTX_use_certificate_file(ctx,SECERT,SSL_FILETYPE_PEM);
+    cout<<SSL_CTX_use_certificate_file(ctx,SECERT,SSL_FILETYPE_PEM)<<endl;
 
-	SSL_CTX_use_PrivateKey_file(ctx,SEKEY,SSL_FILETYPE_PEM);
+    cout<<SSL_CTX_use_PrivateKey_file(ctx,SEKEY,SSL_FILETYPE_PEM)<<endl;
 
 	if(!SSL_CTX_check_private_key(ctx)){
 		cerr<<"1\n";

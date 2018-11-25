@@ -12,9 +12,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
-#define CLCERT "key/client.crt"
+#define CLCERT "key/clientcert.pem"
 #define CLKEY  "key/client.key"
-#define CACERT "key/cacert.crt"
+#define CACERT "key/cacert.pem"
 #define PORT 6666
 #define IP "127.0.0.1"
 

@@ -17,7 +17,7 @@
 
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
-#define KEYMANGER_PRIVATE_KEY "./key/private.pem"
+#define KEYMANGER_PRIVATE_KEY "key/server.key"
 
 
 

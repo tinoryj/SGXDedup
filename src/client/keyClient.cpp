@@ -29,6 +29,7 @@ keyClient::~keyClient(){
 }
 
 void keyClient::run(){
+    //std::pair<int,SSL*> con=_keySecurityChannel->sslConnect();
     connection con=_keySecurityChannel->sslConnect();
 
     while(1){
@@ -46,6 +47,9 @@ void keyClient::run(){
             //may jam here
             _inputMQ.pop(chunkList[it]);
 
+            //end flag
+            if(chunkList[it].getType()==CHUNKING_DONE)break;
+
             segmentSize+=chunkList[it].getLogicDataSize();
             if(memcmp((void*)chunkList[it].getChunkHash().c_str(),minHash,sizeof(minHash))<0){
                 memcpy(minHash,chunkList[it].getChunkHash().c_str(),sizeof(minHash));
@@ -55,9 +59,6 @@ void keyClient::run(){
             if(memcmp(chunkList[it].getChunkHash().c_str()+(32-9),mask,9)==0&&segmentSize>_keyBatchSizeMax){
                 break;
             }
-            /*
-            if is end chunk break;
-            */
         }
 
         if(kCache.existsKeyinCache(minHash)){
@@ -68,7 +69,9 @@ void keyClient::run(){
             continue;
         }
 
-        segmentKey=keyExchange(con.ssl,chunkList[minHashIndex]);
+        //segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
+        segmentKey=keyExchange(con.sslsocket,chunkList[minHashIndex]);
+
 
         //write to hash cache
         kCache.insertKeyToCache(minHash,segmentKey);
@@ -85,7 +88,13 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
     string key,buffer;
     key=decoration(champion.getChunkHash());
     _keySecurityChannel->sslWrite(connection,key);
+#ifdef DEBUG
+    std::cout<<"request key\n";
+#endif
     _keySecurityChannel->sslRead(connection,buffer);
+#ifdef DEBUG
+    std::cout<<"receive key\n";
+#endif
     key=elimination(buffer);
     return key;
 }

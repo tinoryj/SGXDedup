@@ -5,6 +5,8 @@
 #ifndef GENERALDEDUPSYSTEM_SSL_HPP
 #define GENERALDEDUPSYSTEM_SSL_HPP
 
+#include <iostream>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -16,20 +18,22 @@
 
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
-#define SECRT "server.crt"
-#define SEKEY "server.key"
-#define CLCRT "client.crt"
-#define CLKEY "client.key"
-#define CACRT "ca.crt"
+
+#define SECRT "key/servercert.pem"
+#define SEKEY "key/server.key"
+#define CLCRT "key/clientcert.pem"
+#define CLKEY "key/client.key"
+#define CACRT "key/cacert.pem"
 
 #include <iostream>
 #include <string>
 #include <cstring>
 #include <vector>
 
+
 struct connection{
-    SSL* ssl;
     int fd;
+    SSL* sslSocket;
 };
 
 class ssl{
@@ -37,7 +41,7 @@ private:
     SSL_CTX* _ctx;
     struct sockaddr_in _sockAddr;
     std::string _serverIP;
-    int port;
+    int _port;
 //    std::vector<int>_fdList;
 //    std::vector<SSL*>_sslList;
 
@@ -47,6 +51,8 @@ public:
     ~ssl();
     connection sslConnect();
     connection sslListen();
+    //std::pair<int,SSL*> sslConnect();
+    //std::pair<int,SSL*> sslListen();
     void sslWrite(SSL* connection,std::string data);
     void sslRead(SSL* connection,std::string& data);
 };

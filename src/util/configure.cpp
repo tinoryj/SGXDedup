@@ -2,6 +2,7 @@
 // Created by a on 11/17/18.
 //
 
+
 #include "configure.hpp"
 
 Configure::~Configure(){}
@@ -66,23 +67,23 @@ void Configure::readConf(std::string path) {
     ("mutiThread._keyServerThreadLimit");
 
     //Key Server Congigure
-    std::vector<std::string> _keyServerIP;
+    _keyServerIP.clear();
     for (ptree::value_type &it:root.get_child("KeyServerConfig._keyServerIP")) {
         _keyServerIP.push_back(it.second.data());
     }
 
-    std::vector<int> _keyServerPort;
+    _keyServerPort.clear();
     for (ptree::value_type &it:root.get_child("KeyServerConfig._keyServerPort")) {
         _keyServerPort.push_back(it.second.get_value<int>());
     }
 
 
-    std::vector<std::string> _storageServerIP;
+     _storageServerIP.clear();
     for (ptree::value_type &it:root.get_child("SPConfig._storageServerIP")) {
         _storageServerIP.push_back(it.second.data());
     }
 
-    std::vector<int> _storageServerPort;
+    _storageServerPort.clear();
     for (ptree::value_type &it:root.get_child("SPConfig._storageServerPort")) {
         _storageServerPort.push_back(it.second.get_value<int>());
     }

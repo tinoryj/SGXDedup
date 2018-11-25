@@ -12,8 +12,8 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
-#define CACERT "key/cacert.crt"
-#define SECERT "key/server.crt"
+#define CACERT "key/cacert.pem"
+#define SECERT "key/servercert.pem"
 #define SEKEY  "key/server.key"
 
 #define PORT 6666

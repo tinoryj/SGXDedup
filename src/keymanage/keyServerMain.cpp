@@ -2,19 +2,23 @@
 // Created by a on 11/17/18.
 //
 
+#define DEBUG
+
 #include "keyServer.hpp"
 
-keyServer ks;
 Configure config;
 util::keyCache kCache;
 
 //argc[1] : config file name
 int main(int argv,char** argc){
     config.readConf(argc[1]);
+
+    keyServer ks;
     vector<boost::thread*>thList;
     boost::thread* th;
 
     //keyServer start to recv keyGen request
+
     for(int i=0;i<config.getKeyServerThreadLimit();i++){
         th=new boost::thread(boost::bind(&keyServer::runRecv,&ks));
         thList.push_back(th);

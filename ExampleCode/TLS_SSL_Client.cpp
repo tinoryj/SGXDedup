@@ -15,9 +15,9 @@
 
 using namespace std;
 
-#define CLCERT "key/client.crt"
+#define CLCERT "key/clientcert.pem"
 #define CLKEY  "key/client.key"
-#define CACERT "key/cacert.crt"
+#define CACERT "key/cacert.pem"
 #define PORT 6666
 #define IP "127.0.0.1"
 
@@ -31,9 +31,9 @@ int main(){
 	SSL_CTX *ctx=SSL_CTX_new(TLSv1_client_method());
 	SSL_load_error_strings();
 	SSL_CTX_set_verify(ctx,SSL_VERIFY_PEER,NULL);	
-	SSL_CTX_load_verify_locations(ctx,CACERT,NULL);
-	SSL_CTX_use_certificate_file(ctx,CLCERT,SSL_FILETYPE_PEM);
-	SSL_CTX_use_PrivateKey_file(ctx,CLKEY,SSL_FILETYPE_PEM);
+	cout<<SSL_CTX_load_verify_locations(ctx,CACERT,NULL)<<endl;
+    cout<<SSL_CTX_use_certificate_file(ctx,CLCERT,SSL_FILETYPE_PEM)<<endl;
+    cout<<SSL_CTX_use_PrivateKey_file(ctx,CLKEY,SSL_FILETYPE_PEM)<<endl;
 
 	if(!SSL_CTX_check_private_key(ctx)){
 		cerr<<"1\n";
