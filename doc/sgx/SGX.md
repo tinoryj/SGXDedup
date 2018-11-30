@@ -1,3 +1,7 @@
+aes-cmac
+tls/ssl 握手
+ecc 加密
+
 # SGX
 
 [官方文档-v2.2](https://download.01.org/intel-sgx/linux-2.2/docs/)
@@ -102,13 +106,47 @@
 
 * SGX远程证明
 
-  * 远程证明模型
+  * 概述
 
-    远程认证采用组密钥，所有Intel SGX 平台定义为组0
+    > 通过ECDH密钥密钥交换，enclave 向服务器证明其运行在SGX平台上、
 
-    本地Enclave生成Recipe发往服务器，服务器向IAS请求验证Recipe的合法性，从而得到客户端程序确实运行在可信SGX平台的保证，从而可以相信客户端提供的Enclave完整性消息未被篡改
+  * 原理
 
-    ![RemoteAttestationHighLevel](media/sgx/RemoteAttestationHighLevel.png)
+    > 首先，enclave能被CPU加载，则证明该enclave未被修改（CPU在初始化enclave时会验证enclave生成时的哈希）。然后，SP向客户端发送挑战信息，客户端将挑战信息交由enclave处理，SP对enclave生成的结果进行验证。若结果正确，则说明挑战应答消息确为SP期望的enclave生成，同时也运行在正确的SGX平台上。在挑战应答过程中，SP和客户端的enclave建立了可信信道。
+
+  * 认证协议
+
+    标记：isv_enclave(IE)，isv_app(IA)，server_provider(SP)        协议主体
+
+    ​	   GID											  enclave 组标记，为0
+
+    ​	   gb												  ECC_PUB_KEY
+
+    ​	   SPID											  Server provider ID
+
+    ​	   KDF--ID										  Key Derivation Function ID
+
+    ​           CMAC											  AES-CMAC
+
+    ​	   msg1 = $$gb|GID$$
+
+    ​	   msg2 = $$gb|SPID|TYPE|KDF-ID|SigSP(gb,ga)|CMAC_{SMK}(gb)|SigRL$$  **?**
+
+    ​	   msg3 = $$CMAC_{SMK}(M)|M \ where\ M=ga|PS_SECURITY_PROPERITY|QUOTE$$
+
+    前提：只有在SGX平台上IE才能正确运行，IE封装有ECC_pub_key
+
+    协议：(四条消息)
+
+    ​	(1) IA->SP : msg0									:request for service
+
+    ​	(2) IE->SP : msg1									
+
+    ​	(3) SP->IE : msg2
+
+    ​	(4) IE->SP : msg3
+
+  ![RemoteAttestationHighLevel](media/sgx/RemoteAttestationHighLevel.png)
 
   * 样例代码通信流程
 
@@ -116,7 +154,7 @@
 
     通信消息：
 
-    * msg0：challenge，client to server
+    * msg0：challenge，client to server(确认服务器是否支持该组enclave)
 
        1、客户端请求Enclave并在下面的第二步产生DH Context
 
@@ -207,3 +245,116 @@
     用于描述函数参数行为及大小，[in]代表传入参数，[out]代表传出参数，格式为：[in/out，buffer_size]
 
   * 其他部分与c/c++声明一致，Ecall需要声明为public
+
+
+
+#### System design
+
+* **所有权认证方案**
+
+  1. 一次一密
+
+     SP通过远程证明建立的可信信道将签名密钥分发给客户端的enclave。enclave在对chunk哈希后对其签名，将**签名结果和哈希列表**通过socket发送到SP，SP对签名进行验证
+
+  2. 封装密钥
+
+     使用统一的密钥，封装在服务器分发的enclave。enclave在对chunk哈希后对其签名，将**签名结果和哈希列表**通过socket发送到SP，SP对签名进行验证
+
+  3. **服务器从加密信道接受enclave哈希**
+
+     enclave在计算出哈希后，直接将**加密的哈希列表**通过加密信道发送给SP，SP进行解密(可信信道实现？频率攻击，加密模式)
+
+* **线程模型**
+
+  1. 单线程模型
+
+     一个enclave，一个线程
+
+  2. 多线程模型1
+
+     一个enclave，多个线程。enclave中涉及的哈希计算、加密不涉及状态信息
+
+     缺点：每次封装验证的chunk无法保证顺序
+
+     优点：实现简单
+
+  3. **多线程模型2**
+
+     多个encalve,一个线程。其中一个enclave执行Remote Attestation，再与其它enclave 进行 Local Attestation
+
+     优点：能保证按任何顺序组合chunk进行验证
+
+* 模块设计（采用３－３）：
+
+  ```c++
+  //pow_enclave
+  sgx_status_t envlave_init_ra(int b_pse,sgx_ra_context_t* p_context)
+  
+  sgx_status_t enclave_ra_close(sgx_ra_context_t context);
+  
+  sgx_status_t verify_mac(sgx_ra_context_t context,unit8_t* message,size_t message_size,unit8_t* mac,size_t mac_size);
+  
+  sgx_status_t ecall_calHash(sgx_ra_context_t context,void* hashList,void* result);
+  ```
+
+  ```c++
+  //pow_app
+  class pow{
+  private:
+      _message_queue<chunk> _inputMQ;
+      _message_queue<chunk> _outputMQ;
+      map<hash,chunk> ma;
+      sgx_ra_context_t _context;
+      bool _enclaveReady;
+  public:
+      pow();//init enclave,open message_queue
+      void run(){
+          while(1){
+              collect chunk from _inputMQ;
+              extract chunk hash;
+              push hashlist to enclave;
+          }
+      }
+      void ocall_sendToSp(void* result){
+          send result to SP;
+          receive require chunk hash from SP;
+          push require chunk from ma to _outputMQ;
+      }
+  }
+  ```
+
+  ```c++
+  //server provider
+  int sp_ra_proc_msg0_req(const sample_ra_msg0_t *p_msg0,
+      uint32_t msg0_size);
+  
+  int sp_ra_proc_msg1_req(const sample_ra_msg1_t *p_msg1,
+  						uint32_t msg1_size,
+  						ra_samp_response_header_t **pp_msg2);
+  
+  int sp_ra_proc_msg3_req(const sample_ra_msg3_t *p_msg3,
+                          uint32_t msg3_size,
+                          ra_samp_response_header_t **pp_att_result_msg);
+  void listener();
+  
+  void worker();
+  ```
+
+  ```markdown
+  # problems
+  
+  1. 使用所有权认证方案三，通过交换生成了通信密钥即视为可信信道成功建立，但可信信道传输仍需实现？像AES加密模式一样，否则有频率攻击危险
+  
+  2. 对于交入enclave验证的哈希列表，是否需要按某种顺序（chunkID或segmantID）,因为在之前操作中chunk处于乱序状态，若需按特定是顺序，可能会导致内存开销过大
+  
+  3. pow_app与SP之间的通信模型（socket加锁或hash表加锁）
+  	方案一：echo模式，一次发送一次接收，需要对客户端socket加锁，客户端存在瓶颈？
+  	方案二：以mq为中介，多线程收发，服务器使用epoll模型，顺序无法保证，实现复杂。
+  
+  4. 使用 map 或 lru_cache. map　实现简单，但与之前 keyEX　不一致（keyEX 使用lru_cache），倾向于lru_cache,但实现复杂（对chunk特殊处理）
+  
+  5. 对多线程方案二，尝试epoll实现（非标准）,否则采用轮询方式（enclave数目不多）
+  ```
+
+  
+
