@@ -24,15 +24,17 @@ keyServer::~keyServer(){
 }
 
 void keyServer::runRecv(){
+    map<int,SSL*>sslconnection;
     _messageQueue mq("epoll to workload",WRITE_MESSAGE);
     epoll_event ev,event[100];
     int epfd,fd;
-    epfd=epoll_create(20);
     message* msg=new message();
-    //msg->con.first=_keySecurityChannel->listenFd;
-    msg->con.fd=_keySecurityChannel->listenFd;
+
+    epfd=epoll_create(20);
+    msg->fd=_keySecurityChannel->listenFd;
     msg->epfd=epfd;
     ev.data.ptr=(void*)msg;
+    ev.events=EPOLLET|EPOLLIN;
     epoll_ctl(epfd,EPOLL_CTL_ADD,_keySecurityChannel->listenFd,&ev);
 
     while(1){
@@ -41,54 +43,51 @@ void keyServer::runRecv(){
 
             //msg 存在耦合，在数据发送后将 msg 删除
             msg=(message*)event[i].data.ptr;
-            if(msg->con.fd==_keySecurityChannel->listenFd){
-            //if(msg->con.first==_keySecurityChannel->listenFd){
+            if(msg->fd==_keySecurityChannel->listenFd){
 
                 message* msg1=new message();
+                std::pair<int,SSL*> con=_keySecurityChannel->sslListen();
                 *msg1=*msg;
-                msg->con=_keySecurityChannel->sslListen();
+                msg->fd=con.first;
+                sslconnection[msg->fd]=con.second;
 #ifdef DEBUG
                 std::cout<<"accept an connection\n";
 #endif
-                ev.data.ptr=(message*)msg1;
+                ev.data.ptr=(void*)msg1;
                 ev.events=EPOLLET|EPOLLIN;
-                epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->con.fd,&ev);
-                //epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->con.first,&ev);
+                epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->fd,&ev);
+                continue;
             }
-            else if(event[i].events& EPOLLIN){
+            if(event[i].events& EPOLLIN){
                 string hash;
-                //_keySecurityChannel->sslRead(msg->con.second,hash);
-                _keySecurityChannel->sslRead(msg->con.sslsocket,hash);
+                _keySecurityChannel->sslRead(sslconnection[msg->fd],hash);
                 memcpy(msg->hash,hash.c_str(),sizeof(msg->hash));
                 mq.push(*msg);
+                delete msg;
 #ifdef DEBUG
                 std::cout<<"Receive an message\n";
 #endif
+                continue;
             }
-            else if(event[i].events& EPOLLOUT){
+            if(event[i].events& EPOLLOUT){
 #ifdef DEBUG
                 std::cout<<"Send back message\n";
 #endif
-                _keySecurityChannel->sslWrite(msg->con.sslsocket,msg->key);
-                //_keySecurityChannel->sslWrite(msg->con.second,msg->key);
+                _keySecurityChannel->sslWrite(sslconnection[msg->fd],msg->key);
 
-                //?
                 ev.events=EPOLLET|EPOLLIN;
-                //epoll_ctl(epfd,EPOLL_CTL_MOD,msg->con.first,&ev);
-                epoll_ctl(epfd,EPOLL_CTL_MOD,msg->con.fd,&ev);
+                ev.data.ptr=(void*)msg;
+                epoll_ctl(epfd,EPOLL_CTL_MOD,msg->fd,&ev);
+                continue;
             }
         }
     }
-    /*
-    for(auto it:thList){
-        it->join();
-    }
-    */
 }
 
 void keyServer::runKeyGen(){
     std::string key;
     epoll_event ev;
+    ev.events=EPOLLET|EPOLLOUT;
     _messageQueue mq("epoll to workload",READ_MESSAGE);
     message* msg = new message();
     while(1){
@@ -98,10 +97,8 @@ void keyServer::runKeyGen(){
 #endif
         this->workloadProgress(msg->hash,key);
         memcpy(msg->key,key.c_str(),sizeof(msg->key));
-        ev.data.ptr=(message*)msg;
-        ev.events=EPOLLET|EPOLLOUT;
-        epoll_ctl(msg->epfd,EPOLL_CTL_MOD,msg->con.fd,&ev);
-        //epoll_ctl(msg->epfd,EPOLL_CTL_MOD,msg->con.first,&ev);
+        ev.data.ptr=(void*)msg;
+        epoll_ctl(msg->epfd,EPOLL_CTL_MOD,msg->fd,&ev);
     }
 }
 

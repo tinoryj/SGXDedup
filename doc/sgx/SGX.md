@@ -1,6 +1,8 @@
 aes-cmac
 tls/ssl 握手
 ecc 加密
+sgx thread bind policy
+sgx switch less call
 
 # SGX
 
@@ -274,7 +276,7 @@ ecc 加密
 
      一个enclave，多个线程。enclave中涉及的哈希计算、加密不涉及状态信息
 
-     缺点：每次封装验证的chunk无法保证顺序
+     缺点：每次封装验证的chunk无法保证顺序，
 
      优点：实现简单
 

@@ -5,13 +5,6 @@
 
 #include "ssl.hpp"
 
-SSL* connection::getsslSocket() {
-    return (SSL*)sslSocket;
-}
-
-void connection::setsslSocket(void *ptr) {
-    this->sslSocket=(SSL*)ptr;
-}
 
 ssl::ssl(std::string ip,int port,int scSwitch){
     this->_serverIP=ip;
@@ -74,24 +67,27 @@ ssl::~ssl(){
         SSL_free(sslConection);
     }*/
 }
-connection ssl::sslConnect() {
+std::pair<int,SSL*> ssl::sslConnect() {
 //std::pair<int,SSL*> ssl::sslConnect(){
     int fd;
     SSL* sslConection;
 
     fd=socket(AF_INET,SOCK_STREAM,0);
-    connect(fd,(struct sockaddr*)&_sockAddr,sizeof(sockaddr));
+    if(connect(fd,(struct sockaddr*)&_sockAddr,sizeof(sockaddr))<0){
+        std::cerr<<"ERROR Occur on ssl(fd) connect\n";
+        exit(1);
+    }
     sslConection=SSL_new(_ctx);
     SSL_set_fd(sslConection,fd);
     SSL_connect(sslConection);
 
+
     //_fdList.push_back(fd);
     //_sslList.push_back(sslConection);
-    //return std::make_pair(fd,sslConection);
-    return (connection){fd,sslConection};
+    return std::make_pair(fd,sslConection);
 }
 
-connection ssl::sslListen() {
+std::pair<int,SSL*> ssl::sslListen() {
 //std::pair<int,SSL*> ssl::sslListen(){
     int fd;
     fd=accept(listenFd,(struct sockaddr*)NULL,NULL);
@@ -101,8 +97,7 @@ connection ssl::sslListen() {
 
     //_fdList.push_back(fd);
     //_sslList.push_back(sslConection);
-    //return std::make_pair(fd,sslConection);;
-    return (connection){fd,sslConection};
+    return std::make_pair(fd,sslConection);
 }
 
 void ssl::sslRead(SSL* connection,std::string& data){

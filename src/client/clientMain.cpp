@@ -53,20 +53,24 @@ int main(int argv, char *argc[]) {
 
     //start chunking thread
     th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
-    thList.push_back(th);
+//    thList.push_back(th);
+
+    config.getKeyClientThreadLimit();
 
 
     //start key client thread
     for(int i=0;i<config.getKeyClientThreadLimit();i++){
         th=new boost::thread(boost::bind(&keyClient::run,kex));
-        thList.push_back(th);
+        //thList.push_back(th);
     }
 
     //start encode thread
     for(int i=0;i<config.getEncoderThreadLimit();i++){
         th=new boost::thread(boost::bind(&encoder::run,coder));
-        thList.push_back(th);
+        //thList.push_back(th);
     }
+
+    while(1);
 
     for(auto it:thList){
         it->join();

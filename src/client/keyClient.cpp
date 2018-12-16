@@ -29,8 +29,7 @@ keyClient::~keyClient(){
 }
 
 void keyClient::run(){
-    //std::pair<int,SSL*> con=_keySecurityChannel->sslConnect();
-    connection con=_keySecurityChannel->sslConnect();
+    std::pair<int,SSL*> con=_keySecurityChannel->sslConnect();
 
     while(1){
         vector<Chunk>chunkList(100);
@@ -70,7 +69,7 @@ void keyClient::run(){
         }
 
         //segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
-        segmentKey=keyExchange(con.sslsocket,chunkList[minHashIndex]);
+        segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
 
 
         //write to hash cache

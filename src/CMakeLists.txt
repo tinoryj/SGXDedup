@@ -15,6 +15,9 @@ link_directories(${BOOST_LIBRARY_DIR} ${OPENSSL_LIBRARY_PATH} util)
 set(UTIL_OBJ _messageQueue chunk configure CryptoPrimitive seriazation SSL_TLS cache)
 set(CLIENT_OBJ _chunker chunker _encoder encoder keyClient)
 
+set(CMAKE_C_FLAGS -g)
+set(CMAKE_CXX_FLAGS -g)
+
 add_subdirectory(client)
 add_subdirectory(server)
 add_subdirectory(keymanage)
