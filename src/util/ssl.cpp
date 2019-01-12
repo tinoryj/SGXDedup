@@ -9,6 +9,7 @@
 ssl::ssl(std::string ip,int port,int scSwitch){
     this->_serverIP=ip;
     this->_port=port;
+    this->listenFd=socket(AF_INET,SOCK_STREAM,0);
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
@@ -18,6 +19,8 @@ ssl::ssl(std::string ip,int port,int scSwitch){
     _sockAddr.sin_port=htons(port);
     _sockAddr.sin_family=AF_INET;
 
+    char passwd[5]="1111";
+
     switch(scSwitch){
         case SERVERSIDE:{
             _ctx=SSL_CTX_new(TLSv1_server_method());
@@ -25,8 +28,16 @@ ssl::ssl(std::string ip,int port,int scSwitch){
             crtFile=SECRT;
             keyFile=SEKEY;
             _sockAddr.sin_addr.s_addr=htons(INADDR_ANY);
-            bind(listenFd,(sockaddr*)&_sockAddr,sizeof(_sockAddr));
-            listen(listenFd,10);
+            if(bind(listenFd,(sockaddr*)&_sockAddr,sizeof(_sockAddr))==-1){
+                std::cerr<<"Can not bind to sockfd\n";
+                std::cerr<<"May cause by shutdown server before client\n";
+                std::cerr<<"Wait for 30 sec and try again\n";
+                exit(1);
+            }
+            if(listen(listenFd,10)==-1){
+                std::cerr<<"Can not set listen socket\n";
+                exit(1);
+            }
             break;
         }
         case CLIENTSIDE:{
@@ -101,11 +112,17 @@ std::pair<int,SSL*> ssl::sslListen() {
 }
 
 void ssl::sslRead(SSL* connection,std::string& data){
-    char buffer[4096];
-    SSL_read(connection,buffer,sizeof(buffer));
-    data=buffer;
+    int recvd=0,len=0;
+    data.resize(4096);
+    SSL_read(connection,(char*)&len,sizeof(int));
+    while(recvd<len){
+        recvd+=SSL_read(connection,&data[recvd],4096);
+    }
+    data.resize(len);
 }
 
 void ssl::sslWrite(SSL* connection,std::string data){
+    int len=data.length();
+    SSL_write(connection,(char*)&len,sizeof(int));
     SSL_write(connection,data.c_str(),sizeof(char)*data.length());
 }

@@ -181,6 +181,8 @@ void chunker::varSizeChunking() {
         int i, len = fin.gcount();
         for (i = 0; i < len; i++) {
 
+            if(chunkIDCnt>300)break;
+
             _chunkBuffer[chunkBufferCnt] = _waitingForChunkingBuffer[i];
 
             /*full fill sliding window*/

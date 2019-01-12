@@ -30,7 +30,7 @@ Usage:
 using namespace std;
 
 //MessageQueue<Chunk>mq1;
-Configure config;
+Configure config("config.json");
 util::keyCache kCache;
 
 chunker *Chunker;
@@ -51,9 +51,12 @@ int main(int argv, char *argc[]) {
     kex=new keyClient();
     coder=new encoder();
 
+    Chunker->chunking();
+    kex->run();
+    /*
     //start chunking thread
     th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
-//    thList.push_back(th);
+    thList.push_back(th);
 
     config.getKeyClientThreadLimit();
 
@@ -61,7 +64,7 @@ int main(int argv, char *argc[]) {
     //start key client thread
     for(int i=0;i<config.getKeyClientThreadLimit();i++){
         th=new boost::thread(boost::bind(&keyClient::run,kex));
-        //thList.push_back(th);
+        thList.push_back(th);
     }
 
     //start encode thread
@@ -70,10 +73,10 @@ int main(int argv, char *argc[]) {
         //thList.push_back(th);
     }
 
-    while(1);
 
     for(auto it:thList){
         it->join();
     }
+*/
     return 0;
 }

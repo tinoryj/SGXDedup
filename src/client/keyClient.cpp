@@ -34,13 +34,14 @@ void keyClient::run(){
     while(1){
         vector<Chunk>chunkList(100);
         string segmentKey;
-        char minHash[32];
+        string minHash;
+        minHash.resize(32);
         char mask[32];
         int segmentSize;
         int minHashIndex,it;
 
         memset(mask,'0',sizeof(mask));
-        memset(minHash,255,sizeof(minHash));
+        memset(&minHash[0],255,sizeof(char)*minHash.length());
 
         for(it=segmentSize=minHashIndex=0;segmentSize<_keyBatchSizeMax;it++){
             //may jam here
@@ -50,8 +51,8 @@ void keyClient::run(){
             if(chunkList[it].getType()==CHUNKING_DONE)break;
 
             segmentSize+=chunkList[it].getLogicDataSize();
-            if(memcmp((void*)chunkList[it].getChunkHash().c_str(),minHash,sizeof(minHash))<0){
-                memcpy(minHash,chunkList[it].getChunkHash().c_str(),sizeof(minHash));
+            if(memcmp((void*)chunkList[it].getChunkHash().c_str(),&minHash[0],sizeof(minHash))<0){
+                memcpy(&minHash[0],chunkList[it].getChunkHash().c_str(),sizeof(minHash));
                 minHashIndex=it;
             }
 
@@ -70,8 +71,11 @@ void keyClient::run(){
 
         //segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
         segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
+#ifdef DEBUG
+        std::cout<<"get key : "<<segmentKey<<endl;
+#endif
 
-
+        std::cout<<"get key : "<<segmentKey<<endl;
         //write to hash cache
         kCache.insertKeyToCache(minHash,segmentKey);
 
@@ -85,7 +89,12 @@ void keyClient::run(){
 
 string keyClient::keyExchange(SSL* connection,Chunk champion){
     string key,buffer;
-    key=decoration(champion.getChunkHash());
+    BIGNUM *r=BN_new(),*invr=BN_new();
+    BN_pseudo_rand(r,256,-1,0);
+
+    BN_mod_inverse(invr,r,_rsa->n,_bnCTX);
+
+    key=decoration(r,champion.getChunkHash());
     _keySecurityChannel->sslWrite(connection,key);
 #ifdef DEBUG
     std::cout<<"request key\n";
@@ -94,21 +103,20 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
 #ifdef DEBUG
     std::cout<<"receive key\n";
 #endif
-    key=elimination(buffer);
+    key=elimination(invr,buffer);
     return key;
 }
 
-string keyClient::decoration(string hash){
-    BIGNUM *tmp;
+string keyClient::decoration(BIGNUM* r,string hash){
+    BIGNUM *tmp=BN_new(),*h=BN_new();
     char result[128];
     memset(result,0,sizeof(result));
 
-    BN_pseudo_rand(_r,256,-1,0);
-    BN_bin2bn((const unsigned char*)hash.c_str(),32,_h);
+    BN_bin2bn((const unsigned char*)hash.c_str(),32,h);
 
     //tmp=hash*r^e mod n
-    BN_mod_exp(tmp,_r,_rsa->e,_rsa->n,_bnCTX);
-    BN_mod_mul(tmp,_h,tmp,_rsa->n,_bnCTX);
+    BN_mod_exp(tmp,r,_rsa->e,_rsa->n,_bnCTX);
+    BN_mod_mul(tmp,h,tmp,_rsa->n,_bnCTX);
 
     BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 
@@ -116,16 +124,15 @@ string keyClient::decoration(string hash){
 }
 
 
-string keyClient::elimination(string key){
-    BIGNUM *tmp;
+string keyClient::elimination(BIGNUM* invr,string key){
+    BIGNUM *tmp=BN_new(),*h=BN_new();
     char result[128];
     memset(result,0,sizeof(result));
 
-    BN_bin2bn((const unsigned char*)key.c_str(),128,_h);
-    BN_mod_inverse(&invr,_r,_rsa->n,_bnCTX);
+    BN_bin2bn((const unsigned char*)key.c_str(),128,h);
 
     //tmp=key*r^-1 mod n
-    BN_mod_mul(tmp,_h,&invr,_rsa->n,_bnCTX);
+    BN_mod_mul(tmp,h,invr,_rsa->n,_bnCTX);
 
     BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 

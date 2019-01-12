@@ -43,9 +43,9 @@ void _messageQueue::push(Chunk data){
 void _messageQueue::pop(Chunk &ans){
     unsigned int priority;
     message_queue::size_type recvd_size;
-    char buffer[_messageQueueUnitSize];
-    _mq->receive(buffer,sizeof(buffer),recvd_size,priority);
-    std::string str(buffer);
+    std::string str;
+    str.resize(_messageQueueUnitSize);
+    _mq->receive(&str[0],_messageQueueUnitSize,recvd_size,priority);
     ans=deserialize(str);
 }
 
@@ -55,13 +55,6 @@ void _messageQueue::push(message data){
 
 void _messageQueue::pop(message &ans){
     unsigned int priority;
-
-#ifdef DEBUG
-    std::cout<<sizeof(ans)<<endl<<sizeof(ans.con.fd)<<endl;
-    std::cout<<sizeof(ans.con.sslsocket)<<endl<<sizeof(ans.epfd)<<endl;
-    std::cout<<sizeof(ans.hash)<<endl<<sizeof(ans.key)<<endl;
-#endif
-
     message_queue::size_type recvd_size;
-    _mq->receive(&ans,sizeof(ans),recvd_size,priority);
+    _mq->receive(&ans,_messageQueueUnitSize,recvd_size,priority);
 }

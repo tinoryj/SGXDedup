@@ -6,7 +6,7 @@
 
 #include "keyServer.hpp"
 
-Configure config;
+Configure config("config.json");
 util::keyCache kCache;
 
 //argc[1] : config file name

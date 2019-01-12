@@ -13,7 +13,9 @@ keyServer::keyServer(){
     _rsa=RSA_new();
     _key=NULL;
     _key=BIO_new_file(KEYMANGER_PRIVATE_KEY,"r");
-    PEM_read_bio_RSAPrivateKey(_key,&_rsa,NULL,NULL);
+
+    char passwd[5]="1111";passwd[4]='\0';
+    PEM_read_bio_RSAPrivateKey(_key,&_rsa,NULL,passwd);
 
     _bnCTX=BN_CTX_new();
 }
@@ -48,8 +50,8 @@ void keyServer::runRecv(){
                 message* msg1=new message();
                 std::pair<int,SSL*> con=_keySecurityChannel->sslListen();
                 *msg1=*msg;
-                msg->fd=con.first;
-                sslconnection[msg->fd]=con.second;
+                msg1->fd=con.first;
+                sslconnection[con.first]=con.second;
 #ifdef DEBUG
                 std::cout<<"accept an connection\n";
 #endif
@@ -108,7 +110,7 @@ bool keyServer::keyGen(std::string hash,std::string& key){
         return true;
     }
 
-    BIGNUM* result;
+    BIGNUM* result=BN_new();
     char buffer[128];
     memset(buffer,0,sizeof(buffer));
 
