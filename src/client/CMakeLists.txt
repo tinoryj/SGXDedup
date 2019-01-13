@@ -3,6 +3,9 @@ add_library(chunker STATIC chunker.cpp)
 add_library(_encoder STATIC _encoder.cpp)
 add_library(encoder STATIC encoder.cpp)
 add_library(keyClient STATIC keyClient.cpp)
+add_library(_sender _sender.cpp)
+add_library(sender sender.cpp)
+
 
 set(LINK_OBJ _chunker _encoder encoder keyClient chunker)
 
@@ -16,3 +19,6 @@ target_link_libraries(chunker ${UTIL_OBJ} _chunker)
 
 #target_link_libraries(encoder _messageQueue _encoder ssl crypto)
 target_link_libraries(encoder ${OPENSSL_OBJ} ${UTIL_OBJ} _encoder)
+
+#target_link_libraries(sender _sender configure Sock chunk _messageQueue seriazation)
+target_link_libraries(sender ${UTIL_OBJ})

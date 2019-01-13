@@ -75,7 +75,8 @@ Sock Sock::Listen() {
 }
 
 bool Sock::Send(const string buffer) {
-    size_t sentSize=0,cnt=0,sendSize=buffer.length();
+    int sentSize=0,cnt=0,sendSize=buffer.length();
+    write(this->fd,(char*)&sendSize,sizeof(int));
     while(sentSize<sendSize&&cnt<5){
         cnt++;
         sentSize+=write(this->fd,buffer.c_str()+sentSize,buffer.length()-sentSize);
@@ -83,15 +84,18 @@ bool Sock::Send(const string buffer) {
     return sentSize==sendSize;
 }
 
-bool Sock::Recv(string &buffer,size_t len) {
-    ssize_t recvedSize=0,cnt=0,s;
+bool Sock::Recv(string &buffer) {
+    size_t recvedSize=0,len,cnt=0,s;
     buffer.clear();
-    char* tmpbuffer=new char[len];
-    recvedSize=read(this->fd,tmpbuffer,len);
-    if(recvedSize==0){
+    s=read(this->fd,(char*)&len,sizeof(int));
+    if(s==0){
         this->finish();
         return false;
     }
-    buffer=tmpbuffer;
+    buffer.resize(len);
+
+    while(recvedSize<len){
+        recvedSize+=read(this->fd,&buffer[recvedSize],len-recvedSize);
+    }
     return true;
 }

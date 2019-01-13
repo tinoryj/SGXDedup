@@ -74,8 +74,6 @@ void keyClient::run(){
 #ifdef DEBUG
         std::cout<<"get key : "<<segmentKey<<endl;
 #endif
-
-        std::cout<<"get key : "<<segmentKey<<endl;
         //write to hash cache
         kCache.insertKeyToCache(minHash,segmentKey);
 

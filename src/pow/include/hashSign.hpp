@@ -1,0 +1,10 @@
+//
+// Created by a on 1/13/19.
+//
+
+#ifndef GENERALDEDUPSYSTEM_HASHSIGN_HPP
+#define GENERALDEDUPSYSTEM_HASHSIGN_HPP
+
+#include "CryptoPrimitive.hpp"
+
+#endif //GENERALDEDUPSYSTEM_HASHSIGN_HPP
