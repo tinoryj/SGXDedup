@@ -18,10 +18,10 @@ in the License.
 #ifdef _WIN32
 # include <Windows.h>
 #else
-# include "sgx_stub.h"
+# include "../include/sgx_stub.h"
 #endif
 #include <sgx_urts.h>
-#include "quote_size.h"
+#include "../include/quote_size.h"
 
 #ifndef NULL
 # define NULL 0

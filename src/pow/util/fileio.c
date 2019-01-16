@@ -19,8 +19,8 @@ in the License.
 #include <sys/types.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include "fileio.h"
-#include "hexutil.h"
+#include "../include/fileio.h"
+#include "../include/hexutil.h"
 
 int from_file (unsigned char *dest, char *file, off_t *len)
 {

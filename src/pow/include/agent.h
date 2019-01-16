@@ -24,7 +24,7 @@ in the License.
 # define DEFAULT_CA_BUNDLE DEFAULT_CA_BUNDLE_LINUX
 #endif
 
-#include "httpparser/response.h"
+#include "response.h"
 #include "iasrequest.h"
 
 using namespace httpparser;

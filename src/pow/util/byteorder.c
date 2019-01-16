@@ -18,7 +18,7 @@ in the License.
 
 #include <sys/types.h>
 #include <inttypes.h>
-#include "byteorder.h"
+#include "../include/byteorder.h"
 
 /*
  * Reverse the bytes in an array. Can do this in-place (src == dest)

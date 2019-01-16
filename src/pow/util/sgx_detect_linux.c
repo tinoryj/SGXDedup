@@ -19,8 +19,8 @@ in the License.
 #include "config.h"
 #include <sgx_urts.h>
 #include <sgx_capable.h>
-#include "sgx_stub.h"
-#include "sgx_detect.h"
+#include "../include/sgx_stub.h"
+#include "../include/sgx_detect.h"
 
 #ifndef NULL
 #define NULL 0

@@ -20,11 +20,11 @@ in the License.
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "httpparser/response.h"
-#include "httpparser/httpresponseparser.h"
-#include "agent_wget.h"
-#include "common.h"
-#include "iasrequest.h"
+#include "../include/response.h"
+#include "../include/httpresponseparser.h"
+#include "../include/agent_wget.h"
+#include "../include/common.h"
+#include "../include/iasrequest.h"
 
 using namespace std;
 using namespace httpparser;

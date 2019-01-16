@@ -51,7 +51,6 @@ EVP_PKEY *key_private_from_bytes (const unsigned char buf[32]);
 int key_to_sgx_ec256 (sgx_ec256_public_t *k, EVP_PKEY *key);
 
 unsigned char *key_shared_secret (EVP_PKEY *key, EVP_PKEY *peerkey, size_t *slen);
-EVP_PKEY *key_generate();
 
 /* SHA256 */
 

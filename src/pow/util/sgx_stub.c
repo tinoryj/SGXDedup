@@ -23,7 +23,7 @@ in the License.
 #endif
 #include <stdlib.h>
 #include <stdio.h>
-#include "sgx_stub.h"
+#include "../include/sgx_stub.h"
 #include <sgx_edger8r.h>
 #include <sgx_uae_service.h>
 #include <sgx_urts.h>

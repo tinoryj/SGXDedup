@@ -24,8 +24,8 @@ using namespace std;
 #include <cstdio>
 #include <string.h>
 #include <string>
-#include "common.h"
-#include "logfile.h"
+#include "../include/common.h"
+#include "../include/logfile.h"
 
 #define LINE_TYPE '-'
 #define LINE_SHORT_LEN 4

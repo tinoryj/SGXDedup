@@ -43,9 +43,9 @@ typedef DWORD ssize_t;
 #include <exception>
 #include <stdexcept>
 #include <string>
-#include "hexutil.h"
-#include "msgio.h"
-#include "common.h"
+#include "../include/hexutil.h"
+#include "../include/msgio.h"
+#include "../include/common.h"
 
 using namespace std;
 

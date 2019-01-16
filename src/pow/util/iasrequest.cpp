@@ -23,26 +23,26 @@ in the License.
 #include <stdio.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
-#include "crypto.h"
-#include "common.h"
-#include "agent.h"
+#include "../include/crypto.h"
+#include "../include/common.h"
+#include "../include/agent.h"
 #ifdef _WIN32
 # define AGENT_LIBCURL
 #else
 # define AGENT_WGET
 #endif
 #ifdef AGENT_WGET
-# include "agent_wget.h"
+# include "../include/agent_wget.h"
 #endif
 #ifdef AGENT_LIBCURL
 # include "agent_curl.h"
 #endif
-#include "iasrequest.h"
-#include "logfile.h"
-#include "httpparser/response.h"
-#include "base64.h"
-#include "hexutil.h"
-#include "settings.h"
+#include "../include/iasrequest.h"
+#include "../include/logfile.h"
+#include "../include/response.h"
+#include "../include/base64.h"
+#include "../include/hexutil.h"
+#include "../include/settings.h"
 
 using namespace std;
 using namespace httpparser;

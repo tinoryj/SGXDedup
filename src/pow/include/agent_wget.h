@@ -15,37 +15,28 @@ in the License.
 
 */
 
-#ifndef __AGENTCURL__H
-#define __AGENTCURL__H
+#ifndef __AGENT__WGET__H
+#define __AGENT__WGET__H
 
-#include <curl/curl.h>
-#include "httpparser/response.h"
+#include "response.h"
 #include "iasrequest.h"
 #include "agent.h"
-#include "settings.h"
 
+using namespace httpparser;
 using namespace std;
 
 #include <string>
 
-class AgentCurl : protected Agent
-{
-	CURL *curl;
-	string sresponse;
-	int flag_eoh;
-	size_t header_pos, header_len;
+class Agent;
+class IAS_Request;
 
+class AgentWget : protected Agent
+{
 public:
 	static string name;
 
-	AgentCurl(IAS_Connection *conn);
-	~AgentCurl();
-	int initialize();
-	int request(string const &url, string const &postdata, 
-		Response &response);
-	size_t write_callback(char *ptr, size_t sz, size_t n);
-	size_t header_callback(char *ptr, size_t sz, size_t n);
-
+	AgentWget(IAS_Connection *conn) : Agent(conn) {};
+	int request(string const &url, string const &post, Response &response);
 };
 
 #endif

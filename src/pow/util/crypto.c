@@ -28,8 +28,8 @@ in the License.
 #include <string.h>
 #include <stdio.h>
 #include <sgx_key_exchange.h>
-#include "crypto.h"
-#include "hexutil.h"
+#include "../include/crypto.h"
+#include "../include/hexutil.h"
 
 static enum _error_type {
 	e_none,

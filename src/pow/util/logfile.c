@@ -19,8 +19,8 @@ in the License.
 #include <sys/types.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include "logfile.h"
-#include "hexutil.h"
+#include "../include/logfile.h"
+#include "../include/hexutil.h"
 
 FILE *fplog = NULL;
 

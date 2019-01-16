@@ -17,12 +17,12 @@ in the License.
 
 #include <sys/types.h>
 #include <curl/curl.h>
-#include "httpparser/response.h"
-#include "httpparser/httpresponseparser.h"
-#include "agent_curl.h"
-#include "agent.h"
-#include "common.h"
-#include "iasrequest.h"
+#include "../include/response.h"
+#include "../include/httpresponseparser.h"
+#include "../include/agent_curl.h"
+#include "../include/agent.h"
+#include "../include/common.h"
+#include "../include/iasrequest.h"
 
 extern "C" {
 	extern char debug;

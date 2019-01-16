@@ -1,6 +1,61 @@
-//
-// Created by a on 1/13/19.
-//
+/*
+
+Copyright 2018 Intel Corporation
+
+This software and the related documents are Intel copyrighted materials,
+and your use of them is governed by the express license under which they
+were provided to you (License). Unless the License provides otherwise,
+you may not use, modify, copy, publish, distribute, disclose or transmit
+this software or the related documents without Intel's prior written
+permission.
+
+This software and the related documents are provided as is, with no
+express or implied warranties, other than those that are expressly stated
+in the License.
+
+*/
+
+
+
+#include "config.h"
+
+#include <stdlib.h>
+#include <limits.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <sgx_key_exchange.h>
+#include <sgx_report.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include "json.hpp"
+#include "common.h"
+#include "hexutil.h"
+#include "fileio.h"
+#include "crypto.h"
+#include "byteorder.h"
+#include "msgio.h"
+#include "protocol.h"
+#include "base64.h"
+#include "iasrequest.h"
+#include "logfile.h"
+#include "settings.h"
+
+using namespace json;
+using namespace std;
+
+#include <map>
+#include <string>
+#include <iostream>
+#include <algorithm>
+
+#ifdef _WIN32
+#define strdup(x) _strdup(x)
+#endif
 
 static const unsigned char def_service_private_key[32] = {
         0x90, 0xe7, 0x6c, 0xbb, 0x2d, 0x52, 0xa1, 0xce,
@@ -9,86 +64,510 @@ static const unsigned char def_service_private_key[32] = {
         0xad, 0x57, 0x34, 0x53, 0xd1, 0x03, 0x8c, 0x01
 };
 
+typedef struct ra_session_struct {
+    unsigned char g_a[64];
+    unsigned char g_b[64];
+    unsigned char kdk[16];
+    unsigned char smk[16];
+    unsigned char sk[16];
+    unsigned char mk[16];
+    unsigned char vk[16];
+} ra_session_t;
+
+typedef struct config_struct {
+    sgx_spid_t spid;
+    uint16_t quote_type;
+    EVP_PKEY *service_private_key;
+    char *proxy_server;
+    char *ca_bundle;
+    char *user_agent;
+    char *cert_file;
+    char *cert_key_file;
+    char *cert_passwd_file;
+    unsigned int proxy_port;
+    char *cert_type[4];
+    X509_STORE *store;
+    X509 *signing_ca;
+    unsigned int apiver;
+    int strict_trust;
+} config_t;
+
+void usage();
+
 int derive_kdk(EVP_PKEY *Gb, unsigned char kdk[16], sgx_ec256_public_t g_a,
-               config_t *config)
-{
-    unsigned char *Gab_x;
-    size_t slen;
-    EVP_PKEY *Ga;
-    unsigned char cmackey[16];
+               config_t *config);
 
-    memset(cmackey, 0, 16);
+int process_msg01 (MsgIO *msg, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
+                   sgx_ra_msg2_t *msg2, char **sigrl, config_t *config,
+                   ra_session_t *session);
 
-    /*
-     * Compute the shared secret using the peer's public key and a generated
-     * public/private key.
-     */
-
-    Ga= key_from_sgx_ec256(&g_a);
-    if ( Ga == NULL ) {
-        std::cerr<<"key_from_sgx_ec256\n";
-        return 0;
-    }
-
-    /* The shared secret in a DH exchange is the x-coordinate of Gab */
-    Gab_x= key_shared_secret(Gb, Ga, &slen);
-    if ( Gab_x == NULL ) {
-        std::cerr<<"key_shared_secret\n";
-        return 0;
-    }
-
-    /* We need it in little endian order, so reverse the bytes. */
-    /* We'll do this in-place. */
-
-//    if ( debug ) eprintf("+++ shared secret= %s\n", hexstring(Gab_x, slen));
-
-    reverse_bytes(Gab_x, Gab_x, slen);
-
-//    if ( debug ) eprintf("+++ reversed     = %s\n", hexstring(Gab_x, slen));
-
-    /* Now hash that to get our KDK (Key Definition Key) */
-
-    /*
-     * KDK = AES_CMAC(0x00000000000000000000000000000000, secret)
-     */
-
-    cmac128(cmackey, Gab_x, slen, kdk);
-
-    return 1;
-}
+int process_msg3 (MsgIO *msg, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
+                  ra_msg4_t *msg4, config_t *config, ra_session_t *session);
 
 int get_sigrl (IAS_Connection *ias, int version, sgx_epid_group_id_t gid,
-               char **sig_rl, uint32_t *sig_rl_size)
+               char **sigrl, uint32_t *msg2);
+
+int get_attestation_report(IAS_Connection *ias, int version,
+                           const char *b64quote, sgx_ps_sec_prop_desc_t sec_prop, ra_msg4_t *msg4,
+                           int strict_trust);
+
+int get_proxy(char **server, unsigned int *port, const char *url);
+
+char debug = 0;
+char verbose = 0;
+/* Need a global for the signal handler */
+MsgIO *msgio = NULL;
+
+int main(int argc, char *argv[])
 {
-    IAS_Request *req= NULL;
-    int oops= 1;
-    string sigrlstr;
+    char flag_spid = 0;
+    char flag_pubkey = 0;
+    char flag_cert = 0;
+    char flag_ca = 0;
+    char flag_usage = 0;
+    char flag_noproxy= 0;
+    char flag_prod= 0;
+    char flag_stdio= 0;
+    char *sigrl = NULL;
+    config_t config;
+    int oops;
+    IAS_Connection *ias= NULL;
+    char *port= NULL;
+
+    /* Command line options */
+
+    static struct option long_opt[] =
+            {
+                    {"ias-signing-cafile",
+                                           required_argument,	0, 'A'},
+                    {"ca-bundle",		required_argument,	0, 'B'},
+                    {"ias-cert",		required_argument,	0, 'C'},
+                    {"ias-cert-passwd",
+                                           required_argument,	0, 'E'},
+                    {"list-agents",		no_argument,		0, 'G'},
+                    {"service-key-file",
+                                           required_argument,	0, 'K'},
+                    {"production",		no_argument,		0, 'P'},
+                    {"spid-file",		required_argument,	0, 'S'},
+                    {"strict-trust-mode",
+                                           no_argument,		0, 'X'},
+                    {"ias-cert-key",
+                                           required_argument,	0, 'Y'},
+                    {"debug",			no_argument,		0, 'd'},
+                    {"user-agent",		required_argument,	0, 'g'},
+                    {"help",			no_argument, 		0, 'h'},
+                    {"key",				required_argument,	0, 'k'},
+                    {"linkable",		no_argument,		0, 'l'},
+                    {"proxy",			required_argument,	0, 'p'},
+                    {"api-version",		required_argument,	0, 'r'},
+                    {"spid",			required_argument,	0, 's'},
+                    {"ias-cert-type",	required_argument,	0, 't'},
+                    {"verbose",			no_argument,		0, 'v'},
+                    {"no-proxy",		no_argument,		0, 'x'},
+                    {"stdio",			no_argument,		0, 'z'},
+                    { 0, 0, 0, 0 }
+            };
+
+    /* Create a logfile to capture debug output and actual msg data */
+
+    fplog = create_logfile("sp.log");
+    fprintf(fplog, "Server log started\n");
+
+    /* Config defaults */
+
+    memset(&config, 0, sizeof(config));
+    strncpy((char *)config.cert_type, "PEM", 3);
+    config.apiver= IAS_API_DEF_VERSION;
+
+    /* Parse our options */
+
+    while (1) {
+        int c;
+        int opt_index = 0;
+
+        c = getopt_long(argc, argv, "A:B:C:E:GK:PS:XY:dg:hk:lp:r:s:t:vxz", long_opt, &opt_index);
+        if (c == -1) break;
+
+        switch (c) {
+            case 0:
+                break;
+            case 'A':
+                if (!cert_load_file(&config.signing_ca, optarg)) {
+                    crypto_perror("cert_load_file");
+                    eprintf("%s: could not load IAS Signing Cert CA\n", optarg);
+                    return 1;
+                }
+
+                config.store = cert_init_ca(config.signing_ca);
+                if (config.store == NULL) {
+                    eprintf("%s: could not initialize certificate store\n", optarg);
+                    return 1;
+                }
+                ++flag_ca;
+
+                break;
+            case 'B':
+                config.ca_bundle = strdup(optarg);
+                if (config.ca_bundle == NULL) {
+                    perror("strdup");
+                    return 1;
+                }
+
+                break;
+            case 'C':
+                config.cert_file = strdup(optarg);
+                if (config.cert_file == NULL) {
+                    perror("strdup");
+                    return 1;
+                }
+                ++flag_cert;
+
+                break;
+            case 'E':
+                config.cert_passwd_file = strdup(optarg);
+                if (config.cert_passwd_file == NULL) {
+                    perror("strdup");
+                    return 1;
+                }
+                break;
+            case 'G':
+                ias_list_agents(stdout);
+                return 1;
+
+            case 'P':
+                flag_prod = 1;
+                break;
+
+            case 'S':
+                if (!from_hexstring_file((unsigned char *)&config.spid, optarg, 16)) {
+                    eprintf("SPID must be 32-byte hex string\n");
+                    return 1;
+                }
+                ++flag_spid;
+
+                break;
+            case 'K':
+                if (!key_load_file(&config.service_private_key, optarg, KEY_PRIVATE)) {
+                    crypto_perror("key_load_file");
+                    eprintf("%s: could not load EC private key\n", optarg);
+                    return 1;
+                }
+                break;
+            case 'X':
+                config.strict_trust= 1;
+                break;
+            case 'Y':
+                config.cert_key_file = strdup(optarg);
+                if (config.cert_key_file == NULL) {
+                    perror("strdup");
+                    return 1;
+                }
+                break;
+            case 'd':
+                debug = 1;
+                break;
+            case 'g':
+                config.user_agent= strdup(optarg);
+                if ( config.user_agent == NULL ) {
+                    perror("malloc");
+                    return 1;
+                }
+                break;
+            case 'k':
+                if (!key_load(&config.service_private_key, optarg, KEY_PRIVATE)) {
+                    crypto_perror("key_load");
+                    eprintf("%s: could not load EC private key\n", optarg);
+                    return 1;
+                }
+                break;
+            case 'l':
+                config.quote_type = SGX_LINKABLE_SIGNATURE;
+                break;
+            case 'p':
+                if ( flag_noproxy ) usage();
+                if (!get_proxy(&config.proxy_server, &config.proxy_port, optarg)) {
+                    eprintf("%s: could not extract proxy info\n", optarg);
+                    return 1;
+                }
+                // Break the URL into host and port. This is a simplistic algorithm.
+                break;
+            case 'r':
+                config.apiver= atoi(optarg);
+                if ( config.apiver < IAS_MIN_VERSION || config.apiver >
+                                                        IAS_MAX_VERSION ) {
+
+                    eprintf("version must be between %d and %d\n",
+                            IAS_MIN_VERSION, IAS_MAX_VERSION);
+                    return 1;
+                }
+                break;
+            case 's':
+                if (strlen(optarg) < 32) {
+                    eprintf("SPID must be 32-byte hex string\n");
+                    return 1;
+                }
+                if (!from_hexstring((unsigned char *)&config.spid, (unsigned char *)optarg, 16)) {
+                    eprintf("SPID must be 32-byte hex string\n");
+                    return 1;
+                }
+                ++flag_spid;
+                break;
+            case 't':
+                strncpy((char *) config.cert_type, optarg, 4);
+                if ( debug ) eprintf("+++ cert type set to %s\n",
+                                     config.cert_type);
+                break;
+            case 'v':
+                verbose = 1;
+                break;
+            case 'x':
+                if ( config.proxy_server != NULL ) usage();
+                flag_noproxy=1;
+                break;
+            case 'z':
+                flag_stdio= 1;
+                break;
+            case 'h':
+            case '?':
+            default:
+                usage();
+        }
+    }
+
+    /* We should have zero or one command-line argument remaining */
+
+    argc-= optind;
+    if ( argc > 1 ) usage();
+
+    /* The remaining argument, if present, is the port number. */
+
+    if ( flag_stdio && argc ) {
+        usage();
+    } else if ( argc ) {
+        port= argv[optind];
+    } else {
+        port= strdup(DEFAULT_PORT);
+        if ( port == NULL ) {
+            perror("strdup");
+            return 1;
+        }
+    }
+
+    /* Use the default CA bundle unless one is provided */
+
+    if ( config.ca_bundle == NULL ) {
+        config.ca_bundle= strdup(DEFAULT_CA_BUNDLE);
+        if ( config.ca_bundle == NULL ) {
+            perror("strdup");
+            return 1;
+        }
+        if ( debug ) eprintf("+++ Using default CA bundle %s\n",
+                             config.ca_bundle);
+    }
+
+    /*
+     * Use the hardcoded default key unless one is provided on the
+     * command line. Most real-world services would hardcode the
+     * key since the public half is also hardcoded into the enclave.
+     */
+
+    if (config.service_private_key == NULL) {
+        if (debug) {
+            eprintf("Using default private key\n");
+        }
+        config.service_private_key = key_private_from_bytes(def_service_private_key);
+        if (config.service_private_key == NULL) {
+            crypto_perror("key_private_from_bytes");
+            return 1;
+        }
+
+    }
+
+    if (debug) {
+        eprintf("+++ using private key:\n");
+        PEM_write_PrivateKey(stderr, config.service_private_key, NULL,
+                             NULL, 0, 0, NULL);
+        PEM_write_PrivateKey(fplog, config.service_private_key, NULL,
+                             NULL, 0, 0, NULL);
+    }
+
+    if (!flag_spid) {
+        eprintf("--spid or --spid-file is required\n");
+        flag_usage = 1;
+    }
+
+    if (!flag_cert) {
+        eprintf("--ias-cert-file is required\n");
+        flag_usage = 1;
+    }
+
+    if (!flag_ca) {
+        eprintf("--ias-signing-cafile is required\n");
+        flag_usage = 1;
+    }
+
+    if (flag_usage) usage();
+
+    if (verbose) eprintf("Using cert file %s\n", config.cert_file);
+
+    /* Initialize out support libraries */
+
+    crypto_init();
+
+    /* Initialize our IAS request object */
 
     try {
-        oops= 0;
-        req= new IAS_Request(ias, (uint16_t) version);
+        ias = new IAS_Connection(
+                (flag_prod) ? IAS_SERVER_PRODUCTION : IAS_SERVER_DEVELOPMENT,
+                0
+        );
     }
     catch (...) {
         oops = 1;
+        eprintf("exception while creating IAS request object\n");
+        return 1;
     }
 
-    if (oops) {
-        eprintf("Exception while creating IAS request object\n");
-        return 0;
+    ias->client_cert(config.cert_file, (char *)config.cert_type);
+    if ( config.cert_passwd_file != NULL ) {
+        char *passwd;
+        char *keyfile;
+        off_t sz;
+
+        if ( ! from_file(NULL, config.cert_passwd_file, &sz) ) {
+            eprintf("can't load password from %s\n",
+                    config.cert_passwd_file);
+            return 1;
+        }
+
+        if ( sz > 0 ) {
+            char *cp;
+
+            try {
+                passwd= new char[sz+1];
+            }
+            catch (...) {
+                eprintf("out of memory\n");
+                return 1;
+            }
+
+            if ( ! from_file((unsigned char *) passwd, config.cert_passwd_file,
+                             &sz) ) {
+
+                eprintf("can't load password from %s\n",
+                        config.cert_passwd_file);
+                return 1;
+            }
+            passwd[sz]= 0;
+
+            // Remove trailing newline or linefeed.
+
+            cp= strchr(passwd, '\n');
+            if ( cp != NULL ) *cp= 0;
+            cp= strchr(passwd, '\r');
+            if ( cp != NULL ) *cp= 0;
+
+            // If a key file isn't specified, assume it's bundled with
+            // the certificate.
+
+            keyfile= (config.cert_key_file == NULL) ? config.cert_file :
+                     config.cert_key_file;
+            if ( debug ) eprintf("+++ using cert key file %s\n", keyfile);
+            ias->client_key(keyfile, passwd);
+
+            // -fno-builtin-memset prevents optimizing this away
+            memset(passwd, 0, sz);
+        }
+    } else if ( config.cert_key_file != NULL ) {
+        // We have a key file but no password.
+        ias->client_key(config.cert_key_file, NULL);
     }
 
-    if ( req->sigrl(*(uint32_t *) gid, sigrlstr) != IAS_OK ) {
-        return 0;
+    if ( flag_noproxy ) ias->proxy_mode(IAS_PROXY_NONE);
+    else if (config.proxy_server != NULL) {
+        ias->proxy_mode(IAS_PROXY_FORCE);
+        ias->proxy(config.proxy_server, config.proxy_port);
     }
 
-    *sig_rl= strdup(sigrlstr.c_str());
-    if ( *sig_rl == NULL ) return 0;
+    if ( config.user_agent != NULL ) {
+        if ( ! ias->agent(config.user_agent) ) {
+            eprintf("%s: unknown user agent\n", config.user_agent);
+            return 0;
+        }
+    }
 
-    *sig_rl_size= (uint32_t ) sigrlstr.length();
+    /*
+     * Set the cert store for this connection. This is used for verifying
+     * the IAS signing certificate, not the TLS connection with IAS (the
+     * latter is handled using config.ca_bundle).
+     */
+    ias->cert_store(config.store);
 
-    return 1;
+    /*
+     * Set the CA bundle for verifying the IAS server certificate used
+     * for the TLS session. If this isn't set, then the user agent
+     * will fall back to it's default.
+     */
+    if ( strlen(config.ca_bundle) ) ias->ca_bundle(config.ca_bundle);
+
+    /* Get our message IO object. */
+
+    msgio= new MsgIO(NULL, (port == NULL) ? DEFAULT_PORT : port);
+
+    while ( msgio->server_loop() ) {
+        ra_session_t session;
+        sgx_ra_msg1_t msg1;
+        sgx_ra_msg2_t msg2;
+        ra_msg4_t msg4;
+
+        memset(&session, 0, sizeof(ra_session_t));
+
+        /* Read message 0 and 1, then generate message 2 */
+
+        if ( ! process_msg01(msgio, ias, &msg1, &msg2, &sigrl, &config,
+                             &session) ) {
+
+            eprintf("error processing msg1\n");
+            goto disconnect;
+        }
+
+        /* Send message 2 */
+
+        /*
+         * sgx_ra_msg2_t is a struct with a flexible array member at the
+         * end (defined as uint8_t sig_rl[]). We could go to all the
+         * trouble of building a byte array large enough to hold the
+         * entire struct and then cast it as (sgx_ra_msg2_t) but that's
+         * a lot of work for no gain when we can just send the fixed
+         * portion and the array portion by hand.
+         */
+
+        dividerWithText(stderr, "Copy/Paste Msg2 Below to Client");
+        dividerWithText(fplog, "Msg2 (send to Client)");
+
+        msgio->send_partial((void *) &msg2, sizeof(sgx_ra_msg2_t));
+        fsend_msg_partial(fplog, (void *) &msg2, sizeof(sgx_ra_msg2_t));
+
+        msgio->send(&msg2.sig_rl, msg2.sig_rl_size);
+        fsend_msg(fplog, &msg2.sig_rl, msg2.sig_rl_size);
+
+        edivider();
+
+        /* Read message 3, and generate message 4 */
+
+        if ( ! process_msg3(msgio, ias, &msg1, &msg4, &config, &session) ) {
+            eprintf("error processing msg3\n");
+            goto disconnect;
+        }
+
+        disconnect:
+        msgio->disconnect();
+    }
+
+    crypto_destroy();
+
+    return 0;
 }
-
 
 int process_msg3 (MsgIO *msgio, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
                   ra_msg4_t *msg4, config_t *config, ra_session_t *session)
@@ -588,3 +1067,400 @@ int process_msg01 (MsgIO *msgio, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
 
     return 1;
 }
+
+int derive_kdk(EVP_PKEY *Gb, unsigned char kdk[16], sgx_ec256_public_t g_a,
+               config_t *config)
+{
+    unsigned char *Gab_x;
+    size_t slen;
+    EVP_PKEY *Ga;
+    unsigned char cmackey[16];
+
+    memset(cmackey, 0, 16);
+
+    /*
+     * Compute the shared secret using the peer's public key and a generated
+     * public/private key.
+     */
+
+    Ga= key_from_sgx_ec256(&g_a);
+    if ( Ga == NULL ) {
+        crypto_perror("key_from_sgx_ec256");
+        return 0;
+    }
+
+    /* The shared secret in a DH exchange is the x-coordinate of Gab */
+    Gab_x= key_shared_secret(Gb, Ga, &slen);
+    if ( Gab_x == NULL ) {
+        crypto_perror("key_shared_secret");
+        return 0;
+    }
+
+    /* We need it in little endian order, so reverse the bytes. */
+    /* We'll do this in-place. */
+
+    if ( debug ) eprintf("+++ shared secret= %s\n", hexstring(Gab_x, slen));
+
+    reverse_bytes(Gab_x, Gab_x, slen);
+
+    if ( debug ) eprintf("+++ reversed     = %s\n", hexstring(Gab_x, slen));
+
+    /* Now hash that to get our KDK (Key Definition Key) */
+
+    /*
+     * KDK = AES_CMAC(0x00000000000000000000000000000000, secret)
+     */
+
+    cmac128(cmackey, Gab_x, slen, kdk);
+
+    return 1;
+}
+
+int get_sigrl (IAS_Connection *ias, int version, sgx_epid_group_id_t gid,
+               char **sig_rl, uint32_t *sig_rl_size)
+{
+    IAS_Request *req= NULL;
+    int oops= 1;
+    string sigrlstr;
+
+    try {
+        oops= 0;
+        req= new IAS_Request(ias, (uint16_t) version);
+    }
+    catch (...) {
+        oops = 1;
+    }
+
+    if (oops) {
+        eprintf("Exception while creating IAS request object\n");
+        return 0;
+    }
+
+    if ( req->sigrl(*(uint32_t *) gid, sigrlstr) != IAS_OK ) {
+        return 0;
+    }
+
+    *sig_rl= strdup(sigrlstr.c_str());
+    if ( *sig_rl == NULL ) return 0;
+
+    *sig_rl_size= (uint32_t ) sigrlstr.length();
+
+    return 1;
+}
+
+int get_attestation_report(IAS_Connection *ias, int version,
+                           const char *b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t *msg4,
+                           int strict_trust)
+{
+    IAS_Request *req = NULL;
+    map<string,string> payload;
+    vector<string> messages;
+    ias_error_t status;
+    string content;
+
+    try {
+        req= new IAS_Request(ias, (uint16_t) version);
+    }
+    catch (...) {
+        eprintf("Exception while creating IAS request object\n");
+        return 0;
+    }
+
+    payload.insert(make_pair("isvEnclaveQuote", b64quote));
+
+    status= req->report(payload, content, messages);
+    if ( status == IAS_OK ) {
+        JSON reportObj = JSON::Load(content);
+
+        if ( verbose ) {
+            edividerWithText("Report Body");
+            eprintf("%s\n", content.c_str());
+            edivider();
+            if ( messages.size() ) {
+                edividerWithText("IAS Advisories");
+                for (vector<string>::const_iterator i = messages.begin();
+                     i != messages.end(); ++i ) {
+
+                    eprintf("%s\n", i->c_str());
+                }
+                edivider();
+            }
+        }
+
+        if ( verbose ) {
+            edividerWithText("IAS Report - JSON - Required Fields");
+            if ( version >= 3 ) {
+                eprintf("version               = %d\n",
+                        reportObj["version"].ToInt());
+            }
+            eprintf("id:                   = %s\n",
+                    reportObj["id"].ToString().c_str());
+            eprintf("timestamp             = %s\n",
+                    reportObj["timestamp"].ToString().c_str());
+            eprintf("isvEnclaveQuoteStatus = %s\n",
+                    reportObj["isvEnclaveQuoteStatus"].ToString().c_str());
+            eprintf("isvEnclaveQuoteBody   = %s\n",
+                    reportObj["isvEnclaveQuoteBody"].ToString().c_str());
+
+            edividerWithText("IAS Report - JSON - Optional Fields");
+
+            eprintf("platformInfoBlob  = %s\n",
+                    reportObj["platformInfoBlob"].ToString().c_str());
+            eprintf("revocationReason  = %s\n",
+                    reportObj["revocationReason"].ToString().c_str());
+            eprintf("pseManifestStatus = %s\n",
+                    reportObj["pseManifestStatus"].ToString().c_str());
+            eprintf("pseManifestHash   = %s\n",
+                    reportObj["pseManifestHash"].ToString().c_str());
+            eprintf("nonce             = %s\n",
+                    reportObj["nonce"].ToString().c_str());
+            eprintf("epidPseudonym     = %s\n",
+                    reportObj["epidPseudonym"].ToString().c_str());
+            edivider();
+        }
+
+        /*
+         * If the report returned a version number (API v3 and above), make
+         * sure it matches the API version we used to fetch the report.
+         *
+         * For API v3 and up, this field MUST be in the report.
+         */
+
+        if ( reportObj.hasKey("version") ) {
+            unsigned int rversion= (unsigned int) reportObj["version"].ToInt();
+            if ( verbose )
+                eprintf("+++ Verifying report version against API version\n");
+            if ( version != rversion ) {
+                eprintf("Report version %u does not match API version %u\n",
+                        rversion , version);
+                return 0;
+            }
+        } else if ( version >= 3 ) {
+            eprintf("attestation report version required for API version >= 3\n");
+            return 0;
+        }
+
+        /*
+         * This sample's attestion policy is based on isvEnclaveQuoteStatus:
+         *
+         *   1) if "OK" then return "Trusted"
+         *
+          *   2) if "CONFIGURATION_NEEDED" then return
+         *       "NotTrusted_ItsComplicated" when in --strict-trust-mode
+         *        and "Trusted_ItsComplicated" otherwise
+         *
+         *   3) return "NotTrusted" for all other responses
+         *
+         *
+         * ItsComplicated means the client is not trusted, but can
+         * conceivable take action that will allow it to be trusted
+         * (such as a BIOS update).
+          */
+
+        /*
+         * Simply check to see if status is OK, else enclave considered
+         * not trusted
+         */
+
+        memset(msg4, 0, sizeof(ra_msg4_t));
+
+        if ( verbose ) edividerWithText("ISV Enclave Trust Status");
+
+        if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
+            msg4->status = Trusted;
+            if ( verbose ) eprintf("Enclave TRUSTED\n");
+        } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
+            if ( strict_trust ) {
+                msg4->status = NotTrusted_ItsComplicated;
+                if ( verbose ) eprintf("Enclave NOT TRUSTED and COMPLICATED - Reason: %s\n",
+                                       reportObj["isvEnclaveQuoteStatus"].ToString().c_str());
+            } else {
+                if ( verbose ) eprintf("Enclave TRUSTED and COMPLICATED - Reason: %s\n",
+                                       reportObj["isvEnclaveQuoteStatus"].ToString().c_str());
+                msg4->status = Trusted_ItsComplicated;
+            }
+        } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
+            msg4->status = NotTrusted_ItsComplicated;
+            if ( verbose ) eprintf("Enclave NOT TRUSTED and COMPLICATED - Reason: %s\n",
+                                   reportObj["isvEnclaveQuoteStatus"].ToString().c_str());
+        } else {
+            msg4->status = NotTrusted;
+            if ( verbose ) eprintf("Enclave NOT TRUSTED - Reason: %s\n",
+                                   reportObj["isvEnclaveQuoteStatus"].ToString().c_str());
+        }
+
+
+        /* Check to see if a platformInfoBlob was sent back as part of the
+         * response */
+
+        if (!reportObj["platformInfoBlob"].IsNull()) {
+            if ( verbose ) eprintf("A Platform Info Blob (PIB) was provided by the IAS\n");
+
+            /* The platformInfoBlob has two parts, a TVL Header (4 bytes),
+             * and TLV Payload (variable) */
+
+            string pibBuff = reportObj["platformInfoBlob"].ToString();
+
+            /* remove the TLV Header (8 base16 chars, ie. 4 bytes) from
+             * the PIB Buff. */
+
+            pibBuff.erase(pibBuff.begin(), pibBuff.begin() + (4*2));
+
+            int ret = from_hexstring ((unsigned char *)&msg4->platformInfoBlob,
+                                      pibBuff.c_str(), pibBuff.length());
+        } else {
+            if ( verbose ) eprintf("A Platform Info Blob (PIB) was NOT provided by the IAS\n");
+        }
+
+        return 1;
+    }
+
+    eprintf("attestation query returned %lu: \n", status);
+
+    switch(status) {
+        case IAS_QUERY_FAILED:
+            eprintf("Could not query IAS\n");
+            break;
+        case IAS_BADREQUEST:
+            eprintf("Invalid payload\n");
+            break;
+        case IAS_UNAUTHORIZED:
+            eprintf("Failed to authenticate or authorize request\n");
+            break;
+        case IAS_SERVER_ERR:
+            eprintf("An internal error occurred on the IAS server\n");
+            break;
+        case IAS_UNAVAILABLE:
+            eprintf("Service is currently not able to process the request. Try again later.\n");
+            break;
+        case IAS_INTERNAL_ERROR:
+            eprintf("An internal error occurred while processing the IAS response\n");
+            break;
+        case IAS_BAD_CERTIFICATE:
+            eprintf("The signing certificate could not be validated\n");
+            break;
+        case IAS_BAD_SIGNATURE:
+            eprintf("The report signature could not be validated\n");
+            break;
+        default:
+            if ( status >= 100 && status < 600 ) {
+                eprintf("Unexpected HTTP response code\n");
+            } else {
+                eprintf("An unknown error occurred.\n");
+            }
+    }
+
+    return 0;
+}
+
+// Break a URL into server and port. NOTE: This is a simplistic algorithm.
+
+int get_proxy(char **server, unsigned int *port, const char *url)
+{
+    size_t idx1, idx2;
+    string lcurl, proto, srv, sport;
+
+    if (url == NULL) return 0;
+
+    lcurl = string(url);
+    // Make lower case for sanity
+    transform(lcurl.begin(), lcurl.end(), lcurl.begin(), ::tolower);
+
+    idx1= lcurl.find_first_of(":");
+    proto = lcurl.substr(0, idx1);
+    if (proto == "https") *port = 443;
+    else if (proto == "http") *port = 80;
+    else return 0;
+
+    idx1 = lcurl.find_first_not_of("/", idx1 + 1);
+    if (idx1 == string::npos) return 0;
+
+    idx2 = lcurl.find_first_of(":", idx1);
+    if (idx2 == string::npos) {
+        idx2 = lcurl.find_first_of("/", idx1);
+        if (idx2 == string::npos) srv = lcurl.substr(idx1);
+        else srv = lcurl.substr(idx1, idx2 - idx1);
+    }
+    else {
+        srv= lcurl.substr(idx1, idx2 - idx1);
+        idx1 = idx2+1;
+        idx2 = lcurl.find_first_of("/", idx1);
+
+        if (idx2 == string::npos) sport = lcurl.substr(idx1);
+        else sport = lcurl.substr(idx1, idx2 - idx1);
+
+        try {
+            *port = (unsigned int) ::stoul(sport);
+        }
+        catch (...) {
+            return 0;
+        }
+    }
+
+    try {
+        *server = new char[srv.length()+1];
+    }
+    catch (...) {
+        return 0;
+    }
+
+    memcpy(*server, srv.c_str(), srv.length());
+    (*server)[srv.length()] = 0;
+
+    return 1;
+}
+
+
+#define NNL <<endl<<endl<<
+#define NL <<endl<<
+
+void usage ()
+{
+    cerr << "usage: sp [ options ] [ port ]" NL
+         "Required:" NL
+         "  -A, --ias-signing-cafile=FILE" NL
+         "                           Specify the IAS Report Signing CA file." NL
+         "  -C, --ias-cert-file=FILE Specify the IAS client certificate to use when" NL
+         "                             communicating with IAS." NNL
+         "One of (required):" NL
+         "  -S, --spid-file=FILE     Set the SPID from a file containg a 32-byte." NL
+         "                             ASCII hex string." NL
+         "  -s, --spid=HEXSTRING     Set the SPID from a 32-byte ASCII hex string." NNL
+         "Optional:" NL
+         "  -B, --ca-bundle-file=FILE" NL
+         "                           Use the CA certificate bundle at FILE (default:" NL
+         "                             " << DEFAULT_CA_BUNDLE << ")" NL
+         "  -E, --ias-cert-passwd=FILE" NL
+         "                           Use password in FILE for the IAS client" NL
+         "                             certificate." NL
+         "  -G, --list-agents        List available user agent names for --user-agent" NL
+         "  -K, --service-key-file=FILE" NL
+         "                           The private key file for the service in PEM" NL
+         "                             format (default: use hardcoded key). The " NL
+         "                             client must be given the corresponding public" NL
+         "                             key. Can't combine with --key." NL
+         "  -P, --production         Query the production IAS server instead of dev." NL
+         "  -X, --strict-trust-mode  Don't trust enclaves that receive a " NL
+         "                             CONFIGURATION_NEEDED response from IAS " NL
+         "                             (default: trust)" NL
+         "  -Y, --ias-cert-key=FILE  The private key file for the IAS client certificate." NL
+         "  -d, --debug              Print debug information to stderr." NL
+         "  -g, --user-agent=NAME    Use NAME as the user agent for contacting IAS." NL
+         "  -k, --key=HEXSTRING      The private key as a hex string. See --key-file" NL
+         "                             for notes. Can't combine with --key-file." NL
+         "  -l, --linkable           Request a linkable quote (default: unlinkable)." NL
+         "  -p, --proxy=PROXYURL     Use the proxy server at PROXYURL when contacting" NL
+         "                             IAS. Can't combine with --no-proxy\n" NL
+         "  -r, --api-version=N      Use version N of the IAS API (default: " << to_string(IAS_API_DEF_VERSION) << ")" NL
+         "  -t, --ias-cert-type=TYPE The client certificate type. Can be PEM (default)" NL
+         "                             or P12." NL
+         "  -v, --verbose            Be verbose. Print message structure details and the" NL
+         "                             results of intermediate operations to stderr." NL
+         "  -x, --no-proxy           Do not use a proxy (force a direct connection), " NL
+         "                             overriding environment." NL
+         "  -z  --stdio              Read from stdin and write to stdout instead of" NL
+         "                             running as a network server." <<endl;
+
+    ::exit(1);
+}
+
