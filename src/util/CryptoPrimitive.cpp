@@ -71,13 +71,17 @@ CryptoPrimitive::~CryptoPrimitive(){
 
 
 
-bool CryptoPrimitive::generaHash(string data,string &hash){
+bool CryptoPrimitive::generaHash(vector<string>data,string &hash){
     int hashSize;
-    char* buffer = new char[hashSize];
 
     EVP_DigestInit_ex(&_mdCTX, _md, NULL);
-    EVP_DigestUpdate(&_mdCTX, data.c_str(), data.length());
-    EVP_DigestFinal_ex(&_mdCTX,(unsigned char*)buffer, (unsigned int*) &hashSize);
+
+    for(auto it:data) {
+        EVP_DigestUpdate(&_mdCTX, it.c_str(), it.length());
+    }
+
+    hash.resize(_hashSize);
+    EVP_DigestFinal_ex(&_mdCTX,(unsigned char*)&hash[0], (unsigned int*) &hashSize);
 
     if (hashSize != _hashSize) {
         /*fprintf(stderr, "Error: the size of the generated hash (%d bytes) does not match with the expected one (%d bytes)!\n",
@@ -85,8 +89,25 @@ bool CryptoPrimitive::generaHash(string data,string &hash){
 
         return 0;
     }
-    hash.clear();
-    hash=buffer;
+    return 1;
+}
+
+bool CryptoPrimitive::generaHash(string data,string &hash){
+    int hashSize;
+
+    EVP_DigestInit_ex(&_mdCTX, _md, NULL);
+
+    EVP_DigestUpdate(&_mdCTX, data.c_str(), data.length());
+
+    hash.resize(_hashSize);
+    EVP_DigestFinal_ex(&_mdCTX,(unsigned char*)&hash[0], (unsigned int*) &hashSize);
+
+    if (hashSize != _hashSize) {
+        /*fprintf(stderr, "Error: the size of the generated hash (%d bytes) does not match with the expected one (%d bytes)!\n",
+                hashSize, _hashSize);*/
+
+        return 0;
+    }
     return 1;
 }
 

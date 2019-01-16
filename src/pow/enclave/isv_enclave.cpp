@@ -4,11 +4,27 @@
 
 
 #include "Enclave_t.h"
+#include "CryptoPrimitive.hpp"
 #include <string.h>
 #include <sgx_utils.h>
 #include <sgx_tae_service.h>
 #include <sgx_tkey_exchange.h>
 #include <sgx_tcrypto.h>
+
+# define SetKey \
+    RSA_set0_key(key,                                           \
+                 BN_bin2bn(n, sizeof(n)-1, NULL),               \
+                 BN_bin2bn(e, sizeof(e)-1, NULL),               \
+                 BN_bin2bn(d, sizeof(d)-1, NULL));              \
+    RSA_set0_factors(key,                                       \
+                     BN_bin2bn(p, sizeof(p)-1, NULL),           \
+                     BN_bin2bn(q, sizeof(q)-1, NULL));          \
+    RSA_set0_crt_params(key,                                    \
+                        BN_bin2bn(dmp1, sizeof(dmp1)-1, NULL),  \
+                        BN_bin2bn(dmq1, sizeof(dmq1)-1, NULL),  \
+                        BN_bin2bn(iqmp, sizeof(iqmp)-1, NULL)); \
+    memcpy(c, ctext_ex, sizeof(ctext_ex) - 1);                  \
+    return (sizeof(ctext_ex) - 1);
 
 static const sgx_ec256_public_t def_service_public_key = {
         {
@@ -66,4 +82,24 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
     sgx_status_t ret;
     ret = sgx_ra_close(ctx);
     return ret;
+}
+
+sgx_status_t ecall_calHash(sgx_ra_context_t ctx,char *logicData,int logicDataLength,char **signature){
+    static CryptoPrimitive crypto(SHA1_TYPE);
+    vector<string>dataList;
+    string Hash="",tmpChunkLogicData;
+    int it=0,chunkLength;
+    while(it<logicDataLength){
+        memcpy((char*)&chunkLength,&logicData[it],sizeof(int));
+        it+=sizeof(int);
+        tmpChunkLogicData.resize(chunkLength);
+        memcpy(&tmpChunkLogicData[0],logicData[it],chunkLength);
+        it+=chunkLength;
+        dataList.push_back(tmpChunkLogicData);
+    }
+
+    crypto.generaHash(dataList,Hash);
+
+    //sign
+
 }
