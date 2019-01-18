@@ -84,22 +84,32 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
     return ret;
 }
 
-sgx_status_t ecall_calHash(sgx_ra_context_t ctx,char *logicData,int logicDataLength,char **signature){
-    static CryptoPrimitive crypto(SHA1_TYPE);
-    vector<string>dataList;
-    string Hash="",tmpChunkLogicData;
+sgx_status_t ecall_calHash(sgx_ra_context_t* ctx,char *logicData,int logicDataLenh,char **signature,int signatureLen){
+    static CryptoPrimitive dataCrypto(SHA1_TYPE),hashCrypto(SHA1_TYPE);
+    vector<string>hashList;
+    string Hash="",tmpChunkLogicData,tmpHash;
+    tmpHash.resize(128);
     int it=0,chunkLength;
-    while(it<logicDataLength){
+    while(it<logicDataLen){
         memcpy((char*)&chunkLength,&logicData[it],sizeof(int));
         it+=sizeof(int);
         tmpChunkLogicData.resize(chunkLength);
         memcpy(&tmpChunkLogicData[0],logicData[it],chunkLength);
         it+=chunkLength;
-        dataList.push_back(tmpChunkLogicData);
+        dataCrypto.generaHash(tmpChunkLogicData,tmpHash);
+        hashList.push_back(tmpHash);
     }
 
-    crypto.generaHash(dataList,Hash);
+    hashCrypto.generaHash(hashList,Hash);
 
     //sign
+    sgx_status_t status;
+    sgx_ra_key_128_t *sk;
+    status=sgx_ra_get_keys(ctx,SGX_RA_KEY_SK,sk);
+    if(status!=SGX_SUCCESS){
 
+
+    }
+
+    hashCrypto.encryptWithKey(Hash,sk,signature);
 }

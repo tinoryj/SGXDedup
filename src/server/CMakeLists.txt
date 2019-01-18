@@ -1,1 +1,1 @@
-add_subdirectory(pow)
+add_library(_dataSR _dataSR.cpp)
