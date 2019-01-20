@@ -8,10 +8,12 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <vector>
 
 /*for the use of OpenSSL*/
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 
 //#define OPENSSL_THREAD_DEFINES
 
@@ -56,9 +58,24 @@ public:
     int getKeySize();
     int getBlockSize();
 
+    bool generaHash(vector<string>data,string& hash);
     bool generaHash(string data,string& hash);
     bool encryptWithKey(string plaintext, string key, string& ciphertext);
     bool decryptWithKey(string ciphertext, string key, string& plaintext);
+
+    //for pow
+
+    int cmac128(unsigned char key[16], unsigned char *message, size_t mlen,
+                unsigned char mac[16]);
+
+    EVP_PKEY *key_generate();
+
+    int key_to_sgx_ec256 (sgx_ec256_public_t *k, EVP_PKEY *key);
+
+    int ecdsa_sign(unsigned char *msg, size_t mlen, EVP_PKEY *key,
+                   unsigned char r[32], unsigned char s[32], unsigned char digest[32]);
+
+    void reverse_bytes(void *dest, void *src, size_t n);
 
 };
 

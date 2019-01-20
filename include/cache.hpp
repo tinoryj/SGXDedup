@@ -22,9 +22,9 @@ namespace util{
         boost::shared_mutex mtx;
     public:
         keyCache();
-        void insertKeyToCache(string hash,string key);
-        bool existsKeyinCache(string hash);
-        string getKeyFromCache(string hash);
+        void insertKeyToCache(string& hash,string& key);
+        bool existsKeyinCache(string& hash);
+        string getKeyFromCache(string& hash);
     };
 }
 

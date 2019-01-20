@@ -227,3 +227,11 @@ uint64_t Configure::getMaxContainerSize() {
 
     return _maxContainerSize;
 }
+
+uint8_t Configure::getQuoteType(){
+    return _quoteType;
+}
+
+int Configure::getIasVersion() {
+    return _iasVersion;
+}

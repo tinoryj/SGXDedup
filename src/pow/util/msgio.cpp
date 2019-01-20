@@ -15,31 +15,15 @@ in the License.
 
 */
 
-#ifdef _WIN32
-# ifndef WIN32_LEAN_AND_MEAN
-#  define WIN32_LEAN_AND_MEAN
-# endif
-
-# include <WinSock2.h>
-# include <WS2tcpip.h>
-
-typedef DWORD ssize_t;
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sgx_urts.h>
-#ifdef _WIN32
-# pragma comment(lib, "Ws2_32.lib")
-# pragma comment(lib, "Mswsock.lib")
-# pragma comment(lib, "AdvApi32.lib")
-#else
-# include <arpa/inet.h>
-# include <sys/socket.h>
-# include <netdb.h>
-# include <unistd.h>
-#endif
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -52,11 +36,6 @@ using namespace std;
 static char *buffer = NULL;
 static uint32_t buffer_size = MSGIO_BUFFER_SZ;
 
-#ifndef _WIN32
-# ifndef INVALID_SOCKET
-#  define INVALID_SOCKET -1
-# endif
-#endif
 
 /* With no arguments, we read/write to stdin/stdout using stdio */
 
@@ -71,20 +50,10 @@ MsgIO::MsgIO()
 
 MsgIO::MsgIO(const char *peer, const char *port)
 {
-#ifdef _WIN32
-	WSADATA wsa;
-#endif
 	int rv, proto;
 	struct addrinfo *addrs, *addr, hints;
 
 	use_stdio= false;
-#ifdef _WIN32
-	rv = WSAStartup(MAKEWORD(2, 2), &wsa);
-	if (rv != 0) {
-		eprintf("WSAStartup: %d\n", rv);
-		throw std::runtime_error("WSAStartup failed");
-	}
-#endif
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -114,11 +83,7 @@ MsgIO::MsgIO(const char *peer, const char *port)
 			if ( connect(s, addr->ai_addr, (int) addr->ai_addrlen) == 0 ) break;
 		}
 
-#ifdef _WIN32
-		closesocket(s);
-#else
 		close(s);
-#endif
 		s = INVALID_SOCKET;
 	}
 
@@ -126,18 +91,10 @@ MsgIO::MsgIO(const char *peer, const char *port)
 
 	if ( s == INVALID_SOCKET ) {
 		if ( peer == NULL ) {
-#ifdef _WIN32
-			eprintf("bind: failed on error %ld\n", WSAGetLastError());
-#else
 			perror("bind");
-#endif
 		} else {
 			eprintf("%s: ", peer);
-#ifdef _WIN32
-			eprintf("connect: failed on error %ld\n", WSAGetLastError());
-#else
 			perror("connect");
-#endif
 		}
 		throw std::runtime_error("could not establish socket");
 	}
@@ -153,11 +110,7 @@ MsgIO::MsgIO(const char *peer, const char *port)
 #endif
 		if ( listen(ls, 5) == -1 ) { // The "traditional" backlog value in UNIX
 			perror("listen");
-#ifdef _WIN32
-			closesocket(ls);
-#else
 			close(ls);
-#endif
 			throw std::runtime_error("could not listen on socket");
 		}
 		
@@ -173,23 +126,13 @@ MsgIO::~MsgIO()
 {
 	// Shutdown our socket(s)
 	if ( s != -1 ) {
-#ifdef _WIN32
-		shutdown(s, 2);
-		closesocket(s);
-#else
 		shutdown(s, SHUT_RDWR);
 		close(s);
-#endif
 	}
 
 	if ( ls != -1 ) {
-#ifdef _WIN32
-		shutdown(ls, 2);
-		closesocket(ls);
-#else
 		shutdown(ls, SHUT_RDWR);
 		close(ls);
-#endif
 	}
 }
 
@@ -209,13 +152,8 @@ int MsgIO::server_loop ()
 
 	s = accept(ls, (sockaddr *) &cliaddr, &slen);
 	if (s == INVALID_SOCKET) {
-#ifdef _WIN32
-		closesocket(ls);
-		eprintf("accept: %d\n", WSAGetLastError());
-#else
 		close(ls);
 		perror("accept");
-#endif
 		return 0;
 	}
 
@@ -257,13 +195,8 @@ void MsgIO::disconnect ()
 	if ( use_stdio ) return;
 
 	if ( s != -1 ) {
-#ifdef _WIN32
-		shutdown(s, 2);
-		closesocket(s);
-#else
 		shutdown(s, SHUT_RDWR);
 		close(s);
-#endif
 	}
 }
 
@@ -466,26 +399,12 @@ int read_msg(void **dest, size_t *sz)
 
 void send_msg_partial(void *src, size_t sz) {
 	if (sz) print_hexstring(stdout, src, sz);
-#ifndef _WIN32
-	/*
-	* If were aren't writing to a tty, also print the message to stderr
-	* so you can still see the output.
-	*/
-	if (!isatty(fileno(stdout))) print_hexstring(stderr, src, sz);
-#endif
 }
 
 void send_msg(void *src, size_t sz)
 {
 	if (sz) print_hexstring(stdout, src, sz);
 	printf("\n");
-#ifndef _WIN32
-	/* As above */
-	if (!isatty(fileno(stdout))) {
-		print_hexstring(stderr, src, sz);
-		fprintf(stderr, "\n");
-	}
-#endif
 
 	/*
 	* Since we have both stdout and stderr, flush stdout to keep the

@@ -14,7 +14,7 @@
 
 #include <boost/compute/detail/lru_cache.hpp>
 
-#define KEYMANGER_PUBLIC_KEY_FILE "/key/public.pem"
+#define KEYMANGER_PUBLIC_KEY_FILE "key/public.pem"
 
 class keyClient{
 private:
@@ -27,16 +27,14 @@ private:
     RSA* _rsa;
     BIO* _key;
     BN_CTX *_bnCTX;
-    BIGNUM* _r,invr;
-    BIGNUM* _h;
 
 public:
     keyClient();
     ~keyClient();
     void run();
     string keyExchange(SSL* connection,Chunk champion);
-    string elimination(string hash);
-    string decoration(string key);
+    string elimination(BIGNUM* r,string hash);
+    string decoration(BIGNUM* invr,string key);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP

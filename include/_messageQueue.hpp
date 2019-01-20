@@ -20,7 +20,7 @@
 class _messageQueue {
 private:
     boost::interprocess::message_queue *_mq;
-    int _messageQueueCnt,_messageQueueUnitSize;
+    unsigned long _messageQueueCnt,_messageQueueUnitSize;
 
 public:
     _messageQueue();
@@ -31,5 +31,7 @@ public:
     void pop(Chunk &ans);
     void push(message data);
     void pop(message &ans);
+    void push(epoll_message &data);
+    void pop(epoll_message &data);
 };
 #endif //GENERALDEDUPSYSTEM_MESSAGEQUEUE_HPP

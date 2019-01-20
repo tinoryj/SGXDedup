@@ -106,20 +106,6 @@ int POW::raProcess (sgx_enclave_id_t eid)
         fprintf(stderr, "sgx_get_extended_epid_group_id: %08x\n", status);
         return 1;
     }
-    if ( verbose ) {
-        dividerWithText(stderr, "Msg0 Details");
-        dividerWithText(fplog, "Msg0 Details");
-        fprintf(stderr,   "Extended Epid Group ID: ");
-        fprintf(fplog,   "Extended Epid Group ID: ");
-        print_hexstring(stderr, &msg0_extended_epid_group_id,
-                        sizeof(uint32_t));
-        print_hexstring(fplog, &msg0_extended_epid_group_id,
-                        sizeof(uint32_t));
-        fprintf(stderr, "\n");
-        fprintf(fplog, "\n");
-        divider(stderr);
-        divider(fplog);
-    }
 
     /* Generate msg1 */
 
@@ -131,26 +117,6 @@ int POW::raProcess (sgx_enclave_id_t eid)
         return 1;
     }
 
-    if ( verbose ) {
-        dividerWithText(stderr,"Msg1 Details");
-        dividerWithText(fplog,"Msg1 Details");
-        fprintf(stderr,   "msg1.g_a.gx = ");
-        fprintf(fplog,   "msg1.g_a.gx = ");
-        print_hexstring(stderr, msg1.g_a.gx, 32);
-        print_hexstring(fplog, msg1.g_a.gx, 32);
-        fprintf(stderr, "\nmsg1.g_a.gy = ");
-        fprintf(fplog, "\nmsg1.g_a.gy = ");
-        print_hexstring(stderr, msg1.g_a.gy, 32);
-        print_hexstring(fplog, msg1.g_a.gy, 32);
-        fprintf(stderr, "\nmsg1.gid    = ");
-        fprintf(fplog, "\nmsg1.gid    = ");
-        print_hexstring(stderr, msg1.gid, 4);
-        print_hexstring(fplog, msg1.gid, 4);
-        fprintf(stderr, "\n");
-        fprintf(fplog, "\n");
-        divider(stderr);
-        divider(fplog);
-    }
 
     /*
      * Send msg0 and msg1 concatenated together (msg0||msg1). We do
@@ -195,51 +161,6 @@ int POW::raProcess (sgx_enclave_id_t eid)
         exit(1);
     }
 
-    if ( verbose ) {
-        dividerWithText(stderr, "Msg2 Details");
-        dividerWithText(fplog, "Msg2 Details (Received from SP)");
-        fprintf(stderr,   "msg2.g_b.gx      = ");
-        fprintf(fplog,   "msg2.g_b.gx      = ");
-        print_hexstring(stderr, &msg2->g_b.gx, sizeof(msg2->g_b.gx));
-        print_hexstring(fplog, &msg2->g_b.gx, sizeof(msg2->g_b.gx));
-        fprintf(stderr, "\nmsg2.g_b.gy      = ");
-        fprintf(fplog, "\nmsg2.g_b.gy      = ");
-        print_hexstring(stderr, &msg2->g_b.gy, sizeof(msg2->g_b.gy));
-        print_hexstring(fplog, &msg2->g_b.gy, sizeof(msg2->g_b.gy));
-        fprintf(stderr, "\nmsg2.spid        = ");
-        fprintf(fplog, "\nmsg2.spid        = ");
-        print_hexstring(stderr, &msg2->spid, sizeof(msg2->spid));
-        print_hexstring(fplog, &msg2->spid, sizeof(msg2->spid));
-        fprintf(stderr, "\nmsg2.quote_type  = ");
-        fprintf(fplog, "\nmsg2.quote_type  = ");
-        print_hexstring(stderr, &msg2->quote_type, sizeof(msg2->quote_type));
-        print_hexstring(fplog, &msg2->quote_type, sizeof(msg2->quote_type));
-        fprintf(stderr, "\nmsg2.kdf_id      = ");
-        fprintf(fplog, "\nmsg2.kdf_id      = ");
-        print_hexstring(stderr, &msg2->kdf_id, sizeof(msg2->kdf_id));
-        print_hexstring(fplog, &msg2->kdf_id, sizeof(msg2->kdf_id));
-        fprintf(stderr, "\nmsg2.sign_ga_gb  = ");
-        fprintf(fplog, "\nmsg2.sign_ga_gb  = ");
-        print_hexstring(stderr, &msg2->sign_gb_ga, sizeof(msg2->sign_gb_ga));
-        print_hexstring(fplog, &msg2->sign_gb_ga, sizeof(msg2->sign_gb_ga));
-        fprintf(stderr, "\nmsg2.mac         = ");
-        fprintf(fplog, "\nmsg2.mac         = ");
-        print_hexstring(stderr, &msg2->mac, sizeof(msg2->mac));
-        print_hexstring(fplog, &msg2->mac, sizeof(msg2->mac));
-        fprintf(stderr, "\nmsg2.sig_rl_size = ");
-        fprintf(fplog, "\nmsg2.sig_rl_size = ");
-        print_hexstring(stderr, &msg2->sig_rl_size, sizeof(msg2->sig_rl_size));
-        print_hexstring(fplog, &msg2->sig_rl_size, sizeof(msg2->sig_rl_size));
-        fprintf(stderr, "\nmsg2.sig_rl      = ");
-        fprintf(fplog, "\nmsg2.sig_rl      = ");
-        print_hexstring(stderr, &msg2->sig_rl, msg2->sig_rl_size);
-        print_hexstring(fplog, &msg2->sig_rl, msg2->sig_rl_size);
-        fprintf(stderr, "\n");
-        fprintf(fplog, "\n");
-        divider(stderr);
-        divider(fplog);
-    }
-
     if ( debug ) {
         fprintf(stderr, "+++ msg2_size = %zu\n",
                 sizeof(sgx_ra_msg2_t)+msg2->sig_rl_size);
@@ -275,38 +196,6 @@ int POW::raProcess (sgx_enclave_id_t eid)
         fprintf(fplog, "+++ msg3_size = %u\n", msg3_sz);
     }
 
-    if ( verbose ) {
-        dividerWithText(stderr, "Msg3 Details");
-        dividerWithText(fplog, "Msg3 Details");
-        fprintf(stderr,   "msg3.mac         = ");
-        fprintf(fplog,   "msg3.mac         = ");
-        print_hexstring(stderr, msg3->mac, sizeof(msg3->mac));
-        print_hexstring(fplog, msg3->mac, sizeof(msg3->mac));
-        fprintf(stderr, "\nmsg3.g_a.gx      = ");
-        fprintf(fplog, "\nmsg3.g_a.gx      = ");
-        print_hexstring(stderr, msg3->g_a.gx, sizeof(msg3->g_a.gx));
-        print_hexstring(fplog, msg3->g_a.gx, sizeof(msg3->g_a.gx));
-        fprintf(stderr, "\nmsg3.g_a.gy      = ");
-        fprintf(fplog, "\nmsg3.g_a.gy      = ");
-        print_hexstring(stderr, msg3->g_a.gy, sizeof(msg3->g_a.gy));
-        print_hexstring(fplog, msg3->g_a.gy, sizeof(msg3->g_a.gy));
-        fprintf(stderr, "\nmsg3.ps_sec_prop.sgx_ps_sec_prop_desc = ");
-        fprintf(fplog, "\nmsg3.ps_sec_prop.sgx_ps_sec_prop_desc = ");
-        print_hexstring(stderr, msg3->ps_sec_prop.sgx_ps_sec_prop_desc,
-                        sizeof(msg3->ps_sec_prop.sgx_ps_sec_prop_desc));
-        print_hexstring(fplog, msg3->ps_sec_prop.sgx_ps_sec_prop_desc,
-                        sizeof(msg3->ps_sec_prop.sgx_ps_sec_prop_desc));
-        fprintf(fplog, "\n");
-        fprintf(stderr, "\nmsg3.quote       = ");
-        fprintf(fplog, "\nmsg3.quote       = ");
-        print_hexstring(stderr, msg3->quote, msg3_sz-sizeof(sgx_ra_msg3_t));
-        print_hexstring(fplog, msg3->quote, msg3_sz-sizeof(sgx_ra_msg3_t));
-        fprintf(fplog, "\n");
-        fprintf(stderr, "\n");
-        fprintf(fplog, "\n");
-        divider(stderr);
-        divider(fplog);
-    }
 
 //	dividerWithText(stderr, "Copy/Paste Msg3 Below to SP");
     msgio->send(msg3, msg3_sz);

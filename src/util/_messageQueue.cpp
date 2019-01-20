@@ -58,3 +58,12 @@ void _messageQueue::pop(message &ans){
     message_queue::size_type recvd_size;
     _mq->receive(&ans,_messageQueueUnitSize,recvd_size,priority);
 }
+
+void _messageQueue::pop(epoll_message &data) {
+    unsigned int priority;
+    message_queue::size_type recvd_size;
+    std::string str;
+    str.resize(_messageQueueUnitSize);
+    _mq->receive(&str[0],_messageQueueUnitSize,recvd_size,priority);
+    data=deserialize(str);
+}

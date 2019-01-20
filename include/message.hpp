@@ -7,11 +7,24 @@
 #include "ssl.hpp"
 
 struct message{
-    //std::pair<int,SSL*> con;
-    connection con;
-    int epfd;
-    char hash[16];
-    char key[16];
+    int fd,epfd;
+    char hash[128];
+    char key[128];
 };
+
+
+class epoll_message{
+public:
+    int _fd,_epfd;
+    string _data;
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & _fd;
+        ar & _epfd;
+        ar & _data;
+    }
+};
+
 
 #endif //GENERALDEDUPSYSTEM_MESSAGE_HPP

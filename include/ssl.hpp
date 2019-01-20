@@ -30,12 +30,6 @@
 #include <cstring>
 #include <vector>
 
-
-struct connection{
-    int fd;
-    SSL* sslSocket;
-};
-
 class ssl{
 private:
     SSL_CTX* _ctx;
@@ -49,8 +43,8 @@ public:
     int listenFd;
     ssl(std::string ip,int port,int scSwitch);
     ~ssl();
-    connection sslConnect();
-    connection sslListen();
+    std::pair<int,SSL*> sslConnect();
+    std::pair<int,SSL*> sslListen();
     //std::pair<int,SSL*> sslConnect();
     //std::pair<int,SSL*> sslListen();
     void sslWrite(SSL* connection,std::string data);

@@ -60,6 +60,11 @@ private:
     int _keyClientThreadLimit;
     int _keyServerThreadLimit;
 
+
+    //POW settion
+    int _quoteType; //0x00 linkable; 0x01 unlinkable
+    int _iasVersion;
+
     // storage management settings
     uint64_t _storageServerNumber;
     std::vector<std::string> _storageServerIP;
@@ -131,6 +136,9 @@ public:
     //std::vector<int> getStorageServerPort();
 
     uint64_t getMaxContainerSize();
+
+    uint8_t getQuoteType();
+    int getIasVersion();
     // any additional configure function
     // any macro settings should be set here (using "const" to replace "#define")
 

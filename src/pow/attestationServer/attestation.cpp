@@ -86,18 +86,6 @@ typedef struct config_struct {
     int strict_trust;
 } config_t;
 
-int derive_kdk(EVP_PKEY *Gb, unsigned char kdk[16], sgx_ec256_public_t g_a,
-               config_t *config);
-
-int process_msg01 (MsgIO *msg, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
-                   sgx_ra_msg2_t *msg2, char **sigrl, config_t *config,
-                   ra_session_t *session);
-
-int process_msg3 (MsgIO *msg, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
-                  ra_msg4_t *msg4, config_t *config, ra_session_t *session);
-
-int get_sigrl (IAS_Connection *ias, int version, sgx_epid_group_id_t gid,
-               char **sigrl, uint32_t *msg2);
 
 int get_attestation_report(IAS_Connection *ias, int version,
                            const char *b64quote, sgx_ps_sec_prop_desc_t sec_prop, ra_msg4_t *msg4,
@@ -106,7 +94,6 @@ int get_attestation_report(IAS_Connection *ias, int version,
 int get_proxy(char **server, unsigned int *port, const char *url);
 
 char debug = 0;
-char verbose = 0;
 /* Need a global for the signal handler */
 MsgIO *msgio = NULL;
 

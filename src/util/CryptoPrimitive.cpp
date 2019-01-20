@@ -6,6 +6,10 @@
 
 
 CryptoPrimitive::CryptoPrimitive(int cryptoType){
+    ERR_load_crypto_strings();
+
+    OpenSSL_add_all_algorithms();
+
     _cryptoType = cryptoType;
 
     if (_cryptoType == HIGH_SEC_PAIR_TYPE) {
@@ -61,12 +65,19 @@ CryptoPrimitive::~CryptoPrimitive(){
         EVP_MD_CTX_cleanup(&_mdCTX);
 
         EVP_CIPHER_CTX_cleanup(&_cipherctx);
-        free(_iv);
+        delete _iv;
     }
 
     if ((_cryptoType == SHA256_TYPE) || (_cryptoType == SHA1_TYPE)) {
         EVP_MD_CTX_cleanup(&_mdCTX);
     }
+
+
+    EVP_cleanup();
+
+    CRYPTO_cleanup_all_ex_data();
+
+    ERR_free_strings();
 }
 
 
