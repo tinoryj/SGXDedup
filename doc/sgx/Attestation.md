@@ -103,6 +103,18 @@ typedef struct _ra_msg2_t
 >
 > ​	from "sgx_tkey_exchange.edl" import *;
 
+```c
+typedef struct _ra_msg3_t
+{
+    sgx_mac_t                mac
+    sgx_ec256_public_t       g_a;
+    sgx_ps_sec_prop_desc_t   ps_sec_prop;
+    uint8_t                  quote[];
+} sgx_ra_msg3_t;
+```
+
+
+
 ##### RemoteAttestation 中的密钥
 
 * SK：Signing Key

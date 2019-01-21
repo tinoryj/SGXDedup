@@ -235,3 +235,15 @@ uint8_t Configure::getQuoteType(){
 int Configure::getIasVersion() {
     return _iasVersion;
 }
+
+std::string Configure::getPOWServerIp() {
+    return _POWServerIp;
+}
+
+int Configure::getPOWServerPort() {
+    return _POWServerPort;
+}
+
+std::string Configure::getEnclaveName() {
+    return _enclaveName;
+}

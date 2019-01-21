@@ -61,9 +61,12 @@ private:
     int _keyServerThreadLimit;
 
 
-    //POW settion
+    //POW settings
     int _quoteType; //0x00 linkable; 0x01 unlinkable
     int _iasVersion;
+    std::string _POWServerIp;
+    int _POWServerPort;
+    std::string _enclaveName;
 
     // storage management settings
     uint64_t _storageServerNumber;
@@ -142,6 +145,11 @@ public:
     // any additional configure function
     // any macro settings should be set here (using "const" to replace "#define")
 
+    std::string getPOWServerIp();
+
+    int getPOWServerPort();
+
+    std::string getEnclaveName();
 };
 
 

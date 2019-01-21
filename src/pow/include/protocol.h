@@ -23,7 +23,7 @@ in the License.
 
 /*
  * Define a structure to be used to transfer the Attestation Status 
- * from Server to client and include the Platform Info Blob in base16 
+ * from Server to client and include the Platform Info Blob in base16
  * format as Message 4.
  *
  * The structure of Message 4 is not defined by SGX: it is up to the
@@ -35,6 +35,7 @@ in the License.
  * This doesn't have to be binary. 
  */
 
+#define SGXMSG
 typedef enum {
 	NotTrusted = 0,
 	NotTrusted_ItsComplicated,

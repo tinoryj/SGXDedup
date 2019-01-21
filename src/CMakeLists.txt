@@ -1,8 +1,11 @@
 set(BOOST_INCLUDE_DIR /home/public/include)
 set(BOOST_LIBRARY_DIR /home/public/lib)
 
-set(OPENSSL_INCLUDE_PATH /home/public/opt/openssl/include)
-set(OPENSSL_LIBRARY_PATH /home/public/opt/openssl/lib)
+#set(OPENSSL_INCLUDE_PATH /home/public/opt/openssl/include)
+#set(OPENSSL_LIBRARY_PATH /home/public/opt/openssl/lib)
+
+set(OPENSSL_INCLUDE_PATH /usr/include/)
+set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 
 set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
 set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
@@ -28,4 +31,4 @@ add_subdirectory(client)
 add_subdirectory(server)
 add_subdirectory(keymanage)
 add_subdirectory(util)
-#add_subdirectory(pow)
+add_subdirectory(pow)

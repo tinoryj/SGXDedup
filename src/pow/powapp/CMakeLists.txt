@@ -1,1 +1,1 @@
-add_library(pow pow.cpp)
+add_library(pow powClient.cpp)

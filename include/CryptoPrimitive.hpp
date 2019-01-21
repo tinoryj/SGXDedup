@@ -14,6 +14,9 @@
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/ecdsa.h>
+#include <openssl/cmac.h>
+#include <openssl/bn.h>
 
 //#define OPENSSL_THREAD_DEFINES
 
@@ -22,6 +25,8 @@
 #define OPENSSL_DEBUG 0
 /*for the use of mutex lock*/
 //#include <pthread.h>
+
+#include <sgx_tcrypto.h>
 
 /*macro for the type of a high secure pair of hash generation and encryption*/
 #define HIGH_SEC_PAIR_TYPE 0
@@ -39,10 +44,10 @@ private:
 
     int _cryptoType;
 
-    EVP_MD_CTX _mdCTX;
+    EVP_MD_CTX *_mdCTX;
     const EVP_MD *_md;
 
-    EVP_CIPHER_CTX _cipherctx;
+    EVP_CIPHER_CTX *_cipherctx;
     const EVP_CIPHER *_cipher;
 
     unsigned char* _iv;
@@ -72,10 +77,18 @@ public:
 
     int key_to_sgx_ec256 (sgx_ec256_public_t *k, EVP_PKEY *key);
 
+    EVP_PKEY *key_from_sgx_ec256 (sgx_ec256_public_t *k);
+
+    unsigned char *key_shared_secret (EVP_PKEY *key, EVP_PKEY *peerkey, size_t *slen);
+
     int ecdsa_sign(unsigned char *msg, size_t mlen, EVP_PKEY *key,
                    unsigned char r[32], unsigned char s[32], unsigned char digest[32]);
 
     void reverse_bytes(void *dest, void *src, size_t n);
+
+    char *base64_encode(const char *msg, size_t sz);
+
+    int sha256_digest(const unsigned char *msg, size_t mlen, unsigned char digest[32]);
 
 };
 
