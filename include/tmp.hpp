@@ -11,6 +11,9 @@ struct networkStruct{
     int _cid;
     string _data;
 
+    networkStruct(int msgType,int clientID):_type(msgType),_cid(clientID){};
+    networkSttuct(){};
+
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
         ar & _type;
@@ -111,8 +114,8 @@ struct powSignedHash{
     vector<string>hash;
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
-        ar & _type;
-        ar & _data;
+        ar & signature;
+        ar & hash;
     }
 };
 

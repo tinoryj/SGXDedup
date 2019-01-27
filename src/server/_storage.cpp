@@ -6,30 +6,29 @@ extern database _fp2ChunkDB;
 extern database _fileName2metaDB;
 
 _StorageCore::_StorageCore() {
-    _crypto=new CryptoPrimitive(SHA256_TYPE);
-    _inputMQ.createQueue("dedupCore to storageCore",READ_MESSAGE);
-    _outputMQ.createQueue("storageCore to dataSR",WRITE_MESSAGE);\
-    _fileRecipeNamePrefix=config.getFileRecipeRootPath();
-    _keyRecipeNamePrefix=config.getKeyRecipeRootPath();
-    _containerNamePrefix=config.getContainerRootPath();
-    _fileRecipeNameTail=".fileRecipe";
-    _keyRecipeNameTail=".keyRecipe";
-    _containerNameTail=".container";
+    _crypto = new CryptoPrimitive(SHA256_TYPE);
+    _inputMQ.createQueue(DEDUPCORE_TO_STORAGECORE_MQ, READ_MESSAGE);
+    _outputMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
+    _fileRecipeNamePrefix = config.getFileRecipeRootPath();
+    _keyRecipeNamePrefix = config.getKeyRecipeRootPath();
+    _containerNamePrefix = config.getContainerRootPath();
+    _fileRecipeNameTail = ".fileRecipe";
+    _keyRecipeNameTail = ".keyRecipe";
+    _containerNameTail = ".container";
     ifstream fin;
-    fin.open(".StorageConfig",ifstream::in);
-    if(fin.is_open()){
-        fin>>_lastFileRecipeFileName;
-        fin>>_lastkeyRecipeFileName;
-        fin>>_lastContainerFileName;
-        fin>>_currentContainer._used;
+    fin.open(".StorageConfig", ifstream::in);
+    if (fin.is_open()) {
+        fin >> _lastFileRecipeFileName;
+        fin >> _lastkeyRecipeFileName;
+        fin >> _lastContainerFileName;
+        fin >> _currentContainer._used;
         fin.close();
-    }
-    else{
-        _lastkeyRecipeFileName=
-        _lastContainerFileName=
-        _lastFileRecipeFileName=
-        "abcdefghijklmno";
-        _currentContainer._used=0;
+    } else {
+        _lastkeyRecipeFileName =
+        _lastContainerFileName =
+        _lastFileRecipeFileName =
+                "abcdefghijklmno";
+        _currentContainer._used = 0;
     }
 }
 

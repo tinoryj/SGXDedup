@@ -110,6 +110,8 @@ public:
 
 powServer::powServer() {
     _crypto=new CryptoPrimitive(SHA256_TYPE);
+    _inputMQ.createQueue(DATASR_TO_POWSERVER_MQ,READ_MESSAGE);
+    _outputMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
 }
 
 powServer::~powServer() {

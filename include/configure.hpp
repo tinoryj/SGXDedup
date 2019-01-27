@@ -90,6 +90,8 @@ public:
     std::string getContainerRootPath();
     std::string getFp2ChunkDBName();
     std::string getFn2MetaDBName();
+    int getChunkBatchSize();
+    int getClientID();
 
     int getTimeOutScale();
 

@@ -14,5 +14,5 @@ bool _Sender::extractMQ(Chunk &tmpChunk) {
 }
 
 void _Sender::getInputMQ() {
-    _inputMQ.createQueue("POW to sender",READ_MESSAGE);
+    _inputMQ.createQueue(SENDER_IN_MQ,READ_MESSAGE);
 }

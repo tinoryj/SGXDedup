@@ -26,7 +26,7 @@ void Sock::init(const int type, string ip, int port) {
             this->fd=socket(AF_INET,SOCK_STREAM,0);
             this->addr.sin_addr.s_addr=htons(INADDR_ANY);
             if(bind(this->fd,(struct sockaddr*)&this->addr,sizeof this->addr)!=0){
-                cerr<<"Error at bind fd to socket\n";
+                cerr<<"Error at bind fd to Socket\n";
                 exit(1);
             }
             listen(this->fd,10);
@@ -45,7 +45,7 @@ void Sock::init(const int type, string ip, int port) {
             this->fd=socket(AF_INET,SOCK_DGRAM,0);
             inet_pton(AF_INET,ip.c_str(),&addr.sin_addr);
             if(bind(this->fd,(struct sockaddr*)&this->addr,sizeof this->addr)!=0){
-                cerr<<"Error at bind fd to socket\n";
+                cerr<<"Error at bind fd to Socket\n";
                 exit(1);
             }
             return;

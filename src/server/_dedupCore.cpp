@@ -188,9 +188,9 @@ void Timer::startTimer() {
 
 _DedupCore::_DedupCore() {
     _crypto=new CryptoPrimitive(SHA256_TYPE);
-    _inputMQ.createQueue("DataSR to dupCore",READ_MESSAGE);
-    _outputMQ.createQueue("dedupCore to storageCore",WRITE_MESSAGE);
-    _netSendMQ.createQueue("DataSRSEND",WRITE_MESSAGE);
+    _inputMQ.createQueue(DATASR_TO_DEDUPCORE_MQ,READ_MESSAGE);
+    _outputMQ.createQueue(DEDUPCORE_TO_STORAGECORE_MQ,WRITE_MESSAGE);
+    _netSendMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
     _timer.startTimer();
 }
 

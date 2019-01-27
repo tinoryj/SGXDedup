@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-#include <sys/socket.h>
+#include <sys/Sock.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

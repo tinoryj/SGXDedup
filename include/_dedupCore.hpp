@@ -85,7 +85,9 @@ class _DedupCore {
     private:
         _messageQueue _inputMQ;
         _messageQueue _outputMQ;
+
         _messageQueue _netSendMQ;
+
         CryptoPrimitive* _crypto;
 
         Timer _timer;

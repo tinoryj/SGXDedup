@@ -10,8 +10,8 @@ extern util::keyCache kCache;
 
 keyClient::keyClient(){
     _keySecurityChannel=new ssl(config.getKeyServerIP(),config.getKeyServerPort(),CLIENTSIDE);
-    _inputMQ.createQueue("chunker to keyClient",READ_MESSAGE);
-    _outputMQ.createQueue("keyClient to encoder",WRITE_MESSAGE);
+    _inputMQ.createQueue(CHUNKER_TO_KEYCLIENT_MQ,READ_MESSAGE);
+    _outputMQ.createQueue(KEYCLIENT_TO_ENCODER_MQ,WRITE_MESSAGE);
     _keyBatchSizeMin=(int)config.getKeyBatchSizeMin();
     _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
 

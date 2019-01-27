@@ -18,7 +18,7 @@ public:
     ~_Sender();
     bool extractMQ(Chunk &tmpChunk);
     //Implemented in a derived class and implements different types of transmissions by overloading the function
-    virtual bool sendData(Chunk& tmpChunk) = 0;
+    virtual bool sendData(string &request,string &respond) = 0;
     // any additional functions
 };
 

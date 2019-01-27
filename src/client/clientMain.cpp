@@ -7,6 +7,8 @@ Usage:
 	app chunking_file configure_file
 */
 
+//may have bug when last mq did not remove from system
+
 #define DEBUG
 
 #ifdef DEBUG

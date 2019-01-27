@@ -1,10 +1,10 @@
 #include "_dataSR.hpp"
 
 _DataSR::_DataSR() {
-    _inputMQ.createQueue("dupCore to DataSR",READ_MESSAGE);
-    _outputMQ[0].createQueue("DataSR to dupCore",WRITE_MESSAGE);
-    _outputMQ[1].createQueue("DataSR to Storage System",WRITE_MESSAGE);
-    _outputMQ[2].createQueue("DataSR to RA Server",WRITE_MESSAGE);
+    _inputMQ.createQueue(DATASR_IN_MQ,READ_MESSAGE);
+    _outputMQ[0].createQueue(DATASR_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
+    _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
+    _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
     _socket.init(SERVERTCP,"",0);
 }
 

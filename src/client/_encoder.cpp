@@ -25,8 +25,8 @@ bool _Encoder::insertMQ(Chunk data){
 }
 
 _Encoder::_Encoder(){
-    _inputMQ.createQueue("keyClient to encoder",READ_MESSAGE);
-    _outputMQ.createQueue("encoder to POW",WRITE_MESSAGE);
+    _inputMQ.createQueue(KEYCLIENT_TO_ENCODER_MQ,READ_MESSAGE);
+    _outputMQ.createQueue(ENCODER_TO_POW_MQ,WRITE_MESSAGE);
 }
 
 _Encoder::~_Encoder(){

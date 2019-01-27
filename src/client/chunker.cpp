@@ -12,8 +12,8 @@ chunker::chunker(std::string path) {
     loadChunkFile(path);
     chunkerInit();
 
-    _outputMq.createQueue("chunker to keyClient",WRITE_MESSAGE);
-    _cryptoObj=new CryptoPrimitive(HIGH_SEC_PAIR_TYPE);
+    _outputMq.createQueue(CHUNKER_TO_KEYCLIENT_MQ, WRITE_MESSAGE);
+    _cryptoObj = new CryptoPrimitive(HIGH_SEC_PAIR_TYPE);
 }
 
 chunker::~chunker() {

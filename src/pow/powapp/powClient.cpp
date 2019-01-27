@@ -9,8 +9,8 @@ extern Configure config;
 powClient::powClient() {
     int updated;
     sgx_launch_token_t token;
-    _inputMQ.createQueue("encoder to POW",READ_MESSAGE);
-    _outputMQ.createQueue("POW to sender",WRITE_MESSAGE);
+    _inputMQ.createQueue(ENCODER_TO_POW_MQ,READ_MESSAGE);
+    _outputMQ.createQueue(SENDER_IN_MQ,WRITE_MESSAGE);
     sgx_status_t status;
     status=sgx_create_enclave("enclave.signed.so",SGX_DEBUG_FLAG, \
 							&token,&updated,&_masterEnclaveID,NULL);
