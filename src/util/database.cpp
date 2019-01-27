@@ -15,3 +15,34 @@ bool database::insert(std::string key, std::string value) {
     Status insertStatus=this->_levelDB->Put(WriteOptions(),key.value);
     return Status.ok();
 }
+
+void database::openDB(std::string dbName) {
+    fstream dbLock;
+    dbLock.open("."+dbName+".lock",std::fstream::in);
+    if(dbLock.is_open()){
+        dbLock.close();
+        std::cerr<<"Database lock\n";
+        return ;
+    }
+
+    dbLock.open("."+dbName+".lock",std::fstream::out);
+    dbLock<<"lock";
+    dbLock.close();
+
+    _dbName=dbName;
+
+    leveldb::Options options;
+    options.create_if_missing=true;
+    leveldb::Status status=leveldb::DB::Open(options,dbName,this->_levelDB);
+    assert(status.ok());
+}
+
+database::database() {}
+
+database::database(std::string dbName) {
+    this->openDB(dbName);
+}
+
+database::~database() {
+    remove("."+_dbName+".lock");
+}

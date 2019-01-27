@@ -50,6 +50,7 @@ struct session_t{
     //sgx_ra_session_t ra;
 
     int fd;
+    int cid;
     struct sockaddr addr;
     uint32_t GID;
 
@@ -65,7 +66,7 @@ struct session_t{
     }
 };
 
-map<int,session_t>sessions;
+extern map<int,session_t>sessions;
 
 struct msg01_t {
     uint32_t msg0_extended_epid_group_id;
@@ -109,7 +110,6 @@ public:
 
 powServer::powServer() {
     _crypto=new CryptoPrimitive(SHA256_TYPE);
-
 }
 
 powServer::~powServer() {

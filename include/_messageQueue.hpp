@@ -20,18 +20,31 @@
 class _messageQueue {
 private:
     boost::interprocess::message_queue *_mq;
-    unsigned long _messageQueueCnt,_messageQueueUnitSize;
+    unsigned long _messageQueueCnt, _messageQueueUnitSize;
 
 public:
     _messageQueue();
-    _messageQueue(std::string name,int rw);
+
+    _messageQueue(std::string name, int rw);
+
     ~_messageQueue();
-    void createQueue(std::string name,int rw);
-    void push(Chunk data);
-    void pop(Chunk &ans);
-    void push(message data);
-    void pop(message &ans);
-    void push(epoll_message &data);
-    void pop(epoll_message &data);
+
+    void createQueue(std::string name, int rw);
+
+    template<class T>
+    void push(T data) {
+        string tmp;
+        serialize(data, tmp);
+        mq->send(&tmp[0], tmp.length());
+    }
+
+    template<class T>
+    void pop(T &ans) {
+        string tmp;
+        tmp.resize(_messageQueueUnitSize);
+        mq->recive(tmp, _messageQueueUnitSize);
+        deserialize(tmp, ans);
+    }
 };
+
 #endif //GENERALDEDUPSYSTEM_MESSAGEQUEUE_HPP

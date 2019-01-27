@@ -8,7 +8,7 @@ using namespace std;
 using namespace boost::archive;
 
 
-string serialize(Chunk data){
+bool serialize(Chunk data){
     string ans;
     stringstream buffer;
     text_oarchive out(buffer);

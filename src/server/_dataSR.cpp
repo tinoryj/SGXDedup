@@ -13,11 +13,10 @@ _DataSR::~_DataSR() {
 }
 
 bool _DataSR::extractMQ() {
-    epoll_message *msg;
+    epoll_message *msg=new epoll_message();;
     epoll_event ev;
     ev.events=EPOLLIN|EPOLLET;
     while(1){
-        msg=new epoll_message();
         _inputMQ.pop(*msg);
         ev.data.ptr=(void*)msg;
         epoll_ctl(msg->_epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
@@ -62,23 +61,23 @@ bool _DataSR::workloadProgress() {
             if(event[i].events&EPOLLIN){
                 socketConnection[msg->_fd].Recv(msg->_data);
                 switch(msg->_data[0]){
-                    case 0x00:{
+                    case SGX_RA_MSG01:{
                         this->insertMQ(MESSAGE2RASERVER,msg);
                         break;
                     }
-                    case 0x02:{
+                    case SGX_RA_MSG3:{
                         this->insertMQ(MESSAGE2RASERVER,msg);
                         break;
                     }
-                    case 0x03:{
+                    case SGX_SIGNED_HASH:{
                         this->insertMQ(MESSAGE2DUPCORE,msg);
                         break;
                     }
-                    case 0x04:{
+                    case CLIENT_UPLOAD_CHUNK:{
                         this->insertMQ(MESSAGE2DUPCORE,msg);
                         break;
                     }
-                    case 0x08:{
+                    case CLIENT_UPLOAD_RECIPE:{
                         this->insertMQ(MESSAGE2STORAGE,msg);
                         break;
                     }

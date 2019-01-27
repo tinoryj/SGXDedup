@@ -34,7 +34,8 @@ void powClient::run() {
     vector<unsigned int>sendList;
     Chunk tmpChunk;
     char signature[128];
-    string batchData,batchHash;
+    string batchData;
+    vector<string>batchHash;
     char* dataHeader=new char[sizeof(int)];
 
     while(1){
@@ -49,7 +50,7 @@ void powClient::run() {
             memcpy(dataHeader,(char*)&logicDataSize,sizeof(int));
             for(int j=0;j<4;j++)batchData+=dataHeader[j];
             batchData+=tmpChunk.getLogicData();
-            batchHash+=tmpChunk.getChunkHash();
+            batchHash.push_back(tmpChunk.getChunkHash());
         }
         ecall_calHash(_masterEnclaveID,_raContext,batchData.c_str(),batchData.length(),signature);
         sendList=request(batchHash,signature);
@@ -195,10 +196,11 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
     return true;
 }
 
-vector<unsigned int> powClient::request(string hashList, string signature) {
+vector<unsigned int> powClient::request(vector<string>hashList, string signature) {
     vector<unsigned int>ans;
     string buffer;
-    _Socket.Send(hashList);
+    buffer=serialize(hashList);
+    _Socket.Send(buffer);
     _Socket.Send(signature);
     _Socket.Recv(buffer);
 

@@ -33,37 +33,3 @@ _messageQueue::~_messageQueue(){
     if(_mq!=NULL)
         delete _mq;
 }
-
-void _messageQueue::push(Chunk data){
-    std::string buffer;
-    buffer=serialize(data);
-    _mq->send(buffer.c_str(),sizeof(char)*buffer.length(),0);
-}
-
-void _messageQueue::pop(Chunk &ans){
-    unsigned int priority;
-    message_queue::size_type recvd_size;
-    std::string str;
-    str.resize(_messageQueueUnitSize);
-    _mq->receive(&str[0],_messageQueueUnitSize,recvd_size,priority);
-    ans=deserialize(str);
-}
-
-void _messageQueue::push(message data){
-    _mq->send(&data,sizeof(data),0);
-}
-
-void _messageQueue::pop(message &ans){
-    unsigned int priority;
-    message_queue::size_type recvd_size;
-    _mq->receive(&ans,_messageQueueUnitSize,recvd_size,priority);
-}
-
-void _messageQueue::pop(epoll_message &data) {
-    unsigned int priority;
-    message_queue::size_type recvd_size;
-    std::string str;
-    str.resize(_messageQueueUnitSize);
-    _mq->receive(&str[0],_messageQueueUnitSize,recvd_size,priority);
-    data=deserialize(str);
-}

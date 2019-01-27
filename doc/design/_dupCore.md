@@ -1,0 +1,11 @@
+dedup处理两种类型数据，一是经过POW签名的hash列表，二是客户端上传的chunk
+
+hash列表应先于chunk到达，因为需要根据hash列表判断是否为服务器要求的unique chunk
+
+若接收到hash列表，在chunk Cache 中注册所有的unique hash，并加入Timer
+
+若接收到chunk列表，将其填入 chunk Cache
+
+Timer使用优先队列实现，因为每次打包的chunk不大，所以可以在超时时间到时取出hash 列表到chunk Cache中查询，若查询到完整的chunk，将其存入Storage Core，否则丢弃并从chunk Cache减去引用
+
+chunk Cache 维护每个chunk的地址和引用数，当引用数将为0时删除chunk

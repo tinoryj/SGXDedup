@@ -16,8 +16,7 @@ using namespace std;
 using namespace boost::archive;
 
 template <class T>
-string serialize(T data){
-    string ans;
+bool serialize(T data,string &ans){
     stringstream buffer;
     text_oarchive out(buffer);
     out<<data;
@@ -26,8 +25,7 @@ string serialize(T data){
 }
 
 template <class T>
-T deserialize(string data){
-    T ans;
+bool deserialize(string data,T &ans){
     stringstream buffer;
     buffer.str(data);
     text_iarchive in(buffer);

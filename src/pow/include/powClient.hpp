@@ -44,7 +44,7 @@ private:
 public:
     powClient();
     ~powClient();
-    vector<unsigned int> request(string hashList,string signature);
+    vector<unsigned int> request(vector<string>hashList,string signature);
     void run();
 };
 

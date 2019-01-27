@@ -73,9 +73,26 @@ private:
     std::vector<std::string> _storageServerIP;
     std::vector<int> _storageServerPort;
     uint64_t _maxContainerSize;
+
+    std::string _fileRecipeRootPath;
+    std::string _keyRecipeRootPath;
+    std::string _containerRootPath;
+
+    std::string _fp2ChunkDBName;
+    std::string _fn2MetaDBame;
+
     // any additional settings
 
 public:
+
+    std::string getFileRecipeRootPath();
+    std::string getKeyRecipeRootPath();
+    std::string getContainerRootPath();
+    std::string getFp2ChunkDBName();
+    std::string getFn2MetaDBName();
+
+    int getTimeOutScale();
+
     //  Configure(std::ifstream& confFile); // according to setting json to init configure class
     Configure(std::string path);
 

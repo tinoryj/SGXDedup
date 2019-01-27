@@ -3,6 +3,7 @@
 #include "boost/bind.hpp"
 #include "sys/epoll.h"
 #include "Sock.hpp"
+#include "protocol.hpp"
 #include <string>
 using namespace std;
 
