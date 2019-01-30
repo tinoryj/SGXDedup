@@ -1,35 +1,26 @@
-#include <cstdio>
-#include <cstring>
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <stack>
-#include <bitset>
-#include <cstdlib>
-#include <cmath>
-#include <set>
-#include <list>
-#include <deque>
-#include <map>
-#include <queue>
-#include <fstream>
+#ifndef GENERALDEDUPSYSTEM__RETRIEVER_HPP
+#define GENERALDEDUPSYSTEM__RETRIEVER_HPP
 
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "chunk.hpp"
-#include "leveldb/db.h"
 
-class Retriever {
+extern Configure config;
+
+class _Retriever {
     private:
-        MessageQueue _inputMQ;
-        std::ofstream _retrieveFile;
+        _messageQueue _inputMQ;
         // any additional info 
     public:
-        Retriever();
-        ~Retriever();
+        std::ofstream _retrieveFile;
+        _Retriever(string fileName);
+        ~_Retriever();
         virtual bool Retrieve() = 0;
-        bool extractMQ();
-        MessageQueue getInputMQ();
+        bool extractMQ(Chunk &chunk);
+        bool extractMQ(int &chunkCnt);
+        _messageQueue getInputMQ();
         // any additional functions
 };
+
+
+#endif //GENERALDEDUPSYSTEM_RETRIEVER_HPP

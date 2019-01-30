@@ -4,8 +4,6 @@
 
 #include "sender.hpp"
 
-extern Configure config;
-
 
 bool Sender::sendRecipe(Recipe &request, int &status) {
     static networkStruct requestBody(CLIENT_UPLOAD_RECIPE, config.getClientID());

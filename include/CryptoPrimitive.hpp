@@ -90,6 +90,7 @@ public:
 
     int sha256_digest(const unsigned char *msg, size_t mlen, unsigned char digest[32]);
 
+    void decryptRecipe(string cipherText,string plaintText);
 };
 
 

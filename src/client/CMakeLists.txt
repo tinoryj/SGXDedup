@@ -5,7 +5,12 @@ add_library(encoder STATIC encoder.cpp)
 add_library(keyClient STATIC keyClient.cpp)
 add_library(_sender _sender.cpp)
 add_library(sender sender.cpp)
-
+add_library(_receiver _receiver.cpp)
+add_library(receiver receiver.cpp)
+add_library(_decoder _decoder.cpp)
+add_library(decoder decoder.cpp)
+add_library(_retriever _retriever.cpp)
+add_library(retriever retriever.cpp)
 
 set(LINK_OBJ _chunker _encoder encoder keyClient chunker)
 

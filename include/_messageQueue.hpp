@@ -64,6 +64,10 @@
  * */
 #define DEDUPCORE_TO_STORAGECORE_MQ         "MQ8"
 
+#define RECEIVER_TO_DECODER_MQ              "MQ9"
+
+#define DECODER_TO_RETRIEVER                "MQ10"
+
 class _messageQueue {
 private:
     boost::interprocess::message_queue *_mq;
