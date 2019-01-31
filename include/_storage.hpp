@@ -10,7 +10,7 @@
 #include "CryptoPrimitive.hpp"
 #include "storeStruct.hpp"
 #include <algorithm>
-#include <boost/thread.hpp>"
+#include <boost/thread.hpp>
 
 #define STORAGEHISTORYFILE ".storage_history"
 
@@ -53,8 +53,8 @@ class _StorageCore {
         virtual bool createContainer() = 0;
         virtual bool writeContainer(keyValueForChunkHash &key,std::string &data) = 0;
         virtual bool readContainer(keyValueForChunkHash key,std::string &data) = 0;
-        MessageQueue<Chunk> getInputMQ();
-        MessageQueue<Chunk> getOutputMQ();
+        _messageQueue getInputMQ();
+        _messageQueue getOutputMQ();
         std::vector<std::ifstream> getIntputContainerSet();
         std::vector<std::ofstream> getOutputContainerSet(); 
         // any additional functions

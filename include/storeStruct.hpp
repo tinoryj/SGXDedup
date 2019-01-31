@@ -24,7 +24,7 @@ struct _FileRecipe{
             ar&_chunkHash;
         }
     };
-    vector<_body>body;
+    vector<body>_body;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {

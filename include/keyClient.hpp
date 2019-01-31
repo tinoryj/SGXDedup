@@ -25,6 +25,7 @@ private:
 
 
     RSA* _rsa;
+    const BIGNUM *_keyN,*_keyE;
     BIO* _key;
     BN_CTX *_bnCTX;
 

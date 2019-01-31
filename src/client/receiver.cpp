@@ -38,13 +38,13 @@ void receiver::run(std::string fileName) {
             std::cerr<<"Server reject!\n";
             exit(1);
         }
-        if(respond._type==OK)   break;
+        if(respond._type==SUCCESS)   break;
     }
     this->insertMQ(respond._data);
 
     int i,maxThread=config.getMaxThreadLimits();
     for(i=0;i<maxThread;i++){
-        boost::thread th(boost::bind(receiver::receiveChunk,this));
+        boost::thread th(boost::bind(&receiver::receiveChunk,this));
         th.detach();
     }
 }

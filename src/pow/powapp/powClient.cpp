@@ -199,7 +199,7 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
 vector<unsigned int> powClient::request(vector<string>hashList, string signature) {
     vector<unsigned int>ans;
     string buffer;
-    buffer=serialize(hashList);
+    serialize(hashList,buffer);
     _Socket.Send(buffer);
     _Socket.Send(signature);
     _Socket.Recv(buffer);

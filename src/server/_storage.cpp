@@ -52,7 +52,7 @@ void _StorageCore::run() {
                 string chunkHash,chunk=msg->_data.substr(1);
                 _crypto->generaHash(chunk,chunkHash);
                 if(saveChunk(chunkHash,chunk)){
-                    msg->_data[0]=OK;
+                    msg->_data[0]=SUCCESS;
                 }else{
                     msg->_data[0]=ERROR_RESEND;
                 }
@@ -68,13 +68,13 @@ void _StorageCore::run() {
                 break;
             }
             case CLIENT_UPLOAD_RECIPE:{
-                boost::thread(boost::bind(_StorageCore::verifyRecipe,this,msg->_data.substr(1)));
+                boost::thread(boost::bind(&_StorageCore::verifyRecipe,this,msg->_data.substr(1)));
                 break;
             }
             case CLIENT_DOWNLOAD_RECIPE:{
                 string fileRecipe,keyRecipe;
                 if(restoreRecipe(msg->_data.substr(1),fileRecipe,keyRecipe)){
-                    msg->_data[0]=OK;
+                    msg->_data[0]=SUCCESS;
                 }
                 else msg->_data[0]=ERROR_CLOSE;
                 msg->_data.resize(1+sizeof(int));
@@ -200,7 +200,8 @@ bool _StorageCore::saveChunk(std::string chunkHash, std::string &chunkData) {
         return ok;
     }
 
-    string value=serialize(key);
+    string value;
+    serialize(key,value);
     ok=_fp2ChunkDB.insert(chunkHash,value);
     if(!ok){
         std::cerr<<"Can insert chunk to database\n";
@@ -217,10 +218,10 @@ bool _StorageCore::restoreChunk(std::string chunkHash, std::string &chunkData) {
     string ans;
     bool haveData = _fp2ChunkDB.query(chunkHash, ans);
     if (haveData) {
-        key = deserialize(ans);
+        deserialize(ans,key);
         haveData = readContainer(key, ans);
         if (haveData) {
-            chunkData = deserialize(ans);
+            deserialize(ans,chunkData);
         }
     }
     return haveData;

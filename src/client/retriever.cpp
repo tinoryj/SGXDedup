@@ -2,10 +2,10 @@
 // Created by a on 1/30/19.
 //
 
-#include "
+#include "retriever.hpp"
 
 
-Retriever::Retriever(filename):Retriever(filename) {}
+Retriever::Retriever(string filename):_Retriever(filename) {}
 
 bool Retriever::Retrieve() {
     vector<string>file;

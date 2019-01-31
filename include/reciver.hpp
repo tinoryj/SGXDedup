@@ -6,7 +6,7 @@
 #define GENERALDEDUPSYSTEM_RECIVER_HPP
 
 #include "_receiver.hpp"
-#include "boost/thread.hpp
+#include <boost/thread.hpp>
 #include "seriazation.hpp"
 
 class receiver:public _Receiver{

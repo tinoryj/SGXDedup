@@ -27,6 +27,7 @@ private:
     RSA* _rsa;
     BIO* _key;
     BN_CTX* _bnCTX;
+    BIGNUM *_keyN,*_keyD;
 
 public:
     keyServer();

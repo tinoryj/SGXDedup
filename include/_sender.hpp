@@ -1,5 +1,5 @@
-#ifndef _SENDER
-#define _SENDER
+#ifndef GENERALDEDUPSYSTEM__SENDER_HPP
+#define GENERALDEDUPSYSTEM__SENDER_HPP
 
 #include "chunk.hpp"
 #include "Sock.hpp"

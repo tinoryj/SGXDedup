@@ -15,8 +15,8 @@ int main(){
   mq1.send(s.c_str(), sizeof(char)*s.length(), 0);
 
   //Open a message queue.   
-  message_queue mq2(open_only,"message_queue");  
-  unsigned int priority;  
+  message_queue mq2(open_only,"message_queue");
+  unsigned int priority;
   message_queue::size_type recvd_size; 
   char buffer[2000];
   mq2.receive(&buffer, sizeof(buffer), recvd_size, priority);  

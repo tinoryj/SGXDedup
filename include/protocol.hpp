@@ -21,7 +21,7 @@
 #define CLIENT_DOWNLOAD_RECIPE          0X0a
 #define ERROR_RESEND                    0x0b
 #define ERROR_CLOSE                     0x0c
-#define OK                              0x0d
+#define SUCCESS                         0x0d
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK

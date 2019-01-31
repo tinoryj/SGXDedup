@@ -3,6 +3,7 @@
 //
 
 #include "keyClient.hpp"
+#include "../../../../../../public/opt/openssl/include/openssl/rsa.h"
 
 
 extern Configure config;
@@ -19,6 +20,7 @@ keyClient::keyClient(){
     _rsa=RSA_new();
     _key=BIO_new_file(KEYMANGER_PUBLIC_KEY_FILE,"r");
     PEM_read_bio_RSAPublicKey(_key,&_rsa,NULL,NULL);
+    RSA_get0_key(_rsa,&_keyN,&_keyE, nullptr);
 }
 
 keyClient::~keyClient(){
@@ -89,8 +91,7 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
     string key,buffer;
     BIGNUM *r=BN_new(),*invr=BN_new();
     BN_pseudo_rand(r,256,-1,0);
-
-    BN_mod_inverse(invr,r,_rsa->n,_bnCTX);
+    BN_mod_inverse(invr,r,_keyN,_bnCTX);
 
     key=decoration(r,champion.getChunkHash());
     _keySecurityChannel->sslWrite(connection,key);
@@ -113,8 +114,8 @@ string keyClient::decoration(BIGNUM* r,string hash){
     BN_bin2bn((const unsigned char*)hash.c_str(),32,h);
 
     //tmp=hash*r^e mod n
-    BN_mod_exp(tmp,r,_rsa->e,_rsa->n,_bnCTX);
-    BN_mod_mul(tmp,h,tmp,_rsa->n,_bnCTX);
+    BN_mod_exp(tmp,r,_keyE,_keyN,_bnCTX);
+    BN_mod_mul(tmp,h,tmp,_keyN,_bnCTX);
 
     BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 
@@ -130,7 +131,7 @@ string keyClient::elimination(BIGNUM* invr,string key){
     BN_bin2bn((const unsigned char*)key.c_str(),128,h);
 
     //tmp=key*r^-1 mod n
-    BN_mod_mul(tmp,h,invr,_rsa->n,_bnCTX);
+    BN_mod_mul(tmp,h,invr,_keyN,_bnCTX);
 
     BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 

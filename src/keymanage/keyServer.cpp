@@ -117,7 +117,7 @@ bool keyServer::keyGen(std::string hash,std::string& key){
     BN_bin2bn((const unsigned char*)hash.c_str(),128,result);
 
     //result=hash^d
-    BN_mod_exp(result,result,_rsa->d,_rsa->n,_bnCTX);
+    BN_mod_exp(result,result,_keyD,_keyN,_bnCTX);
     BN_bn2bin(result,(unsigned char*)buffer+(128-BN_num_bytes(result)));
     key=buffer;
 

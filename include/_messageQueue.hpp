@@ -68,9 +68,11 @@
 
 #define DECODER_TO_RETRIEVER                "MQ10"
 
+using namespace boost::interprocess;
+
 class _messageQueue {
 private:
-    boost::interprocess::message_queue *_mq;
+    message_queue *_mq;
     unsigned long _messageQueueCnt, _messageQueueUnitSize;
     string _mqName;
 
@@ -87,14 +89,17 @@ public:
     void push(T data) {
         string tmp;
         serialize(data, tmp);
-        mq->send(&tmp[0], tmp.length());
+        _mq->send(&tmp[0], tmp.length(),0);
     }
 
     template<class T>
     void pop(T &ans) {
         string tmp;
+        unsigned int priority;
+        message_queue::size_type recvd_size;
         tmp.resize(_messageQueueUnitSize);
-        mq->recive(tmp, _messageQueueUnitSize);
+        _mq->receive(&tmp[0], _messageQueueUnitSize,recvd_size,priority);
+        tmp.resize(recvd_size);
         deserialize(tmp, ans);
     }
 };

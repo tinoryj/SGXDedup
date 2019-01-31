@@ -4,6 +4,7 @@
 
 #include "sender.hpp"
 
+extern Configure config;
 
 bool Sender::sendRecipe(Recipe &request, int &status) {
     static networkStruct requestBody(CLIENT_UPLOAD_RECIPE, config.getClientID());
@@ -18,7 +19,7 @@ bool Sender::sendRecipe(Recipe &request, int &status) {
     deserialize(respondBuffer, respondBody);
     status = respondBody._type;
 
-    if (status == OK) return true;
+    if (status == SUCCESS) return true;
     return false;
 }
 
@@ -35,7 +36,7 @@ bool Sender::sendChunkList(chunkList &request, int &status) {
     deserialize(respondBuffer, respondBody);
     status = respondBody._type;
 
-    if (status == OK) return true;
+    if (status == SUCCESS) return true;
     return false;
 }
 
@@ -53,7 +54,7 @@ bool Sender::sendSignedHashList(powSignedHash &request, RequiredChunk &respond, 
     status = respondBody._type;
 
 
-    if (status == OK) {
+    if (status == SUCCESS) {
         deserialize(respondBody._data, respond);
         return true;
     }

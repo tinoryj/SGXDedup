@@ -12,7 +12,7 @@ struct networkStruct{
     string _data;
 
     networkStruct(int msgType,int clientID):_type(msgType),_cid(clientID){};
-    networkSttuct(){};
+    networkStruct(){};
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
@@ -84,7 +84,7 @@ struct keyRecipe{
         void serialize(Archive &ar, const unsigned int version) {
             ar & _chunkID;
             ar & _chunkHash;
-            ar&_chunkKey;
+            ar & _chunkKey;
         }
     };
     vector<body>_body;
@@ -92,14 +92,14 @@ struct keyRecipe{
     void serialize(Archive &ar, const unsigned int version) {
         ar & _filename;
         ar & _fileSize;
-        ar&_createData;
-        ar&_body;
+        ar & _createData;
+        ar & _body;
     }
 };
 
 struct Recipe{
-    fileRecipe f;
-    keyRecipe k;
+    fileRecipe _f;
+    keyRecipe _k;
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
         ar & _f;

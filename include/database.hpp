@@ -21,11 +21,10 @@ struct keyValueForChunkHash{
     uint32_t _offset;
     uint32_t _length;
 
-    void set(string containerName,uint32_t offset,uint32_T length){
-        this->_chunkHash=key;
-        this->_containerName=value.substr(0,value.length()-8);
-        memcpy(&this->_offset,&value[value.length-8],sizeof(uint32_t));
-        memcpy(&this->_length,&value[value.length-4],sizeof(uint32_t));
+    void set(string containerName,uint32_t offset,uint32_t length){
+        this->_containerName=containerName;
+        this->_offset=offset;
+        this->_length=length;
     }
 
     template<class Archive>
@@ -47,10 +46,9 @@ struct keyValueForFilename{
     uint32_t _version;
 
     void set(string fileRecipe,string keyRecipe,uint32_t version) {
-        this->_chunkHash=chunkHash;
-        this->_containerName=containerName;
-        this->_offset=offset;
-        this->_length=length;
+        this->_fileRecipeName=fileRecipe;
+        this->_keyRecipeName=keyRecipe;
+        this->_version=version;
     }
 
     template<class Archive>
@@ -60,14 +58,6 @@ struct keyValueForFilename{
         ar&_version;
     }
 };
-
-void keyValueForFilename::set(string fileRecipeName, string keyRecipeName, uint32_t version) {
-    this->_filename=filename;
-    this->_fileRecipeName=fileRecipeName;
-    this->_keyRecipeName=keyRecipeName;
-    this->_version=version;
-}
-
 
 class database{
 private:

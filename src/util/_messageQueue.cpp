@@ -8,7 +8,7 @@ using namespace boost::interprocess;
 void _messageQueue::createQueue(std::string name,int rw){
     //read
     if(rw==READ_MESSAGE){
-        _mq=new message_queue(open_or_create,name.c_str());
+        _mq=new message_queue(open_or_create,name.c_str(),_messageQueueCnt, _messageQueueUnitSize);
     }
         //write
     else if(rw==WRITE_MESSAGE){

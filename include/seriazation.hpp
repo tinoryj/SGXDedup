@@ -9,6 +9,7 @@
 #include "message.hpp"
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
 #include <string>
 #include <bits/stdc++.h>
 
@@ -21,7 +22,6 @@ bool serialize(T data,string &ans){
     text_oarchive out(buffer);
     out<<data;
     ans=buffer.str();
-    return ans;
 }
 
 template <class T>
@@ -30,7 +30,6 @@ bool deserialize(string data,T &ans){
     buffer.str(data);
     text_iarchive in(buffer);
     in>>ans;
-    return ans;
 }
 
 

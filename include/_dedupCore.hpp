@@ -13,6 +13,7 @@
 #include <chrono>
 #include <algorithm>
 #include <queue>
+#include <map>
 
 #include "tmp.hpp"
 
@@ -55,7 +56,7 @@ public:
     _messageQueue _outputMQ;
     int _outDataTime;
 
-    std::chrono::time_point _stopTime;
+    std::chrono::system_clock::time_point _stopTime;
 
     void setMQ(_messageQueue mq);
     bool checkDone();
@@ -66,10 +67,7 @@ class Timer{
 private:
     struct cmp{
         bool operator()(signedHash* x,signedHash* y){
-            std::chrono::duration<int,std::milli> tx,ty;
-            tx=x->_stopTime;
-            ty=x->_stopTime;
-            return tx.count()>ty.count();
+            return x->_stopTime.time_since_epoch().count()>y->_stopTime.time_since_epoch().count();
         }
     };
     priority_queue<signedHash*,vector<signedHash*>,cmp> _jobQueue;

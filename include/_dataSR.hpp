@@ -1,5 +1,5 @@
 #include "_messageQueue.hpp"
-#inclyde "boost/thread.hpp"
+#include "boost/thread.hpp"
 #include "boost/bind.hpp"
 #include "sys/epoll.h"
 #include "Sock.hpp"

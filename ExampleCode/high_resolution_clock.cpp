@@ -31,7 +31,8 @@ int main ()
   tp=high_resolution_clock::now();
   sleep(1);
   tp2=high_resolution_clock::now();
-	std::chrono::milliseconds s =std::chrono::duration_cast<std::chrono::milliseconds> (dtn);
+  dtn=tp2-tp;
+  std::chrono::milliseconds s =std::chrono::duration_cast<std::chrono::milliseconds> (dtn);
   std::cout<<s.count()<<std::endl;
   return 0;
 }

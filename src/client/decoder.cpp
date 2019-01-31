@@ -36,6 +36,16 @@ void decoder::run() {
     }
     int i,maxThread=config.getMaxThreadLimits();
     for(i=0;i<maxThread;i++){
-        boost::thread th(boost::bind(decoder::runDecode,this));
+        boost::thread th(boost::bind(&decoder::runDecode,this));
+    }
+}
+
+void decoder::runDecode() {
+    Chunk tmpChunk;
+    while(1){
+        this->extractMQ(tmpChunk);
+        tmpChunk.editEncryptKey(_keyRecipe.at(tmpChunk.getChunkHash()));
+        this->decodeChunk(tmpChunk);
+        this->insertMQ(tmpChunk);
     }
 }
