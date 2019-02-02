@@ -20,7 +20,7 @@ public:
     _Encoder();
     ~_Encoder();
     bool extractMQ(Chunk &data);
-    bool insertMQ(Chunk data);
+    bool insertMQ(Chunk &data);
     //virtual bool getKey(Chunk newChunk) = 0;
     virtual bool encodeChunk(Chunk& newChunk) = 0;
     //virtual bool outputEncodeRecoder() = 0;

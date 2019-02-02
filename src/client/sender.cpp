@@ -6,7 +6,7 @@
 
 extern Configure config;
 
-bool Sender::sendRecipe(Recipe &request, int &status) {
+bool Sender::sendRecipe(Recipe_t &request, int &status) {
     static networkStruct requestBody(CLIENT_UPLOAD_RECIPE, config.getClientID());
     static string requestBuffer, respondBuffer;
     networkStruct respondBody(0, 0);
@@ -75,23 +75,24 @@ bool Sender::sendData(string &request, string &respond) {
 void Sender::run() {
     chunkList chunks;
     Chunk tmpChunk;
+
     while (1) {
-        extractMQ(tmpChunk);
-        chunks._chunks.push_back(tmpChunk.getLogicData());
-        chunks._FP.push_back(tmpChunk.getChunkHash());
-        if (chunks._FP.size() == config.getChunkBatchSize()) {
-            int status;
-            bool success = false;
-            while (1) {
-                success = this->sendChunkList(chunks, status);
-                if (success)break;
-                if (status == ERROR_CLOSE) {
-                    std::cerr << "Server Reject Chunk and send close flag\n";
-                    exit(1);
-                }
+        chunks.clear();
+        for(int i=0;i<config.getSendChunkBatchSize();i++){
+            if(!extractMQ(tmpChunk)){
+                break;
             }
-            chunks._FP.resize(0);
-            chunks._chunks.resize(0);
+            chunks.push_back(tmpChunk);
+        }
+        int status;
+        bool success = false;
+        while (1) {
+            success = this->sendChunkList(chunks, status);
+            if (success)break;
+            if (status == ERROR_CLOSE) {
+                std::cerr << "Server Reject Chunk and send close flag\n";
+                exit(1);
+            }
         }
     }
 }

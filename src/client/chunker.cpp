@@ -342,5 +342,12 @@ void chunker::simpleChunking() {
 
 bool chunker::insertMQ(Chunk newChunk) {
     _outputMq.push(newChunk);
+    newChunk._recipe->_f._body.push_back(fileRecipe_t::body(newChunk.getID(),
+                                         newChunk.getLogicDataSize(),
+                                         newChunk.getChunkHash()));
+
+    newChunk._recipe->_k._body.push_back(keyRecipe_t::body(newChunk.getID(),
+                                        newChunk.getChunkHash(),
+                                        ""));
     return true;
 }

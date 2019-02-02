@@ -23,7 +23,7 @@ ssl::ssl(std::string ip,int port,int scSwitch){
 
     switch(scSwitch){
         case SERVERSIDE:{
-            _ctx=SSL_CTX_new(TLSv1_server_method());
+            _ctx=SSL_CTX_new(TLS_server_method());
             SSL_CTX_set_mode(_ctx,SSL_MODE_AUTO_RETRY);
             crtFile=SECRT;
             keyFile=SEKEY;
@@ -41,7 +41,7 @@ ssl::ssl(std::string ip,int port,int scSwitch){
             break;
         }
         case CLIENTSIDE:{
-            _ctx=SSL_CTX_new(TLSv1_client_method());
+            _ctx=SSL_CTX_new(TLS_client_method());
             keyFile=CLKEY;
             crtFile=CLCRT;
             _sockAddr.sin_addr.s_addr=inet_addr(ip.c_str());

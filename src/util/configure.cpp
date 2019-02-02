@@ -42,7 +42,8 @@ void Configure::readConf(std::string path) {
     _messageQueueUnitSize = root.get<uint64_t>\
     ("MessageQueue._messageQueueUnitSize");
 
-    //Server Provider Configure
+
+    //Key Server Congigure
     _keyServerNumber = root.get<uint64_t>\
     ("KeyServerConfig._keyServerNumber");
     _keyBatchSizeMin = root.get<uint64_t>\
@@ -51,34 +52,21 @@ void Configure::readConf(std::string path) {
     ("KeyServerConfig._keyBatchSizeMax");
     _keyCacheSize =root.get<uint64_t>\
     ("KeyServerConfig._keyCacheSize");
-
-    _storageServerNumber = root.get<uint64_t>\
-    ("SPConfig._storageServerNumber");
-
-    _maxContainerSize = root.get<uint64_t>\
-    ("SPConfig._maxContainerSize");
-
-    //muti thread settings;
-    _encodeThreadLimit=root.get<int>\
-    ("mutiThread._encodeThreadLimit");
-    _keyClientThreadLimit=root.get<int>\
-    ("mutiThread._keyClientThreadLimit");
-    _keyServerThreadLimit=root.get<int>\
-    ("mutiThread._keyServerThreadLimit");
-
-    //Key Server Congigure
     _keyServerIP.clear();
     for (ptree::value_type &it:root.get_child("KeyServerConfig._keyServerIP")) {
         _keyServerIP.push_back(it.second.data());
     }
-
     _keyServerPort.clear();
     for (ptree::value_type &it:root.get_child("KeyServerConfig._keyServerPort")) {
         _keyServerPort.push_back(it.second.get_value<int>());
     }
 
 
-     _storageServerIP.clear();
+    //SP Configure
+    _storageServerNumber = root.get<uint64_t>\
+    ("SPConfig._storageServerNumber");
+    _maxContainerSize = root.get<uint64_t>\
+    ("SPConfig._maxContainerSize");     _storageServerIP.clear();
     for (ptree::value_type &it:root.get_child("SPConfig._storageServerIP")) {
         _storageServerIP.push_back(it.second.data());
     }
@@ -88,6 +76,55 @@ void Configure::readConf(std::string path) {
         _storageServerPort.push_back(it.second.get_value<int>());
     }
 
+    //muti thread settings;
+    _encodeThreadLimit=root.get<int>\
+    ("mutiThread._encodeThreadLimit");
+    _keyClientThreadLimit=root.get<int>\
+    ("mutiThread._keyClientThreadLimit");
+    _keyServerThreadLimit=root.get<int>\
+    ("mutiThread._keyServerThreadLimit");
+    _senderThreadLimit=root.get<int>\
+    ("mutiThread._senderThreadLimit");
+    _receiverThreadLimit=root.get<int>\
+    ("mutiThread._receiverThreadLimit");
+    _decoderThreadLimit=root.get<int>\
+    ("mutiThread._decoderThreadLimit");
+    _dataSRThreadLimit=root.get<int>\
+    ("mutiThread._dataSRThreadLimit");
+    _retriverThreadLimit=root.get<int>\
+    ("mutiThread._retriverThreadLimit");
+
+    //pow Configure
+    _quoteType=root.get<int>\
+    ("pow._quoteType");
+    _iasVersion=root.get<int>\
+    ("pow._iasVersion");
+    _POWServerIp=root.get<std::string>\
+    ("pow._POWServerIp");
+    _POWServerPort=root.get<int>\
+    ("pow._powServerPort");
+    _enclaveName=root.get<std::string>\
+    ("pow._receiverThreadLimit");
+
+    //server Configure
+    _fileRecipeRootPath=root.get<std::string>\
+    ("server._fileRecipeRootPath");
+    _keyRecipeRootPath=root.get<std::string>\
+    ("server._keyRecipeRootPath");
+    _containerRootPath=root.get<std::string>\
+    ("server._containerRootPath");
+    _fp2ChunkDBName=root.get<std::string>\
+    ("server._fp2ChunkDBName");
+    _fn2MetaDBame=root.get<std::string>\
+    ("server._fn2MetaDBame");
+
+    //client Configure
+    _clientID=root.get<int>\
+    ("client._clientID");
+
+    //timer Configure
+    _timeOutScale=root.get<double>\
+    ("timer._timeScale");
 }
 
 uint64_t Configure::getRunningType() {
@@ -228,15 +265,15 @@ uint64_t Configure::getMaxContainerSize() {
     return _maxContainerSize;
 }
 
-uint8_t Configure::getQuoteType(){
+int Configure::getQuoteType(){
     return _quoteType;
 }
 
-int Configure::getIasVersion() {
+int Configure::getIASVersion() {
     return _iasVersion;
 }
 
-std::string Configure::getPOWServerIp() {
+std::string Configure::getPOWServerIP() {
     return _POWServerIp;
 }
 

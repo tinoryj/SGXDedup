@@ -33,6 +33,7 @@ public:
     keyClient();
     ~keyClient();
     void run();
+    bool insertMQ(Chunk &newChunk);
     string keyExchange(SSL* connection,Chunk champion);
     string elimination(BIGNUM* r,string hash);
     string decoration(BIGNUM* invr,string key);

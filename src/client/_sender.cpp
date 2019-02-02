@@ -10,9 +10,9 @@ _Sender::~_Sender() {}
 
 
 bool _Sender::extractMQ(Chunk &tmpChunk) {
-    _inputMQ.pop(tmpChunk);
+    return _inputMQ.pop(tmpChunk);
 }
 
 void _Sender::getInputMQ() {
-    _inputMQ.createQueue(SENDER_IN_MQ,READ_MESSAGE);
+    _inputMQ.createQueue(SENDER_IN_MQ, READ_MESSAGE);
 }

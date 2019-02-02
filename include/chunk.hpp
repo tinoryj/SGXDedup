@@ -8,6 +8,7 @@
 #define CHUNKING_DONE -1
 
 #include <string>
+#include "recipe.hpp"
 
 class Chunk {
 private:
@@ -22,12 +23,14 @@ private:
 
 public:
 
+    Recipe_t *_recipe;
+
     Chunk();
 
     Chunk(uint64_t ID, uint64_t type = 0, uint64_t logicDataSize = 0, std::string logicData = "", \
                 std::string metaData = "", std::string chunkHash = "");
 
-    ~Chunk(){};
+    ~Chunk() {};
 
     uint64_t getID();
 
@@ -65,5 +68,29 @@ public:
     }
 };
 
+
+struct chunkList {
+    vector <string> _FP;
+    vector <string> _chunks;
+
+    void clear() {
+        _FP.clear();
+        _chunks.clear();
+    }
+
+    void push_back(Chunk &tmpChunk){
+        _FP.push_back(tmpChunk.getChunkHash());
+        _chunks.push_back(tmpChunk.getLogicData());
+    }
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & _FP;
+        ar & _chunks;
+    }
+};
+
+
+typedef vector<int> RequiredChunk;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

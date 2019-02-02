@@ -2,12 +2,13 @@
 
 extern Configure config;
 
-extern database _fp2ChunkDB;
-extern database _fileName2metaDB;
+extern database fp2ChunkDB;
+extern database fileName2metaDB;
 
 _StorageCore::_StorageCore() {
     _crypto = new CryptoPrimitive(SHA256_TYPE);
-    _inputMQ.createQueue(DEDUPCORE_TO_STORAGECORE_MQ, READ_MESSAGE);
+    _inputMQFromDedupCore.createQueue(DEDUPCORE_TO_STORAGECORE_MQ, READ_MESSAGE);
+    _inputMQFromDataSR.createQueue(DATASR_TO_STORAGECORE_MQ,READ_MESSAGE);
     _outputMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
     _fileRecipeNamePrefix = config.getFileRecipeRootPath();
     _keyRecipeNamePrefix = config.getKeyRecipeRootPath();
@@ -42,61 +43,77 @@ _StorageCore::~_StorageCore() {
     delete _crypto;
 }
 
+
+/* storageCore thread handle
+ * support four type of operation
+ *      upload chunk
+ *      download chunk
+ *      upload recipe
+ *      download recipe
+ */
 void _StorageCore::run() {
-    epoll_message *msg=new epoll_message();
+    epoll_message *msg1=new epoll_message();
+    networkStruct *msg2=new networkStruct(0,0);
+    chunkList chunks;
+    Recipe_t recipe;
     Chunk tmpChunk;
     while(1){
-        _inputMQ.pop(*msg);
-        switch(msg->_data[0]){
-            case CLIENT_UPLOAD_CHUNK:{
-                string chunkHash,chunk=msg->_data.substr(1);
-                _crypto->generaHash(chunk,chunkHash);
-                if(saveChunk(chunkHash,chunk)){
-                    msg->_data[0]=SUCCESS;
-                }else{
-                    msg->_data[0]=ERROR_RESEND;
+        bool status=false;
+
+        //wait for 500ms
+        status=_inputMQFromDedupCore.pop(chunks);
+        if(status){
+            int size=chunks._chunks.size();
+            for(int i=0;i<size&&status;i++){
+                status=saveChunk(chunks._FP[i],chunks._chunks[i]);
+            }
+            if(!status){
+                std::cerr<<"Server error\n";
+                std::cerr<<"Can not save chunks\n";
+                exit(1);
+            }
+
+            //priority process data from dedupCore
+            continue;
+        }
+
+        //wait for 500ms
+        status=_inputMQFromDataSR.pop(*msg1);
+        if(status){
+            deserialize(msg1->_data,*msg2);
+            switch (msg2->_type){
+                case CLIENT_DOWNLOAD_RECIPE:{
+                    int version,len=msg2->_data.length();
+                    memcpy(&version,&msg2->_data[len-sizeof(int)],sizeof(int));
+                    msg2->_data.resize(len-sizeof(int));
+                    boost::thread th(boost::bind(&_StorageCore::sendRecipe,this,
+                                                 msg2->_data,
+                                                 version,
+                                                 msg1->_fd,
+                                                 msg1->_epfd));
+                    th.detach();
+                    break;
                 }
-                _outputMQ.push(*msg);
-                break;
-            }
-            case CLIENT_DOWNLOAD_CHUNK:{
-                string chunkHash=msg->_data.substr(1),chunk;
-                restoreChunk(chunkHash,chunk);
-                msg->_data.resize(1);
-                msg->_data.append(chunk);
-                _outputMQ.push(*msg);
-                break;
-            }
-            case CLIENT_UPLOAD_RECIPE:{
-                boost::thread(boost::bind(&_StorageCore::verifyRecipe,this,msg->_data.substr(1)));
-                break;
-            }
-            case CLIENT_DOWNLOAD_RECIPE:{
-                string fileRecipe,keyRecipe;
-                if(restoreRecipe(msg->_data.substr(1),fileRecipe,keyRecipe)){
-                    msg->_data[0]=SUCCESS;
+                case CLIENT_UPLOAD_RECIPE:{
+                    int version,len=msg2->_data.length();
+                    memcpy(&version,&msg2->_data[len-sizeof(int)],sizeof(int));
+                    msg2->_data.resize(len-sizeof(int));
+                    deserialize(msg2->_data,recipe);
+                    this->verifyRecipe(recipe,version);
+                    break;
                 }
-                else msg->_data[0]=ERROR_CLOSE;
-                msg->_data.resize(1+sizeof(int));
-                int len;
 
-                len=fileRecipe.length();
-                memcpy(&msg->_data[1],&len,sizeof(int));
-                msg->_data+=fileRecipe;
+                /* omit this part
+                 * chunk will send to client after server receive client's
+                 * download recipe request
+                 */
+                case CLIENT_DOWNLOAD_CHUNK:{
 
-                msg->_data.resize(msg->_data.length()+sizeof(int));
+                    break;
+                }
+                default:{
 
-                len=keyRecipe.length();
-                memcpy(&msg->_data[msg->_data.length()-sizeof(int)],&len,sizeof(int));
-                msg->_data+=keyRecipe;
-
-                _outputMQ.push(*msg);
-                break;
-            }
-            default:{
-                msg->_data[0]=ERROR_RESEND;
-                msg->_data.resize(1);
-                _outputMQ.push(*msg);
+                }
             }
         }
     }
@@ -143,7 +160,7 @@ bool _StorageCore::writeContainer(keyValueForChunkHash &key, std::string &data) 
     return true;
 }
 
-bool _StorageCore::restoreRecipe(std::string recipeName, std::string &fileRecipe, std::string &keyRecipe) {
+bool _StorageCore::restoreRecipe(std::string recipeName, fileRecipe_t &fileRecipe, string &keyRecipe) {
     ifstream fileRecipeIn, keyRecipeIn;
     string readRecipeName;
 
@@ -158,16 +175,20 @@ bool _StorageCore::restoreRecipe(std::string recipeName, std::string &fileRecipe
         return false;
     }
 
-    fileRecipeIn >> fileRecipe;
+    string buffer;
+
+    fileRecipeIn >> buffer;
+    deserialize(buffer,fileRecipe);
+
     keyRecipeIn >> keyRecipe;
 
     fileRecipeIn.close();
     keyRecipeIn.close();
 }
 
-bool _StorageCore::saveRecipe(std::string &recipeName, std::string &fileRecipe, std::string &keyRecipe) {
+bool _StorageCore::saveRecipe(std::string &recipeName, fileRecipe_t &fileRecipe, std::string &keyRecipe) {
     ofstream fileRecipeOut, keyRecipeOut;
-    string writeRecipeName;
+    string writeRecipeName,buffer;
 
     writeRecipeName=_fileRecipeNamePrefix+_lastFileRecipeFileName+_fileRecipeNameTail;
     fileRecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
@@ -180,7 +201,9 @@ bool _StorageCore::saveRecipe(std::string &recipeName, std::string &fileRecipe, 
         return false;
     }
 
-    fileRecipeOut << fileRecipe;
+    serialize(fileRecipe,buffer);
+    fileRecipeOut << buffer;
+
     keyRecipeOut << keyRecipe;
     fileRecipeOut.close();
     keyRecipeOut.close();
@@ -225,4 +248,79 @@ bool _StorageCore::restoreChunk(std::string chunkHash, std::string &chunkData) {
         }
     }
     return haveData;
+}
+
+//maybe should check all chunk in recipe had been storage in container
+
+void _StorageCore::verifyRecipe(Recipe_t recipe, int version) {
+    fileRecipe_t f=recipe._f;
+    string k=recipe._kencrypted;
+    string recipeName,fileRecipeBuffer,keyRecipeBuffer,keyBuffer;
+    keyValueForFilename key;
+    if(!this->saveRecipe(recipeName,f,keyRecipeBuffer)){
+        std::cerr<<"save recipe failed\n";
+        exit(1);
+    }
+    key.set(f._fileName,f._fileName,version);
+    serialize(key,keyBuffer);
+    _fileName2metaDB.insert(keyBuffer,recipeName);
+}
+
+// temp implement
+// send recipe and all chunk in recipe in this function
+void _StorageCore::sendRecipe(std::string fileName, int version,int fd,int epfd) {
+    epoll_message msg1;
+    msg1._fd=fd;
+    msg1._epfd=epfd;
+
+    keyValueForFilename key;
+    string recipeName,keyBuffer;
+    key.set(fileName,fileName,version);
+    serialize(key,keyBuffer);
+
+    //error msg should be sent to client
+    if(_fileName2metaDB.query(keyBuffer,recipeName)==false){
+        std::cerr<<"Can not file recipe\n";
+        exit(1);
+    }
+
+    //send recipe
+    fileRecipe_t f;
+    string k;
+    this->restoreRecipe(recipeName,f,k);
+
+    Recipe_t r;
+    r._kencrypted=k;
+    r._f=f;
+
+    networkStruct sendBody(CLIENT_DOWNLOAD_RECIPE,0);
+    serialize(r,sendBody._data);
+
+    serialize(sendBody,msg1._data);
+    _outputMQ.push(msg1);
+
+    //send chunks
+    chunkList chunks;
+    string chunkData;
+    int cnt=config.getSendChunkBatchSize();
+    sendBody._type=CLIENT_DOWNLOAD_CHUNK;
+    for(auto it:f._body){
+        cnt--;
+        this->restoreChunk(it._chunkHash,chunkData);
+        chunks._chunks.push_back(chunkData);
+        chunks._FP.push_back(it._chunkHash);
+        if(cnt==0){
+            cnt=config.getSendChunkBatchSize();
+            serialize(chunks,sendBody._data);
+            serialize(sendBody,msg1._data);
+            _outputMQ.push(msg1);
+            chunks.clear();
+        }
+    }
+
+    //send tail chunks
+    if(chunks._FP.empty()) return;
+    serialize(chunks,sendBody._data);
+    serialize(sendBody,msg1._data);
+    _outputMQ.push(msg1);
 }

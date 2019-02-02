@@ -10,6 +10,7 @@
 #include "chunk.hpp"
 #include "CryptoPrimitive.hpp"
 #include "_chunker.hpp"
+#include "recipe.hpp"
 
 #define FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
 #define VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker

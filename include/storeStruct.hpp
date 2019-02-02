@@ -7,6 +7,7 @@
 
 #include <string>
 #include "seriazation.hpp"
+/*
 
 struct _FileRecipe{
     std::string _fileName;
@@ -61,7 +62,7 @@ struct _KeyRecipe{
     }
 };
 
-
+*/
 struct _Container{
     uint32_t _used;
     char _body[4<<20];  //4 M

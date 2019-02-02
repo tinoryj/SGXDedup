@@ -55,7 +55,6 @@ int main(int argv, char *argc[]) {
 
     Chunker->chunking();
     kex->run();
-    /*
     //start chunking thread
     th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
     thList.push_back(th);
@@ -79,6 +78,6 @@ int main(int argv, char *argc[]) {
     for(auto it:thList){
         it->join();
     }
-*/
+
     return 0;
 }

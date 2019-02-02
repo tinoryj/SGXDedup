@@ -2,9 +2,14 @@
 
 _DataSR::_DataSR() {
     _inputMQ.createQueue(DATASR_IN_MQ,READ_MESSAGE);
+    _mq2DedupCore.createQueue(DATASR_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
+    _mq2StorageCore.createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
+    _mq2RAServer.createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
+    /*
     _outputMQ[0].createQueue(DATASR_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
     _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
     _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
+     */
     _socket.init(SERVERTCP,"",0);
 }
 
@@ -24,7 +29,19 @@ bool _DataSR::extractMQ() {
 }
 
 bool _DataSR::insertMQ(int queueSwitch, epoll_message *msg) {
-    _outputMQ->push(*msg);
+    switch (queueSwitch){
+        case MESSAGE2RASERVER:{
+            _mq2RAServer.push(*msg);
+            break;
+        }
+        case MESSAGE2STORAGE:{
+            _mq2StorageCore.push(*msg);
+            break;
+        }
+        case MESSAGE2DUPCORE:{
+            _mq2DedupCore.push(*msg);
+        }
+    }
     delete msg;
 }
 
@@ -39,6 +56,8 @@ bool _DataSR::workloadProgress() {
     ev.data.ptr=(void*)msg;
     ev.events=EPOLLIN|EPOLLET;
     epoll_ctl(epfd,EPOLL_CTL_ADD,msg->_fd,&ev);
+    string buffer;
+    networkStruct netBody(0,0);
     while(1){
         int nfd=epoll_wait(epfd,event,20,-1);
         for(int i=0;i<nfd;i++){
@@ -59,8 +78,9 @@ bool _DataSR::workloadProgress() {
                 continue;
             }
             if(event[i].events&EPOLLIN){
-                socketConnection[msg->_fd].Recv(msg->_data);
-                switch(msg->_data[0]){
+                socketConnection[msg->_fd].Recv(buffer);
+                deserialize(buffer,netBody);
+                switch(netBody._type){
                     case SGX_RA_MSG01:{
                         this->insertMQ(MESSAGE2RASERVER,msg);
                         break;

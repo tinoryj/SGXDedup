@@ -7,15 +7,6 @@
 #ifndef GENERALDEDUPSYSTEM_MESSAGEQUEUE_HPP
 #define GENERALDEDUPSYSTEM_MESSAGEQUEUE_HPP
 
-#include <boost/thread/thread.hpp>
-#include <boost/lockfree/queue.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-
-#include "configure.hpp"
-#include "chunk.hpp"
-#include "message.hpp"
-#include "seriazation.hpp"
-
 #define READ_MESSAGE 0
 #define WRITE_MESSAGE 1
 
@@ -68,6 +59,16 @@
 
 #define DECODER_TO_RETRIEVER                "MQ10"
 
+#include <boost/thread/thread.hpp>
+#include <boost/lockfree/queue.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
+
+#include "configure.hpp"
+#include "chunk.hpp"
+#include "message.hpp"
+#include "seriazation.hpp"
+
 using namespace boost::interprocess;
 
 class _messageQueue {
@@ -93,14 +94,22 @@ public:
     }
 
     template<class T>
-    void pop(T &ans) {
+    bool pop(T &ans) {
         string tmp;
         unsigned int priority;
         message_queue::size_type recvd_size;
         tmp.resize(_messageQueueUnitSize);
-        _mq->receive(&tmp[0], _messageQueueUnitSize,recvd_size,priority);
+
+        using namespace boost::posix_time;
+
+        ptime abs_time = microsec_clock::universal_time() + boost::posix_time::milliseconds(500);
+        bool status = _mq->timed_receive(&tmp[0], _messageQueueUnitSize,
+                                         recvd_size, priority, abs_time);
+        if (!status) return false;
+        _mq->receive(&tmp[0], _messageQueueUnitSize, recvd_size, priority);
         tmp.resize(recvd_size);
         deserialize(tmp, ans);
+        return true;
     }
 };
 

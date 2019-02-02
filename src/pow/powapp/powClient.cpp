@@ -9,58 +9,66 @@ extern Configure config;
 powClient::powClient() {
     int updated;
     sgx_launch_token_t token;
-    _inputMQ.createQueue(ENCODER_TO_POW_MQ,READ_MESSAGE);
-    _outputMQ.createQueue(SENDER_IN_MQ,WRITE_MESSAGE);
+    _inputMQ.createQueue(ENCODER_TO_POW_MQ, READ_MESSAGE);
+    _outputMQ.createQueue(SENDER_IN_MQ, WRITE_MESSAGE);
     sgx_status_t status;
-    status=sgx_create_enclave("enclave.signed.so",SGX_DEBUG_FLAG, \
-							&token,&updated,&_masterEnclaveID,NULL);
+    status = sgx_create_enclave("enclave.signed.so", SGX_DEBUG_FLAG, \
+                            &token, &updated, &_masterEnclaveID, NULL);
 
-    if ( status != SGX_SUCCESS ) {
+    if (status != SGX_SUCCESS) {
         fprintf(stderr, "sgx_create_enclave: %s: %08x\n",
                 config.getEnclaveName(), status);
-        if ( status == SGX_ERROR_ENCLAVE_FILE_ACCESS )
-            std::cerr<<stderr, "Did you forget to set LD_LIBRARY_PATH?\n";
+        if (status == SGX_ERROR_ENCLAVE_FILE_ACCESS)
+            std::cerr << stderr, "Did you forget to set LD_LIBRARY_PATH?\n";
         return;
     }
-    _raContext=0xdeadbeef;
-    
+    _raContext = 0xdeadbeef;
+
     raProcess(_masterEnclaveID);
-    _Socket.init(CLIENTTCP,config.getPOWServerIp(),config.getPOWServerPort());
+    _Socket.init(CLIENTTCP, config.getPOWServerIp(), config.getPOWServerPort());
 }
 
 
 void powClient::run() {
-    vector<Chunk>chunkList;
-    vector<unsigned int>sendList;
+    vector <Chunk> chunkCache;
+    vector<unsigned int> sendList;
     Chunk tmpChunk;
     char signature[128];
     string batchData;
-    vector<string>batchHash;
-    char* dataHeader=new char[sizeof(int)];
+    vector <string> batchHash;
+    char *dataHeader = new char[sizeof(int)];
 
-    while(1){
-        chunkList.clear();
+    while (1) {
+        chunkCache.clear();
         sendList.clear();
         batchData.clear();
         batchHash.clear();
-        for(int i=0;i<_batchSize;i++){
-            _inputMQ.pop(tmpChunk);
-            chunkList.push_back(tmpChunk);
-            int logicDataSize=tmpChunk.getLogicDataSize();
-            memcpy(dataHeader,(char*)&logicDataSize,sizeof(int));
-            for(int j=0;j<4;j++)batchData+=dataHeader[j];
-            batchData+=tmpChunk.getLogicData();
+        for (int i = 0; i < _batchSize; i++) {
+            bool status = _inputMQ.pop(tmpChunk);
+            if (!status)break;
+            chunkCache.push_back(tmpChunk);
+
+            /*serialize chunk logic data for enclave
+             * format:
+             * | chunk size | chunk | chunk size | chunl | ....
+             */
+
+            int logicDataSize = tmpChunk.getLogicDataSize();
+            memcpy(dataHeader, (char *) &logicDataSize, sizeof(int));
+            for (int j = 0; j < 4; j++)batchData += dataHeader[j];
+
+            batchData += tmpChunk.getLogicData();
             batchHash.push_back(tmpChunk.getChunkHash());
         }
-        ecall_calHash(_masterEnclaveID,_raContext,batchData.c_str(),batchData.length(),signature);
-        sendList=request(batchHash,signature);
-        for(auto it:sendList){
-            _outputMQ.push(chunkList[it]);
+        ecall_calHash(_masterEnclaveID, _raContext, batchData.c_str(), batchData.length(), signature);
+        sendList = request(batchHash, signature);
+        for (auto it:sendList) {
+            _outputMQ.push(chunkCache[it]);
         }
     }
 }
-bool powClient::raProcess (sgx_enclave_id_t eid)
-{
+
+bool powClient::raProcess (sgx_enclave_id_t eid) {
     sgx_status_t status, sgxrv, pse_status;
     sgx_ra_msg1_t msg1;
     sgx_ra_msg2_t *msg2 = NULL;
@@ -72,30 +80,30 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
     size_t msg4sz = 0;
     bool enclaveTrusted = false; // Not Trusted
 //    int b_pse= OPT_ISSET(flags, OPT_PSE);
-    int b_pse= 1;
+    int b_pse = 1;
 
     string buffer;
 
 
     /* Executes an ECALL that runs sgx_ra_init() */
-    status=enclave_ra_init(def_service_public_key, b_pse, _raContext, pse_status);
+    status = enclave_ra_init(def_service_public_key, b_pse, _raContext, pse_status);
 
     /* Did the ECALL succeed? */
-    if ( status != SGX_SUCCESS ) {
+    if (status != SGX_SUCCESS) {
         fprintf(stderr, "enclave_ra_init: %08x\n", status);
         return 1;
     }
 
     /* If we asked for a PSE session, did that succeed? */
     if (b_pse) {
-        if ( pse_status != SGX_SUCCESS ) {
+        if (pse_status != SGX_SUCCESS) {
             fprintf(stderr, "pse_session: %08x\n", sgxrv);
             return 1;
         }
     }
 
     /* Did sgx_ra_init() succeed? */
-    if ( sgxrv != SGX_SUCCESS ) {
+    if (sgxrv != SGX_SUCCESS) {
         fprintf(stderr, "sgx_ra_init: %08x\n", sgxrv);
         return 1;
     }
@@ -103,7 +111,7 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
     /* Generate msg0 */
 
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
-    if ( status != SGX_SUCCESS ) {
+    if (status != SGX_SUCCESS) {
         enclave_ra_close(eid, &sgxrv, _raContext);
         fprintf(stderr, "sgx_get_extended_epid_group_id: %08x\n", status);
         return 1;
@@ -111,8 +119,8 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
 
     /* Generate msg1 */
 
-    status= sgx_ra_get_msg1(_raContext, eid, sgx_ra_get_ga, &msg1);
-    if ( status != SGX_SUCCESS ) {
+    status = sgx_ra_get_msg1(_raContext, eid, sgx_ra_get_ga, &msg1);
+    if (status != SGX_SUCCESS) {
         enclave_ra_close(eid, &sgxrv, _raContext);
         fprintf(stderr, "sgx_ra_get_msg1: %08x\n", status);
         return 1;
@@ -132,12 +140,12 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
      */
 
     //serialize msg01
-    buffer.resize(sizeof(sgx_ra_msg1_t)+MESSAGE_HEADER);
-    buffer[0]=0x00;
-    memcpy(&buffer[MESSAGE_HEADER],(void*)&msg1,sizeof(sgx_ra_msg1_t));
+    buffer.resize(sizeof(sgx_ra_msg1_t) + MESSAGE_HEADER);
+    buffer[0] = 0x00;
+    memcpy(&buffer[MESSAGE_HEADER], (void *) &msg1, sizeof(sgx_ra_msg1_t));
     _Socket.Send(buffer);
 
-    std::cerr<<"Waiting for msg2\n";
+    std::cerr << "Waiting for msg2\n";
 
     /* Read msg2
      *
@@ -145,9 +153,9 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
      * the end. msg2 is malloc'd in readZ_msg do free it when done.
      */
 
-    if(!_Socket.Recv(buffer)){
+    if (!_Socket.Recv(buffer)) {
         enclave_ra_close(eid, &sgxrv, _raContext);
-        std::cerr<<"protocol error reading msg2\n";
+        std::cerr << "protocol error reading msg2\n";
         exit(1);
     }
 
@@ -163,7 +171,7 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
                               &msg3, &msg3_sz);
 
 
-    if ( status != SGX_SUCCESS ) {
+    if (status != SGX_SUCCESS) {
         enclave_ra_close(eid, &sgxrv, _raContext);
         fprintf(stderr, "sgx_ra_proc_msg2: %08x\n", status);
 
@@ -171,10 +179,10 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
     }
 
 
-    buffer.resize(sizeof(sgx_ra_msg3_t)+MESSAGE_HEADER);
-    buffer[0]=0x02;
+    buffer.resize(sizeof(sgx_ra_msg3_t) + MESSAGE_HEADER);
+    buffer[0] = 0x02;
     _Socket.Send(buffer);
-    if ( msg3 ) {
+    if (msg3) {
         free(msg3);
         msg3 = NULL;
     }
@@ -182,13 +190,13 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
     /* Read Msg4 provided by Service Provider, then process */
 
     _Socket.Recv(buffer);
-    char wrongBUffer[4]={0xff,0xfe,0xfd,0xfc};
-    if(memcmp(wrongBUffer,buffer.c_str(),buffer.length())){
-        std::cerr<<"Attestation failed\n";
+    char wrongBUffer[4] = {0xff, 0xfe, 0xfd, 0xfc};
+    if (memcmp(wrongBUffer, buffer.c_str(), buffer.length())) {
+        std::cerr << "Attestation failed\n";
         exit(1);
     }
 
-    std::cerr<<"Enclave TRUSTED\n";
+    std::cerr << "Enclave TRUSTED\n";
 
 
     enclave_ra_close(eid, &sgxrv, _raContext);
@@ -197,20 +205,20 @@ bool powClient::raProcess (sgx_enclave_id_t eid)
 }
 
 vector<unsigned int> powClient::request(vector<string>hashList, string signature) {
-    vector<unsigned int>ans;
+    vector<unsigned int> ans;
     string buffer;
-    serialize(hashList,buffer);
+    serialize(hashList, buffer);
     _Socket.Send(buffer);
     _Socket.Send(signature);
     _Socket.Recv(buffer);
 
-    int len=buffer.length();
-    for(int i=0;i<len;i+=sizeof(int)){
-        unsigned int ind=0;
-        for(int j=i;j<i+sizeof(int);j++){
-            ind<<=8;
-            unsigned char c=buffer[i];
-            ind|=(unsigned int)c;
+    int len = buffer.length();
+    for (int i = 0; i < len; i += sizeof(int)) {
+        unsigned int ind = 0;
+        for (int j = i; j < i + sizeof(int); j++) {
+            ind <<= 8;
+            unsigned char c = buffer[i];
+            ind |= (unsigned int) c;
         }
         ans.push_back(ind);
     }

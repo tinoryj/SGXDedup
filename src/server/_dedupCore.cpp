@@ -128,11 +128,15 @@ bool signedHash::checkDone() {
         _chunks.push_back(chunkLogicData);
     }
 
-    //完善协议
+    //protocol for dedupcore and storagecore
+    chunkList chunks;
     int size = _hashList.size();
     for (int i = 0; i < size; i++) {
-        _outputMQ.push(_hashList[i] + _chunks[i]);
+        chunks._FP.push_back(_hashList[i]);
+        chunks._chunks.push_back(_chunks[i]);
     }
+    _outputMQ.push(chunks);
+
     return true;
 }
 
@@ -221,6 +225,12 @@ bool _DedupCore::dedupStage1(powSignedHash in, RequiredChunk out) {
             sig->_hashList.push_back(in.hash[i]);
         }
     }
+
+    /* register unique chunk list to timer
+     * when time out,timer will check all chunk received or nor
+     * if yes, then push all chunk to storage
+     * or not, then delete(de-refer) all chunk in cache
+     */
     sig->_stopTime = std::chrono::high_resolution_clock::now();
     _timer.registerHashList(sig);
 
@@ -231,12 +241,16 @@ bool _DedupCore::dedupStage2(chunkList in) {
     string hash;
     int size = in._chunks.size(), i;
     for (i = 0; i < size; i++) {
+        //check chunk hash correct or not
         _crypto->generaHash(in._chunks[i], hash);
         if (hash != in._FP[i]) {
             break;
         }
     }
 
+    /* if i != size, then client are not honest,it modified some chunk's hash
+     * then do not store store chunk come form client
+    */
     if (i == size) {
         cache.setChunk(in._FP, in._chunks);
         return true;
@@ -244,6 +258,13 @@ bool _DedupCore::dedupStage2(chunkList in) {
     return false;
 }
 
+
+/*
+ * dedupCore thread handle
+ * process two type message:
+ *      sgx_signed_hash     : for dedup stage one, regist to timer
+ *      client_upload_chunk : for dedup stage two, save chunk to cache
+ * */
 void _DedupCore::run() {
     epollMessageStruct msg1;
     networkStruct msg2;

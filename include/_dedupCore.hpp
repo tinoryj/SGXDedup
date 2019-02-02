@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <queue>
 #include <map>
+#include "Sock.hpp"
 
 #include "tmp.hpp"
 
@@ -97,8 +98,8 @@ class _DedupCore {
 public:
         _DedupCore();
         ~_DedupCore();
-        bool insertMQ(); 
-        bool extractMQ(); 
+        //bool insertMQ();
+        //bool extractMQ();
         virtual bool dataDedup() = 0;
         //MessageQueue getInputMQ();
         //MessageQueue getOutputMQ();

@@ -21,7 +21,7 @@ public:
     ~Sender();
 
     //status define in protocol.hpp
-    bool sendRecipe(Recipe &request, int &status);
+    bool sendRecipe(Recipe_t &request, int &status);
 
     //status define in protocol.hpp
     bool sendChunkList(chunkList &request, int &status);

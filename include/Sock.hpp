@@ -37,4 +37,20 @@ public:
     Sock Listen();
 };
 
+struct networkStruct{
+    int _type;
+    int _cid;
+    string _data;
+
+    networkStruct(int msgType,int clientID):_type(msgType),_cid(clientID){};
+    networkStruct(){};
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & _type;
+        ar & _cid;
+        ar & _data;
+    }
+};
+
 #endif //GENERALDEDUPSYSTEM_NETWORK_HPP

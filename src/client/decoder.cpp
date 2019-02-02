@@ -27,7 +27,7 @@ bool decoder::decodeChunk(Chunk &newChunk) {
 
 void decoder::run() {
     string buffer,buffer1;
-    keyRecipe recipe;
+    keyRecipe_t recipe;
     this->extractMQ(buffer);
     _crypto->decryptRecipe(buffer,buffer1);
     deserialize(buffer1,recipe);

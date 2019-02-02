@@ -19,7 +19,7 @@ bool _Encoder::extractMQ(Chunk &data){
     return true;
 }
 
-bool _Encoder::insertMQ(Chunk data){
+bool _Encoder::insertMQ(Chunk &data){
     _outputMQ.push(data);
     return true;
 }

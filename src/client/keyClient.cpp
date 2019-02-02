@@ -81,7 +81,7 @@ void keyClient::run(){
 
         for(auto it:chunkList){
             it.editEncryptKey(segmentKey);
-            _outputMQ.push(it);
+            this->insertMQ(it);
         }
     }
     //close ssl connection
@@ -136,4 +136,10 @@ string keyClient::elimination(BIGNUM* invr,string key){
     BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
 
     return result;
+}
+
+bool keyClient::insertMQ(Chunk &newChunk) {
+    _outputMQ.push(newChunk);
+    keyRecipe_t *kr=&newChunk._recipe->_k;
+    kr->_body[newChunk.getID()]._chunkKey=newChunk.getEncryptKey();
 }

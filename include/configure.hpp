@@ -5,22 +5,8 @@
 #ifndef GENERALDEDUPSYSTEM_CONFIGURE_HPP
 #define GENERALDEDUPSYSTEM_CONFIGURE_HPP
 
-#include <cstdio>
-#include <cstring>
-#include <algorithm>
-#include <iostream>
-#include <string>
 #include <vector>
-#include <stack>
-#include <bitset>
-#include <cstdlib>
-#include <cmath>
-#include <set>
-#include <list>
-#include <deque>
-#include <map>
-#include <queue>
-#include <fstream>
+#include <string>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -34,6 +20,7 @@ class Configure {
 private:
     // following settings configure by macro set
     uint64_t _runningType;      // localDedup \ serverDedup
+
     // chunking settings
     uint64_t _chunkingType;     // varSize \ fixedSize \ simple
     uint64_t _maxChunkSize;
@@ -59,6 +46,11 @@ private:
     int _encodeThreadLimit;
     int _keyClientThreadLimit;
     int _keyServerThreadLimit;
+    int _senderThreadLimit;
+    int _receiverThreadLimit;
+    int _decoderThreadLimit;
+    int _dataSRThreadLimit;
+    int _retriverThreadLimit;
 
 
     //POW settings
@@ -74,26 +66,24 @@ private:
     std::vector<int> _storageServerPort;
     uint64_t _maxContainerSize;
 
+    //server setting
     std::string _fileRecipeRootPath;
     std::string _keyRecipeRootPath;
     std::string _containerRootPath;
-
     std::string _fp2ChunkDBName;
     std::string _fn2MetaDBame;
+
+    //client settings
+    int _clientID;
+    int _sendChunkBatchSize;
+
+	//timer settings
+	double _timeOutScale;
 
     // any additional settings
 
 public:
 
-    std::string getFileRecipeRootPath();
-    std::string getKeyRecipeRootPath();
-    std::string getContainerRootPath();
-    std::string getFp2ChunkDBName();
-    std::string getFn2MetaDBName();
-    int getChunkBatchSize();
-    int getClientID();
-
-    int getTimeOutScale();
 
     //  Configure(std::ifstream& confFile); // according to setting json to init configure class
     Configure(std::string path);
@@ -105,8 +95,6 @@ public:
     void readConf(std::string path);
 
     uint64_t getRunningType();
-
-    uint64_t getMaxThreadLimits();
 
     // chunking settings
     uint64_t getChunkingType();
@@ -131,22 +119,36 @@ public:
     // key management settings
     uint64_t getKeyServerNumber();
 
-    uint64_t getKeyBatchSizeMin();
-
-    uint64_t getKeyBatchSizeMax();
-
-    uint64_t getKeyCacheSize();
-
     std::string getKeyServerIP();
     //std::vector<std::string> getkeyServerIP();
 
     int getKeyServerPort();
     //std::vector<int> getKeyServerPort();
 
+    uint64_t getKeyBatchSizeMin();
+
+    uint64_t getKeyBatchSizeMax();
+
+    uint64_t getKeyCacheSize();
+
     //muti thread settings
     int getEncoderThreadLimit();
     int getKeyClientThreadLimit();
     int getKeyServerThreadLimit();
+/*
+    int getSenderThreadLimit();
+    int getReceiverThreadLimit();
+    int getDecoderThreadLimit();
+    int getDataSRThreadLimit();
+    int getRetriverThreadLimit();
+*/
+
+    //pow settings
+    int getQuoteType();
+    int getIASVersion();
+    std::string getPOWServerIP();
+    int getPOWServerPort();
+    std::string getEnclaveName();
 
     // storage management settings
     uint64_t getStorageServerNumber();
@@ -159,16 +161,21 @@ public:
 
     uint64_t getMaxContainerSize();
 
-    uint8_t getQuoteType();
-    int getIasVersion();
-    // any additional configure function
-    // any macro settings should be set here (using "const" to replace "#define")
+    //server settings
+    std::string getFileRecipeRootPath();
+    std::string getKeyRecipeRootPath();
+    std::string getContainerRootPath();
+    std::string getFp2ChunkDBName();
+    std::string getFn2MetaDBame();
 
-    std::string getPOWServerIp();
+    //client settings
+    int getClientID();
+    int getSendChunkBatchSize();
 
-    int getPOWServerPort();
+    //timer settings
+    double getTimeOutScale();
 
-    std::string getEnclaveName();
+    uint64_t getMaxThreadLimits();
 };
 
 
