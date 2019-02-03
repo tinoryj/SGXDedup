@@ -7,6 +7,7 @@ add_library(Sock Sock.cpp)
 
 ###
 add_library(cache cache.cpp)
+add_library(database database.cpp)
 ###
 
 #target_link_libraries(seriazation boost_serialization chunk)

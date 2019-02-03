@@ -18,6 +18,7 @@ private:
     bool getKey(Chunk &newChunk);
     bool decodeChunk(Chunk &newChunk);
     void runDecode();
+    bool outputDecodeRecoder();
 
 public:
     void run();

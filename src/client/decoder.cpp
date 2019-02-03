@@ -34,9 +34,10 @@ void decoder::run() {
     for(auto it:recipe._body){
         this->_keyRecipe.insert(make_pair(it._chunkHash,it._chunkKey));
     }
-    int i,maxThread=config.getMaxThreadLimits();
+    int i,maxThread=config.getDecoderThreadLimit();
     for(i=0;i<maxThread;i++){
         boost::thread th(boost::bind(&decoder::runDecode,this));
+        th.detach();
     }
 }
 
@@ -48,4 +49,9 @@ void decoder::runDecode() {
         this->decodeChunk(tmpChunk);
         this->insertMQ(tmpChunk);
     }
+}
+
+
+bool decoder::outputDecodeRecoder() {
+    return true;
 }

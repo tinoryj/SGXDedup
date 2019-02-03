@@ -18,7 +18,9 @@ public:
     receiver();
     ~receiver();
     void run(std::string fileName);
+    bool receiveData(string &data,int status);
 };
+
 
 /*
 

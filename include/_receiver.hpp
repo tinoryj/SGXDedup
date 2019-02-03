@@ -12,16 +12,15 @@ private:
     _messageQueue _outputMQ;
     // any additional info
 public:
-        _Receiver();
-        ~_Receiver();
-        bool insertMQ(Chunk &chunk);
+    _Receiver();
+    ~_Receiver();
+    bool insertMQ(Chunk &chunk);
 
         //add
-        bool insertMQ(string &keyRecipe);
+    bool insertMQ(string &keyRecipe);
 
     //Implemented in a derived class and implements different types of transmissions by overloading the function
-        virtual bool receiveData(string &data,int status) = 0;
-        _messageQueue getOutputMQ();
-        // any additional functions
+    virtual bool receiveData(string &data,int status) = 0;
+    _messageQueue getOutputMQ();
+    // any additional functions
 };
-

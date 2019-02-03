@@ -16,9 +16,10 @@ receiver::~receiver() {
 
 void receiver::receiveChunk() {
     string tmp;
+    int status;
     Chunk tmpChunk;
     while(1){
-        _socket.Recv(tmp);
+        this->receiveData(tmp,status);
         deserialize(tmp,tmpChunk);
         this->insertMQ(tmpChunk);
     }
@@ -42,11 +43,28 @@ void receiver::run(std::string fileName) {
     }
     this->insertMQ(respond._data);
 
-    int i,maxThread=config.getMaxThreadLimits();
+    int i,maxThread=config.getReceiverThreadLimit();
     for(i=0;i<maxThread;i++){
         boost::thread th(boost::bind(&receiver::receiveChunk,this));
         th.detach();
     }
+}
+
+bool receiver::receiveData(string &data, int status) {
+    networkStruct networkBody;
+    string networkBodyBuffer;
+    Resend:
+    _socket.Recv(networkBodyBuffer);
+    deserialize(networkBodyBuffer,networkBody);
+    status=networkBody._type;
+    if(status==ERROR_RESEND){
+        goto Resend;
+    }
+    if(status==ERROR_CLOSE){
+        std::cerr<<"receiver error\n";
+        exit(1);
+    }
+    data=networkBody._data;
 }
 
 /*

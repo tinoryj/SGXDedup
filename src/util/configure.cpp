@@ -121,6 +121,8 @@ void Configure::readConf(std::string path) {
     //client Configure
     _clientID=root.get<int>\
     ("client._clientID");
+    _sendChunkBatchSize=root.get<int>\
+    ("client._sendChunkBatchSize");
 
     //timer Configure
     _timeOutScale=root.get<double>\
@@ -283,4 +285,57 @@ int Configure::getPOWServerPort() {
 
 std::string Configure::getEnclaveName() {
     return _enclaveName;
+}
+
+
+int Configure::getClientID() {
+    return _clientID;
+}
+
+int Configure::getSendChunkBatchSize() {
+    return _sendChunkBatchSize;
+}
+
+double Configure::getTimeOutScale() {
+    return _timeOutScale;
+}
+
+std::string Configure::getFileRecipeRootPath() {
+    return _fileRecipeRootPath;
+}
+
+std::string Configure::getKeyRecipeRootPath() {
+    return _keyRecipeRootPath;
+}
+
+std::string Configure::getContainerRootPath() {
+    return _containerRootPath;
+}
+
+std::string Configure::getFp2ChunkDBName() {
+    return _fp2ChunkDBName;
+}
+
+std::string Configure::getFn2MetaDBame() {
+    return _fn2MetaDBame;
+}
+
+int Configure::getSenderThreadLimit(){
+    return _senderThreadLimit;
+}
+
+int Configure::getReceiverThreadLimit(){
+    return _receiverThreadLimit;
+}
+
+int Configure::getDecoderThreadLimit(){
+    return _decoderThreadLimit;
+}
+
+int Configure::getDataSRThreadLimit(){
+    return _dataSRThreadLimit;
+}
+
+int Configure::getRetriverThreadLimit(){
+    return _retriverThreadLimit;
 }

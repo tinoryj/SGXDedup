@@ -4,9 +4,9 @@
 
 #include "database.hpp"
 #include "configure.hpp"
-#include "_storage.hpp"
-#include "_dataSR.hpp"
-#include "_dedupCore.hpp"
+#include "storageCore.hpp"
+#include "dataSR.hpp"
+#include "dedupCore.hpp"
 #include "boost/thread.hpp"
 
 Configure config("config.json");
@@ -14,27 +14,27 @@ Configure config("config.json");
 database fp2ChunkDB;
 database fileName2metaDB;
 
-_StorageCore *storage;
-_DataSR *dataSR;
-_DedupCore *dedup;
+storageCore *storage;
+dataSR *SR;
+dedupCore *dedup;
 
 int main(){
     vector<boost::thread*> thList;
     boost::thread *th;
-    dataSR=new _DataSR();
-    dedup=new _DedupCore();
-    storage=new _StorageCore();
+    SR=new dataSR();
+    dedup=new dedupCore();
+    storage=new storageCore();
 
     int i,maxThread;
 
     //start dataSR
-    th=new boost::thread(boost::bind(&_DataSR::workloadProgress,dataSR));
+    th=new boost::thread(boost::bind(&dataSR::run,SR));
     thList.push_back(th);
 
     //start dedupCore
     maxThread=config.getMaxThreadLimits();
     for(i=0;i<maxThread;i++){
-        th=new boost::thread(boost::bind(&_DedupCore::run,dedup));
+        th=new boost::thread(boost::bind(&dedupCore::run,dedup));
         thList.push_back(th);
     }
 
@@ -42,7 +42,7 @@ int main(){
 
     maxThread=config.getMaxThreadLimits();
     for(i=0;i<maxThread;i++){
-        th=new boost::thread(boost::bind(&_StorageCore::run,storage));
+        th=new boost::thread(boost::bind(&storageCore::run,storage));
         thList.push_back(th);
     }
 

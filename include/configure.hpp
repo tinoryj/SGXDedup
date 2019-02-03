@@ -135,13 +135,13 @@ public:
     int getEncoderThreadLimit();
     int getKeyClientThreadLimit();
     int getKeyServerThreadLimit();
-/*
+
     int getSenderThreadLimit();
     int getReceiverThreadLimit();
     int getDecoderThreadLimit();
     int getDataSRThreadLimit();
     int getRetriverThreadLimit();
-*/
+
 
     //pow settings
     int getQuoteType();
@@ -175,8 +175,8 @@ public:
     //timer settings
     double getTimeOutScale();
 
-    uint64_t getMaxThreadLimits();
 };
+
 
 
 #endif //GENERALDEDUPSYSTEM_CONFIGURE_HPP
