@@ -2,7 +2,7 @@
 #include "configure.hpp"
 #include "chunk.hpp"
 #include "tmp.hpp"
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include "protocol.hpp"
 
 class _Receiver {

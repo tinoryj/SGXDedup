@@ -51,7 +51,8 @@ private:
     int _decoderThreadLimit;
     int _dataSRThreadLimit;
     int _retriverThreadLimit;
-
+    int _dedupCoreThreadLimit;
+    int _storageCoreThreadLimit;
 
     //POW settings
     int _quoteType; //0x00 linkable; 0x01 unlinkable
@@ -141,6 +142,8 @@ public:
     int getDecoderThreadLimit();
     int getDataSRThreadLimit();
     int getRetriverThreadLimit();
+    int getDedupCoreThreadLimit();
+    int getStorageCoreThreadLimit();
 
 
     //pow settings

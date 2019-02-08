@@ -11,7 +11,7 @@
 
 class receiver:public _Receiver{
 private:
-    Sock _socket;
+    Socket _socket;
     void receiveChunk();
 
 public:

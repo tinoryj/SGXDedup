@@ -1,7 +1,7 @@
 set(BOOST_INCLUDE_DIR /home/public/include)
 set(BOOST_LIBRARY_DIR /home/public/lib)
-set(OPENSSL_INCLUDE_PATH /home/public/opt/openssl/include)
-set(OPENSSL_LIBRARY_PATH /home/public/opt/openssl/lib)
+set(OPENSSL_INCLUDE_PATH /usr/include/)
+set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
 set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
 
@@ -34,6 +34,8 @@ add_executable(opensslbn RSAsign.cpp)
 add_executable(lru_cache Boost_lru.cpp)
 add_executable(openssltest RSASIGN.cpp)
 
+add_executable(opensslkey opensslkey.cpp)
+
 target_link_libraries(tls_server ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})
 target_link_libraries(tls_client ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})
 
@@ -52,3 +54,5 @@ target_link_libraries(opensslbn ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ} ${B
 target_link_libraries(lru_cache ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ})
 
 target_link_libraries(openssltest ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ})
+
+target_link_libraries(opensslkey ${OPENSSL_LIBRARY_OBJ})

@@ -7,7 +7,7 @@
 extern Configure config;
 
 decoder::decoder() {
-    _crypto=new CryptoPrimitive(LOW_SEC_PAIR_TYPE);
+    _crypto=new CryptoPrimitive();
 }
 
 decoder::~decoder() {}
@@ -18,32 +18,35 @@ bool decoder::getKey(Chunk &newChunk) {
 }
 
 bool decoder::decodeChunk(Chunk &newChunk) {
-    string chunkLogicData;
-    _crypto->decryptWithKey(newChunk.getLogicData(),
-                            newChunk.getEncryptKey(),
-                            chunkLogicData);
-    newChunk.editLogicData(chunkLogicData,chunkLogicData.length());
+    _crypto->chunk_decrypt(newChunk);
 }
 
 void decoder::run() {
-    string buffer,buffer1;
+    string buffer, buffer1;
     keyRecipe_t recipe;
     this->extractMQ(buffer);
-    _crypto->decryptRecipe(buffer,buffer1);
-    deserialize(buffer1,recipe);
-    for(auto it:recipe._body){
-        this->_keyRecipe.insert(make_pair(it._chunkHash,it._chunkKey));
+
+    /**********************/
+    //temp implement
+    char recipekey[128];
+    memset(recipekey, 0, sizeof(recipekey));
+    _crypto->setSymKey(recipekey, 128, recipekey, 128);
+    /*********************/
+
+    _crypto->recipe_decrypt(buffer, recipe);
+    for (auto it:recipe._body) {
+        this->_keyRecipe.insert(make_pair(it._chunkHash, it._chunkKey));
     }
-    int i,maxThread=config.getDecoderThreadLimit();
-    for(i=0;i<maxThread;i++){
-        boost::thread th(boost::bind(&decoder::runDecode,this));
+    int i, maxThread = config.getDecoderThreadLimit();
+    for (i = 0; i < maxThread; i++) {
+        boost::thread th(boost::bind(&decoder::runDecode, this));
         th.detach();
     }
 }
 
 void decoder::runDecode() {
     Chunk tmpChunk;
-    while(1){
+    while (1) {
         this->extractMQ(tmpChunk);
         tmpChunk.editEncryptKey(_keyRecipe.at(tmpChunk.getChunkHash()));
         this->decodeChunk(tmpChunk);

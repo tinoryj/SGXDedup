@@ -12,7 +12,7 @@ extern Configure config;
 
 dedupCore::dedupCore() {
     _netSendMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
-    _crypto=new CryptoPrimitive(LOW_SEC_PAIR_TYPE);
+    _crypto=new CryptoPrimitive();
     _timer.startTimer();
 }
 
@@ -30,7 +30,9 @@ void dedupCore::run() {
     chunkList msg5;
 
     while (1) {
-        this->extractMQ(msg1);
+        if(!this->extractMQ(msg1)){
+            continue;
+        }
         deserialize(msg1._data, msg2);
         switch (msg2._type) {
             case SGX_SIGNED_HASH: {
@@ -97,7 +99,7 @@ bool dedupCore::dedupStage2(chunkList in) {
     int size = in._chunks.size(), i;
     for (i = 0; i < size; i++) {
         //check chunk hash correct or not
-        _crypto->generaHash(in._chunks[i], hash);
+        _crypto->sha256_digest(in._chunks[i],hash);
         if (hash != in._FP[i]) {
             break;
         }
@@ -118,6 +120,7 @@ chunkCache_t::chunkCache_t() {
     this->_cnt=1;
     this->_avaiable;
     this->_chunkLogicData.clear();
+
 }
 
 void chunkCache_t::refer() {
@@ -164,7 +167,7 @@ bool chunkCache_t::readChunk(string &chunkLogicData) {
 }
 
 chunkCache::chunkCache() {
-    this->_crypto=new CryptoPrimitive(SHA256_TYPE);
+    this->_crypto=new CryptoPrimitive();
 }
 
 void chunkCache::refer(string &chunkHash) {
@@ -274,9 +277,10 @@ void Timer::run() {
         {
             boost::unique_lock<boost::shared_mutex> t(this->_mtx);
             emptyFlag = _jobQueue.empty();
-            if (!emptyFlag)
+            if (!emptyFlag) {
                 nowJob = _jobQueue.top();
-            _jobQueue.pop();
+                _jobQueue.pop();
+            }
         }
         if (emptyFlag) {
             this_thread::sleep_for(chrono::milliseconds(500));

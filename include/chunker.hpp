@@ -21,6 +21,7 @@ private:
 
     _messageQueue _outputMq;
     CryptoPrimitive *_cryptoObj;
+    Recipe_t *recipe;
 
     //chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
     bool _chunkerType;
@@ -55,7 +56,7 @@ private:
 
     void simpleChunking();
 
-    void chunkerInit();
+    void chunkerInit(string path);
 
     bool insertMQ(Chunk newChunk);
 

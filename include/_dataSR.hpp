@@ -2,7 +2,7 @@
 #include "boost/thread.hpp"
 #include "boost/bind.hpp"
 #include "sys/epoll.h"
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include "protocol.hpp"
 #include <string>
 using namespace std;
@@ -18,7 +18,7 @@ private:
     _messageQueue _mq2DedupCore;
     _messageQueue _mq2StorageCore;
     //_messageQueue _outputMQ[3];
-    Sock _socket;
+    Socket _socket;
     // any additional info
 public:
     _DataSR();

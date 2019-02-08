@@ -31,8 +31,14 @@ void receiver::run(std::string fileName) {
     string reqBuffer,resBuffer;
     serialize(request, reqBuffer);
     while (1) {
-        _socket.Send(reqBuffer);
-        _socket.Recv(resBuffer);
+        if(!_socket.Send(reqBuffer)){
+            cerr<<"peer closed\n";
+            return;
+        }
+        if(!_socket.Recv(resBuffer)){
+            cerr<<"peer closed\n";
+            return;
+        }
         deserialize(resBuffer,respond);
         if(respond._type==ERROR_RESEND) continue;
         if(respond._type==ERROR_CLOSE){

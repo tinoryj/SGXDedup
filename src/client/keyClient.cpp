@@ -17,16 +17,27 @@ keyClient::keyClient(){
     _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
 
     _bnCTX=BN_CTX_new();
-    _rsa=RSA_new();
-    _key=BIO_new_file(KEYMANGER_PUBLIC_KEY_FILE,"r");
-    PEM_read_bio_RSAPublicKey(_key,&_rsa,NULL,NULL);
+    _keyfile=BIO_new_file(KEYMANGER_PUBLIC_KEY_FILE,"r");
+
+    if(_keyfile== nullptr){
+        cerr<<"Can not open keymanger public key file "<<KEYMANGER_PUBLIC_KEY_FILE<<endl;
+        exit(1);
+    }
+
+    _pubkey=PEM_read_bio_PUBKEY(_keyfile, nullptr, nullptr, nullptr);
+
+    if(_pubkey== nullptr){
+        cerr<<"keymanger public keyfile damage\n";
+        exit(1);
+    }
+    _rsa=EVP_PKEY_get1_RSA(_pubkey);
     RSA_get0_key(_rsa,&_keyN,&_keyE, nullptr);
+    BIO_free_all(_keyfile);
 }
 
 keyClient::~keyClient(){
     delete _keySecurityChannel;
 
-    BIO_free_all(_key);
     RSA_free(_rsa);
 }
 
@@ -34,23 +45,26 @@ void keyClient::run(){
     std::pair<int,SSL*> con=_keySecurityChannel->sslConnect();
 
     while(1){
-        vector<Chunk>chunkList(100);
+        vector<Chunk>chunkList;
         string segmentKey;
         string minHash;
         minHash.resize(32);
+        Chunk tmpchunk;
         char mask[32];
         int segmentSize;
         int minHashIndex,it;
 
         memset(mask,'0',sizeof(mask));
         memset(&minHash[0],255,sizeof(char)*minHash.length());
+        chunkList.clear();
 
         for(it=segmentSize=minHashIndex=0;segmentSize<_keyBatchSizeMax;it++){
-            //may jam here
-            _inputMQ.pop(chunkList[it]);
 
-            //end flag
-            if(chunkList[it].getType()==CHUNKING_DONE)break;
+            if(!_inputMQ.pop(tmpchunk)){
+                break;
+            }
+
+            chunkList.push_back(tmpchunk);
 
             segmentSize+=chunkList[it].getLogicDataSize();
             if(memcmp((void*)chunkList[it].getChunkHash().c_str(),&minHash[0],sizeof(minHash))<0){
@@ -61,6 +75,10 @@ void keyClient::run(){
             if(memcmp(chunkList[it].getChunkHash().c_str()+(32-9),mask,9)==0&&segmentSize>_keyBatchSizeMax){
                 break;
             }
+        }
+
+        if(chunkList.empty()){
+            continue;
         }
 
         if(kCache.existsKeyinCache(minHash)){

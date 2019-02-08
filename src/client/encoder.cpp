@@ -6,7 +6,7 @@
 
 
 encoder::encoder(){
-    _cryptoObj=new CryptoPrimitive(1);
+    _cryptoObj=new CryptoPrimitive();
 }
 
 encoder::~encoder(){
@@ -30,7 +30,5 @@ void encoder::run(){
 
 
 bool encoder::encodeChunk(Chunk& tmpChunk){
-    string newLogicData;
-    _cryptoObj->encryptWithKey(tmpChunk.getLogicData(),tmpChunk.getEncryptKey(),newLogicData);
-    tmpChunk.editLogicData(newLogicData,newLogicData.length());
+    _cryptoObj->chunk_encrypt(tmpChunk);
 }

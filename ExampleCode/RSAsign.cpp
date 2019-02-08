@@ -7,6 +7,5 @@
 #include <bits/stdc++.h>
 using namespace std;
 int main(){
-    cout<<sizeof(RSA);
     return 0;
 }

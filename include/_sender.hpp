@@ -2,7 +2,7 @@
 #define GENERALDEDUPSYSTEM__SENDER_HPP
 
 #include "chunk.hpp"
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "seriazation.hpp"
@@ -11,7 +11,7 @@
 class _Sender {
 private:
     _messageQueue _inputMQ;
-    void getInputMQ();
+    _messageQueue getInputMQ();
     // any additional info
 public:
     _Sender();

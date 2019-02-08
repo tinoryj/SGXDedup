@@ -5,7 +5,7 @@
 #ifndef GENERALDEDUPSYSTEM_POW_HPP
 #define GENERALDEDUPSYSTEM_POW_HPP
 #include "_messageQueue.hpp"
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include "chunk.hpp"
 #include "sgx_urts.h"
 #include "sgx_uae_service.h"

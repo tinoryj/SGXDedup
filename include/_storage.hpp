@@ -8,7 +8,7 @@
 #include "message.hpp"
 #include "protocol.hpp"
 #include "CryptoPrimitive.hpp"
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include <algorithm>
 #include "tmp.hpp"
 #include "recipe.hpp"

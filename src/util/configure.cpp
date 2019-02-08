@@ -93,6 +93,8 @@ void Configure::readConf(std::string path) {
     ("mutiThread._dataSRThreadLimit");
     _retriverThreadLimit=root.get<int>\
     ("mutiThread._retriverThreadLimit");
+    _dedupCoreThreadLimit=root.get<int>\
+    ("mutiThread._dedupCoreThreadLimit");
 
     //pow Configure
     _quoteType=root.get<int>\
@@ -104,7 +106,7 @@ void Configure::readConf(std::string path) {
     _POWServerPort=root.get<int>\
     ("pow._powServerPort");
     _enclaveName=root.get<std::string>\
-    ("pow._receiverThreadLimit");
+    ("pow._enclave_name");
 
     //server Configure
     _fileRecipeRootPath=root.get<std::string>\
@@ -338,4 +340,12 @@ int Configure::getDataSRThreadLimit(){
 
 int Configure::getRetriverThreadLimit(){
     return _retriverThreadLimit;
+}
+
+int Configure::getDedupCoreThreadLimit() {
+    return _dedupCoreThreadLimit;
+}
+
+int Configure::getStorageCoreThreadLimit() {
+    return _storageCoreThreadLimit;
 }

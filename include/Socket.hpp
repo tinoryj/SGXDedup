@@ -21,20 +21,20 @@ using namespace std;
 #define CLIENTTCP 1
 #define UDP 2
 
-class Sock{
+class Socket{
 private:
     sockaddr_in addr;
 public:
     int fd;
-    Sock(const int type,string ip,int port);
-    Sock(int fd,sockaddr_in addr);
-    Sock();
-    ~Sock();
+    Socket(const int type,string ip,int port);
+    Socket(int fd,sockaddr_in addr);
+    Socket();
+    ~Socket();
     void init(const int type,string ip,int port);
     void finish();
     bool Send(const string buffer);
     bool Recv(string& buffer);
-    Sock Listen();
+    Socket Listen();
 };
 
 struct networkStruct{

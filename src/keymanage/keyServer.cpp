@@ -93,7 +93,9 @@ void keyServer::runKeyGen(){
     _messageQueue mq("epoll to workload",READ_MESSAGE);
     message* msg = new message();
     while(1){
-        mq.pop(*msg);
+        if(!mq.pop(*msg)){
+            continue;
+        }
 #ifdef DEBUG
         std::cout<<"start keygen\n";
 #endif

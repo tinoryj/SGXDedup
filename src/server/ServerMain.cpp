@@ -32,7 +32,7 @@ int main(){
     thList.push_back(th);
 
     //start dedupCore
-    maxThread=config.getMaxThreadLimits();
+    maxThread=config.getDedupCoreThreadLimit();
     for(i=0;i<maxThread;i++){
         th=new boost::thread(boost::bind(&dedupCore::run,dedup));
         thList.push_back(th);
@@ -40,7 +40,7 @@ int main(){
 
     //start storageCore
 
-    maxThread=config.getMaxThreadLimits();
+    maxThread=config.getStorageCoreThreadLimit();
     for(i=0;i<maxThread;i++){
         th=new boost::thread(boost::bind(&storageCore::run,storage));
         thList.push_back(th);

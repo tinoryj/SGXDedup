@@ -10,11 +10,12 @@
 #include "protocol.hpp"
 #include "seriazation.hpp"
 #include "configure.hpp"
+#include "CryptoPrimitive.hpp"
 
 class Sender:public _Sender {
 private:
     boost::shared_mutex _sockMtx;
-    Sock _socket;
+    Socket _socket;
 public:
     Sender();
 

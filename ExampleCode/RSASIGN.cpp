@@ -48,7 +48,6 @@ int main() {
     Hash.resize(1024);
     int len;
     EVP_DigestFinal(ctx,(unsigned char*)&Hash[0],(unsigned int*)&len);
-    cout<<sizeof(RSA);
     //verify(Hash,sign(Hash,rsapri),rsapub);
     return 0;
 }

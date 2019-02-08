@@ -23,7 +23,7 @@
 #include "logfile.h"
 #include "settings.h"
 
-#include "Sock.hpp"
+#include "Socket.hpp"
 #include "CryptoPrimitive.hpp"
 #include "_messageQueue.hpp"
 #include "message.hpp"

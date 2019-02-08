@@ -14,7 +14,7 @@
 
 #include <boost/compute/detail/lru_cache.hpp>
 
-#define KEYMANGER_PUBLIC_KEY_FILE "key/public.pem"
+#define KEYMANGER_PUBLIC_KEY_FILE "key/serverpub.key"
 
 class keyClient{
 private:
@@ -26,8 +26,10 @@ private:
 
     RSA* _rsa;
     const BIGNUM *_keyN,*_keyE;
-    BIO* _key;
+    BIO* _keyfile;
     BN_CTX *_bnCTX;
+
+    EVP_PKEY *_prikey,*_pubkey;
 
 public:
     keyClient();

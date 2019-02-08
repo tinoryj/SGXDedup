@@ -29,7 +29,7 @@ storageCore::storageCore() {
                 "abcdefghijklmno";
         _currentContainer._used = 0;
     }
-    _crypto = new CryptoPrimitive(SHA256_TYPE);
+    _crypto = new CryptoPrimitive();
     _netRecvMQ.createQueue(DATASR_TO_STORAGECORE_MQ,READ_MESSAGE);
 }
 

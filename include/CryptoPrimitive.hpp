@@ -4,93 +4,90 @@
 
 #ifndef GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
 #define GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
-
-#include <string>
-#include <cstring>
-#include <iostream>
-#include <vector>
-
-/*for the use of OpenSSL*/
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
 #include <openssl/evp.h>
-#include <openssl/crypto.h>
-#include <openssl/err.h>
-#include <openssl/ecdsa.h>
-#include <openssl/cmac.h>
+#include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/cmac.h>
 
-//#define OPENSSL_THREAD_DEFINES
+#include <cstring>
+#include <string>
+#include <iostream>
 
-#include <openssl/opensslconf.h>
-/*macro for OpenSSL debug*/
-#define OPENSSL_DEBUG 0
-/*for the use of mutex lock*/
-//#include <pthread.h>
-
-#include <sgx_tcrypto.h>
-
-/*macro for the type of a high secure pair of hash generation and encryption*/
-#define HIGH_SEC_PAIR_TYPE 0
-/*macro for the type of a low secure pair of hash generation and encryption*/
-#define LOW_SEC_PAIR_TYPE 1
-/*macro for the type of a SHA-256 hash generation*/
-#define SHA256_TYPE 2
-/*macro for the type of a SHA-1 hash generation*/
-#define SHA1_TYPE 3
+#include "chunk.hpp"
+#include "recipe.hpp"
+#include "seriazation.hpp"
 
 using namespace std;
 
-class CryptoPrimitive{
+class CryptoPrimitive {
 private:
+    EVP_PKEY *_pubKey, *_priKey;
 
-    int _cryptoType;
+    unsigned char *_symKey;
+    unsigned char *_iv;
+    unsigned int _symKeyLen;
+    unsigned int _ivLen;
 
-    EVP_MD_CTX *_mdCTX;
-    const EVP_MD *_md;
+    bool _pubKeySet;
+    bool _priKeySet;
+    bool _symKeySet;
+    bool _ivSet;
 
-    EVP_CIPHER_CTX *_cipherctx;
-    const EVP_CIPHER *_cipher;
+    bool encrypt(string &plaintext,string &ciphertext,const EVP_CIPHER *type);
+    bool decrypt(string &ciphertext,string &plaintext,const EVP_CIPHER *type);
 
-    unsigned char* _iv;
-
-    int _hashSize;
-    int _keySize;
-    int _blockSize;
+    bool cmac(string &messge,string &mac,const EVP_CIPHER *type);
+    bool message_digest(string &message,string &hash,const EVP_MD *type);
+/*
+    bool pub_encrypt();
+    bool pub_decrypt();
+    bool pri_encrypt();
+    bool pri_decrypt();
+*/
+    bool readKeyFromPEM(string pubfile, string prifile, string passwd);
 
 public:
-    CryptoPrimitive(int cryptoType);
-    ~CryptoPrimitive();
-    int getHashSize();
-    int getKeySize();
-    int getBlockSize();
+    CryptoPrimitive();
 
-    bool generaHash(vector<string>data,string& hash);
-    bool generaHash(string data,string& hash);
-    bool encryptWithKey(string plaintext, string key, string& ciphertext);
-    bool decryptWithKey(string ciphertext, string key, string& plaintext);
+    CryptoPrimitive(string pubFile, string priFile, string passwd);
 
-    //for pow
+    bool setSymKey(const char *key, unsigned int len, const char *iv, int ivLen);
+    bool setPriKey(string priFile,string passwd);
+    bool setPubKey(string pubFile);
 
-    int cmac128(unsigned char key[16], unsigned char *message, size_t mlen,
-                unsigned char mac[16]);
+    bool cbc128_encrypt(string &plaintext, string &ciphertext);
+    bool cbc128_decrypt(string &ciphertext, string &plaintext);
+    bool cbc256_encrypt(string &plaintext, string &ciphertext);
+    bool cbc256_decrypt(string &ciphertext, string &plaintext);
 
-    EVP_PKEY *key_generate();
+    bool cfb128_encrypt(string &plaintext, string &ciphertext);
+    bool cfb128_decrypt(string &ciphertext, string &plaintext);
+    bool cfb256_encrypt(string &plaintext, string &ciphertext);
+    bool cfb256_decrypt(string &ciphertext, string &plaintext);
 
-    int key_to_sgx_ec256 (sgx_ec256_public_t *k, EVP_PKEY *key);
+    bool ofb128_encrypt(string &plaintext, string &ciphertext);
+    bool ofb128_decrypt(string &ciphertext, string &plaintext);
+    bool ofb256_encrypt(string &plaintext, string &ciphertext);
+    bool ofb256_decrypt(string &ciphertext, string &plaintext);
 
-    EVP_PKEY *key_from_sgx_ec256 (sgx_ec256_public_t *k);
+    bool cmac128(string &message, string &mac);
+    bool cmac256(string &message, string &mac);
 
-    unsigned char *key_shared_secret (EVP_PKEY *key, EVP_PKEY *peerkey, size_t *slen);
+    bool sha1_digest(string &message, string &digest);
+    bool sha256_digest(string &message, string &digest);
+    bool sha512_digest(string &message, string &digest);
 
-    int ecdsa_sign(unsigned char *msg, size_t mlen, EVP_PKEY *key,
-                   unsigned char r[32], unsigned char s[32], unsigned char digest[32]);
+/*
+    bool base64_encode(string message, string code);
+    bool base64_decode(string code, string message);
+*/
+    bool recipe_encrypt(keyRecipe_t &recipe,string &ans);
+    bool recipe_decrypt(string buffer,keyRecipe_t &recipe);
+    bool chunk_encrypt(Chunk &chunk);
+    bool chunk_decrypt(Chunk &chunk);
 
-    void reverse_bytes(void *dest, void *src, size_t n);
-
-    char *base64_encode(const char *msg, size_t sz);
-
-    int sha256_digest(const unsigned char *msg, size_t mlen, unsigned char digest[32]);
-
-    void decryptRecipe(string cipherText,string plaintText);
 };
 
 

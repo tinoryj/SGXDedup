@@ -64,7 +64,7 @@ int main(int argv, char *argc[]) {
         return 0;
     }
 
-    if(strcmp("-r",argc[1])){
+    if(strcmp("-r",argc[1])==0){
         //run receive
         dcoder=new decoder();
         recver=new receiver();
@@ -76,11 +76,12 @@ int main(int argv, char *argc[]) {
         //start decoder thread
         dcoder->run();
     }
-    else if(strcmp("-s",argc[1])){
+    else if(strcmp("-s",argc[1])==0){
         //run send
         Chunker=new chunker(argc[2]);
         kex=new keyClient();
         coder=new encoder();
+        //sender=new Sender();
 
         //start chunking thread
         th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
@@ -97,12 +98,12 @@ int main(int argv, char *argc[]) {
             th=new boost::thread(boost::bind(&encoder::run,coder));
             thList.push_back(th);
         }
-
+/*
         //start sender thread
         for(int i=0;i<config.getSenderThreadLimit();i++){
             th=new boost::thread(boost::bind(&Sender::run,sender));
             thList.push_back(th);
-        }
+        }*/
     }
     else{
         usage();

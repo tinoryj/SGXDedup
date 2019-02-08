@@ -1,5 +1,7 @@
 #include "_dataSR.hpp"
 
+extern Configure config;
+
 _DataSR::_DataSR() {
     _inputMQ.createQueue(DATASR_IN_MQ,READ_MESSAGE);
     _mq2DedupCore.createQueue(DATASR_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
@@ -10,7 +12,7 @@ _DataSR::_DataSR() {
     _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
     _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
      */
-    _socket.init(SERVERTCP,"",0);
+    _socket.init(SERVERTCP,"",config.getStorageServerPort());
 }
 
 _DataSR::~_DataSR() {
@@ -47,7 +49,7 @@ bool _DataSR::insertMQ(int queueSwitch, epoll_message *msg) {
 
 bool _DataSR::workloadProgress() {
     int epfd;
-    map<int,Sock> socketConnection;
+    map<int,Socket> socketConnection;
     epoll_event ev,event[100];
     epfd=epoll_create(20);
     epoll_message *msg=new epoll_message();
@@ -64,7 +66,7 @@ bool _DataSR::workloadProgress() {
             msg=(epoll_message*)event[i].data.ptr;
             if(msg->_fd==_socket.fd){
                 epoll_message *msg1=new epoll_message();
-                Sock tmpSock=_socket.Listen();
+                Socket tmpSock=_socket.Listen();
                 socketConnection[tmpSock.fd]=tmpSock;
                 msg1->_fd=tmpSock.fd;
                 ev.data.ptr=(void*)msg1;
@@ -73,12 +75,18 @@ bool _DataSR::workloadProgress() {
                 continue;
             }
             if(event[i].events&EPOLLOUT){
-                socketConnection[msg->_fd].Send(msg->_data);
+                if(!socketConnection[msg->_fd].Send(msg->_data)){
+                    cerr<<"perr closed\n";
+                    return false;
+                }
                 delete msg;
                 continue;
             }
             if(event[i].events&EPOLLIN){
-                socketConnection[msg->_fd].Recv(buffer);
+                if(!socketConnection[msg->_fd].Recv(buffer)){
+                    cerr<<"peer closed\n";
+                    return false;
+                }
                 deserialize(buffer,netBody);
                 switch(netBody._type){
                     case SGX_RA_MSG01:{
