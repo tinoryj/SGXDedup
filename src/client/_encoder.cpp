@@ -15,11 +15,14 @@ _messageQueue _Encoder::getOutputMQ(){
 }
 
 bool _Encoder::extractMQ(Chunk &data){
-    _inputMQ.pop(data);
-    return true;
+    return _inputMQ.pop(data);
 }
 
 bool _Encoder::insertMQ(Chunk &data){
+
+#ifdef DEBUG
+    std::cout<<data.getID()<<" : "<<data.getEncryptKey()<<endl;
+#endif
     _outputMQ.push(data);
     return true;
 }

@@ -1,0 +1,1 @@
+add_library(enclave_untrusted enclave_u.c)

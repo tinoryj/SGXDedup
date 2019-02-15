@@ -62,7 +62,52 @@ bool Sender::sendChunkList(chunkList &request, int &status) {
     return false;
 }
 
-bool Sender::sendSignedHashList(powSignedHash &request, RequiredChunk &respond, int status) {
+bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *msg2, int &status) {
+    networkStruct requestBody(SGX_RA_MSG01, config.getClientID());
+    networkStruct respondBody(0, 0);
+    string &requestBuffer = requestBody._data;
+    requestBuffer.resize(sizeof(msg0) + sizeof(msg1));
+    memcpy(&requestBuffer[0], &msg0, sizeof(char));
+    memcpy(&requestBuffer[sizeof(msg0)], &msg1, sizeof(msg1));
+    string sendBuffer, recvBuffer;
+    serialize(requestBody, sendBuffer);
+    if (!this->sendData(sendBuffer, recvBuffer)) {
+        cerr << "peer closed\n";
+        return false;
+    }
+    deserialize(recvBuffer, respondBody);
+    status = respondBody._type;
+    if (status == SUCCESS) {
+        msg2 = (sgx_ra_msg2_t *) new char[respondBody._data.length()];
+        memcpy(msg2, &respondBody._data[0], respondBody._data.length());
+        return true;
+    }
+    return false;
+}
+
+bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *msg4, int &status) {
+    networkStruct requestBody(SGX_RA_MSG3, config.getClientID());
+    networkStruct respondBody(0, 0);
+    string requestBuffer, respondBuffer;
+
+    requestBody._data.resize(sz);
+    memcpy(&requestBody._data[0], &msg3, sz);
+    serialize(requestBody, requestBuffer);
+
+    this->sendData(requestBuffer, respondBuffer);
+
+    deserialize(respondBuffer, respondBody);
+    status = respondBody._type;
+
+    if (status == SUCCESS) {
+        msg4 = new ra_msg4_t;
+        memcpy(msg4, &respondBuffer[0], sizeof(ra_msg4_t));
+        return true;
+    }
+    return false;
+}
+
+bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respond, int status) {
     static networkStruct requestBody(SGX_SIGNED_HASH, config.getClientID());
     static string requestBuffer, respondBuffer;
     networkStruct respondBody(0, 0);

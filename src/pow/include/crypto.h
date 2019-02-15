@@ -51,6 +51,7 @@ EVP_PKEY *key_private_from_bytes (const unsigned char buf[32]);
 int key_to_sgx_ec256 (sgx_ec256_public_t *k, EVP_PKEY *key);
 
 unsigned char *key_shared_secret (EVP_PKEY *key, EVP_PKEY *peerkey, size_t *slen);
+EVP_PKEY *key_generate();
 
 /* SHA256 */
 
@@ -75,6 +76,8 @@ X509_STORE *cert_init_ca(X509 *cert);
 int cert_verify(X509_STORE *store, STACK_OF(X509) *chain);
 STACK_OF(X509) *cert_stack_build(X509 **certs);
 void cert_stack_free(STACK_OF(X509) *chain);
+
+int from_hexstring(unsigned char *dest, const void *src, size_t len);
 
 #ifdef __cplusplus
 };

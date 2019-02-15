@@ -73,6 +73,7 @@ public:
 class dedupCore:public _DedupCore{
 private:
     _messageQueue _netSendMQ;
+    _messageQueue _powMQ;
     CryptoPrimitive* _crypto;
     Timer _timer;
     bool dedupStage1(powSignedHash in, RequiredChunk out);

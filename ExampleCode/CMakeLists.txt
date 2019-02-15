@@ -33,6 +33,7 @@ add_executable(Boost_seriazation Boost_seriazation.cpp)
 add_executable(opensslbn RSAsign.cpp)
 add_executable(lru_cache Boost_lru.cpp)
 add_executable(openssltest RSASIGN.cpp)
+add_executable(mq message_queue.cpp)
 
 add_executable(opensslkey opensslkey.cpp)
 
@@ -56,3 +57,5 @@ target_link_libraries(lru_cache ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ} ${B
 target_link_libraries(openssltest ${OPENSSL_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ})
 
 target_link_libraries(opensslkey ${OPENSSL_LIBRARY_OBJ})
+
+target_link_libraries(mq ${BOOST_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})

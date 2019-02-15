@@ -107,6 +107,11 @@ void Configure::readConf(std::string path) {
     ("pow._powServerPort");
     _enclaveName=root.get<std::string>\
     ("pow._enclave_name");
+    _SPID=root.get<std::string>\
+    ("pow._SPID");
+    _iasServerType=root.get<int>\
+    ("pow._iasServerType");
+
 
     //server Configure
     _fileRecipeRootPath=root.get<std::string>\
@@ -289,6 +294,13 @@ std::string Configure::getEnclaveName() {
     return _enclaveName;
 }
 
+std::string Configure::getSPID() {
+    return _SPID;
+}
+
+int Configure::getIASServerType() {
+    return _iasServerType;
+}
 
 int Configure::getClientID() {
     return _clientID;

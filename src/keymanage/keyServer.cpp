@@ -16,6 +16,7 @@ keyServer::keyServer(){
 
     char passwd[5]="1111";passwd[4]='\0';
     PEM_read_bio_RSAPrivateKey(_key,&_rsa,NULL,passwd);
+    RSA_get0_key(_rsa,&_keyN, nullptr,&_keyD);
 
     _bnCTX=BN_CTX_new();
 }
@@ -27,7 +28,7 @@ keyServer::~keyServer(){
 
 void keyServer::runRecv(){
     map<int,SSL*>sslconnection;
-    _messageQueue mq("epoll to workload",WRITE_MESSAGE);
+    _messageQueue mq(KEYMANGER_SR_TO_KEYGEN,WRITE_MESSAGE);
     epoll_event ev,event[100];
     int epfd,fd;
     message* msg=new message();
@@ -62,7 +63,13 @@ void keyServer::runRecv(){
             }
             if(event[i].events& EPOLLIN){
                 string hash;
-                _keySecurityChannel->sslRead(sslconnection[msg->fd],hash);
+                if(!_keySecurityChannel->sslRead(sslconnection[msg->fd],hash)){
+                    std::cerr<<"client closed\n";
+                    epoll_ctl(msg->epfd,EPOLL_CTL_DEL,msg->fd,&ev);
+                    close(msg->fd);
+                    delete msg;
+                    continue;
+                }
                 memcpy(msg->hash,hash.c_str(),sizeof(msg->hash));
                 mq.push(*msg);
                 delete msg;
@@ -90,9 +97,9 @@ void keyServer::runKeyGen(){
     std::string key;
     epoll_event ev;
     ev.events=EPOLLET|EPOLLOUT;
-    _messageQueue mq("epoll to workload",READ_MESSAGE);
-    message* msg = new message();
+    _messageQueue mq(KEYMANGER_SR_TO_KEYGEN,READ_MESSAGE);
     while(1){
+        message* msg = new message();
         if(!mq.pop(*msg)){
             continue;
         }

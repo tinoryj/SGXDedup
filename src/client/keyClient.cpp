@@ -116,7 +116,10 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
 #ifdef DEBUG
     std::cout<<"request key\n";
 #endif
-    _keySecurityChannel->sslRead(connection,buffer);
+    if(!_keySecurityChannel->sslRead(connection,buffer)){
+        std::cerr<<"key server close\n";
+        exit(1);
+    }
 #ifdef DEBUG
     std::cout<<"receive key\n";
 #endif

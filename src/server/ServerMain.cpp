@@ -5,8 +5,10 @@
 #include "database.hpp"
 #include "configure.hpp"
 #include "storageCore.hpp"
+#include "_messageQueue.hpp"
 #include "dataSR.hpp"
 #include "dedupCore.hpp"
+#include "../pow/include/PowServer.hpp"
 #include "boost/thread.hpp"
 
 Configure config("config.json");
@@ -17,8 +19,15 @@ database fileName2metaDB;
 storageCore *storage;
 dataSR *SR;
 dedupCore *dedup;
+powServer *Pow;
 
 int main(){
+
+    initMQForServer();
+
+    fp2ChunkDB.openDB(config.getFp2ChunkDBName());
+    fileName2metaDB.openDB(config.getFn2MetaDBame());
+
     vector<boost::thread*> thList;
     boost::thread *th;
     SR=new dataSR();
@@ -29,6 +38,10 @@ int main(){
 
     //start dataSR
     th=new boost::thread(boost::bind(&dataSR::run,SR));
+    thList.push_back(th);
+
+    //start pow
+    th=new boost::thread(boost::bind(&powServer::run,Pow));
     thList.push_back(th);
 
     //start dedupCore

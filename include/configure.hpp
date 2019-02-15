@@ -60,6 +60,8 @@ private:
     std::string _POWServerIp;
     int _POWServerPort;
     std::string _enclaveName;
+    std::string _SPID;
+    int _iasServerType;     //0 for develop; 1 for production
 
     // storage management settings
     uint64_t _storageServerNumber;
@@ -152,6 +154,8 @@ public:
     std::string getPOWServerIP();
     int getPOWServerPort();
     std::string getEnclaveName();
+    std::string getSPID();
+    int getIASServerType();
 
     // storage management settings
     uint64_t getStorageServerNumber();

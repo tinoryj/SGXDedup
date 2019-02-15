@@ -4,27 +4,11 @@
 
 
 #include "Enclave_t.h"
-#include "CryptoPrimitive.hpp"
 #include <string.h>
 #include <sgx_utils.h>
 #include <sgx_tae_service.h>
 #include <sgx_tkey_exchange.h>
 #include <sgx_tcrypto.h>
-
-# define SetKey \
-    RSA_set0_key(key,                                           \
-                 BN_bin2bn(n, sizeof(n)-1, NULL),               \
-                 BN_bin2bn(e, sizeof(e)-1, NULL),               \
-                 BN_bin2bn(d, sizeof(d)-1, NULL));              \
-    RSA_set0_factors(key,                                       \
-                     BN_bin2bn(p, sizeof(p)-1, NULL),           \
-                     BN_bin2bn(q, sizeof(q)-1, NULL));          \
-    RSA_set0_crt_params(key,                                    \
-                        BN_bin2bn(dmp1, sizeof(dmp1)-1, NULL),  \
-                        BN_bin2bn(dmq1, sizeof(dmq1)-1, NULL),  \
-                        BN_bin2bn(iqmp, sizeof(iqmp)-1, NULL)); \
-    memcpy(c, ctext_ex, sizeof(ctext_ex) - 1);                  \
-    return (sizeof(ctext_ex) - 1);
 
 static const sgx_ec256_public_t def_service_public_key = {
         {
@@ -43,6 +27,10 @@ static const sgx_ec256_public_t def_service_public_key = {
 };//little endding/hard coding
 
 #define PSE_RETRIES	5	/* Arbitrary. Not too long, not too short. */
+
+/*
+ * quote enclave
+ * */
 
 sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
                              sgx_ra_context_t *ctx, sgx_status_t *pse_status)
@@ -84,32 +72,50 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
     return ret;
 }
 
-sgx_status_t ecall_calHash(sgx_ra_context_t* ctx,char *logicData,int logicDataLenh,char **signature,int signatureLen){
-    static CryptoPrimitive dataCrypto(SHA1_TYPE),hashCrypto(SHA1_TYPE);
-    vector<string>hashList;
-    string Hash="",tmpChunkLogicData,tmpHash;
-    tmpHash.resize(128);
-    int it=0,chunkLength;
-    while(it<logicDataLen){
-        memcpy((char*)&chunkLength,&logicData[it],sizeof(int));
-        it+=sizeof(int);
-        tmpChunkLogicData.resize(chunkLength);
-        memcpy(&tmpChunkLogicData[0],logicData[it],chunkLength);
-        it+=chunkLength;
-        dataCrypto.generaHash(tmpChunkLogicData,tmpHash);
-        hashList.push_back(tmpHash);
+
+/*
+ * work load enclave
+ * */
+sgx_status_t ecall_calcmac(sgx_ra_context_t *ctx,
+                           sgx_ra_key_type_t type,
+                           uint8_t *src,
+                           uint32_t srcLen,
+                           uint8_t *cmac) {
+    sgx_ra_key_128_t k;
+    sgx_sha256_hash_t chunkHash;
+    sgx_cmac_state_handle_t cmac_ctx;
+
+    stx_status_t ret_status;
+
+    ret_status = sgx_ra_get_keys(ctx, type, &k);
+    if (ret_status != SGX_SUCCESS) {
+        return ret_status;
     }
 
-    hashCrypto.generaHash(hashList,Hash);
+    sgx_cmac128_init(cmac_ctx);
 
-    //sign
-    sgx_status_t status;
-    sgx_ra_key_128_t *sk;
-    status=sgx_ra_get_keys(ctx,SGX_RA_KEY_SK,sk);
-    if(status!=SGX_SUCCESS){
-
-
+    int it,sz;
+    for(it=0;it<srcLen;it++){
+        if(srcLen-sizeof(int)<it){
+            cmac= nullptr;
+            return ret_status;
+        }
+        memcpy(&sz,src[it],sizeof(int));
+        it+=4;
+        if(srcLen-it<sz){
+            cmac= nullptr;
+            return ret_status;
+        }
+        ret_status=sgx_sha256_msg(&src[it],sz,&chunkHash);
+        if(ret_status!=SGX_SUCCESS){
+            return ret_status;
+        }
+        sgx_cmac128_update(&chunkHash,32,cmac_ctx);
     }
 
-    hashCrypto.encryptWithKey(Hash,sk,signature);
+    sgx_cmac128_final(cmac_ctx,cmac);
+
+    memset(k, 0, sizeof(k));
+
+    return ret_status;
 }

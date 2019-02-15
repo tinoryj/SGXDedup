@@ -111,14 +111,17 @@ std::pair<int,SSL*> ssl::sslListen() {
     return std::make_pair(fd,sslConection);
 }
 
-void ssl::sslRead(SSL* connection,std::string& data){
+bool ssl::sslRead(SSL* connection,std::string& data){
     int recvd=0,len=0;
-    data.resize(4096);
-    SSL_read(connection,(char*)&len,sizeof(int));
+    if(SSL_read(connection,(char*)&len,sizeof(int))==0){
+        return false;
+    }
+    data.resize(len);
     while(recvd<len){
         recvd+=SSL_read(connection,&data[recvd],4096);
     }
     data.resize(len);
+    return true;
 }
 
 void ssl::sslWrite(SSL* connection,std::string data){

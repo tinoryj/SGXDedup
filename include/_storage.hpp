@@ -10,7 +10,6 @@
 #include "CryptoPrimitive.hpp"
 #include "Socket.hpp"
 #include <algorithm>
-#include "tmp.hpp"
 #include "recipe.hpp"
 #include <boost/thread.hpp>
 

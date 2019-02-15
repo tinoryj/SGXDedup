@@ -48,7 +48,7 @@ public:
     //std::pair<int,SSL*> sslConnect();
     //std::pair<int,SSL*> sslListen();
     void sslWrite(SSL* connection,std::string data);
-    void sslRead(SSL* connection,std::string& data);
+    bool sslRead(SSL* connection,std::string& data);
 };
 
 

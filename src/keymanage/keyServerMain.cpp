@@ -5,12 +5,15 @@
 #define DEBUG
 
 #include "keyServer.hpp"
+#include "_messageQueue.hpp"
 
 Configure config("config.json");
 util::keyCache kCache;
 
 //argc[1] : config file name
 int main(int argv,char** argc){
+    initMQForKeyServer();
+
     config.readConf(argc[1]);
 
     keyServer ks;

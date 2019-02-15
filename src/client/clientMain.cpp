@@ -29,6 +29,7 @@ Usage:
 #include "retriever.hpp"
 #include "reciver.hpp"
 #include "decoder.hpp"
+#include "../pow/include/powClient.hpp"
 
 
 using namespace std;
@@ -44,6 +45,7 @@ Sender *sender;
 receiver *recver;
 decoder *dcoder;
 Retriever *retriever;
+powClient *Pow;
 
 
 
@@ -52,9 +54,10 @@ void usage(){
     cout<<"client -s filename for send file\n";
 }
 
-//argc[1]: file path
-//argc[2]: config file path
 int main(int argv, char *argc[]) {
+
+    initMQForClient();
+
 
     vector<boost::thread*>thList;
     boost::thread *th;
@@ -81,7 +84,13 @@ int main(int argv, char *argc[]) {
         Chunker=new chunker(argc[2]);
         kex=new keyClient();
         coder=new encoder();
-        //sender=new Sender();
+        sender=new Sender();
+        Pow=new powClient();
+
+        //start pow thread
+        th=new boost::thread(boost::bind(&powClient::run,Pow));
+        thList.push_back(th);
+
 
         //start chunking thread
         th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
@@ -98,12 +107,12 @@ int main(int argv, char *argc[]) {
             th=new boost::thread(boost::bind(&encoder::run,coder));
             thList.push_back(th);
         }
-/*
+
         //start sender thread
         for(int i=0;i<config.getSenderThreadLimit();i++){
             th=new boost::thread(boost::bind(&Sender::run,sender));
             thList.push_back(th);
-        }*/
+        }
     }
     else{
         usage();

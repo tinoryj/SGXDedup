@@ -38,7 +38,7 @@ private:
     bool encrypt(string &plaintext,string &ciphertext,const EVP_CIPHER *type);
     bool decrypt(string &ciphertext,string &plaintext,const EVP_CIPHER *type);
 
-    bool cmac(string &messge,string &mac,const EVP_CIPHER *type);
+    bool cmac(vector<string> &messge,string &mac,const EVP_CIPHER *type);
     bool message_digest(string &message,string &hash,const EVP_MD *type);
 /*
     bool pub_encrypt();
@@ -72,8 +72,8 @@ public:
     bool ofb256_encrypt(string &plaintext, string &ciphertext);
     bool ofb256_decrypt(string &ciphertext, string &plaintext);
 
-    bool cmac128(string &message, string &mac);
-    bool cmac256(string &message, string &mac);
+    bool cmac128(vector<string> &message, string &mac);
+    bool cmac256(vector<string> &message, string &mac);
 
     bool sha1_digest(string &message, string &digest);
     bool sha256_digest(string &message, string &digest);

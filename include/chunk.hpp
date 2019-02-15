@@ -63,6 +63,7 @@ public:
         ar & _metaData;
         ar & _chunkHash;
         ar & _encryptKey;
+        ar & _recipe;
     }
 };
 
@@ -89,6 +90,5 @@ struct chunkList {
 };
 
 
-typedef vector<int> RequiredChunk;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

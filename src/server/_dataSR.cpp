@@ -49,64 +49,64 @@ bool _DataSR::insertMQ(int queueSwitch, epoll_message *msg) {
 
 bool _DataSR::workloadProgress() {
     int epfd;
-    map<int,Socket> socketConnection;
-    epoll_event ev,event[100];
-    epfd=epoll_create(20);
-    epoll_message *msg=new epoll_message();
-    msg->_fd=_socket.fd;
-    msg->_epfd=epfd;
-    ev.data.ptr=(void*)msg;
-    ev.events=EPOLLIN|EPOLLET;
-    epoll_ctl(epfd,EPOLL_CTL_ADD,msg->_fd,&ev);
+    map<int, Socket> socketConnection;
+    epoll_event ev, event[100];
+    epfd = epoll_create(20);
+    epoll_message *msg = new epoll_message();
+    msg->_fd = _socket.fd;
+    msg->_epfd = epfd;
+    ev.data.ptr = (void *) msg;
+    ev.events = EPOLLIN | EPOLLET;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, msg->_fd, &ev);
     string buffer;
-    networkStruct netBody(0,0);
-    while(1){
-        int nfd=epoll_wait(epfd,event,20,-1);
-        for(int i=0;i<nfd;i++){
-            msg=(epoll_message*)event[i].data.ptr;
-            if(msg->_fd==_socket.fd){
-                epoll_message *msg1=new epoll_message();
-                Socket tmpSock=_socket.Listen();
-                socketConnection[tmpSock.fd]=tmpSock;
-                msg1->_fd=tmpSock.fd;
-                ev.data.ptr=(void*)msg1;
-                ev.events=EPOLLET|EPOLLIN;
-                epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->_fd,&ev);
+    networkStruct netBody(0, 0);
+    while (1) {
+        int nfd = epoll_wait(epfd, event, 20, -1);
+        for (int i = 0; i < nfd; i++) {
+            msg = (epoll_message *) event[i].data.ptr;
+            if (msg->_fd == _socket.fd) {
+                epoll_message *msg1 = new epoll_message();
+                Socket tmpSock = _socket.Listen();
+                socketConnection[tmpSock.fd] = tmpSock;
+                msg1->_fd = tmpSock.fd;
+                ev.data.ptr = (void *) msg1;
+                ev.events = EPOLLET | EPOLLIN;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->_fd, &ev);
                 continue;
             }
-            if(event[i].events&EPOLLOUT){
-                if(!socketConnection[msg->_fd].Send(msg->_data)){
-                    cerr<<"perr closed\n";
+            if (event[i].events & EPOLLOUT) {
+                if (!socketConnection[msg->_fd].Send(msg->_data)) {
+                    cerr << "perr closed\n";
                     return false;
                 }
                 delete msg;
                 continue;
             }
-            if(event[i].events&EPOLLIN){
-                if(!socketConnection[msg->_fd].Recv(buffer)){
-                    cerr<<"peer closed\n";
+            if (event[i].events & EPOLLIN) {
+                if (!socketConnection[msg->_fd].Recv(buffer)) {
+                    cerr << "peer closed\n";
                     return false;
                 }
-                deserialize(buffer,netBody);
-                switch(netBody._type){
-                    case SGX_RA_MSG01:{
-                        this->insertMQ(MESSAGE2RASERVER,msg);
+                deserialize(buffer, netBody);
+                switch (netBody._type) {
+                    case SGX_RA_MSG01: {
+                        this->insertMQ(MESSAGE2RASERVER, msg);
                         break;
                     }
-                    case SGX_RA_MSG3:{
-                        this->insertMQ(MESSAGE2RASERVER,msg);
+                    case SGX_RA_MSG3: {
+                        this->insertMQ(MESSAGE2RASERVER, msg);
                         break;
                     }
-                    case SGX_SIGNED_HASH:{
-                        this->insertMQ(MESSAGE2DUPCORE,msg);
+                    case SGX_SIGNED_HASH: {
+                        this->insertMQ(MESSAGE2DUPCORE, msg);
                         break;
                     }
-                    case CLIENT_UPLOAD_CHUNK:{
-                        this->insertMQ(MESSAGE2DUPCORE,msg);
+                    case CLIENT_UPLOAD_CHUNK: {
+                        this->insertMQ(MESSAGE2DUPCORE, msg);
                         break;
                     }
-                    case CLIENT_UPLOAD_RECIPE:{
-                        this->insertMQ(MESSAGE2STORAGE,msg);
+                    case CLIENT_UPLOAD_RECIPE: {
+                        this->insertMQ(MESSAGE2STORAGE, msg);
                         break;
                     }
                     default:

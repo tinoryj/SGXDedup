@@ -1,21 +1,59 @@
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include <boost/thread.hpp>
+#include <unistd.h>
 #include <iostream>
 using namespace boost::interprocess;
 using namespace std;
 
+
 void timereceive(){
-    message_queue::remove("mq");
-    message_queue mqout(create_only,"mq",100,2000);
-    message_queue mqin(open_only,"mq");
+    message_queue mqin(open_or_create,"mq",2,1000);
     char buffer[1024];
-    message_queue::size_type recvd_size;
+    unsigned long recvd_size;
     unsigned int priority;
     boost::posix_time::ptime a=microsec_clock::universal_time()+boost::posix_time::milliseconds(1000);
-    mqin.timed_receive(buffer,2000,recvd_size,priority,a);
+    bool status;
+    for(int i=0;i<10;i++) {
+        status=mqin.timed_receive(buffer, 1000, recvd_size, priority, a);
+        std::cerr<<"recv "<<status<<endl;
+        if(!status){
+            i--;
+            continue;
+        }
+        cerr<<buffer[0]<<endl;
+    }
+    cout<<"done\n";
+}
+
+void timesend() {
+    message_queue mqout(open_or_create, "mq", 2,1000);
+    char buffer[1024];
+    message_queue::size_type recvd_size;
+    boost::posix_time::ptime a=microsec_clock::universal_time()+boost::posix_time::milliseconds(100);
+    bool status;
+    unsigned int priority;
+    for (int i = 0; i < 10; i++) {
+        buffer[0]='0'+i;
+        status=mqout.timed_send(buffer,1000,0,a);
+        std::cerr<<"send "<<status<<endl;
+        if(!status){
+            i--;
+        }
+    }
 }
 
 int main(){
+    message_queue::remove("mq");
+    boost::thread th(timesend);
+    sleep(1);
+    boost::thread th1(timereceive);
+    sleep(5);
+    th.join();
+    th1.join();
+    return 0;
+
+    /*
   //Erase previous message queue   
   message_queue::remove("message_queue");  
   
@@ -37,4 +75,5 @@ int main(){
   cout<<buffer<<endl;
 
   return 0;
+   */
 }

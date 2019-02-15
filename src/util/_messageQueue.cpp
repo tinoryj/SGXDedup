@@ -33,3 +33,26 @@ _messageQueue::~_messageQueue(){
     if(_mq!=NULL)
         delete _mq;
 }
+
+
+void initMQForClient(){
+    message_queue::remove(CHUNKER_TO_KEYCLIENT_MQ);
+    message_queue::remove(KEYCLIENT_TO_ENCODER_MQ);
+    message_queue::remove(ENCODER_TO_POW_MQ);
+    message_queue::remove(SENDER_IN_MQ);
+    message_queue::remove(RECEIVER_TO_DECODER_MQ);
+    message_queue::remove(DECODER_TO_RETRIEVER);
+}
+
+void initMQForServer(){
+    message_queue::remove(DATASR_IN_MQ);
+    message_queue::remove(DATASR_TO_POWSERVER_MQ);
+    message_queue::remove(DATASR_TO_DEDUPCORE_MQ);
+    message_queue::remove(DATASR_TO_STORAGECORE_MQ);
+    message_queue::remove(DEDUPCORE_TO_STORAGECORE_MQ);
+}
+
+void initMQForKeyServer(){
+    message_queue::remove(KEYMANGER_SR_TO_KEYGEN);
+
+}

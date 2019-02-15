@@ -12,6 +12,7 @@ extern Configure config;
 
 dedupCore::dedupCore() {
     _netSendMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
+    _powMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ,READ_MESSAGE);
     _crypto=new CryptoPrimitive();
     _timer.startTimer();
 }
@@ -30,33 +31,38 @@ void dedupCore::run() {
     chunkList msg5;
 
     while (1) {
-        if(!this->extractMQ(msg1)){
-            continue;
-        }
-        deserialize(msg1._data, msg2);
-        switch (msg2._type) {
-            case SGX_SIGNED_HASH: {
-                deserialize(msg2._data, msg3);
-                if (this->dedupStage1(msg3, msg4)) {
-                    msg2._type = SUCCESS;
-                } else {
-                    msg2._type = ERROR_RESEND;
+        if(this->extractMQ(msg1)) {
+            deserialize(msg1._data, msg2);
+            switch (msg2._type) {
+                case CLIENT_UPLOAD_CHUNK: {
+                    deserialize(msg2._data, msg5);
+                    if (this->dedupStage2(msg5)) {
+                        msg2._type = SUCCESS;
+                    } else {
+                        msg2._type = ERROR_RESEND;
+                    }
+                    msg2._data.clear();
+                    serialize(msg2, msg1._data);
+                    _netSendMQ.push(msg1);
                 }
-                serialize(msg4, msg2._data);
-                serialize(msg2, msg1._data);
-                _netSendMQ.push(msg1);
-                break;
             }
-            case CLIENT_UPLOAD_CHUNK: {
-                deserialize(msg2._data, msg5);
-                if (this->dedupStage2(msg5)) {
-                    msg2._type = SUCCESS;
-                } else {
-                    msg2._type = ERROR_RESEND;
+        }
+
+        if(_powMQ.pop(msg1)){
+            deserialize(msg1._data, msg2);
+            switch (msg2._type) {
+                case SGX_SIGNED_HASH: {
+                    deserialize(msg2._data, msg3);
+                    if (this->dedupStage1(msg3, msg4)) {
+                        msg2._type = SUCCESS;
+                    } else {
+                        msg2._type = ERROR_RESEND;
+                    }
+                    serialize(msg4, msg2._data);
+                    serialize(msg2, msg1._data);
+                    _netSendMQ.push(msg1);
+                    break;
                 }
-                msg2._data.clear();
-                serialize(msg2, msg1._data);
-                _netSendMQ.push(msg1);
             }
         }
     }

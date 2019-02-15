@@ -8,7 +8,11 @@
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "chunk.hpp"
-//#include "leveldb/db.h"
+
+#ifdef DEBUG
+#include <boost/thread.hpp>
+#include <iostream>
+#endif
 
 class _Encoder {
 private:
@@ -16,6 +20,11 @@ private:
     _messageQueue _outputMQ;
     std::ofstream encodeRecoder;
     // any additional info
+
+#ifdef DEBUG
+    boost::shared_mutex _mtx;
+#endif
+
 public:
     _Encoder();
     ~_Encoder();

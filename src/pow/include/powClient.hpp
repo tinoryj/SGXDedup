@@ -1,20 +1,22 @@
 //
-// Created by a on 1/13/19.
+// Created by a on 2/14/19.
 //
 
-#ifndef GENERALDEDUPSYSTEM_POW_HPP
-#define GENERALDEDUPSYSTEM_POW_HPP
+#ifndef GENERALDEDUPSYSTEM_POWCLIENT_HPP
+#define GENERALDEDUPSYSTEM_POWCLIENT_HPP
+#include "enclave_u.h"
+#include <sgx_urts.h>
+#include <sgx_uae_service.h>
+#include <sgx_ukey_exchange.h>
+#include <string>
+#include "protocol.hpp"
+#include "crypto.h"
+#include "sender.hpp"
+#include <iostream>
 #include "_messageQueue.hpp"
-#include "Socket.hpp"
 #include "chunk.hpp"
-#include "sgx_urts.h"
-#include "sgx_uae_service.h"
-#include "sgx_key_exchange.h"
-#include "sgx_ukey_exchange.h"
 
-#define MESSAGE_HEADER 1
-
-
+//server public key
 static const sgx_ec256_public_t def_service_public_key = {
         {
                 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -31,21 +33,25 @@ static const sgx_ec256_public_t def_service_public_key = {
 
 };
 
-class powClient{
+class powClient {
 private:
-    sgx_enclave_id_t _masterEnclaveID;
-    bool raProcess(sgx_enclave_id_t eid);
-    vector<sgx_enclave_id_t>_eidList;
-    sgx_ra_context_t _raContext;
+    bool enclave_trusted;
     _messageQueue _inputMQ;
     _messageQueue _outputMQ;
-    Sock _Socket;
-    int _batchSize,_hashLen;
+
+    bool request(string &logicDataBatch, uint8_t cmac[128]);
+
 public:
+    sgx_launch_token_t _token = {0};
+    sgx_enclave_id_t _eid;
+    sgx_ra_context_t _ctx;
+    int updated;
+
     powClient();
-    ~powClient();
-    vector<unsigned int> request(vector<string>hashList,string signature);
+
+    bool do_attestation();
+
     void run();
 };
 
-#endif //GENERALDEDUPSYSTEM_POW_HPP
+#endif //GENERALDEDUPSYSTEM_POWCLIENT_HPP

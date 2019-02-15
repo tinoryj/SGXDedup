@@ -198,7 +198,7 @@ bool CryptoPrimitive::decrypt(string &ciphertext, string &plaintext,const EVP_CI
     return true;
 }
 
-bool CryptoPrimitive::cmac(string &messge, string &mac, const EVP_CIPHER *type) {
+bool CryptoPrimitive::cmac(vector<string> &messge, string &mac, const EVP_CIPHER *type) {
     CMAC_CTX *ctx = CMAC_CTX_new();
 
     int keyLen;
@@ -219,10 +219,8 @@ bool CryptoPrimitive::cmac(string &messge, string &mac, const EVP_CIPHER *type) 
         return false;
     }
 
-    if (CMAC_Update(ctx, (void *) &messge[0], messge.length()) != 1) {
-        cerr << "cmac error\n";
-        CMAC_CTX_cleanup(ctx);
-        return false;
+    for(auto it:messge){
+        CMAC_Update(ctx,(void*)it[0],it.length());
     }
 
     mac.clear();
@@ -321,11 +319,11 @@ bool CryptoPrimitive::ofb256_decrypt(string &ciphertext, string &plaintext) {
     return decrypt(ciphertext, plaintext, EVP_aes_256_ofb());
 }
 
-bool CryptoPrimitive::cmac128(string &message, string &mac) {
+bool CryptoPrimitive::cmac128(vector<string> &message, string &mac) {
     return cmac(message, mac, EVP_aes_128_cbc());
 }
 
-bool CryptoPrimitive::cmac256(string &message, string &mac) {
+bool CryptoPrimitive::cmac256(vector<string> &message, string &mac) {
     return cmac(message, mac, EVP_aes_256_cbc());
 }
 
