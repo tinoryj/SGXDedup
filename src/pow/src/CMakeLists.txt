@@ -1,5 +1,7 @@
-add_library(powClient PowClient.cpp)
-target_link_libraries(powClient enclave_untrusted ${SGX_U_LIBRARY_OBJ})
+#src/pow/src
+
+#add_library(powClient PowClient.cpp)
+#target_link_libraries(powClient enclave_untrusted ${SGX_U_LIBRARY_OBJ} sender)
 
 add_library(powServer PowServer.cpp)
 

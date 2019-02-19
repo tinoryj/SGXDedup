@@ -3,7 +3,7 @@
 //
 
 
-#include "Enclave_t.h"
+#include "enclave_t.h"
 #include <string.h>
 #include <sgx_utils.h>
 #include <sgx_tae_service.h>
@@ -85,37 +85,38 @@ sgx_status_t ecall_calcmac(sgx_ra_context_t *ctx,
     sgx_sha256_hash_t chunkHash;
     sgx_cmac_state_handle_t cmac_ctx;
 
-    stx_status_t ret_status;
+    sgx_status_t ret_status;
 
-    ret_status = sgx_ra_get_keys(ctx, type, &k);
+    ret_status = sgx_ra_get_keys(*ctx, type, &k);
     if (ret_status != SGX_SUCCESS) {
         return ret_status;
     }
-
-    sgx_cmac128_init(cmac_ctx);
+    sgx_cmac128_init(&k,&cmac_ctx);
 
     int it,sz;
     for(it=0;it<srcLen;it++){
         if(srcLen-sizeof(int)<it){
-            cmac= nullptr;
+            cmac= NULL;
             return ret_status;
         }
-        memcpy(&sz,src[it],sizeof(int));
+        memcpy(&sz,&src[it],sizeof(int));
         it+=4;
         if(srcLen-it<sz){
-            cmac= nullptr;
+            cmac= NULL;
             return ret_status;
         }
         ret_status=sgx_sha256_msg(&src[it],sz,&chunkHash);
         if(ret_status!=SGX_SUCCESS){
             return ret_status;
         }
-        sgx_cmac128_update(&chunkHash,32,cmac_ctx);
+        sgx_cmac128_update((uint8_t *)&chunkHash,32,cmac_ctx);
     }
 
-    sgx_cmac128_final(cmac_ctx,cmac);
+    sgx_cmac128_final(cmac_ctx,(sgx_cmac_128bit_tag_t *)cmac);
 
     memset(k, 0, sizeof(k));
+
+    sgx_cmac128_close(cmac_ctx);
 
     return ret_status;
 }

@@ -33,6 +33,7 @@ int main(){
     SR=new dataSR();
     dedup=new dedupCore();
     storage=new storageCore();
+    Pow=new powServer();
 
     int i,maxThread;
 
