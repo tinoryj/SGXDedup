@@ -32,6 +32,8 @@ bool Sender::sendRecipe(Recipe_t &request, int &status) {
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
 
+    std::cout<<requestBuffer<<endl<<requestBuffer.length()<<"sender"<<endl;
+
     if(!this->sendData(requestBuffer, respondBuffer)){
         return false;
     }
@@ -62,7 +64,7 @@ bool Sender::sendChunkList(chunkList &request, int &status) {
     return false;
 }
 
-bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *msg2, int &status) {
+bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *&msg2, int &status) {
     networkStruct requestBody(SGX_RA_MSG01, config.getClientID());
     networkStruct respondBody(0, 0);
     string &requestBuffer = requestBody._data;
@@ -85,7 +87,7 @@ bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *ms
     return false;
 }
 
-bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *msg4, int &status) {
+bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *&msg4, int &status) {
     networkStruct requestBody(SGX_RA_MSG3, config.getClientID());
     networkStruct respondBody(0, 0);
     string requestBuffer, respondBuffer;
@@ -107,7 +109,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *msg4, int 
     return false;
 }
 
-bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respond, int status) {
+bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respond, int &status) {
     static networkStruct requestBody(SGX_SIGNED_HASH, config.getClientID());
     static string requestBuffer, respondBuffer;
     networkStruct respondBody(0, 0);
@@ -144,6 +146,7 @@ bool Sender::sendData(string &request, string &respond) {
             return false;
         }
     }
+    return true;
 }
 
 
@@ -160,7 +163,7 @@ void Sender::run() {
             if (!extractMQ(tmpChunk)) {
                 break;
             }
-            recipe = tmpChunk._recipe;
+            recipe = tmpChunk.getRecipePointer();
             recipe->_k._fileSize -= tmpChunk.getLogicDataSize();
             chunks.push_back(tmpChunk);
             if (recipe->_k._fileSize == 0) {

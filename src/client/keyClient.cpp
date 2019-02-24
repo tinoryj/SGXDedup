@@ -161,6 +161,7 @@ string keyClient::elimination(BIGNUM* invr,string key){
 
 bool keyClient::insertMQ(Chunk &newChunk) {
     _outputMQ.push(newChunk);
-    keyRecipe_t *kr=&newChunk._recipe->_k;
+    Recipe_t* _recipe=newChunk.getRecipePointer();
+    keyRecipe_t *kr=&_recipe->_k;
     kr->_body[newChunk.getID()]._chunkKey=newChunk.getEncryptKey();
 }

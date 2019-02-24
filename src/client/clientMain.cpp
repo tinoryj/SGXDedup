@@ -91,7 +91,6 @@ int main(int argv, char *argc[]) {
         th=new boost::thread(boost::bind(&powClient::run,Pow));
         thList.push_back(th);
 
-
         //start chunking thread
         th=new boost::thread(boost::bind(&chunker::chunking,Chunker));
         thList.push_back(th);

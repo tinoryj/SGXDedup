@@ -39,7 +39,7 @@ private:
     _messageQueue _inputMQ;
     _messageQueue _outputMQ;
 
-    bool request(string &logicDataBatch, uint8_t cmac[128]);
+    bool request(string &logicDataBatch, uint8_t cmac[16]);
 
 public:
     sgx_launch_token_t _token = {0};

@@ -111,11 +111,12 @@ public:
         }
     }
 
+
     template<class T>
     bool pop(T &ans) {
         string tmp;
         unsigned int priority;
-        message_queue::size_type recvd_size;
+        message_queue::size_type recvd_size = 0;
         tmp.resize(_messageQueueUnitSize);
 
         using namespace boost::posix_time;

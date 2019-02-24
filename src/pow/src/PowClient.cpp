@@ -1,3 +1,4 @@
+//-s 928A6B0E3CDDAD56EB3BADAA3B63F71F -r -d -v
 
 
 #include "powClient.hpp"
@@ -26,14 +27,18 @@ void powClient::run() {
 
         for(int i=0;i<10;i++){
             if(_inputMQ.pop(tmpChunk)){
+                request.hash.push_back(tmpChunk.getChunkHash());
                 batchChunk.push_back(tmpChunk);
                 batchHash.push_back(tmpChunk.getChunkHash());
+                int currentBatchLen=batchChunkLogicData.length();
+                int newBatchDataLen=tmpChunk.getLogicData().length();
+                batchChunkLogicData.resize(currentBatchLen+sizeof(int));
+                memcpy(&batchChunkLogicData[currentBatchLen],&newBatchDataLen,sizeof(int));
                 batchChunkLogicData+=tmpChunk.getLogicData();
             }
         }
 
         if(batchChunk.empty()) continue;
-
         if(!this->request(batchChunkLogicData,request.signature)){
             cerr<<"sgx request failed\n";
             exit(1);
@@ -45,10 +50,14 @@ void powClient::run() {
             cerr<<"send pow signed hash error\n";
             exit(1);
         }
+
+        for(auto it:lists){
+            _outputMQ.push(batchChunk[it]);
+        }
     }
 }
 
-bool powClient::request(string &logicDataBatch, uint8_t cmac[128]) {
+bool powClient::request(string &logicDataBatch, uint8_t cmac[16]) {
     sgx_status_t retval;
     if (!enclave_trusted) {
         cerr << "can do a request before enclave trusted\n";
@@ -69,6 +78,7 @@ bool powClient::request(string &logicDataBatch, uint8_t cmac[128]) {
         cerr<<"ecall failed\n";
         return false;
     }
+    cerr<<cmac<<endl;
     return true;
 }
 
@@ -99,8 +109,8 @@ bool powClient::do_attestation () {
         return false;
     }
 
-//	status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
-//							 &_ctx, &pse_status);
+	status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
+							 &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
         cerr << "enclave ra init failed : " << status << endl;
         return false;
@@ -112,7 +122,7 @@ bool powClient::do_attestation () {
 
     /* Generate msg0 */
 
-//	status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
+	status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "sgx ge epid failed : " << status << endl;
@@ -134,6 +144,9 @@ bool powClient::do_attestation () {
 		enclave_ra_close(_eid, &sgxrv, _ctx);
 		return false;
 	}
+    else {
+        cerr << "Send msg01 and Recv msg2 success\n";
+    }
 
 
     /* Process Msg2, Get Msg3  */
@@ -152,6 +165,9 @@ bool powClient::do_attestation () {
 		}
 		return false;
 	}
+    else {
+        cerr << "process msg2 success\n";
+    }
 
 	if (msg2 != nullptr) {
 		delete msg2;
@@ -165,6 +181,9 @@ bool powClient::do_attestation () {
 		}
 		return false;
 	}
+    else {
+        cerr << "send msg3 and Recv msg4 success\n";
+    }
 
 	if (msg3 != nullptr) {
 		delete msg3;

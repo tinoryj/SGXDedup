@@ -9,75 +9,37 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-class classA{
-private:
-	string s;
+class Chunk {
 public:
-	classA(string x):s(x){}
-	void print(){
-		cout<<s<<endl;
-	}
+	uint64_t _ID;
+    void* x;
 
-	//overload serialize
+
+
 	template<class Archive>
 	void serialize(Archive &ar, const unsigned int version) {
-		ar & s;
+		ar & _ID;
+        //ar & x;
 	}
-};
+}x;
 
-void serializeToFile(){
-	string s;
-	fstream fout,fin;
+template <class T>
+bool serialize(T data,string &ans){
 
-	cin>>s;
-	classA* tmpa=new classA(s);
-	
-	tmpa->print();
-
-	//serializa
-	fout.open("serialization file",ios::out|ios::binary);
-	boost::archive::text_oarchive out(fout);
-	out<<*tmpa;
-	fout.close();
-
-	//deserialize
-	fin.open("serialization file",ios::in|ios::binary);
-	boost::archive::text_iarchive in(fin);
-	classA *tmpb=new classA("init");
-	tmpb->print();
-	in>>*tmpb;
-	tmpb->print();
-
+    using namespace boost::archive;
+	stringstream buffer;
+	text_oarchive out(buffer);
+	out<<data;
+	ans=buffer.str();
 }
 
-void serializeToString(){
-	stringstream sin,sout;
-	string s,ts;
-	cin>>s;
-	classA* tmpa=new classA(s);
-
-	tmpa->print();
-
-	//serialize
-	boost::archive::text_oarchive out(sout);
-	out<<*tmpa;
-	out<<*tmpa;
-	//sout.str("");
-	//out<<*tmpa;
-	ts=sout.str();
-	cout<<ts<<endl<<"----\n";
-	
-	//deserialize
-	sin.str(ts);
-	boost::archive::text_iarchive in(sin);
-	classA* tmpb=new classA("1232");
-	in>>*tmpb;
-	tmpb->print();
-
-}
 
 int main(){
-	serializeToString();
+	x._ID=12;
+	string tmp;
+	serialize(x,tmp);
+    cout<<tmp<<endl<<tmp.length()<<endl;
+
 	return 0;
 
 }

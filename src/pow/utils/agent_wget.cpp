@@ -34,8 +34,6 @@ using namespace httpparser;
 
 static vector<string> wget_args;
 
-extern int debug, verbose;
-
 #define CHUNK_SZ 8192
 #define WGET_NO_ERROR		0
 #define WGET_SERVER_ERROR	8

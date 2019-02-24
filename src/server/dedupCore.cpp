@@ -55,10 +55,11 @@ void dedupCore::run() {
                     deserialize(msg2._data, msg3);
                     if (this->dedupStage1(msg3, msg4)) {
                         msg2._type = SUCCESS;
+                        serialize(msg4, msg2._data);
                     } else {
                         msg2._type = ERROR_RESEND;
+                        msg2._data.clear();
                     }
-                    serialize(msg4, msg2._data);
                     serialize(msg2, msg1._data);
                     _netSendMQ.push(msg1);
                     break;
@@ -71,7 +72,6 @@ void dedupCore::run() {
 bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk out) {
     out.clear();
     bool status = true;
-    //verifysign
 
     signedHash *sig = new signedHash();
     sig->setMQ(this->getOutputMQ());

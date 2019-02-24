@@ -10,23 +10,27 @@ using namespace std;
 int main(){
     string serverip="127.0.0.1";
     int serverfd;
-    char buffer[64];
+    char buffer[64],bufferin[64];
     struct sockaddr_in serveraddr;
 
     memset(&serveraddr,0,sizeof(serveraddr));
     serveraddr.sin_family=AF_INET;
-    serveraddr.sin_port=htons(6666);
+    serveraddr.sin_port=htons(6667);
     inet_pton(AF_INET,serverip.c_str(),&serveraddr.sin_addr);
 
     serverfd=socket(AF_INET,SOCK_STREAM,0);
 
     connect(serverfd,(sockaddr*)&serveraddr,sizeof(serveraddr));
-
+    cin>>buffer;
+    int i=0;
     while(1){
-        cin>>buffer;
+        cout<<"write : "<<buffer<<endl;
+        if(i==2)break;
+        i++;
         write(serverfd,buffer,sizeof(buffer));
-        read(serverfd,buffer, sizeof(buffer));
-        cout<<buffer<<endl;
+        write(serverfd,buffer,sizeof(buffer));
+        cout<<read(serverfd,buffer, sizeof(bufferin))<<".";
+        cout<<"read :  "<<buffer<<endl;
     }
     return 0;
 }

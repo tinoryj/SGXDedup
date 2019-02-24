@@ -14,7 +14,7 @@ Socket::Socket(int fd, sockaddr_in addr):fd(fd),addr(addr) {}
 Socket::Socket() {}
 
 Socket::~Socket() {
-    this->finish();
+    //this->finish();
 }
 
 void Socket::init(const int type, string ip, int port) {
@@ -71,7 +71,7 @@ Socket Socket::Listen() {
     unsigned int addrSize=sizeof caddr;
     cfd=accept(this->fd,(struct sockaddr*)&caddr,&addrSize);
     if(cfd>0){
-        cerr<<"Clinet connect\n";
+        cerr<<"Clinet connect fd : "<<cfd<<endl;
         return Socket(cfd,caddr);
     }
     cerr<<"Error occur when Server accept connection from Client at Socket listen\n";
@@ -79,17 +79,18 @@ Socket Socket::Listen() {
 }
 
 bool Socket::Send(const string buffer) {
-    int sentSize=0,cnt=0,sendSize=buffer.length();
-    write(this->fd,(char*)&sendSize,sizeof(int));
-    while(sentSize<sendSize&&cnt<5){
+    int sentSize = 0, cnt = 0, sendSize = buffer.length();
+    write(this->fd, (char *) &sendSize, sizeof(int));
+    while (sentSize < sendSize && cnt < 5) {
         cnt++;
-        sentSize+=write(this->fd,buffer.c_str()+sentSize,buffer.length()-sentSize);
+        sentSize += write(this->fd, buffer.c_str() + sentSize, buffer.length() - sentSize);
     }
-    return sentSize==sendSize;
+    return (sentSize == sendSize);
 }
 
 bool Socket::Recv(string &buffer) {
-    size_t recvedSize=0,len,cnt=0,s;
+    size_t recvedSize=0,cnt=0,s;
+    int len;
     buffer.clear();
     s=read(this->fd,(char*)&len,sizeof(int));
     if(s==0){
@@ -102,5 +103,5 @@ bool Socket::Recv(string &buffer) {
         cnt++;
         recvedSize+=read(this->fd,&buffer[recvedSize],len-recvedSize);
     }
-    return recvedSize==s;
+    return (recvedSize == len);
 }

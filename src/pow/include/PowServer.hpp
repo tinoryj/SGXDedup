@@ -20,6 +20,7 @@
 #define CA_BUNDLE   "/etc/ssl/certs/ca-certificates.crt"
 #define IAS_SIGNING_CA_FILE "key/AttestationReportSigningCACert.pem"
 #define IAS_CERT_FILE "key/iasclient.crt"
+#define IAS_CLIENT_KEY "key/iasclient.pem"
 
 //sp private key
 static const unsigned char def_service_private_key[32] = {

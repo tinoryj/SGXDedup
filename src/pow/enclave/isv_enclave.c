@@ -33,8 +33,7 @@ static const sgx_ec256_public_t def_service_public_key = {
  * */
 
 sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
-                             sgx_ra_context_t *ctx, sgx_status_t *pse_status)
-{
+                             sgx_ra_context_t *ctx, sgx_status_t *pse_status) {
     sgx_status_t ra_status;
 
     /*
@@ -42,31 +41,30 @@ sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
      * before calling sgx_ra_init()
      */
 
-    if ( b_pse ) {
-        int retries= PSE_RETRIES;
+    if (b_pse) {
+        int retries = PSE_RETRIES;
         do {
-            *pse_status= sgx_create_pse_session();
-            if ( *pse_status != SGX_SUCCESS ) return SGX_ERROR_UNEXPECTED;
+            *pse_status = sgx_create_pse_session();
+            if (*pse_status != SGX_SUCCESS) return SGX_ERROR_UNEXPECTED;
         } while (*pse_status == SGX_ERROR_BUSY && retries--);
-        if ( *pse_status != SGX_SUCCESS ) return SGX_ERROR_UNEXPECTED;
+        if (*pse_status != SGX_SUCCESS) return SGX_ERROR_UNEXPECTED;
     }
 
-    ra_status= sgx_ra_init(&key, b_pse, ctx);
+    ra_status = sgx_ra_init(&key, b_pse, ctx);
 
-    if ( b_pse ) {
-        int retries= PSE_RETRIES;
+    if (b_pse) {
+        int retries = PSE_RETRIES;
         do {
-            *pse_status= sgx_create_pse_session();
-            if ( *pse_status != SGX_SUCCESS ) return SGX_ERROR_UNEXPECTED;
+            *pse_status = sgx_create_pse_session();
+            if (*pse_status != SGX_SUCCESS) return SGX_ERROR_UNEXPECTED;
         } while (*pse_status == SGX_ERROR_BUSY && retries--);
-        if ( *pse_status != SGX_SUCCESS ) return SGX_ERROR_UNEXPECTED;
+        if (*pse_status != SGX_SUCCESS) return SGX_ERROR_UNEXPECTED;
     }
 
     return ra_status;
 }
 
-sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
-{
+sgx_status_t enclave_ra_close(sgx_ra_context_t ctx) {
     sgx_status_t ret;
     ret = sgx_ra_close(ctx);
     return ret;
@@ -91,28 +89,28 @@ sgx_status_t ecall_calcmac(sgx_ra_context_t *ctx,
     if (ret_status != SGX_SUCCESS) {
         return ret_status;
     }
-    sgx_cmac128_init(&k,&cmac_ctx);
+    sgx_cmac128_init(&k, &cmac_ctx);
 
-    int it,sz;
-    for(it=0;it<srcLen;it++){
-        if(srcLen-sizeof(int)<it){
-            cmac= NULL;
+    int it, sz = 0;
+    for (it = 0; it < srcLen; it = it + sz) {
+        if (srcLen - sizeof(int) < it) {
+            memset(cmac, 0, sizeof(cmac));
             return ret_status;
         }
-        memcpy(&sz,&src[it],sizeof(int));
-        it+=4;
-        if(srcLen-it<sz){
-            cmac= NULL;
+        memcpy(&sz, &src[it], sizeof(int));
+        it = it + 4;
+        if (srcLen - it < sz) {
+            memset(cmac, 0, sizeof(cmac));
             return ret_status;
         }
-        ret_status=sgx_sha256_msg(&src[it],sz,&chunkHash);
-        if(ret_status!=SGX_SUCCESS){
+        ret_status = sgx_sha256_msg(&src[it], sz, &chunkHash);
+        if (ret_status != SGX_SUCCESS) {
             return ret_status;
         }
-        sgx_cmac128_update((uint8_t *)&chunkHash,32,cmac_ctx);
+        sgx_cmac128_update((uint8_t *) &chunkHash, 32, cmac_ctx);
     }
 
-    sgx_cmac128_final(cmac_ctx,(sgx_cmac_128bit_tag_t *)cmac);
+    sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t *) cmac);
 
     memset(k, 0, sizeof(k));
 

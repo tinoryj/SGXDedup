@@ -15,6 +15,9 @@ CryptoPrimitive::CryptoPrimitive() {
     _symKey = nullptr;
     _iv = nullptr;
     _pubKeySet = _priKeySet = _symKeySet = _ivSet = false;
+
+    ERR_load_crypto_strings();
+    OpenSSL_add_all_algorithms();
 }
 
 CryptoPrimitive::CryptoPrimitive(string pubFile, string priFile, string passwd) {
@@ -220,7 +223,7 @@ bool CryptoPrimitive::cmac(vector<string> &messge, string &mac, const EVP_CIPHER
     }
 
     for(auto it:messge){
-        CMAC_Update(ctx,(void*)it[0],it.length());
+        CMAC_Update(ctx,(void*)&it[0],it.length());
     }
 
     mac.clear();

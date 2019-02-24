@@ -6,6 +6,8 @@
 #define GENERALDEDUPSYSTEM_DATASR_HPP
 
 #include "_dataSR.hpp"
+#include "boost/thread.hpp"
+
 class dataSR:public _DataSR{
 public:
     void run();

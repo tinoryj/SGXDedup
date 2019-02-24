@@ -20,11 +20,14 @@ _DataSR::~_DataSR() {
 }
 
 bool _DataSR::extractMQ() {
-    epoll_message *msg=new epoll_message();;
+//    epoll_message *msg=new epoll_message();;
     epoll_event ev;
-    ev.events=EPOLLIN|EPOLLET;
+    ev.events=EPOLLOUT|EPOLLET;
     while(1){
-        _inputMQ.pop(*msg);
+        epoll_message *msg=new epoll_message();;
+        if(!_inputMQ.pop(*msg)){
+            continue;
+        }
         ev.data.ptr=(void*)msg;
         epoll_ctl(msg->_epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
     }
@@ -59,16 +62,20 @@ bool _DataSR::workloadProgress() {
     ev.events = EPOLLIN | EPOLLET;
     epoll_ctl(epfd, EPOLL_CTL_ADD, msg->_fd, &ev);
     string buffer;
+    Socket tmpSock;
     networkStruct netBody(0, 0);
     while (1) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {
             msg = (epoll_message *) event[i].data.ptr;
+
+            //Listen fd
             if (msg->_fd == _socket.fd) {
                 epoll_message *msg1 = new epoll_message();
-                Socket tmpSock = _socket.Listen();
+                tmpSock = _socket.Listen();
                 socketConnection[tmpSock.fd] = tmpSock;
                 msg1->_fd = tmpSock.fd;
+                msg1->_epfd = epfd;
                 ev.data.ptr = (void *) msg1;
                 ev.events = EPOLLET | EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->_fd, &ev);
@@ -79,7 +86,8 @@ bool _DataSR::workloadProgress() {
                     cerr << "perr closed\n";
                     return false;
                 }
-                delete msg;
+                ev.data.ptr = (void *) msg;
+                epoll_ctl(epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
                 continue;
             }
             if (event[i].events & EPOLLIN) {
@@ -88,6 +96,7 @@ bool _DataSR::workloadProgress() {
                     return false;
                 }
                 deserialize(buffer, netBody);
+                serialize(netBody,msg->_data);
                 switch (netBody._type) {
                     case SGX_RA_MSG01: {
                         this->insertMQ(MESSAGE2RASERVER, msg);
@@ -98,7 +107,7 @@ bool _DataSR::workloadProgress() {
                         break;
                     }
                     case SGX_SIGNED_HASH: {
-                        this->insertMQ(MESSAGE2DUPCORE, msg);
+                        this->insertMQ(MESSAGE2RASERVER, msg);
                         break;
                     }
                     case CLIENT_UPLOAD_CHUNK: {

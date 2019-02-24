@@ -5,7 +5,9 @@
 #include <dataSR.hpp>
 
 void dataSR::run(){
+    boost::thread th(boost::bind(&_DataSR::extractMQ,this));
     this->workloadProgress();
+    th.detach();
 }
 
 bool dataSR::receiveData() {}

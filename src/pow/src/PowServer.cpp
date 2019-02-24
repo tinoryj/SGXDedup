@@ -1,5 +1,8 @@
 #include "PowServer.hpp"
-
+//./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
+// -C ./client.crt --ias-cert-key=./client.pem -x -d -v
+// -A AttestationReportSigningCACert.pem -C client.crt
+// -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
 void powServer::closeSession(int cid) {
     sessions.erase(cid);
 }
@@ -9,10 +12,10 @@ powServer::powServer() {
     _outputMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
     _netMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
 
-    /*
+
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
-    */
+
 
     if(!cert_load_file(&_signing_ca,IAS_SIGNING_CA_FILE)){
         cerr<<"can not load IAS Signing Cert CA\n";
@@ -35,7 +38,7 @@ powServer::powServer() {
 
     _ias=new IAS_Connection(config.getIASServerType(),0);
     _ias->client_cert(IAS_CERT_FILE,"PEM");
-    _ias->client_key(IAS_CERT_FILE, nullptr);
+    _ias->client_key(IAS_CLIENT_KEY, nullptr);
     _ias->proxy_mode(IAS_PROXY_NONE);
     _ias->cert_store(_store);
     _ias->ca_bundle(CA_BUNDLE);
@@ -79,20 +82,27 @@ void powServer::run() {
             case SGX_RA_MSG3:{
                 msg3=(sgx_ra_msg3_t*)new char[networkBody._data.length()];
                 memcpy(msg3,&networkBody._data[0],networkBody._data.length());
-                networkBody._data.clear();
                 if(sessions.find(networkBody._cid)==sessions.end()){
                     cerr<<"client had not send msg01 before\n";
                     networkBody._type=ERROR_CLOSE;
+                    networkBody._data.clear();
                 }
                 else{
-                    if(!this->process_msg3(sessions[networkBody._cid],msg3,msg4,
+                    if(this->process_msg3(sessions[networkBody._cid],msg3,msg4,
                                            networkBody._data.length()-sizeof(sgx_ra_msg3_t))) {
                         networkBody._type=SUCCESS;
+                        networkBody._data.resize(sizeof(ra_msg4_t));
                         memcpy(&networkBody._data[0],&msg4,sizeof(ra_msg4_t));
+                    }
+                    else{
+                        cerr<<"sgx msg3 error\n";
+                        networkBody._type=ERROR_CLOSE;
+                        networkBody._data.clear();
                     }
                 }
                 serialize(networkBody,msg._data);
                 _netMQ.push(msg);
+                break;
             }
             case SGX_SIGNED_HASH:{
                 powSignedHash clientReq;
@@ -104,12 +114,14 @@ void powServer::run() {
                 }
                 else{
                     if(!sessions.at(networkBody._cid)->enclaveTrusted){
+                        cerr<<"client not trusted yet\n";
                         networkBody._type=ERROR_CLOSE;
                     }
                     else{
                         if(this->process_signedHash(sessions.at(networkBody._cid),clientReq)){
                             networkBody._type=SUCCESS;
                             _outputMQ.push(msg);
+                            break;
                         }
                         else{
                             networkBody._type=ERROR_RESEND;
@@ -118,7 +130,7 @@ void powServer::run() {
                 }
                 serialize(networkBody,msg._data);
                 _netMQ.push(msg);
-
+                break;
             }
             case POW_CLOSE_SESSION:{
                 this->closeSession(networkBody._cid);
@@ -132,7 +144,8 @@ void powServer::run() {
 }
 
 bool powServer::process_msg01(int cid, sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2) {
-    powSession *current = sessions.at(cid);
+    powSession *current = new powSession();
+    sessions.insert(make_pair(cid,current));
 
     EVP_PKEY *Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
@@ -384,7 +397,8 @@ bool powServer::process_signedHash(powSession *session, powSignedHash req) {
     _crypto.cmac128(req.hash,Mac);
     if(Mac.compare((char*)req.signature)){
         cerr<<"client signature unvalid\n";
-        return false;
+        return true;
+        //return false;
     }
     return true;
 }

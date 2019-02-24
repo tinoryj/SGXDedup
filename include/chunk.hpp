@@ -18,10 +18,9 @@ private:
     std::string _chunkHash;
     std::string _encryptKey;
     // any additional info of chunk
+    unsigned char _recipe[8];
 
 public:
-
-    Recipe_t *_recipe;
 
     Chunk();
 
@@ -43,6 +42,16 @@ public:
     std::string getMetaData();
 
     std::string getEncryptKey();
+
+    Recipe_t *getRecipePointer(){
+        Recipe_t *ans;
+        memcpy(&ans,_recipe,sizeof(Recipe_t*));
+        return ans;
+    }
+
+    void editRecipePointer(Recipe_t *p){
+        memcpy(_recipe,&p,sizeof(Recipe_t*));
+    }
 
     bool editType(uint64_t type);
 
