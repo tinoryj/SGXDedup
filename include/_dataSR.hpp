@@ -13,6 +13,9 @@ using namespace std;
 
 class _DataSR {
 private:
+    map<int,epoll_message*> _epollSession;
+    boost::shared_mutex _sessionMtx;
+
     _messageQueue _inputMQ;
     _messageQueue _mq2RAServer;
     _messageQueue _mq2DedupCore;

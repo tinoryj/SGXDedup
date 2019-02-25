@@ -69,7 +69,7 @@ void dedupCore::run() {
     }
 }
 
-bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk out) {
+bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk &out) {
     out.clear();
     bool status = true;
 

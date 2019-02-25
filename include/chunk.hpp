@@ -24,7 +24,13 @@ public:
 
     Chunk();
 
-    Chunk(uint64_t ID, uint64_t type = 0, uint64_t logicDataSize = 0, std::string logicData = "", \
+    /* if do't set logicData as reference here, something strange happend
+     * for example:
+     * if message="aaa" then call new Chunk(..., message, ...),
+     * when get int this construct function, logicData will not equal to message.
+     * I DO NOT KNOW WHY ......................................................
+     * */
+    Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string &logicData, \
                 std::string metaData = "", std::string chunkHash = "");
 
     ~Chunk() {};
@@ -62,6 +68,8 @@ public:
     bool editEncryptKey(std::string newKey);
     // any additional function of chunk
 
+    //use to edit hash after encode chunk
+    bool editChunkHash(std::string newHash);
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {

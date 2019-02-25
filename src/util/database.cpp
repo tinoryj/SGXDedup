@@ -24,11 +24,11 @@ void database::openDB(std::string dbName) {
         std::cerr<<"Database lock\n";
         return ;
     }
-
+/*
     dbLock.open("."+dbName+".lock",std::fstream::out);
     dbLock<<"lock";
     dbLock.close();
-
+*/
     _dbName=dbName;
 
     leveldb::Options options;

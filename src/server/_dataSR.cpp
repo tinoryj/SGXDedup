@@ -20,16 +20,23 @@ _DataSR::~_DataSR() {
 }
 
 bool _DataSR::extractMQ() {
-//    epoll_message *msg=new epoll_message();;
+    epoll_message *msg = new epoll_message();;
     epoll_event ev;
-    ev.events=EPOLLOUT|EPOLLET;
-    while(1){
-        epoll_message *msg=new epoll_message();;
-        if(!_inputMQ.pop(*msg)){
+    ev.events = EPOLLOUT | EPOLLET;
+    while (1) {
+//        epoll_message *msg=new epoll_message();;
+        if (!_inputMQ.pop(*msg)) {
             continue;
         }
-        ev.data.ptr=(void*)msg;
-        epoll_ctl(msg->_epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
+
+        //client had closed,abandon these data
+        if(_epollSession.find(msg->_fd)==_epollSession.end()){
+            continue;
+        }
+        ev.data.ptr = (void *) _epollSession.at(msg->_fd);
+        _epollSession.at(msg->_fd)->_data = msg->_data;
+//        ev.data.ptr=(void*)msg;
+        epoll_ctl(msg->_epfd, EPOLL_CTL_MOD, msg->_fd, &ev);
     }
 }
 
@@ -47,7 +54,6 @@ bool _DataSR::insertMQ(int queueSwitch, epoll_message *msg) {
             _mq2DedupCore.push(*msg);
         }
     }
-    delete msg;
 }
 
 bool _DataSR::workloadProgress() {
@@ -77,14 +83,21 @@ bool _DataSR::workloadProgress() {
                 msg1->_fd = tmpSock.fd;
                 msg1->_epfd = epfd;
                 ev.data.ptr = (void *) msg1;
-                ev.events = EPOLLET | EPOLLIN;
+                _epollSession.insert(make_pair(tmpSock.fd,msg1));
+                //ev.events = EPOLLET | EPOLLIN;
                 epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->_fd, &ev);
                 continue;
             }
             if (event[i].events & EPOLLOUT) {
                 if (!socketConnection[msg->_fd].Send(msg->_data)) {
                     cerr << "perr closed\n";
-                    return false;
+                    netBody._type=POW_CLOSE_SESSION;
+                    netBody._data.clear();
+                    serialize(netBody,msg->_data);
+                    epoll_ctl(epfd,EPOLL_CTL_DEL,msg->_fd,&ev);
+                    _epollSession.erase(msg->_fd);
+                    this->insertMQ(MESSAGE2RASERVER,msg);
+                    continue;
                 }
                 ev.data.ptr = (void *) msg;
                 epoll_ctl(epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
@@ -93,7 +106,13 @@ bool _DataSR::workloadProgress() {
             if (event[i].events & EPOLLIN) {
                 if (!socketConnection[msg->_fd].Recv(buffer)) {
                     cerr << "peer closed\n";
-                    return false;
+                    netBody._type=POW_CLOSE_SESSION;
+                    netBody._data.clear();
+                    serialize(netBody,msg->_data);
+                    epoll_ctl(epfd,EPOLL_CTL_DEL,msg->_fd,&ev);
+                    _epollSession.erase(msg->_fd);
+                    this->insertMQ(MESSAGE2RASERVER,msg);
+                    continue;
                 }
                 deserialize(buffer, netBody);
                 serialize(netBody,msg->_data);

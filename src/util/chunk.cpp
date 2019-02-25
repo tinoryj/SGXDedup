@@ -6,7 +6,7 @@
 
 Chunk::Chunk(){}
 
-Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string logicData, \
+Chunk::Chunk(uint64_t ID, uint64_t type, uint64_t logicDataSize, std::string &logicData, \
                 std::string metaData, std::string chunkHash) {
 //    logicData.resize(logicDataSize);
 
@@ -77,4 +77,8 @@ bool Chunk::editLogicData(std::string newLogicDataContent, uint64_t newLogicData
 bool Chunk::editEncryptKey(std::string newKey) {
 
     this->_encryptKey = newKey;
+}
+
+bool Chunk::editChunkHash(std::string newHash) {
+    this->_chunkHash = newHash;
 }

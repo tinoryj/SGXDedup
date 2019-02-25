@@ -57,8 +57,8 @@ private:
     _messageQueue _netMQ;
     map<int,powSession*>sessions;
     CryptoPrimitive _crypto;
-    void closeSession(int eid);
-    bool process_msg01(int cid,sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2);
+    void closeSession(int fd);
+    bool process_msg01(int fd,sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2);
     bool process_msg3 (powSession *session,sgx_ra_msg3_t *msg3, ra_msg4_t &msg4,uint32_t quote_sz);
     bool process_signedHash( powSession *session,powSignedHash req);
     bool derive_kdk(EVP_PKEY *Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);

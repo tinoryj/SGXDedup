@@ -4,6 +4,7 @@
 
 #include "sender.hpp"
 
+
 extern Configure config;
 
 Sender::Sender() {
@@ -165,7 +166,6 @@ void Sender::run() {
             }
             recipe = tmpChunk.getRecipePointer();
             recipe->_k._fileSize -= tmpChunk.getLogicDataSize();
-            chunks.push_back(tmpChunk);
             if (recipe->_k._fileSize == 0) {
                 recipe->_k._fileSize = recipe->_f._fileSize;
                 while (1) {
@@ -178,6 +178,7 @@ void Sender::run() {
                         exit(1);
                     }
                     if (status == ERROR_RESEND) {
+                        std::cerr << "Server Reject Chunk and send resend flag\n";
                         continue;
                     }
                 }
@@ -185,17 +186,23 @@ void Sender::run() {
             }
         }
 
-        if(chunks._chunks.empty()){
+        if (chunks._chunks.empty()) {
             continue;
         }
 
         bool success = false;
         while (1) {
             success = this->sendChunkList(chunks, status);
-            if (success)break;
+            if (success) {
+                cerr << "Send Chunk : " << chunks._chunks.size() << endl;
+                break;
+            }
             if (status == ERROR_CLOSE) {
                 std::cerr << "Server Reject Chunk and send close flag\n";
                 exit(1);
+            }
+            if (status == ERROR_RESEND) {
+                std::cerr << "Server Reject Chunk and send resend flag\n";
             }
         }
     }

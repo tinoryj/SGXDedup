@@ -4,6 +4,7 @@
 
 #include "chunker.hpp"
 
+
 extern Configure config;
 
 chunker::chunker() {}
@@ -142,8 +143,10 @@ void chunker::fixSizeChunking() {
             chunkBufferCnt += y;
             if (chunkBufferCnt >= _avgChunkSize) {
                 string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-                _cryptoObj->sha256_digest(message,hash);
+
+                _cryptoObj->sha256_digest(message, hash);
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+
                 insertMQ(*tmpchunk);
                 delete tmpchunk;
 
@@ -158,8 +161,10 @@ void chunker::fixSizeChunking() {
     }
     if (chunkBufferCnt != 0) {
         string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-        _cryptoObj->sha256_digest(message,hash);
+
+        _cryptoObj->sha256_digest(message, hash);
         tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+
         std::cout<<chunkBufferCnt<<std::endl;
 
         insertMQ(*tmpchunk);
@@ -183,7 +188,7 @@ void chunker::varSizeChunking() {
         int i, len = fin.gcount();
         for (i = 0; i < len; i++) {
 
-            if(chunkIDCnt>300)break;
+            if (chunkIDCnt > 300)break;
 
             _chunkBuffer[chunkBufferCnt] = _waitingForChunkingBuffer[i];
 
@@ -207,9 +212,11 @@ void chunker::varSizeChunking() {
 
             /*find chunk pattern*/
             if ((winFp & _anchorMask) == _anchorValue) {
-                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
-                string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-                _cryptoObj->sha256_digest(message,hash);
+                memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0,
+                       sizeof(char) * (_maxChunkSize - chunkBufferCnt));
+                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
+                _cryptoObj->sha256_digest(message, hash);
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
 
                 chunkBufferCnt = winFp = 0;
@@ -219,9 +226,11 @@ void chunker::varSizeChunking() {
 
             /*chunk's size exceed _maxChunkSize*/
             if (chunkBufferCnt >= _maxChunkSize) {
-                memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
-                string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-                _cryptoObj->sha256_digest(message,hash);
+                memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0,
+                       sizeof(char) * (_maxChunkSize - chunkBufferCnt));
+                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
+                _cryptoObj->sha256_digest(message, hash);
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
 
                 chunkBufferCnt = winFp = 0;
@@ -234,10 +243,11 @@ void chunker::varSizeChunking() {
 
     /*add final chunk*/
     if (chunkBufferCnt != 0) {
-        memset(_chunkBuffer+_maxChunkSize- chunkBufferCnt , 0 ,sizeof(char)*(_maxChunkSize-chunkBufferCnt));
+        memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0, sizeof(char) * (_maxChunkSize - chunkBufferCnt));
 
-        string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-        _cryptoObj->sha256_digest(message,hash);
+        string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
+        _cryptoObj->sha256_digest(message, hash);
         tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
 
 #ifdef DEBUG
@@ -284,8 +294,11 @@ void chunker::simpleChunking() {
                 memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0,
                        sizeof(char) * (_maxChunkSize - chunkBufferCnt));
                 string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
                 _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", "");
 
 #ifdef DEBUG
                 std::cout<<chunkBufferCnt<<std::endl;
@@ -302,8 +315,10 @@ void chunker::simpleChunking() {
                 memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0,
                        sizeof(char) * (_maxChunkSize - chunkBufferCnt));
                 string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
                 _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+
 
 #ifdef DEBUG
                 std::cout<<chunkBufferCnt<<std::endl;
@@ -321,8 +336,9 @@ void chunker::simpleChunking() {
     if (chunkBufferCnt != 0) {
         memset(_chunkBuffer + _maxChunkSize - chunkBufferCnt, 0, sizeof(char) * (_maxChunkSize - chunkBufferCnt));
         string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+
         _cryptoObj->sha256_digest(message, hash);
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
 
 #ifdef DEBUG
         std::cout<<chunkBufferCnt<<std::endl;
@@ -336,6 +352,7 @@ void chunker::simpleChunking() {
 
 
 bool chunker::insertMQ(Chunk newChunk) {
+
     newChunk.editRecipePointer(this->recipe);
 
     this->recipe->_f._body.push_back(fileRecipe_t::body(newChunk.getID(),

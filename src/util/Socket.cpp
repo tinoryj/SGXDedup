@@ -80,28 +80,35 @@ Socket Socket::Listen() {
 
 bool Socket::Send(const string buffer) {
     int sentSize = 0, cnt = 0, sendSize = buffer.length();
+    int len;
     write(this->fd, (char *) &sendSize, sizeof(int));
     while (sentSize < sendSize && cnt < 5) {
         cnt++;
-        sentSize += write(this->fd, buffer.c_str() + sentSize, buffer.length() - sentSize);
+        len = write(this->fd, buffer.c_str() + sentSize, buffer.length() - sentSize);
+        //should check errno here
+        if (len <= 0) return false;
+        sentSize += len;
     }
     return (sentSize == sendSize);
 }
 
 bool Socket::Recv(string &buffer) {
-    size_t recvedSize=0,cnt=0,s;
-    int len;
+    size_t recvedSize = 0, cnt = 0, s;
+    int recvSize;
     buffer.clear();
-    s=read(this->fd,(char*)&len,sizeof(int));
-    if(s==0){
+    s = read(this->fd, (char *) &recvSize, sizeof(int));
+    if (s == 0) {
         this->finish();
         return false;
     }
-    buffer.resize(len);
+    buffer.resize(recvSize);
 
-    while(recvedSize<len&&cnt<5){
+    while (recvedSize < recvSize && cnt < 5) {
         cnt++;
-        recvedSize+=read(this->fd,&buffer[recvedSize],len-recvedSize);
+        s = read(this->fd, &buffer[recvedSize], recvSize - recvedSize);
+        //should check errno here
+        if (s <= 0) return false;
+        recvedSize += s;
     }
-    return (recvedSize == len);
+    return (recvedSize == recvSize);
 }

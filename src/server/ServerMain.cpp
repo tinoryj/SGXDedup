@@ -25,6 +25,10 @@ int main(){
 
     initMQForServer();
 
+    struct sigaction sa;
+    sa.sa_handler=SIG_IGN;
+    sigaction(SIGPIPE,&sa,0);
+
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
     fileName2metaDB.openDB(config.getFn2MetaDBame());
 

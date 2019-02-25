@@ -76,7 +76,7 @@ private:
     _messageQueue _powMQ;
     CryptoPrimitive* _crypto;
     Timer _timer;
-    bool dedupStage1(powSignedHash in, RequiredChunk out);
+    bool dedupStage1(powSignedHash in, RequiredChunk &out);
     bool dedupStage2(chunkList in);
 public:
     void run();

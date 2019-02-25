@@ -24,6 +24,7 @@ void powClient::run() {
         batchChunk.clear();
         batchHash.clear();
         batchChunkLogicData.clear();
+        request.hash.clear();
 
         for(int i=0;i<10;i++){
             if(_inputMQ.pop(tmpChunk)){
@@ -35,6 +36,12 @@ void powClient::run() {
                 batchChunkLogicData.resize(currentBatchLen+sizeof(int));
                 memcpy(&batchChunkLogicData[currentBatchLen],&newBatchDataLen,sizeof(int));
                 batchChunkLogicData+=tmpChunk.getLogicData();
+
+                //
+                string data,hash;
+                CryptoPrimitive crypto;
+                data=tmpChunk.getLogicData();
+                crypto.sha256_digest(data,hash);
             }
         }
 

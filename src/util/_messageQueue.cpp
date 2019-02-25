@@ -54,6 +54,7 @@ void initMQForServer(){
     message_queue::remove(DATASR_TO_DEDUPCORE_MQ);
     message_queue::remove(DATASR_TO_STORAGECORE_MQ);
     message_queue::remove(DEDUPCORE_TO_STORAGECORE_MQ);
+    message_queue::remove(POWSERVER_TO_DEDUPCORE_MQ);
 }
 
 void initMQForKeyServer(){
