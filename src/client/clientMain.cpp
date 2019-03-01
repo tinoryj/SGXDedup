@@ -18,6 +18,7 @@ Usage:
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 
 #include <boost/thread/thread.hpp>
 
@@ -55,6 +56,7 @@ void usage(){
 }
 
 int main(int argv, char *argc[]) {
+    cerr<<setbase(10);
 
     initMQForClient();
 
@@ -78,6 +80,8 @@ int main(int argv, char *argc[]) {
 
         //start decoder thread
         dcoder->run();
+
+        retriever->run();
     }
     else if(strcmp("-s",argc[1])==0){
         //run send

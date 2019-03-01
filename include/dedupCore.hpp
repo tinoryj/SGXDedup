@@ -47,7 +47,7 @@ public:
     _messageQueue _outputMQ;
     int _outDataTime;
 
-    std::chrono::system_clock::time_point _stopTime;
+    std::chrono::system_clock::time_point _startTime;
 
     void setMQ(_messageQueue mq);
     bool checkDone();
@@ -58,7 +58,7 @@ class Timer{
 private:
     struct cmp{
         bool operator()(signedHash* x,signedHash* y){
-            return x->_stopTime.time_since_epoch().count()>y->_stopTime.time_since_epoch().count();
+            return x->_startTime.time_since_epoch().count()>y->_startTime.time_since_epoch().count();
         }
     };
     priority_queue<signedHash*,vector<signedHash*>,cmp> _jobQueue;

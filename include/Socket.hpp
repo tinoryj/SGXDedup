@@ -21,20 +21,29 @@ using namespace std;
 #define CLIENTTCP 1
 #define UDP 2
 
-class Socket{
+class Socket {
 private:
     sockaddr_in addr;
 public:
     int fd;
-    Socket(const int type,string ip,int port);
-    Socket(int fd,sockaddr_in addr);
+
+    Socket(const int type, string ip, int port);
+
+    Socket(int fd, sockaddr_in addr);
+
     Socket();
+
     ~Socket();
-    void init(const int type,string ip,int port);
+
+    void init(const int type, string ip, int port);
+
     void finish();
-   // void setNonBlock();
+
+    // void setNonBlock();
     bool Send(const string buffer);
-    bool Recv(string& buffer);
+
+    bool Recv(string &buffer);
+
     Socket Listen();
 };
 
@@ -42,13 +51,14 @@ public:
 
 }*/
 
-struct networkStruct{
+struct networkStruct {
     int _type;
     int _cid;
     string _data;
 
-    networkStruct(int msgType,int clientID):_type(msgType),_cid(clientID){};
-    networkStruct(){};
+    networkStruct(int msgType, int clientID) : _type(msgType), _cid(clientID) {};
+
+    networkStruct() {};
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {

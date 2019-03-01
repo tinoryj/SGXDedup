@@ -17,11 +17,16 @@ receiver::~receiver() {
 void receiver::receiveChunk() {
     string tmp;
     int status;
-    Chunk tmpChunk;
+    chunkList chunks;
+    int chunkID=0;
     while(1){
         this->receiveData(tmp,status);
-        deserialize(tmp,tmpChunk);
-        this->insertMQ(tmpChunk);
+        deserialize(tmp,chunks);
+        int i,sz=chunks._FP.size();
+        for(i=0;i<sz;i++,chunkID++){
+            Chunk *tmpChunk=new Chunk(chunkID,0,chunks._chunks[i].length(),chunks._chunks[i],"","");
+            this->insertMQ(*tmpChunk);
+        }
     }
 }
 

@@ -23,8 +23,13 @@ bool decoder::decodeChunk(Chunk &newChunk) {
 
 void decoder::run() {
     string buffer, buffer1;
-    keyRecipe_t recipe;
-    this->extractMQ(buffer);
+    Recipe_t recipe;
+    //keyRecipe_t recipe;
+    while(!this->extractMQ(buffer));
+    deserialize(buffer,recipe);
+
+    _messageQueue tmpMQ=this->getOutputMQ();
+    tmpMQ.push(recipe._f._body.size());
 
     /**********************/
     //temp implement
@@ -33,8 +38,8 @@ void decoder::run() {
     _crypto->setSymKey(recipekey, 128, recipekey, 128);
     /*********************/
 
-    _crypto->recipe_decrypt(buffer, recipe);
-    for (auto it:recipe._body) {
+    _crypto->recipe_decrypt(recipe._kencrypted, recipe._k);
+    for (auto it:recipe._k._body) {
         this->_keyRecipe.insert(make_pair(it._chunkHash, it._chunkKey));
     }
     int i, maxThread = config.getDecoderThreadLimit();
@@ -47,7 +52,7 @@ void decoder::run() {
 void decoder::runDecode() {
     Chunk tmpChunk;
     while (1) {
-        this->extractMQ(tmpChunk);
+        while(!this->extractMQ(tmpChunk));
         tmpChunk.editEncryptKey(_keyRecipe.at(tmpChunk.getChunkHash()));
         this->decodeChunk(tmpChunk);
         this->insertMQ(tmpChunk);

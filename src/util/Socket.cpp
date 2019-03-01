@@ -14,6 +14,8 @@ Socket::Socket(int fd, sockaddr_in addr):fd(fd),addr(addr) {}
 Socket::Socket() {}
 
 Socket::~Socket() {
+
+    //do not call finish here, more detail in doc
     //this->finish();
 }
 

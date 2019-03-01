@@ -41,7 +41,7 @@ void chunker::chunkerInit(string path) {
     _maxChunkSize = (int) config.getMaxChunkSize();
     _slidingWinSize = (int) config.getSlidingWinSize();
     _ReadSize = config.getReadSize();
-    _ReadSize = _ReadSize * 1024 * 1024 / 8;
+    _ReadSize = _ReadSize * 1024 * 1024;
     _waitingForChunkingBuffer = new unsigned char[_ReadSize];
     _chunkBuffer = new unsigned char[_maxChunkSize];
 
@@ -181,14 +181,13 @@ void chunker::varSizeChunking() {
     Chunk *tmpchunk;
     ifstream &fin = getChunkingFile();
 
+    totalSize = 0; //for debug
 
     /*start chunking*/
     while (1) {
         fin.read((char *) _waitingForChunkingBuffer, sizeof(unsigned char) * _ReadSize);
         int i, len = fin.gcount();
         for (i = 0; i < len; i++) {
-
-            if (chunkIDCnt > 300)break;
 
             _chunkBuffer[chunkBufferCnt] = _waitingForChunkingBuffer[i];
 
@@ -217,10 +216,13 @@ void chunker::varSizeChunking() {
                 string message((char *) _chunkBuffer, chunkBufferCnt), hash;
 
                 _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
 
                 chunkBufferCnt = winFp = 0;
                 insertMQ(*tmpchunk);
+
+                totalSize += message.length();
+
                 delete tmpchunk;
             }
 
@@ -231,10 +233,13 @@ void chunker::varSizeChunking() {
                 string message((char *) _chunkBuffer, chunkBufferCnt), hash;
 
                 _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
 
                 chunkBufferCnt = winFp = 0;
                 insertMQ(*tmpchunk);
+
+                totalSize += message.length();
+
                 delete tmpchunk;
             }
         }
@@ -248,15 +253,21 @@ void chunker::varSizeChunking() {
         string message((char *) _chunkBuffer, chunkBufferCnt), hash;
 
         _cryptoObj->sha256_digest(message, hash);
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
+        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
 
 #ifdef DEBUG
         std::cout<<chunkBufferCnt<<std::endl;
 #endif
 
         insertMQ(*tmpchunk);
+
+        totalSize += message.length();
+
         delete tmpchunk;
     }
+
+    cerr << "Chunker : file have " << setbase(10) << chunkIDCnt << " Chunk\n";
+    cerr << "Chunker : total chunk size is " << setbase(10) << totalSize << endl;
 
 }
 
@@ -298,7 +309,6 @@ void chunker::simpleChunking() {
                 _cryptoObj->sha256_digest(message, hash);
                 tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
 
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", "");
 
 #ifdef DEBUG
                 std::cout<<chunkBufferCnt<<std::endl;
@@ -362,7 +372,10 @@ bool chunker::insertMQ(Chunk newChunk) {
     this->recipe->_k._body.push_back(keyRecipe_t::body(newChunk.getID(),
                                                        newChunk.getChunkHash(),
                                                        ""));
-    if (newChunk.getID() < 30)return true;
+    this->recipe->_f._fileSize += newChunk.getLogicDataSize();
+    this->recipe->_k._fileSize += newChunk.getLogicDataSize();
+    this->recipe->_chunkCnt ++;
+
     _outputMq.push(newChunk);
     return true;
 }

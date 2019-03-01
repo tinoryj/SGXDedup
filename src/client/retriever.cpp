@@ -13,15 +13,17 @@ bool Retriever::Retrieve() {
     int i;
     Chunk tmpChunk;
     for(i=0;i<_chunkCnt;i++){
-        this->extractMQ(tmpChunk);
-        file[tmpChunk.getID()]=tmpChunk.getLogicDataSize();
+        while(!this->extractMQ(tmpChunk));
+        file[tmpChunk.getID()]=tmpChunk.getLogicData();
     }
     for(i=0;i<_chunkCnt;i++){
         _retrieveFile.write(&file[i][0],file[i].length());
     }
+    _retrieveFile.close();
+    std::cerr<<"Retrieve : retrieve done\n";
 }
 
 void Retriever::run() {
-    this->extractMQ(_chunkCnt);
+    while(!this->extractMQ(_chunkCnt));
     this->Retrieve();
 }

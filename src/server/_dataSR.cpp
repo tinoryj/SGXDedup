@@ -99,6 +99,7 @@ bool _DataSR::workloadProgress() {
                     this->insertMQ(MESSAGE2RASERVER,msg);
                     continue;
                 }
+                deserialize(msg->_data,netBody);
                 ev.data.ptr = (void *) msg;
                 epoll_ctl(epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
                 continue;
@@ -137,6 +138,13 @@ bool _DataSR::workloadProgress() {
                         this->insertMQ(MESSAGE2STORAGE, msg);
                         break;
                     }
+                    case CLIENT_DOWNLOAD_RECIPE:{
+                        this->insertMQ(MESSAGE2STORAGE,msg);
+                        break;
+                    }/*
+                    case CLIENT_DOWNLOAD_CHUNK:{
+
+                    }*/
                     default:
                         continue;
                 }

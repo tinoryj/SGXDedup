@@ -13,6 +13,7 @@ struct _Container{
     char _body[4<<20];  //4 M
     _Container();
     ~_Container();
+    void saveTOFile(string fileName);
 };
 
 
@@ -20,6 +21,7 @@ class storageCore:public _StorageCore{
 private:
 
     _messageQueue _netRecvMQ;
+    _messageQueue _netSendMQ;
 
     std::string _lastContainerFileName;
     std::string _lastFileRecipeFileName;
@@ -54,7 +56,7 @@ public:
     bool restoreChunk(std::string chunkHash,std::string &chunkData);
 
 
-    void verifyRecipe(Recipe_t recipe,int version);
+    bool verifyRecipe(Recipe_t recipe,int version);
     void sendRecipe(std::string recipeName,int version,int fd,int epfd);
 
     bool createContainer();

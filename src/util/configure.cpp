@@ -95,6 +95,8 @@ void Configure::readConf(std::string path) {
     ("mutiThread._retriverThreadLimit");
     _dedupCoreThreadLimit=root.get<int>\
     ("mutiThread._dedupCoreThreadLimit");
+    _storageCoreThreadLimit=root.get<int>\
+    ("mutiThread._storageCoreThreadLimit");
 
     //pow Configure
     _quoteType=root.get<int>\

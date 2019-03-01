@@ -383,7 +383,7 @@ bool CryptoPrimitive::chunk_decrypt(Chunk &chunk) {
     key=chunk.getEncryptKey();
     this->setSymKey(key.c_str(),key.length(),key.c_str(),key.length());
     if (!this->cbc256_decrypt(cipherChunk, plaintChunk)) {
-        cerr << "chunk decrypt error\n";
+        cerr << "Crypto{rimitive : chunk decrypt error\n";
         return false;
     }
     chunk.editLogicData(plaintChunk, plaintChunk.length());

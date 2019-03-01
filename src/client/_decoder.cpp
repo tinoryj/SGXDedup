@@ -16,7 +16,7 @@ _Decoder::~_Decoder() {}
 
 
 bool _Decoder::extractMQ(Chunk &recvChunk) {
-    _inputMQ.pop(recvChunk);
+    return _inputMQ.pop(recvChunk);
 }
 
 bool _Decoder::extractMQ(string &keyRecipe) {

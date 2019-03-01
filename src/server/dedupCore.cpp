@@ -17,6 +17,11 @@ dedupCore::dedupCore() {
     _timer.startTimer();
 }
 
+dedupCore::~dedupCore() {
+    if (_crypto != nullptr)
+        delete _crypto;
+}
+
 /*
  * dedupCore thread handle
  * process two type message:
@@ -94,7 +99,9 @@ bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk &out) {
      * if yes, then push all chunk to storage
      * or not, then delete(de-refer) all chunk in cache
      */
-    sig->_stopTime = std::chrono::high_resolution_clock::now();
+    sig->_startTime = std::chrono::high_resolution_clock::now();
+    sig->_outDataTime = (int) ((double) sig->_hashList.size() * config.getTimeOutScale());
+    cerr << "dedupCore : " << "regist " << setbase(10) << sig->_hashList.size() << " chunk to Timer\n";
     _timer.registerHashList(sig);
 
     return status;
@@ -112,10 +119,11 @@ bool dedupCore::dedupStage2(chunkList in) {
     }
 
     /* if i != size, then client are not honest,it modified some chunk's hash
-     * then do not store store chunk come form client
+     * then do not store chunk come form client
     */
     if (i == size) {
         cache.setChunk(in._FP, in._chunks);
+        cerr << "dedupCore : " << "recv " << setbase(10) << in._FP.size() << " chunk from client\n";
         return true;
     }
     return false;
@@ -164,10 +172,11 @@ bool chunkCache_t::readChunk(string &chunkLogicData) {
     bool status;
     {
         boost::shared_lock<boost::shared_mutex> t(this->_avaiMtx);
-        status=this->_avaiable;
+        status = this->_avaiable;
     }
-    if(status){
-        chunkLogicData=this->_chunkLogicData;
+
+    if (status) {
+        chunkLogicData = this->_chunkLogicData;
     }
     return status;
 }
@@ -211,7 +220,7 @@ void chunkCache::setChunk(vector<string> &fp,vector<string> &chunks) {
             boost::unique_lock<boost::shared_mutex> t(this->_mtx);
             it1 = _memBuffer.find(fp[i]);
             if (it1 != _memBuffer.end()) {
-                it1->second->setChunk(fp[i]);
+                it1->second->setChunk(chunks[i]);
             }
         }
     }
@@ -268,6 +277,10 @@ void signedHash::timeout() {
 }
 
 void Timer::registerHashList(signedHash *job) {
+    for(auto it:job->_hashList){
+        cache.refer(it);
+    }
+
     {
         boost::unique_lock<boost::shared_mutex> t(this->_mtx);
         _jobQueue.push(job);
@@ -275,9 +288,10 @@ void Timer::registerHashList(signedHash *job) {
 }
 
 void Timer::run() {
+    using namespace std::chrono;
     signedHash *nowJob;
-    std::chrono::system_clock::time_point now;
-    std::chrono::system_clock::duration dtn;
+    system_clock::time_point now;
+    duration<int, std::milli> dtn;
     bool emptyFlag;
     while (1) {
         {
@@ -293,13 +307,18 @@ void Timer::run() {
             continue;
         }
         now = std::chrono::high_resolution_clock::now();
-        dtn = now - nowJob->_stopTime;
-        if (dtn.count() - nowJob->_outDataTime > 0) {
-            this_thread::sleep_for(chrono::milliseconds(dtn.count() - nowJob->_outDataTime));
+        dtn = duration_cast<milliseconds>(now - nowJob->_startTime);
+        if (dtn.count() - nowJob->_outDataTime < 0) {
+            this_thread::sleep_for(milliseconds(nowJob->_outDataTime - dtn.count()));
         }
+
+        cerr << "Timer : " << "check time for " << setbase(10) << nowJob->_hashList.size() << " chunk  ";
         if (!nowJob->checkDone()) {
             nowJob->timeout();
+            cerr <<"timeout\n";
+            return;
         }
+        cerr << "success\n";
         delete nowJob;
     }
 

@@ -16,9 +16,9 @@ _messageQueue _Retriever::getInputMQ() {
 }
 
 bool _Retriever::extractMQ(Chunk &chunk) {
-    _inputMQ.pop(chunk);
+    return _inputMQ.pop(chunk);
 }
 
 bool _Retriever::extractMQ(int &chunkCnt) {
-    _inputMQ.pop(chunkCnt);
+    return _inputMQ.pop(chunkCnt);
 }

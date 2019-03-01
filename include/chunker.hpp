@@ -50,6 +50,8 @@ private:
     /*the value for determining an anchor*/
     uint32_t _anchorValue;
 
+    int totalSize; //for debug
+
     void fixSizeChunking();
 
     void varSizeChunking();

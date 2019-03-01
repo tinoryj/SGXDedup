@@ -41,63 +41,70 @@ keyClient::~keyClient(){
     RSA_free(_rsa);
 }
 
-void keyClient::run(){
-    std::pair<int,SSL*> con=_keySecurityChannel->sslConnect();
+void keyClient::run() {
+    std::pair<int, SSL *> con = _keySecurityChannel->sslConnect();
 
-    while(1){
-        vector<Chunk>chunkList;
+    while (1) {
+        vector<Chunk> chunkList;
         string segmentKey;
         string minHash;
         minHash.resize(32);
         Chunk tmpchunk;
         char mask[32];
         int segmentSize;
-        int minHashIndex,it;
+        int minHashIndex, it;
 
-        memset(mask,'0',sizeof(mask));
-        memset(&minHash[0],255,sizeof(char)*minHash.length());
+        memset(mask, '0', sizeof(mask));
+        memset(&minHash[0], 255, sizeof(char) * minHash.length());
         chunkList.clear();
 
-        for(it=segmentSize=minHashIndex=0;segmentSize<_keyBatchSizeMax;it++){
+        for (it = segmentSize = minHashIndex = 0; segmentSize < _keyBatchSizeMax; it++) {
 
-            if(!_inputMQ.pop(tmpchunk)){
+            if (!_inputMQ.pop(tmpchunk)) {
                 break;
             }
 
             chunkList.push_back(tmpchunk);
 
-            segmentSize+=chunkList[it].getLogicDataSize();
-            if(memcmp((void*)chunkList[it].getChunkHash().c_str(),&minHash[0],sizeof(minHash))<0){
-                memcpy(&minHash[0],chunkList[it].getChunkHash().c_str(),sizeof(minHash));
-                minHashIndex=it;
+            segmentSize += chunkList[it].getLogicDataSize();
+            if (memcmp((void *) chunkList[it].getChunkHash().c_str(), &minHash[0], sizeof(minHash)) < 0) {
+                memcpy(&minHash[0], chunkList[it].getChunkHash().c_str(), sizeof(minHash));
+                minHashIndex = it;
             }
 
-            if(memcmp(chunkList[it].getChunkHash().c_str()+(32-9),mask,9)==0&&segmentSize>_keyBatchSizeMax){
+            if (memcmp(chunkList[it].getChunkHash().c_str() + (32 - 9), mask, 9) == 0 &&
+                segmentSize > _keyBatchSizeMax) {
                 break;
             }
         }
 
-        if(chunkList.empty()){
+        if (chunkList.empty()) {
             continue;
         }
 
-        if(kCache.existsKeyinCache(minHash)){
-            segmentKey=kCache.getKeyFromCache(minHash);
-            for(auto it:chunkList){
+        cerr << "KeyClient : request key for " << setbase(10) << chunkList.size() << " chunk" << endl;
+        /*
+        for(auto it:chunkList) {
+            cerr << "KeyClient : request chunk id : " << setbase(10) << it.getID() << endl;
+        }*/
+
+        if (kCache.existsKeyinCache(minHash)) {
+            segmentKey = kCache.getKeyFromCache(minHash);
+            for (auto it:chunkList) {
                 it.editEncryptKey(segmentKey);
             }
             continue;
         }
 
         //segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
-        segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
-#ifdef DEBUG
-        std::cout<<"get key : "<<segmentKey<<endl;
-#endif
-        //write to hash cache
-        kCache.insertKeyToCache(minHash,segmentKey);
+        segmentKey = keyExchange(con.second, chunkList[minHashIndex]);
 
-        for(auto it:chunkList){
+        //std::cout<<"get key : "<<segmentKey<<endl;
+
+        //write to hash cache
+        kCache.insertKeyToCache(minHash, segmentKey);
+
+        for (auto it:chunkList) {
             it.editEncryptKey(segmentKey);
             this->insertMQ(it);
         }
@@ -113,16 +120,16 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
 
     key=decoration(r,champion.getChunkHash());
     _keySecurityChannel->sslWrite(connection,key);
-#ifdef DEBUG
-    std::cout<<"request key\n";
-#endif
+
+    std::cerr<<"KeyClient : request key\n";
+
     if(!_keySecurityChannel->sslRead(connection,buffer)){
-        std::cerr<<"key server close\n";
+        std::cerr<<"KeyClient : key server close\n";
         exit(1);
     }
-#ifdef DEBUG
-    std::cout<<"receive key\n";
-#endif
+
+    std::cerr<<"KeyClient : receive key\n";
+
     key=elimination(invr,buffer);
     return key;
 }
