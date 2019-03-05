@@ -7,6 +7,8 @@
 
 Retriever::Retriever(string filename):_Retriever(filename) {}
 
+#include "../pow/include/hexutil.h"
+
 bool Retriever::Retrieve() {
     vector<string>file;
     file.resize(_chunkCnt);
@@ -17,7 +19,10 @@ bool Retriever::Retrieve() {
         file[tmpChunk.getID()]=tmpChunk.getLogicData();
     }
     for(i=0;i<_chunkCnt;i++){
-        _retrieveFile.write(&file[i][0],file[i].length());
+        _retrieveFile.write(file[i].c_str(),file[i].length());
+        const char*s=hexstring(&file[i][0],file[i].length());
+        cout<<"ID : "<<i<<endl;
+        cout<<s<<endl<<endl;
     }
     _retrieveFile.close();
     std::cerr<<"Retrieve : retrieve done\n";

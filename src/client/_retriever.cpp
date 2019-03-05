@@ -3,7 +3,7 @@
 
 
 _Retriever::_Retriever(string fileName) {
-    _retrieveFile.open(fileName,ios::out|ios::binary);
+    _retrieveFile.open(fileName,ofstream::out|ofstream::binary);
     _inputMQ.createQueue(DECODER_TO_RETRIEVER,READ_MESSAGE);
 }
 
