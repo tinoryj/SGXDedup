@@ -36,6 +36,7 @@ add_executable(opensslbn RSAsign.cpp)
 add_executable(lru_cache Boost_lru.cpp)
 add_executable(openssltest RSASIGN.cpp)
 add_executable(mq message_queue.cpp)
+add_executable(chrono chronoTime.cpp)
 
 add_executable(opensslkey opensslkey.cpp)
 

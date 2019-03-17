@@ -21,12 +21,14 @@ void _messageQueue::createQueue(std::string name,int rw){
 _messageQueue::_messageQueue(){
     _messageQueueCnt=config.getMessageQueueCnt();
     _messageQueueUnitSize=config.getMessageQueueUnitSize();
+    _buffer.resize(_messageQueueUnitSize);
 }
 
 _messageQueue::_messageQueue(std::string name,int rw){
     _messageQueueCnt=config.getMessageQueueCnt();
     _messageQueueUnitSize=config.getMessageQueueUnitSize();
     createQueue(name,rw);
+    _buffer.resize(_messageQueueUnitSize);
 }
 
 _messageQueue::~_messageQueue(){

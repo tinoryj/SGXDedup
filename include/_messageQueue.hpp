@@ -84,6 +84,7 @@ private:
     message_queue *_mq;
     unsigned long _messageQueueCnt, _messageQueueUnitSize;
     string _mqName;
+    string _buffer;
 
 public:
     _messageQueue();
@@ -102,7 +103,7 @@ public:
         serialize(data, tmp);
         bool status = false;
         while (true) {
-            ptime abs_time = microsec_clock::universal_time() + boost::posix_time::milliseconds(5);
+            ptime abs_time = microsec_clock::universal_time() + boost::posix_time::microseconds(100);
             status = _mq->timed_send(&tmp[0], tmp.length(), 0, abs_time);
             if (status) {
                 break;
@@ -114,20 +115,20 @@ public:
 
     template<class T>
     bool pop(T &ans) {
-        string tmp;
+        string &tmp=_buffer;
         unsigned int priority;
         message_queue::size_type recvd_size = 0;
-        tmp.resize(_messageQueueUnitSize);
+        //tmp.resize(_messageQueueUnitSize);
 
         using namespace boost::posix_time;
 
-        ptime abs_time = microsec_clock::universal_time() + boost::posix_time::milliseconds(5);
+        ptime abs_time = microsec_clock::universal_time() + boost::posix_time::microseconds(100);
         bool status = _mq->timed_receive(&tmp[0], _messageQueueUnitSize,
                                          recvd_size, priority, abs_time);
         if (!status) return false;
     //    _mq->receive(&tmp[0], _messageQueueUnitSize, recvd_size, priority);
-        tmp.resize(recvd_size);
-        deserialize(tmp, ans);
+        //tmp.resize(recvd_size);
+        deserialize(tmp.substr(0,recvd_size), ans);
         return true;
     }
 };

@@ -5,6 +5,9 @@
 #include "keyClient.hpp"
 #include "../../../../../../public/opt/openssl/include/openssl/rsa.h"
 
+#include <bits/stdc++.h>
+#include "chrono"
+#include "unistd.h"
 
 extern Configure config;
 extern util::keyCache kCache;
@@ -59,11 +62,9 @@ void keyClient::run() {
         chunkList.clear();
 
         for (it = segmentSize = minHashIndex = 0; segmentSize < _keyBatchSizeMax; it++) {
-
             if (!_inputMQ.pop(tmpchunk)) {
                 break;
-            }
-
+            };
             chunkList.push_back(tmpchunk);
 
             segmentSize += chunkList[it].getLogicDataSize();
@@ -81,6 +82,7 @@ void keyClient::run() {
         if (chunkList.empty()) {
             continue;
         }
+
 
         cerr << "KeyClient : request key for " << setbase(10) << chunkList.size() << " chunk" << endl;
         /*

@@ -15,7 +15,7 @@ add_library(retriever STATIC retriever.cpp)
 
 
 add_executable(client clientMain.cpp)
-#dd_untrusted_executable(client1
+#add_untrusted_executable(client1
 #                         SRCS clientMain.cpp
 #                         USE_PREFIX
 #                         EDL ../pow/enclave/enclave.edl

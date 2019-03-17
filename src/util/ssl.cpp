@@ -5,7 +5,6 @@
 
 #include "ssl.hpp"
 
-
 ssl::ssl(std::string ip,int port,int scSwitch){
     this->_serverIP=ip;
     this->_port=port;
