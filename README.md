@@ -8,6 +8,15 @@
 * build/ - build temp file
 * makefile - just a makefile template
 
+
+## Installation
+
+### Dependencies
+
+
+
+### System Initial Guide
+
 ## Main branches
 
 ### master
