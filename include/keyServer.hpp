@@ -28,6 +28,8 @@ private:
     BIO* _key;
     BN_CTX* _bnCTX;
     const BIGNUM *_keyN,*_keyD;
+    bool _enclave_trusted;
+
 
 public:
     keyServer();

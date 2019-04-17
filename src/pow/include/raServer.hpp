@@ -1,22 +1,24 @@
 //
-// Created by a on 2/16/19.
+// Created by a on 3/20/19.
 //
 
-#ifndef GENERALDEDUPSYSTEM_POWSERVER_HPP
-#define GENERALDEDUPSYSTEM_POWSERVER_HPP
+#ifndef GENERALDEDUPSYSTEM_RASERVER_HPP
+#define GENERALDEDUPSYSTEM_RASERVER_HPP
 
-#include "_messageQueue.hpp"
-#include "configure.hpp"
-#include "protocol.hpp"
-#include "iasrequest.h"
+
+#include <sgx_urts.h>
+#include <sgx_uae_service.h>
+#include <sgx_ukey_exchange.h>
+
 #include "powSession.hpp"
-#include "byteorder.h"
-#include "json.hpp"
-#include "base64.h"
+#include "protocol.hpp"
 #include "crypto.h"
-#include "Socket.hpp"
-#include "CryptoPrimitive.hpp"
-#include <iostream>
+#include "iasrequest.h"
+#include "json.hpp"
+#include "byteorder.h"
+#include "base64.h"
+
+#include "configure.hpp"
 
 #define CA_BUNDLE   "/etc/ssl/certs/ca-certificates.crt"
 #define IAS_SIGNING_CA_FILE "key/AttestationReportSigningCACert.pem"
@@ -31,28 +33,12 @@ static const unsigned char def_service_private_key[32] = {
         0xad, 0x57, 0x34, 0x53, 0xd1, 0x03, 0x8c, 0x01
 };
 
-extern Configure config;
-
-using namespace std;
-
-
-
-class powServer{
+class raServer{
 private:
-    _messageQueue _inputMQ;
-    _messageQueue _outputMQ;
-    _messageQueue _netMQ;
-    map<int,powSession*>sessions;
-    CryptoPrimitive _crypto;
-    void closeSession(int fd);
-    bool process_msg01(int fd,sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2);
-    bool process_msg3 (powSession *session,sgx_ra_msg3_t *msg3, ra_msg4_t &msg4,uint32_t quote_sz);
-    bool process_signedHash( powSession *session,powSignedHash req);
     bool derive_kdk(EVP_PKEY *Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
     bool get_sigrl (sgx_epid_group_id_t gid,char **sig_rl, uint32_t *sig_rl_size);
     bool get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t *msg4);
 
-public:
     IAS_Connection *_ias;
     X509 *_signing_ca;
     X509_STORE *_store;
@@ -61,8 +47,10 @@ public:
     EVP_PKEY *_service_private_key;
     uint16_t _iasVersion;
 
-    powServer();
-    void run();
+public:
+    raServer();
+    bool process_msg01(powSession *session,sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2);
+    bool process_msg3(powSession *session,sgx_ra_msg3_t *msg3, ra_msg4_t &msg4,uint32_t quote_sz);
 };
 
-#endif //GENERALDEDUPSYSTEM_POWSERVER_HPP
+#endif //GENERALDEDUPSYSTEM_RASERVER_HPP

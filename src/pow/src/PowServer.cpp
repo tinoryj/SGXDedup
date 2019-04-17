@@ -305,10 +305,10 @@ bool powServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
         }
 
         /*
-         * A real service provider would validate that the enclave
-         * report is from an enclave that they recognize. Namely,
+         * A real service provider would validate that the pow_enclave
+         * report is from an pow_enclave that they recognize. Namely,
          * that the MRSIGNER matches our signing key, and the MRENCLAVE
-         * hash matches an enclave that we compiled.
+         * hash matches an pow_enclave that we compiled.
          *
          * Other policy decisions might include examining ISV_SVN to
          * prevent outdated/deprecated software from successfully
@@ -318,7 +318,7 @@ bool powServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
 
 
         /*
-         * If the enclave is trusted, derive the MK and SK. Also get
+         * If the pow_enclave is trusted, derive the MK and SK. Also get
          * SHA256 hashes of these so we can verify there's a shared
          * secret between us and the client.
          */

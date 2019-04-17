@@ -18,8 +18,8 @@ add_executable(client clientMain.cpp)
 #add_untrusted_executable(client1
 #                         SRCS clientMain.cpp
 #                         USE_PREFIX
-#                         EDL ../pow/enclave/enclave.edl
-#                         EDL_SEARCH_PATHS ../pow/enclave /opt/intel/sgxsdk/include)
+#                         EDL ../pow/pow_enclave/km_enclave.edl
+#                         EDL_SEARCH_PATHS ../pow/pow_enclave /opt/intel/sgxsdk/include)
 
 target_link_libraries(client ${CLIENT_OBJ} ${LINK_OBJ} hexutil)
 #target_link_libraries(client1 ${CLIENT_OBJ} ${LINK_OBJ})

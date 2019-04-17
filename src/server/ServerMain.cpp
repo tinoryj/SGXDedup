@@ -38,9 +38,9 @@ void CTRLC(int s) {
 
     exit(0);
 }
-int main(int argv,char** argc){
 
-    config.readConf(argc[1]);
+int main() {
+
     initMQForServer();
 
     struct sigaction sa;

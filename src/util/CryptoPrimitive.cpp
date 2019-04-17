@@ -189,7 +189,7 @@ bool CryptoPrimitive::decrypt(string &ciphertext, string &plaintext,const EVP_CI
 
     plaintlen = len;
 
-    if (EVP_DecryptFinal_ex(ctx, (unsigned char *) &ciphertext[plaintlen], &len) != 1) {
+    if (EVP_DecryptFinal_ex(ctx, (unsigned char *) &plaintext[plaintlen], &len) != 1) {
         cerr << "decrypt error\n";
         EVP_CIPHER_CTX_cleanup(ctx);
         return false;

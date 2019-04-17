@@ -73,7 +73,7 @@ void powClient::run() {
 bool powClient::request(string &logicDataBatch, uint8_t cmac[16]) {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "POWClient : can do a request before enclave trusted\n";
+        cerr << "POWClient : can do a request before pow_enclave trusted\n";
         return false;
     }
 
@@ -117,9 +117,9 @@ bool powClient::do_attestation () {
     size_t msg4sz = 0;
 
     string enclaveName = config.getEnclaveName();
-    status = sgx_create_enclave("enclave.signed.so", SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
-        cerr << "POWClient : Can not launch enclave : " << enclaveName << endl;
+        cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;
         printf("%08x\n",status);
         return false;
     }
@@ -127,7 +127,7 @@ bool powClient::do_attestation () {
 	status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
 							 &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "POWClient : enclave ra init failed : " << status << endl;
+        cerr << "POWClient : pow_enclave ra init failed : " << status << endl;
         return false;
     }
     if (sgxrv != SGX_SUCCESS) {

@@ -113,6 +113,11 @@ void keyServer::runKeyGen(){
     }
 }
 
+bool keyServer::keyGen(std::string hash,std::string &key){
+
+}
+
+/*
 bool keyServer::keyGen(std::string hash,std::string& key){
     if(kCache.existsKeyinCache(hash)){
         key=kCache.getKeyFromCache(hash);
@@ -132,3 +137,4 @@ bool keyServer::keyGen(std::string hash,std::string& key){
 
     kCache.insertKeyToCache(hash,key);
 }
+ */

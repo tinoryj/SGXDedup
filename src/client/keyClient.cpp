@@ -9,6 +9,8 @@
 #include "chrono"
 #include "unistd.h"
 
+#include <sys/time.h>
+
 extern Configure config;
 extern util::keyCache kCache;
 
@@ -47,6 +49,8 @@ keyClient::~keyClient(){
 void keyClient::run() {
     std::pair<int, SSL *> con = _keySecurityChannel->sslConnect();
 
+    timeval st,ed;
+
     while (1) {
         vector<Chunk> chunkList;
         string segmentKey;
@@ -65,6 +69,8 @@ void keyClient::run() {
             if (!_inputMQ.pop(tmpchunk)) {
                 break;
             };
+            if(it==0)
+                gettimeofday(&st,NULL);
             chunkList.push_back(tmpchunk);
 
             segmentSize += chunkList[it].getLogicDataSize();
@@ -110,6 +116,8 @@ void keyClient::run() {
             it.editEncryptKey(segmentKey);
             this->insertMQ(it);
         }
+        gettimeofday(&ed,NULL);
+        std::cerr<<"keyClient time scale : "<<ed.tv_usec-st.tv_usec<<endl;
     }
     //close ssl connection
 }
@@ -123,14 +131,14 @@ string keyClient::keyExchange(SSL* connection,Chunk champion){
     key=decoration(r,champion.getChunkHash());
     _keySecurityChannel->sslWrite(connection,key);
 
-    std::cerr<<"KeyClient : request key\n";
+    //std::cerr<<"KeyClient : request key\n";
 
     if(!_keySecurityChannel->sslRead(connection,buffer)){
         std::cerr<<"KeyClient : key server close\n";
         exit(1);
     }
 
-    std::cerr<<"KeyClient : receive key\n";
+    //std::cerr<<"KeyClient : receive key\n";
 
     key=elimination(invr,buffer);
     return key;
