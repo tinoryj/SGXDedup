@@ -10,7 +10,7 @@ using namespace std;
 
 void timereceive(){
     timeval st,ed;
-    message_queue mqin(open_or_create,"mq",2,4096);
+    message_queue mqin(open_or_create,"mq",2,1260);
     char buffer[4096];
     unsigned long recvd_size;
     unsigned int priority;
@@ -18,7 +18,7 @@ void timereceive(){
     bool status;
     for(int i=0;i<10;i++) {
         gettimeofday(&st,NULL);
-        status=mqin.timed_receive(buffer, 4096, recvd_size, priority, a);
+        status=mqin.timed_receive(buffer, 1260, recvd_size, priority, a);
         std::cerr<<"recv "<<status<<endl;
         if(!status){
             i--;
@@ -35,8 +35,8 @@ void timereceive(){
 
 void timesend() {
     timeval st,ed;
-    message_queue mqout(open_or_create, "mq", 2,4096);
-    char buffer[4096];
+    message_queue mqout(open_or_create, "mq", 2,1260);
+    char buffer[1260];
     message_queue::size_type recvd_size;
     boost::posix_time::ptime a=microsec_clock::universal_time()+boost::posix_time::milliseconds(100);
     bool status;
@@ -44,7 +44,7 @@ void timesend() {
     for (int i = 0; i < 10; i++) {
         gettimeofday(&st,NULL);
         buffer[0]='0'+i;
-        status=mqout.timed_send(buffer,4096,0,a);
+        status=mqout.timed_send(buffer,12602,0,a);
         std::cerr<<"send "<<status<<endl;
         if(!status){
             i--;

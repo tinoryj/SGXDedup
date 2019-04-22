@@ -90,7 +90,7 @@ void keyClient::run() {
         }
 
 
-        cerr << "KeyClient : request key for " << setbase(10) << chunkList.size() << " chunk" << endl;
+        //cerr << "KeyClient : request key for " << setbase(10) << chunkList.size() << " chunk" << endl;
         /*
         for(auto it:chunkList) {
             cerr << "KeyClient : request chunk id : " << setbase(10) << it.getID() << endl;
@@ -117,7 +117,7 @@ void keyClient::run() {
             this->insertMQ(it);
         }
         gettimeofday(&ed,NULL);
-        std::cerr<<"keyClient time scale : "<<ed.tv_usec-st.tv_usec<<endl;
+        //std::cerr<<"keyClient time scale : "<<ed.tv_usec-st.tv_usec<<endl;
     }
     //close ssl connection
 }
