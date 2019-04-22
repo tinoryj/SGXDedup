@@ -53,7 +53,7 @@
 		"_iasVersion":3,
 		"_POWServerIp":"127.0.0.1",
 		"_powServerPort":6667,
-		"_enclave_name":"enclave.signed.so",
+		"_enclave_name":"pow_enclave.signed.so",
 		"_SPID":"797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType":0
 	},
