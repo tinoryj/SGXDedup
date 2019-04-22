@@ -1,3 +1,28 @@
+## Apr 22 2019:
+
+> Tinoryj
+
+### Known Bugs
+
+* Keymanger enclave need to rewrite (not functional).
+* Keymanger BlindRSA signature error lead to generate wrong key (not functional).
+* Client POW enclave set too large enclave size lead to enclave error with error code `0003-memory overflow`.
+* KeyClient batch size not fit for all different chunk size.
+* Server storage folders `fr`, `kr`, `cr` not auto crate.
+* Server peer close early with big `"client":"_sendChunkBatchSize":1000` and  `"MessageQueue":"_messageQueueCnt":1000` (have most important influence of system throughput).
+
+### Throught Problems
+
+> All Vtune result in ./Vtune-dedup-sgx
+> Best result now is 10M/s with messageQueue size = 100.
+
+* Message queue used more than 50% CPU time in client.
+* In `CryptoPrimitive::message_digest`, too slow hash function cost more than 16% CPU time in client.
+* `boost::interprocess` thread_cond_timedwait cost more than 10% CPU time in client.
+
+
+## Old Update Logs
+
 November 24 2018:
 
 > quantu_zo
