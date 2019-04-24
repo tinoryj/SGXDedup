@@ -51,7 +51,8 @@ void powClient::run() {
             }
         }
 
-        if (batchChunk.empty()) continue;
+        if (batchChunk.empty())
+            continue;
         if (!this->request(batchChunkLogicData, request.signature)) {
             cerr << "POWClient : sgx request failed\n";
             exit(1);

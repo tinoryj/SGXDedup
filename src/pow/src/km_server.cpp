@@ -11,7 +11,7 @@ void kmServer::closeSession(int fd) {
     sessions.erase(fd);
 }
 
-powServer::powServer() {
+kmServer::kmServer() {
     _inputMQ.createQueue(DATASR_TO_POWSERVER_MQ,READ_MESSAGE);
     _outputMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
     _netMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
@@ -362,7 +362,6 @@ bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc
 
         memset(msg4, 0, sizeof(ra_msg4_t));
 
-
         if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
             msg4->status = true;
         } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
@@ -378,8 +377,8 @@ bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc
 
 bool kmServer::process_signedHash(powSession *session, powSignedHash req) {
     _crypto.setSymKey((const char*)session->sk,16,(const char*)session->sk,0);
-    string Mac,signature((char*)req.signature,16);
-    _crypto.cmac128(req.hash,Mac);
+    string Mac, signature((char*)req.signature,16);
+    _crypto.cmac128(req.hash, Mac);
     if(Mac.compare(signature)){
         cerr<<"client signature unvalid\n";
         return false;

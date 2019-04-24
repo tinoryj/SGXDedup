@@ -82,7 +82,7 @@ int decrypt(uint8_t* cipher,uint32_t cipherLen,
              uint8_t* plaint,uint32_t* plaintLen);
 
 /*
- * work load pow_enclave
+ * work load km_enclave
  * */
 sgx_status_t ecall_keygen(sgx_ra_context_t *ctx,
                           sgx_ra_key_type_t type,
@@ -98,7 +98,7 @@ sgx_status_t ecall_keygen(sgx_ra_context_t *ctx,
     sgx_ra_key_128_t k;
 
     ret_status=sgx_ra_get_keys(*ctx,type,&k);
-    if(ret_status!=SGX_SUCCESS){
+    if(ret_status != SGX_SUCCESS){
         return ret_status;
     }
 
