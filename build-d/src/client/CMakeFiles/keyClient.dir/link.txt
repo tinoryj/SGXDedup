@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/libkeyClient.a  CMakeFiles/keyClient.dir/keyClient.cpp.o
-/usr/bin/ranlib ../../../lib/libkeyClient.a

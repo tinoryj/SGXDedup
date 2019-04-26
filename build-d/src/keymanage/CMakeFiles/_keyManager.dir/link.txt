@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/lib_keyManager.a  CMakeFiles/_keyManager.dir/_keyManager.cpp.o
-/usr/bin/ranlib ../../../lib/lib_keyManager.a

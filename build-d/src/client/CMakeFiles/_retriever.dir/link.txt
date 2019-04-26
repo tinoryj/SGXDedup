@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/lib_retriever.a  CMakeFiles/_retriever.dir/_retriever.cpp.o
-/usr/bin/ranlib ../../../lib/lib_retriever.a

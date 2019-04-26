@@ -28,7 +28,7 @@ void powClient::run() {
         batchChunkLogicData.clear();
         request.hash.clear();
 
-        for (int i = 0, cnt = 0; i < 100000 && cnt < 5; i++) {
+        for (int i = 0, cnt = 0; i < (16384 / config.getMaxChunkSize()) * 1000 && cnt < 5; i++) {
             if (_inputMQ.pop(tmpChunk)) {
                 cnt = 0;
                 request.hash.push_back(tmpChunk.getChunkHash());

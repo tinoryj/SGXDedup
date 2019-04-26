@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../../lib/libkmServer.a  CMakeFiles/kmServer.dir/km_server.cpp.o
-/usr/bin/ranlib ../../../../lib/libkmServer.a

@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/libCryptoPrimitive.a  CMakeFiles/CryptoPrimitive.dir/CryptoPrimitive.cpp.o
-/usr/bin/ranlib ../../../lib/libCryptoPrimitive.a

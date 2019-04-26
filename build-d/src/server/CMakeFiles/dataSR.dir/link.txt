@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/libdataSR.a  CMakeFiles/dataSR.dir/dataSR.cpp.o
-/usr/bin/ranlib ../../../lib/libdataSR.a

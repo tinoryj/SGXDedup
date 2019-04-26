@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/lib_decoder.a  CMakeFiles/_decoder.dir/_decoder.cpp.o
-/usr/bin/ranlib ../../../lib/lib_decoder.a

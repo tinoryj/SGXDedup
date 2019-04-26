@@ -2,9 +2,9 @@
 	"ChunkerConfig":{
 		"_runningType":0,
 		"_chunkingType":1,
-		"_minChunkSize":1024,
-		"_avgChunkSize":2048,
-		"_maxChunkSize":4096,
+		"_minChunkSize":2048,
+		"_avgChunkSize":4096,
+		"_maxChunkSize":16384,
 		"_slidingWinSize":256,
 		"_segmentSize":6666,
 		"_ReadSize":128

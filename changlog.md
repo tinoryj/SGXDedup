@@ -1,3 +1,19 @@
+## Apr 26 2019:
+
+> Tinoryj
+
+### New Bugs
+
+* All multithread setting leads to errors because boost::serialization.
+* pow_enclave & km_enclave build error by using "pow_enclave_u.h" include file (not compact to User Guide of SGX).
+
+### Fixed Problems
+
+[*] Keymanger BlindRSA signature error lead to generate wrong key (not functional).
+[*] Client POW enclave set too large enclave size lead to enclave error with error code `0003-memory overflow`.
+[*] KeyClient batch size not fit for all different chunk size.
+[*] Server storage folders `fr`, `kr`, `cr` not auto crate.
+
 ## Apr 22 2019:
 
 > Tinoryj

@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/tls_server.dir/TLS_SSL_Server.cpp.o  -o ../../bin/tls_server  -L/home/public/lib  -L/home/public/lib/leveldb/lib  -L/home/tinoryj/code/generaldedupsystem/ExampleCode/util -Wl,-rpath,/home/public/lib:/home/public/lib/leveldb/lib:/home/tinoryj/code/generaldedupsystem/ExampleCode/util -lssl -lcrypto -lpthread -lrt -ldl 

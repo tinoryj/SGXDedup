@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../../lib/libdedupCore.a  CMakeFiles/dedupCore.dir/dedupCore.cpp.o
-/usr/bin/ranlib ../../../lib/libdedupCore.a
