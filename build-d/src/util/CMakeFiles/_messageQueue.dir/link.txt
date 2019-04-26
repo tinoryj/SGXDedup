@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/lib_messageQueue.a  CMakeFiles/_messageQueue.dir/_messageQueue.cpp.o
+/usr/bin/ranlib ../../../lib/lib_messageQueue.a

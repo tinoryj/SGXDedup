@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libchunk.a  CMakeFiles/chunk.dir/chunk.cpp.o
+/usr/bin/ranlib ../../../lib/libchunk.a

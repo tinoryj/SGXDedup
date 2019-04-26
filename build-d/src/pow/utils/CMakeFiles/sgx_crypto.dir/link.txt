@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libsgx_crypto.a  CMakeFiles/sgx_crypto.dir/crypto.c.o
+/usr/bin/ranlib ../../../../lib/libsgx_crypto.a

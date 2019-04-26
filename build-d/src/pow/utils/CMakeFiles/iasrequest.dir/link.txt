@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libiasrequest.a  CMakeFiles/iasrequest.dir/iasrequest.cpp.o
+/usr/bin/ranlib ../../../../lib/libiasrequest.a

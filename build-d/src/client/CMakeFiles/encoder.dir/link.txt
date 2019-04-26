@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libencoder.a  CMakeFiles/encoder.dir/encoder.cpp.o
+/usr/bin/ranlib ../../../lib/libencoder.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/lib_chunker.a  CMakeFiles/_chunker.dir/_chunker.cpp.o
+/usr/bin/ranlib ../../../lib/lib_chunker.a

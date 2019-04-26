@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libpowClient.a  CMakeFiles/powClient.dir/__/src/PowClient.cpp.o CMakeFiles/powClient.dir/pow_enclave_u.c.o
+/usr/bin/ranlib ../../../../lib/libpowClient.a

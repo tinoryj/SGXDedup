@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/boostjson.dir/boost_json.cpp.o  -o ../../bin/boostjson  -L/home/public/lib  -L/home/public/lib/leveldb/lib  -L/home/tinoryj/code/generaldedupsystem/ExampleCode/util -Wl,-rpath,/home/public/lib:/home/public/lib/leveldb/lib:/home/tinoryj/code/generaldedupsystem/ExampleCode/util -lboost_thread -lboost_system -lboost_serialization 

@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libbyteorder.a  CMakeFiles/byteorder.dir/byteorder.c.o
+/usr/bin/ranlib ../../../../lib/libbyteorder.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libagent_wget.a  CMakeFiles/agent_wget.dir/agent_wget.cpp.o
+/usr/bin/ranlib ../../../../lib/libagent_wget.a

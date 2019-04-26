@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/lib_sender.a  CMakeFiles/_sender.dir/_sender.cpp.o
+/usr/bin/ranlib ../../../lib/lib_sender.a

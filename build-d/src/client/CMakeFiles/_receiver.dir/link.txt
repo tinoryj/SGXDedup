@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/lib_receiver.a  CMakeFiles/_receiver.dir/_receiver.cpp.o
+/usr/bin/ranlib ../../../lib/lib_receiver.a

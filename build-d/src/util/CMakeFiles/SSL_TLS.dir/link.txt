@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libSSL_TLS.a  CMakeFiles/SSL_TLS.dir/ssl.cpp.o
+/usr/bin/ranlib ../../../lib/libSSL_TLS.a

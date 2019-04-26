@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libpowServer.a  CMakeFiles/powServer.dir/PowServer.cpp.o
+/usr/bin/ranlib ../../../../lib/libpowServer.a

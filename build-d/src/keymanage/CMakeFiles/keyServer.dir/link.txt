@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libkeyServer.a  CMakeFiles/keyServer.dir/keyServer.cpp.o
+/usr/bin/ranlib ../../../lib/libkeyServer.a

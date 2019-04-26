@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/mq.dir/message_queue.cpp.o  -o ../../bin/mq  -L/home/public/lib  -L/home/public/lib/leveldb/lib  -L/home/tinoryj/code/generaldedupsystem/ExampleCode/util -Wl,-rpath,/home/public/lib:/home/public/lib/leveldb/lib:/home/tinoryj/code/generaldedupsystem/ExampleCode/util -lboost_thread -lboost_system -lboost_serialization -lpthread -lrt -ldl 

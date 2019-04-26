@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libPOW_json.a  CMakeFiles/POW_json.dir/json.cpp.o
+/usr/bin/ranlib ../../../../lib/libPOW_json.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../../lib/libkmClient.a  CMakeFiles/kmClient.dir/__/src/km_client.cpp.o CMakeFiles/kmClient.dir/km_enclave_u.c.o
+/usr/bin/ranlib ../../../../lib/libkmClient.a
