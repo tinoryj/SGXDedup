@@ -53,7 +53,8 @@ void kmClient::run() {
         }
 
         if (batchChunk.empty()) continue;
-        if (!this->request(batchChunkLogicData, request.signature)) {
+        string key;
+        if (!this->request(batchChunkLogicData, key)) {
             cerr << "kmClient : sgx request failed\n";
             exit(1);
         }
@@ -79,9 +80,9 @@ bool kmClient::request(string &hash, string &key) {
         cerr << "kmClient : can do a request before pow_enclave trusted\n";
         return false;
     }
-    uint32_t srcLen = logicDataBatch.length();
+    uint32_t srcLen = hash.length();
     sgx_status_t status;
-    status = ecall_keygen();
+    //status = ecall_keygen();
     if (status != SGX_SUCCESS) {
         cerr<<"kmClient : ecall failed\n";
         return false;
