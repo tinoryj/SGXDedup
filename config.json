@@ -69,6 +69,6 @@
 		"_sendChunkBatchSize":100
 	},
 	"timer":{
-		"_timeScale":2
+		"_timeScale":1
 	}
 }

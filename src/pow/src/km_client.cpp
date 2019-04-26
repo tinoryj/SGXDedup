@@ -7,6 +7,7 @@
 
 #include "kmClient.hpp"
 
+using namespace std;
 
 extern Sender *sender;
 extern Configure config;
