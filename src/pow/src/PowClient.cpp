@@ -28,7 +28,7 @@ void powClient::run() {
         batchChunkLogicData.clear();
         request.hash.clear();
 
-        for (int i = 0, cnt = 0; i < (16384 / config.getMaxChunkSize()) * 1000 && cnt < 5; i++) {
+        for (int i = 0, cnt = 0; i < (16384 / config.getMaxChunkSize()) * 2500 && cnt < 5; i++) {
             if (_inputMQ.pop(tmpChunk)) {
                 cnt = 0;
                 request.hash.push_back(tmpChunk.getChunkHash());
@@ -64,7 +64,7 @@ void powClient::run() {
             exit(1);
         }
 
-        cerr << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
+        cerr << "POWClient : Server need " << setbase(10) << lists.size() << " over all " << setbase(10) << batchChunk.size() << endl;
 
         for (auto it:lists) {
             _outputMQ.push(batchChunk[it]);

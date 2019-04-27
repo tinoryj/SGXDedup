@@ -10,7 +10,7 @@
 		"_ReadSize":128
 	},
 	"MessageQueue":{
-		"_messageQueueCnt":100,
+		"_messageQueueCnt":250,
 		"_messageQueueUnitSize":5000000
 	},
 	"KeyServerConfig":{
@@ -66,7 +66,7 @@
 	},
 	"client":{
 		"_clientID":1,
-		"_sendChunkBatchSize":100
+		"_sendChunkBatchSize":250
 	},
 	"timer":{
 		"_timeScale":1
