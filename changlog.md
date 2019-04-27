@@ -4,7 +4,7 @@
 
 ### New Bugs
 
-* All multithread setting leads to errors because boost::serialization.
+* All multithread setting leads to errors because boost::serialization (will be removed by using ringbuffer -> don't need serialization).
 * pow_enclave & km_enclave build error by using "pow_enclave_u.h" include file (not compact to User Guide of SGX).
 
 ### Fixed Problems
