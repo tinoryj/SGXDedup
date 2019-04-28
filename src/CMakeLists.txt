@@ -39,7 +39,7 @@ set(KEYSERVER_OBJ keyServer _keyManager)
 
 #-fno-builtin-memset
 set(CMAKE_C_FLAGS "-O3 -g")
-set(CMAKE_CXX_FLAGS "-O3 -g -std=c++1z")
+set(CMAKE_CXX_FLAGS "-O3 -g -std=c++11")
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
 list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
 find_package(SGX REQUIRED)
