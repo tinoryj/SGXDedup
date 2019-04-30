@@ -31,6 +31,7 @@ Usage:
 #include "reciver.hpp"
 #include "decoder.hpp"
 #include "../pow/include/powClient.hpp"
+#include "../pow/include/kmServer.hpp"
 
 
 using namespace std;
