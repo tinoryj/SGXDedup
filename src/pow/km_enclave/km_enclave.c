@@ -33,7 +33,8 @@ static const sgx_ec256_public_t def_service_public_key = {
 
 /*
  * quote pow_enclave
- * */
+ * 
+ */
 
 sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
                              sgx_ra_context_t *ctx, sgx_status_t *pse_status) {
