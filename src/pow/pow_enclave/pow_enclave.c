@@ -3,7 +3,7 @@
 //
 
 
-#include "enclave_t.h"
+#include "pow_enclave_t.h"
 #include <string.h>
 #include <sgx_utils.h>
 #include <sgx_tae_service.h>

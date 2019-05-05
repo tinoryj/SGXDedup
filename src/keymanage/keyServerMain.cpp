@@ -6,7 +6,6 @@
 
 #include "keyServer.hpp"
 #include "_messageQueue.hpp"
-#include "../pow/include/kmServer.hpp"
 
 Configure config("config.json");
 util::keyCache kCache;

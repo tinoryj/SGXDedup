@@ -1,6 +1,6 @@
 # src/pow/pow_enclave
 
-set(EDL_SEARCH_PATHS /opt/intel/sgxsdk/include .)
+set(EDL_SEARCH_PATHS /opt/intel/sgxsdk/include)
 set(E_SRC pow_enclave.c)
 set(LDS pow_enclave.lds)
 

@@ -4,7 +4,7 @@
 
 #ifndef GENERALDEDUPSYSTEM_POWCLIENT_HPP
 #define GENERALDEDUPSYSTEM_POWCLIENT_HPP
-#include "enclave_u.h"
+#include "pow_enclave_u.h"
 #include <sgx_urts.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>

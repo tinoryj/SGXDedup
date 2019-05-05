@@ -1,5 +1,5 @@
-#ifndef ENCLAVE_U_H__
-#define ENCLAVE_U_H__
+#ifndef POW_ENCLAVE_U_H__
+#define POW_ENCLAVE_U_H__
 
 #include <stdint.h>
 #include <wchar.h>

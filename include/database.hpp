@@ -9,6 +9,7 @@
 #include "seriazation.hpp"
 #include <boost/thread.hpp>
 #include <string>
+#include <fstream>
 using namespace std;
 
 struct keyValueForChunkHash{
