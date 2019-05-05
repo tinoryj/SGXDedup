@@ -15,39 +15,26 @@ extern Configure config;
 extern util::keyCache kCache;
 
 keyClient::keyClient(){
-    _keySecurityChannel=new ssl(config.getKeyServerIP(),config.getKeyServerPort(),CLIENTSIDE);
     _inputMQ.createQueue(CHUNKER_TO_KEYCLIENT_MQ,READ_MESSAGE);
     _outputMQ.createQueue(KEYCLIENT_TO_ENCODER_MQ,WRITE_MESSAGE);
     _keyBatchSizeMin=(int)config.getKeyBatchSizeMin();
     _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
-
-    _bnCTX=BN_CTX_new();
-    _keyfile=BIO_new_file(KEYMANGER_PUBLIC_KEY_FILE,"r");
-
-    if(_keyfile== nullptr){
-        cerr<<"Can not open keymanger public key file "<<KEYMANGER_PUBLIC_KEY_FILE<<endl;
-        exit(1);
+    _socket.init(CLIENTTCP,config.getKeyServerIP(),config.getKeyServerPort());
+    kmServer server(_socket);
+    powSession *session=server.authkm();
+    if(session!= nullptr){
+        _trustdKM= true;
+        _crypto.setSymKey((const char*)session->smk,16,(const char*)session->smk,16);
+        delete session;
+    }else{
+        _trustdKM=false;
     }
-
-    _pubkey=PEM_read_bio_PUBKEY(_keyfile, nullptr, nullptr, nullptr);
-
-    if(_pubkey== nullptr){
-        cerr<<"keymanger public keyfile damage\n";
-        exit(1);
-    }
-    _rsa=EVP_PKEY_get1_RSA(_pubkey);
-    RSA_get0_key(_rsa,&_keyN,&_keyE, nullptr);
-    BIO_free_all(_keyfile);
 }
 
 keyClient::~keyClient(){
-    delete _keySecurityChannel;
-
-    RSA_free(_rsa);
 }
 
 void keyClient::run() {
-    std::pair<int, SSL *> con = _keySecurityChannel->sslConnect();
 
     timeval st,ed;
 
@@ -89,13 +76,6 @@ void keyClient::run() {
             continue;
         }
 
-
-        //cerr << "KeyClient : request key for " << setbase(10) << chunkList.size() << " chunk" << endl;
-        /*
-        for(auto it:chunkList) {
-            cerr << "KeyClient : request chunk id : " << setbase(10) << it.getID() << endl;
-        }*/
-
         if (kCache.existsKeyinCache(minHash)) {
             segmentKey = kCache.getKeyFromCache(minHash);
             for (auto it:chunkList) {
@@ -103,9 +83,7 @@ void keyClient::run() {
             }
             continue;
         }
-
-        //segmentKey=keyExchange(con.second,chunkList[minHashIndex]);
-        segmentKey = keyExchange(con.second, chunkList[minHashIndex]);
+        segmentKey = keyExchange(chunkList[minHashIndex]);
 
         //std::cout<<"get key : "<<segmentKey<<endl;
 
@@ -122,58 +100,23 @@ void keyClient::run() {
     //close ssl connection
 }
 
-string keyClient::keyExchange(SSL* connection,Chunk champion){
+string keyClient::keyExchange(Chunk champion){
     string key,buffer;
-    BIGNUM *r=BN_new(),*invr=BN_new();
-    BN_pseudo_rand(r,256,-1,0);
-    BN_mod_inverse(invr,r,_keyN,_bnCTX);
-
-    key=decoration(r,champion.getChunkHash());
-    _keySecurityChannel->sslWrite(connection,key);
-
-    //std::cerr<<"KeyClient : request key\n";
-
-    if(!_keySecurityChannel->sslRead(connection,buffer)){
-        std::cerr<<"KeyClient : key server close\n";
-        exit(1);
+    key.resize(16);
+    if (!_trustdKM){
+        printf("keyClient: can not do keyExchange before peer trusted\n");
+        return key;
     }
-
-    //std::cerr<<"KeyClient : receive key\n";
-
-    key=elimination(invr,buffer);
+    if(!_socket.Send(champion.getChunkHash())){
+        printf("keyClient: socket error\n");
+        return key;
+    }
+    if(!_socket.Recv(buffer)){
+        printf("keyClient: socket error\n");
+        return key;
+    }
+    _crypto.cbc128_decrypt(buffer,key);
     return key;
-}
-
-string keyClient::decoration(BIGNUM* r,string hash){
-    BIGNUM *tmp=BN_new(),*h=BN_new();
-    char result[128];
-    memset(result,0,sizeof(result));
-
-    BN_bin2bn((const unsigned char*)hash.c_str(),32,h);
-
-    //tmp=hash*r^e mod n
-    BN_mod_exp(tmp,r,_keyE,_keyN,_bnCTX);
-    BN_mod_mul(tmp,h,tmp,_keyN,_bnCTX);
-
-    BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
-
-    return result;
-}
-
-
-string keyClient::elimination(BIGNUM* invr,string key){
-    BIGNUM *tmp=BN_new(),*h=BN_new();
-    char result[128];
-    memset(result,0,sizeof(result));
-
-    BN_bin2bn((const unsigned char*)key.c_str(),128,h);
-
-    //tmp=key*r^-1 mod n
-    BN_mod_mul(tmp,h,invr,_keyN,_bnCTX);
-
-    BN_bn2bin(tmp,(unsigned char*)result+(128-BN_num_bytes(tmp)));
-
-    return result;
 }
 
 bool keyClient::insertMQ(Chunk &newChunk) {

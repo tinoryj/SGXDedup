@@ -7,7 +7,6 @@
 * Contains basic version of dedup-sgx based on blind signature method keyGen at commit "basic version / not optmization version". 
 
 
-
 ### Fixed Problems
 
 [*] Fixed pow_enclave_u.h and pow_enclave_t.h include error.

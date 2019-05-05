@@ -16,7 +16,7 @@
 #include "_messageQueue.hpp"
 #include "chunk.hpp"
 
-//server public keyS
+//server public key
 static const sgx_ec256_public_t def_service_public_key = {
         {
                 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,

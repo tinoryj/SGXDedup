@@ -3,7 +3,7 @@
 //
 
 
-#include "enclave_t.h"
+#include "km_enclave_t.h"
 #include <string.h>
 #include <sgx_utils.h>
 #include <sgx_tae_service.h>
@@ -29,12 +29,11 @@ static const sgx_ec256_public_t def_service_public_key = {
 
 };//little endding/hard coding
 
-#define PSE_RETRIES	5	/* Arbitrary. Not too long, not too short. */
+#define PSE_RETRIES    5    /* Arbitrary. Not too long, not too short. */
 
 /*
  * quote pow_enclave
- * 
- */
+ * */
 
 sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
                              sgx_ra_context_t *ctx, sgx_status_t *pse_status) {
@@ -74,57 +73,52 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx) {
     return ret;
 }
 
-int encrypt(uint8_t* plaint,uint32_t plaintLen,
-             uint8_t* symKey,uint32_t symKeyLen,
-             uint8_t* cipher,uint32_t* cipherLen);
+int encrypt(uint8_t *plaint, uint32_t plaintLen,
+            uint8_t *symKey, uint32_t symKeyLen,
+            uint8_t *cipher, uint32_t *cipherLen);
 
-int decrypt(uint8_t* cipher,uint32_t cipherLen,
-             uint8_t* symKey,uint32_t symKeyLen,
-             uint8_t* plaint,uint32_t* plaintLen);
+int decrypt(uint8_t *cipher, uint32_t cipherLen,
+            uint8_t *symKey, uint32_t symKeyLen,
+            uint8_t *plaint, uint32_t *plaintLen);
 
 /*
- * work load km_enclave
+ * work load pow_enclave
  * */
-sgx_status_t ecall_keygen(sgx_ra_context_t *ctx,
-                          sgx_ra_key_type_t type,
-                          uint8_t *src,
-                          uint32_t srcLen,
-                          uint8_t *keyd,
-                          uint32_t keydLen,
-                          uint8_t *keyn,
-                          uint32_t keynLen,
-                          uint8_t *key) {
+
+
+sgx_status_t ecall_keygen(sgx_ra_context_t *ctx, sgx_ra_key_type_t type, uint8_t *src, uint32_t srcLen, uint8_t *keyd,
+                          uint32_t keydLen, uint8_t *keyn, uint32_t keynLen, uint8_t *key) {
 
     sgx_status_t ret_status;
     sgx_ra_key_128_t k;
 
-    ret_status=sgx_ra_get_keys(*ctx,type,&k);
-    if(ret_status != SGX_SUCCESS){
+    ret_status = sgx_ra_get_keys(*ctx, type, &k);
+    if (ret_status != SGX_SUCCESS) {
         return ret_status;
     }
 
-    BIGNUM *d=BN_new(),*n=BN_new(),*result=BN_new();
-    BN_bin2bn(keyd,keydLen,d);
-    BN_bin2bn(keyn,keynLen,n);
+    BIGNUM *d = BN_new(), *n = BN_new(), *result = BN_new();
+    BN_bin2bn(keyd, keydLen, d);
+    BN_bin2bn(keyn, keynLen, n);
     uint8_t *hash;
-    uint32_t hashLen;
-    hash=(unsigned char*)malloc(srcLen);
-    if(hash==NULL)
-        return SGX_ERROR_UNEXPECTED;
+    uint32_t len;
+    hash = (unsigned char *) malloc(srcLen);
+    if (hash == NULL)
+        return SGX_ERROR_OUT_OF_MEMORY;
 
-    BN_CTX* bnCtx=BN_CTX_new();
-    if(bnCtx==NULL){
+    BN_CTX *bnCtx = BN_CTX_new();
+    if (bnCtx == NULL) {
         free(hash);
         return SGX_ERROR_UNEXPECTED;
     }
 
-    if(!decrypt(src,srcLen,k,16,hash,hashLen)){
+    if (!decrypt(src, srcLen, k, 16, hash, &len)) {
         goto error;
     }
-    BN_bin2bn(hash,srcLen,result);
-    BN_mod_exp(result,result,d,n,bnCtx);
-    BN_bn2bin(result,src+srcLen-BN_num_bits(result));
-    if(!encrypt(src,16,k,16,key,16)){
+    BN_bin2bn(hash, srcLen, result);
+    BN_mod_exp(result, result, d, n, bnCtx);
+    BN_bn2bin(result, src + srcLen - BN_num_bits(result));
+    if (!encrypt(src, 16, k, 16, key, &len)) {
         goto error;
     }
     BN_CTX_free(bnCtx);
@@ -137,9 +131,9 @@ sgx_status_t ecall_keygen(sgx_ra_context_t *ctx,
     return SGX_ERROR_UNEXPECTED;
 }
 
-int encrypt(uint8_t* plaint,uint32_t plaintLen,
-             uint8_t* symKey,uint32_t symKeyLen,
-             uint8_t* cipher,uint32_t* cipherLen) {
+int encrypt(uint8_t *plaint, uint32_t plaintLen,
+            uint8_t *symKey, uint32_t symKeyLen,
+            uint8_t *cipher, uint32_t *cipherLen) {
     uint8_t iv[16] = {0};
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (ctx == NULL)
@@ -149,7 +143,7 @@ int encrypt(uint8_t* plaint,uint32_t plaintLen,
         goto error;
     }
 
-    if (!EVP_EncryptUpdate(ctx, cipher, cipherLen, plaint, plaintLen)) {
+    if (!EVP_EncryptUpdate(ctx, cipher, (int*)cipherLen, plaint, plaintLen)) {
         goto error;
     }
 
@@ -166,28 +160,28 @@ int encrypt(uint8_t* plaint,uint32_t plaintLen,
     return 0;
 }
 
-int decrypt(uint8_t* cipher,uint32_t cipherLen,
-             uint8_t* symKey,uint32_t symKeyLen,
-             uint8_t* plaint,uint32_t* plaintLen){
+int decrypt(uint8_t *cipher, uint32_t cipherLen,
+            uint8_t *symKey, uint32_t symKeyLen,
+            uint8_t *plaint, uint32_t *plaintLen) {
 
-    uint8_t iv[16]={0};
-    EVP_CIPHER_CTX *ctx=EVP_CIPHER_CTX_new();
-    if(ctx==NULL)
+    uint8_t iv[16] = {0};
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL)
         return 0;
 
-    if(!EVP_DecryptInit_ex(ctx,EVP_aes_128_cfb(),NULL,symKey,iv)){
+    if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, iv)) {
         goto error;
     }
 
-    if(!EVP_DecryptUpdate(ctx,plaint,plaintLen,cipher,cipherLen)){
+    if (!EVP_DecryptUpdate(ctx, plaint, (int*)plaintLen, cipher, cipherLen)) {
         goto error;
     }
 
     int len;
-    if(!EVP_DecryptFinal_ex(ctx,plaint+*plaintLen,&len)){
+    if (!EVP_DecryptFinal_ex(ctx, plaint + *plaintLen, &len)) {
         goto error;
     }
-    plaintLen+=len;
+    plaintLen += len;
 
     EVP_CIPHER_CTX_cleanup(ctx);
     return 1;

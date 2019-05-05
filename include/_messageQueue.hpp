@@ -71,6 +71,7 @@
 #include "chunk.hpp"
 #include "message.hpp"
 #include "seriazation.hpp"
+#include <thread>
 
 using namespace boost::interprocess;
 

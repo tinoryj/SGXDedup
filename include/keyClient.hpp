@@ -5,12 +5,15 @@
 #ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 
-#include "ssl.hpp"
+#include "Socket.hpp"
 #include "_messageQueue.hpp"
 #include "configure.hpp"
 #include "seriazation.hpp"
 #include "chunk.hpp"
 #include "cache.hpp"
+#include "powSession.hpp"
+#include "kmServer.hpp"
+#include "CryptoPrimitive.hpp"
 
 #include <boost/compute/detail/lru_cache.hpp>
 
@@ -20,25 +23,17 @@ class keyClient{
 private:
     _messageQueue _inputMQ;
     _messageQueue _outputMQ;
-    ssl* _keySecurityChannel;
     int _keyBatchSizeMin,_keyBatchSizeMax;
-
-
-    RSA* _rsa;
-    const BIGNUM *_keyN,*_keyE;
-    BIO* _keyfile;
-    BN_CTX *_bnCTX;
-
-    EVP_PKEY *_prikey,*_pubkey;
+    Socket _socket;
+    bool _trustdKM;
+    CryptoPrimitive _crypto;
 
 public:
     keyClient();
     ~keyClient();
     void run();
     bool insertMQ(Chunk &newChunk);
-    string keyExchange(SSL* connection,Chunk champion);
-    string elimination(BIGNUM* r,string hash);
-    string decoration(BIGNUM* invr,string key);
+    string keyExchange(Chunk champion);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP

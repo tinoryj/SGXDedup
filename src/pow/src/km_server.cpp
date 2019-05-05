@@ -3,19 +3,13 @@
 //
 
 #include "kmServer.hpp"
+extern Configure config;
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
 // -A AttestationReportSigningCACert.pem -C client.crt
 // -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
-void kmServer::closeSession(int fd) {
-    sessions.erase(fd);
-}
 
-kmServer::kmServer() {
-
-    ERR_load_crypto_strings();
-    OpenSSL_add_all_algorithms();
-
+kmServer::kmServer(Socket socket) {
     if(!cert_load_file(&_signing_ca,IAS_SIGNING_CA_FILE)){
         cerr<<"can not load IAS Signing Cert CA\n";
         exit(1);
@@ -45,78 +39,10 @@ kmServer::kmServer() {
     _quote_type=config.getQuoteType();
     _service_private_key=key_private_from_bytes(def_service_private_key);
     _iasVersion=config.getIASVersion();
+    _socket=socket;
 }
 
-void kmServer::run() {
-    networkStruct networkBody(0,0);
-    epoll_message msg;
-    sgx_msg01_t msg01;
-    sgx_ra_msg2_t msg2;
-    sgx_ra_msg3_t *msg3;
-    ra_msg4_t msg4;
-
-    while(1){
-        if(!_inputMQ.pop(msg)){
-            continue;
-        }
-        deserialize(msg._data,networkBody);
-        switch (networkBody._type){
-            case SGX_RA_MSG01:{
-                memcpy(&msg01,&networkBody._data[0],sizeof(sgx_msg01_t));
-                networkBody._data.clear();
-                if(!process_msg01(msg._fd,msg01,msg2)){
-                    cerr<<"error process msg01\n";
-                    networkBody._type=ERROR_RESEND;
-                }
-                else{
-                    networkBody._type=SUCCESS;
-                    networkBody._data.resize(sizeof(sgx_ra_msg2_t));
-                    memcpy(&networkBody._data[0],&msg2,sizeof(sgx_ra_msg2_t));
-                }
-                serialize(networkBody,msg._data);
-                _netMQ.push(msg);
-                break;
-
-            }
-            case SGX_RA_MSG3:{
-                msg3=(sgx_ra_msg3_t*)new char[networkBody._data.length()];
-                memcpy(msg3,&networkBody._data[0],networkBody._data.length());
-                if(sessions.find(msg._fd)==sessions.end()){
-                    cerr<<"client had not send msg01 before\n";
-                    networkBody._type=ERROR_CLOSE;
-                    networkBody._data.clear();
-                }
-                else{
-                    if(this->process_msg3(sessions[msg._fd],msg3,msg4,
-                                          networkBody._data.length()-sizeof(sgx_ra_msg3_t))) {
-                        networkBody._type=SUCCESS;
-                        networkBody._data.resize(sizeof(ra_msg4_t));
-                        memcpy(&networkBody._data[0],&msg4,sizeof(ra_msg4_t));
-                    }
-                    else{
-                        cerr<<"sgx msg3 error\n";
-                        networkBody._type=ERROR_CLOSE;
-                        networkBody._data.clear();
-                    }
-                }
-                serialize(networkBody,msg._data);
-                _netMQ.push(msg);
-                break;
-            }
-            case POW_CLOSE_SESSION:{
-                this->closeSession(msg._fd);
-                break;
-            }
-            default:{
-                break;
-            }
-        }
-    }
-}
-
-bool kmServer::process_msg01(int fd, sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2) {
-    powSession *current = new powSession();
-    sessions.insert(make_pair(fd,current));
+bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg2_t &msg2) {
 
     EVP_PKEY *Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
@@ -126,7 +52,7 @@ bool kmServer::process_msg01(int fd, sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2) {
         return false;
     }
 
-    memcpy(&current->msg1, &msg01.msg1, sizeof(sgx_ra_msg1_t));
+    memcpy(&session->msg1, &msg01.msg1, sizeof(sgx_ra_msg1_t));
 
     Gb = key_generate();
     if (Gb == nullptr) {
@@ -134,13 +60,13 @@ bool kmServer::process_msg01(int fd, sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2) {
         return false;
     }
 
-    if (!derive_kdk(Gb, current->kdk, msg01.msg1.g_a)) {
+    if (!derive_kdk(Gb, session->kdk, msg01.msg1.g_a)) {
         cerr << "can not derive KDK\n";
         return false;
     }
 
-    cmac128(current->kdk, (unsigned char *) ("\x01SMK\x00\x80\x00"), 7,
-            current->smk);
+    cmac128(session->kdk, (unsigned char *) ("\x01SMK\x00\x80\x00"), 7,
+            session->smk);
 
     //build msg2
     memset(&msg2, 0, sizeof(sgx_ra_msg2_t));
@@ -156,16 +82,16 @@ bool kmServer::process_msg01(int fd, sgx_msg01_t &msg01,sgx_ra_msg2_t &msg2) {
     }
 
     memcpy(gb_ga, &msg2.g_b, 64);
-    memcpy(current->g_b, &msg2.g_b, 64);
+    memcpy(session->g_b, &msg2.g_b, 64);
 
-    memcpy(&gb_ga[64], &current->msg1.g_a, 64);
-    memcpy(current->g_a, &current->msg1.g_a, 64);
+    memcpy(&gb_ga[64], &session->msg1.g_a, 64);
+    memcpy(session->g_a, &session->msg1.g_a, 64);
 
     ecdsa_sign(gb_ga, 128, _service_private_key, r, s, digest);
     reverse_bytes(&msg2.sign_gb_ga.x, r, 32);
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
-    cmac128(current->smk, (unsigned char *) &msg2, 148, (unsigned char *) &msg2.mac);
+    cmac128(session->smk, (unsigned char *) &msg2, 148, (unsigned char *) &msg2.mac);
 
     return true;
 }
@@ -275,6 +201,25 @@ bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
             return false;
         }
 
+        /*
+         * A real service provider would validate that the pow_enclave
+         * report is from an pow_enclave that they recognize. Namely,
+         * that the MRSIGNER matches our signing key, and the MRENCLAVE
+         * hash matches an pow_enclave that we compiled.
+         *
+         * Other policy decisions might include examining ISV_SVN to
+         * prevent outdated/deprecated software from successfully
+         * attesting, and ensuring the TCB is not out of date.
+         */
+
+
+
+        /*
+         * If the pow_enclave is trusted, derive the MK and SK. Also get
+         * SHA256 hashes of these so we can verify there's a shared
+         * secret between us and the client.
+         */
+
         if (msg4.status) {
 
             cmac128(current->kdk, (unsigned char *) ("\x01MK\x00\x80\x00"),
@@ -329,6 +274,7 @@ bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc
 
         memset(msg4, 0, sizeof(ra_msg4_t));
 
+
         if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
             msg4->status = true;
         } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
@@ -340,4 +286,41 @@ bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc
         }
     }
     return true;
+}
+powSession* kmServer::authkm() {
+    powSession *ans = new powSession();
+    string msg01Buffer, msg2Buffer, msg3Buffer, msg4Buffer;
+    sgx_msg01_t msg01;
+    sgx_ra_msg2_t msg2;
+    ra_msg4_t msg4;
+    if (!_socket.Recv(msg01Buffer)) {
+        printf("raServer: error socket reading\n");
+        return nullptr;
+    }
+    memcpy(&msg01, (const void *) msg01Buffer.c_str(), sizeof msg01);
+    if (!this->process_msg01(ans, msg01, msg2)) {
+        printf("raServer: error msg01\n");
+        return nullptr;
+    }
+    msg2Buffer.resize(sizeof(msg2) + msg2.sig_rl_size);
+    memcpy((void *) msg2Buffer.c_str(), &msg2, sizeof(msg2) + msg2.sig_rl_size);
+    if (!_socket.Send(msg2Buffer)) {
+        printf("raServer: error socket reading\n");
+        return nullptr;
+    }
+    if (!_socket.Recv(msg3Buffer)) {
+        printf("raServer: error msg01\n");
+        return nullptr;
+    }
+    uint32_t quote_size;
+    if (!this->process_msg3(ans, (sgx_ra_msg3_t *) msg3Buffer.c_str(), msg4, quote_size)) {
+        printf("raServer: error msg3\n");
+        return nullptr;
+    }
+    memcpy((void *) msg4Buffer.c_str(), &msg4, sizeof msg4);
+    if (!_socket.Send(msg4Buffer)) {
+        printf("raServer: error socket reading\n");
+        return nullptr;
+    }
+    return ans;
 }

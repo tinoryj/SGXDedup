@@ -3,7 +3,7 @@
 set(SGXOPENSSL_INCLUDE_PATH /opt/intel/sgxssl/include)
 set(SGXOPENSSL_LIBRARY_PATH /opt/intel/sgxssl/lib64)
 
-set(EDL_SEARCH_PATHS ${SGXOPENSSL_INCLUDE_PATH} /opt/intel/sgxsdk/include .)
+set(EDL_SEARCH_PATHS ${SGXOPENSSL_INCLUDE_PATH} /opt/intel/sgxsdk/include)
 set(E_SRC km_enclave.c)
 set(LDS km_enclave.lds)
 set(SGXOPENSSL_OBJECTS  sgx_tsgxssl_crypto sgx_tsgxssl sgx_tstdc sgx_tcxx)

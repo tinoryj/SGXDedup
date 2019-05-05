@@ -11,7 +11,6 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
 #include <string>
-#include <bits/stdc++.h>
 
 #include <iostream>
 

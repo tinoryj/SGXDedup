@@ -30,7 +30,7 @@ Usage:
 #include "retriever.hpp"
 #include "reciver.hpp"
 #include "decoder.hpp"
-#include "../pow/include/powClient.hpp"
+#include "powClient.hpp"
 
 
 using namespace std;

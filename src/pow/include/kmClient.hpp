@@ -4,10 +4,11 @@
 
 #ifndef GENERALDEDUPSYSTEM_KMCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KMCLIENT_HPP
-#include "enclave_u.h"
+#include "km_enclave_u.h"
 #include <sgx_urts.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
+#include "pthread.h"
 #include <string>
 #include "protocol.hpp"
 #include "crypto.h"
@@ -15,9 +16,9 @@
 #include <iostream>
 #include "_messageQueue.hpp"
 #include "chunk.hpp"
+#include "Socket.hpp"
+#include "powSession.hpp"
 
-
-//server public key
 static const sgx_ec256_public_t def_service_public_key = {
         {
                 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -37,20 +38,23 @@ static const sgx_ec256_public_t def_service_public_key = {
 class kmClient {
 private:
     bool enclave_trusted;
-    _messageQueue _inputMQ;
-    _messageQueue _outputMQ;
-
-    bool request(string &hash, string &key);
-public:
-
     sgx_enclave_id_t _eid;
     sgx_ra_context_t _ctx;
-    kmClient();
-    
+    string _keyd,_keyn;
     sgx_launch_token_t _token = {0};
     int updated;
-    bool do_attestation();
-    void run();
+    Socket _socket;
+
+public:
+    kmClient(string keyn,string keyd);
+    bool init(Socket socket);
+    bool trusted();
+    bool request(string &hash,string &key);
+    bool doAttestation();
+    bool createEnclave(sgx_enclave_id_t &eid,sgx_ra_context_t &ctx,string enclaveName);
+    bool getMsg01(sgx_enclave_id_t &eid,sgx_ra_context_t &ctx,string &msg01);
+    bool processMsg2(sgx_enclave_id_t &eid,sgx_ra_context_t &ctx,string &Msg2,string &msg3);
+    void raclose(sgx_enclave_id_t &eid,sgx_ra_context_t &ctx);
 };
 
 #endif //GENERALDEDUPSYSTEM_KMCLIENT_HPP

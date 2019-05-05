@@ -5,6 +5,7 @@ enclave {
 
   from "sgx_tkey_exchange.edl" import *;
   from "sgx_tsgxssl.edl" import *;
+
   trusted {
 
 	public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
@@ -17,9 +18,9 @@ enclave {
                                       sgx_ra_key_type_t type,
                                       [in,size = srcLen] uint8_t *src,
                                       uint32_t srcLen,
-                                      [in,size = keydLen] uint8_t *keyd,
+                                      [in,size=keydLen] uint8_t *keyd,
                                       uint32_t keydLen,
-                                      [in,size = keynLen] uint8_t *keyn,
+                                      [in,size=keynLen] uint8_t *keyn,
                                       uint32_t keynLen,
                                       [out,size = 16] uint8_t *key);
     };

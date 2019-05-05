@@ -12,6 +12,9 @@
 #include "cache.hpp"
 #include "_messageQueue.hpp"
 #include "message.hpp"
+#include "kmClient.hpp"
+#include "Socket.hpp"
+#include "openssl/bn.h"
 
 #include <string>
 
@@ -23,10 +26,8 @@
 
 class keyServer:public _keyManager{
 private:
-    ssl* _keySecurityChannel;
     RSA* _rsa;
     BIO* _key;
-    BN_CTX* _bnCTX;
     const BIGNUM *_keyN,*_keyD;
     bool _enclave_trusted;
 
@@ -34,6 +35,7 @@ private:
 public:
     keyServer();
     ~keyServer();
+    void run(Socket socket);
     void runRecv();
     void runKeyGen();
     bool keyGen(std::string hash,std::string& key);
