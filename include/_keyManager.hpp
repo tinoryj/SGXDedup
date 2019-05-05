@@ -38,7 +38,7 @@ public:
     ~_keyManager();
     //virtual bool receiveData() = 0;
     //virtual bool sendData() = 0;
-    virtual bool keyGen(std::string hash,std::string &key) = 0;
+    //virtual bool keyGen(std::string hash,std::string &key) = 0;
     bool workloadProgress(std::string hash,std::string &key); // main function for epoll S/R and threadPool schedule (insertQue & extractQue threads).
     bool insertQue();
     bool extractQue();

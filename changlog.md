@@ -1,3 +1,49 @@
+## May 5 2019:
+
+> Tinoryj
+
+### SGX-Version-KM_ENCLAVE Branch
+
+* Contains km_enclave version for key server using sgx enclave.
+
+### SGXSSL Guide
+
+In order to avoid pthread errors in compile, sgxssl file need to edit after install.
+
+#### Install sgx-ssl
+
+```shell
+cp openssl-1.1.1b.tar.gz intel-sgx-ssl-master/openssl_source
+cd Linux
+source /opt/intel/sgxsdk/environment
+make all test
+sudo make install
+```
+
+#### Modify 
+
+After install sgx-ssl, the include header & libs will copy to `opt/intel/sgxssl/`.
+
+* Step 1: edit file name
+
+```shell
+cd /opt/intel/sgxssl/include
+sudo mv pthread.h sgxpthread.h
+```
+
+* Step 2: edit `crypto.h`
+
+```shell
+sudo vim /opt/intel/sgxssl/include/openssl/crypto.h
+```
+
+In line 415, change `#    include "pthread.h"` to `#    include "../sgxpthread.h"`.
+
+### Fixed Problems
+
+[*] Fixed pow_enclave_u.h and pow_enclave_t.h include error.
+
+
 ## May 3 2019:
 
 > Tinoryj

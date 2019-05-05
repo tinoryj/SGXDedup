@@ -36,9 +36,6 @@ public:
     keyServer();
     ~keyServer();
     void run(Socket socket);
-    void runRecv();
-    void runKeyGen();
-    bool keyGen(std::string hash,std::string& key);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYSERVER_HPP
