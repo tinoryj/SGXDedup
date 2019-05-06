@@ -9,7 +9,7 @@
 #include <vector>
 #include <cstring>
 
-#include "boost/thread.hpp"
+#include <boost/thread.hpp>
 using namespace std;
 
 struct fileRecipe_t {

@@ -33,7 +33,7 @@ powServer::powServer() {
         exit(1);
     }
 
-    string spid=config.getSPID();
+    string spid=config.getPOWSPID();
     if(spid.length()!=32){
         cerr<<"SPID must be 32-byte hex string\n";
         exit(1);
@@ -41,16 +41,16 @@ powServer::powServer() {
 
     from_hexstring((unsigned char*)&_spid,(const void*)&spid[0],16);
 
-    _ias=new IAS_Connection(config.getIASServerType(),0);
+    _ias=new IAS_Connection(config.getPOWIASServerType(),0);
     _ias->client_cert(IAS_CERT_FILE,"PEM");
     _ias->client_key(IAS_CLIENT_KEY, nullptr);
     _ias->proxy_mode(IAS_PROXY_NONE);
     _ias->cert_store(_store);
     _ias->ca_bundle(CA_BUNDLE);
 
-    _quote_type=config.getQuoteType();
+    _quote_type=config.getPOWQuoteType();
     _service_private_key=key_private_from_bytes(def_service_private_key);
-    _iasVersion=config.getIASVersion();
+    _iasVersion=config.getPOWIASVersion();
 }
 
 void powServer::run() {

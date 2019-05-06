@@ -56,13 +56,22 @@ private:
     int _storageCoreThreadLimit;
 
     //POW settings
-    int _quoteType; //0x00 linkable; 0x01 unlinkable
-    int _iasVersion;
+    int _POWQuoteType; //0x00 linkable; 0x01 unlinkable
+    int _POWIasVersion;
     std::string _POWServerIp;
     int _POWServerPort;
-    std::string _enclaveName;
-    std::string _SPID;
-    int _iasServerType;     //0 for develop; 1 for production
+    std::string _POWEnclaveName;
+    std::string _POWSPID;
+    int _POWIasServerType;     //0 for develop; 1 for production
+
+    //km enclave settings
+    int _KMQuoteType; //0x00 linkable; 0x01 unlinkable
+    int _KMIasVersion;
+    std::string _KMServerIp;
+    int _KMServerPort;
+    std::string _KMEnclaveName;
+    std::string _KMSPID;
+    int _KMIasServerType;     //0 for develop; 1 for production
 
     // storage management settings
     uint64_t _storageServerNumber;
@@ -150,13 +159,22 @@ public:
 
 
     //pow settings
-    int getQuoteType();
-    int getIASVersion();
+    int getPOWQuoteType();
+    int getPOWIASVersion();
     std::string getPOWServerIP();
     int getPOWServerPort();
-    std::string getEnclaveName();
-    std::string getSPID();
-    int getIASServerType();
+    std::string getPOWEnclaveName();
+    std::string getPOWSPID();
+    int getPOWIASServerType();
+
+    //km settings
+    int getKMQuoteType();
+    int getKMIASVersion();
+    std::string getKMServerIP();
+    int getKMServerPort();
+    std::string getKMEnclaveName();
+    std::string getKMSPID();
+    int getKMIASServerType();
 
     // storage management settings
     uint64_t getStorageServerNumber();

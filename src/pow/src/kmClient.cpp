@@ -23,7 +23,7 @@ bool kmClient::request(string &hash, string &key) {
     uint8_t *src = new uint8_t[srcLen];
 
     if (src == nullptr) {
-        cerr << "mem error\n";
+        cerr << "kmClient: mem error\n";
         return false;
     }
     memcpy(src, &hash[0], srcLen);
@@ -40,7 +40,7 @@ bool kmClient::request(string &hash, string &key) {
                         (uint32_t)_keyn.length(),
                         ans);
     if (status != SGX_SUCCESS) {
-        cerr<<"POWClient : ecall failed\n";
+        cerr<<"kmClient : ecall failed\n";
         return false;
     }
 
@@ -60,8 +60,8 @@ bool kmClient::init(Socket socket) {
         printf("kmenclave:create enclave failed\n");
         return false;
     }
-    _socket=socket;
-    enclave_trusted=doAttestation();
+    _socket = socket;
+    enclave_trusted = doAttestation();
     return enclave_trusted;
 }
 
@@ -171,10 +171,10 @@ bool kmClient::doAttestation () {
     int rv;
     size_t msg4sz = 0;
 
-    string enclaveName = config.getEnclaveName();
+    string enclaveName = config.getKMEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
-        cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;
+        cerr << "kmClient : Can not launch pow_enclave : " << enclaveName << endl;
         printf("%08x\n",status);
         return false;
     }
@@ -182,11 +182,11 @@ bool kmClient::doAttestation () {
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
                              &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "POWClient : pow_enclave ra init failed : " << status << endl;
+        cerr << "kmClient : pow_enclave ra init failed : " << status << endl;
         return false;
     }
     if (sgxrv != SGX_SUCCESS) {
-        cerr << "POWClient : sgx ra init failed : " << sgxrv << endl;
+        cerr << "kmClient : sgx ra init failed : " << sgxrv << endl;
         return false;
     }
 
@@ -195,7 +195,7 @@ bool kmClient::doAttestation () {
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "POWClient : sgx ge epid failed : " << status << endl;
+        cerr << "kmClient : sgx ge epid failed : " << status << endl;
         return false;
     }
 
@@ -204,7 +204,7 @@ bool kmClient::doAttestation () {
     status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg01.msg1);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "POWClient : sgx error get msg1\n" << status << endl;
+        cerr << "kmClient : sgx error get msg1\n" << status << endl;
         return false;
     }
 
@@ -264,16 +264,16 @@ bool kmClient::doAttestation () {
     }
     msg4=(ra_msg4_t*)new uint8_t[msg4Buffer.length()];
     memcpy(msg4,(void*)msg4Buffer.c_str(),msg4Buffer.length());
-    cerr << "kmlient : send msg3 and Recv msg4 success\n";
+    cerr << "kmClient : send msg3 and Recv msg4 success\n";
 
     if (msg3 != nullptr) {
         delete msg3;
     }
 
     if (msg4->status) {
-        cerr << "POWClient : Enclave TRUSTED\n";
+        cerr << "kmClient : Enclave TRUSTED\n";
     } else if (!msg4->status) {
-        cerr << "POWClient : Enclave NOT TRUSTED\n";
+        cerr << "kmClient : Enclave NOT TRUSTED\n";
         delete msg4;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;

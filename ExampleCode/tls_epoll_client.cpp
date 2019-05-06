@@ -52,7 +52,7 @@ int main(){
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
-    ctx=SSL_CTX_new(TLSv1_1_client_method());
+    ctx=SSL_CTX_new(TLS_client_method());
     SSL_CTX_set_verify(ctx,SSL_VERIFY_PEER,NULL);
     SSL_CTX_load_verify_locations(ctx,CACERT,NULL);
     SSL_CTX_use_certificate_file(ctx,CLCERT,SSL_FILETYPE_PEM);

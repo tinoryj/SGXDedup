@@ -24,7 +24,7 @@
 
 
 
-class keyServer:public _keyManager{
+class keyServer{
 private:
     RSA* _rsa;
     BIO* _key;

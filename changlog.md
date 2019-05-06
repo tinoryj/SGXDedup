@@ -1,3 +1,17 @@
+## May 6 2019:
+
+> Tinoryj
+
+## New Bugs
+
+* key manager enclave create failed.
+
+## Fixed Bugs
+
+[*] Compile error by openssl & sgxssl link.
+[*] Configure compact with two enclave.
+[*] Compile error because _keymanager valture function not implemented (remove _keymanager | no use). 
+
 ## May 5 2019:
 
 > Tinoryj

@@ -106,20 +106,41 @@ void Configure::readConf(std::string path) {
     ("mutiThread._storageCoreThreadLimit");
 
     //pow Configure
-    _quoteType=root.get<int>\
+    _POWQuoteType=root.get<int>\
     ("pow._quoteType");
-    _iasVersion=root.get<int>\
+    _POWIasVersion=root.get<int>\
     ("pow._iasVersion");
     _POWServerIp=root.get<std::string>\
-    ("pow._POWServerIp");
+    ("pow._ServerIp");
     _POWServerPort=root.get<int>\
+<<<<<<< HEAD
     ("pow._POWServerPort");
     _enclaveName=root.get<std::string>\
+=======
+    ("pow._ServerPort");
+    _POWEnclaveName=root.get<std::string>\
+>>>>>>> Temp 19-5-5 1213 | fixed compile errors , begin to fix km enclave create failed error
     ("pow._enclave_name");
-    _SPID=root.get<std::string>\
+    _POWSPID=root.get<std::string>\
     ("pow._SPID");
-    _iasServerType=root.get<int>\
+    _POWIasServerType=root.get<int>\
     ("pow._iasServerType");
+
+    //km enclave Configure
+    _KMQuoteType=root.get<int>\
+    ("km._quoteType");
+    _KMIasVersion=root.get<int>\
+    ("km._iasVersion");
+    _KMServerIp=root.get<std::string>\
+    ("km._ServerIp");
+    _KMServerPort=root.get<int>\
+    ("km._ServerPort");
+    _KMEnclaveName=root.get<std::string>\
+    ("km._enclave_name");
+    _KMSPID=root.get<std::string>\
+    ("km._SPID");
+    _KMIasServerType=root.get<int>\
+    ("km._iasServerType");
 
 
     //server Configure
@@ -283,12 +304,14 @@ uint64_t Configure::getMaxContainerSize() {
     return _maxContainerSize;
 }
 
-int Configure::getQuoteType(){
-    return _quoteType;
+//pow enclave settings
+
+int Configure::getPOWQuoteType(){
+    return _POWQuoteType;
 }
 
-int Configure::getIASVersion() {
-    return _iasVersion;
+int Configure::getPOWIASVersion() {
+    return _POWIasVersion;
 }
 
 std::string Configure::getPOWServerIP() {
@@ -299,18 +322,51 @@ int Configure::getPOWServerPort() {
     return _POWServerPort;
 }
 
-std::string Configure::getEnclaveName() {
-    return _enclaveName;
+
+std::string Configure::getPOWEnclaveName() {
+    return _POWEnclaveName;
 }
 
-std::string Configure::getSPID() {
-    return _SPID;
+std::string Configure::getPOWSPID() {
+    return _POWSPID;
 }
 
-int Configure::getIASServerType() {
-    return _iasServerType;
+int Configure::getPOWIASServerType() {
+    return _POWIasServerType;
 }
 
+// km enclave settings
+int Configure::getKMQuoteType(){
+    return _KMQuoteType;
+}
+
+int Configure::getKMIASVersion() {
+    return _KMIasVersion;
+}
+
+std::string Configure::getKMServerIP() {
+    return _KMServerIp;
+}
+
+int Configure::getKMServerPort() {
+    return _KMServerPort;
+}
+
+
+std::string Configure::getKMEnclaveName() {
+    return _KMEnclaveName;
+}
+
+std::string Configure::getKMSPID() {
+    return _KMSPID;
+}
+
+int Configure::getKMIASServerType() {
+    return _KMIasServerType;
+}
+
+
+// client settings
 int Configure::getClientID() {
     return _clientID;
 }

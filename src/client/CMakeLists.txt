@@ -1,4 +1,8 @@
 #src/client
+
+set(OPENSSL_INCLUDE_PATH /usr/include/)
+set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
+
 add_library(_chunker STATIC _chunker.cpp)
 add_library(chunker STATIC chunker.cpp)
 add_library(_encoder STATIC _encoder.cpp)

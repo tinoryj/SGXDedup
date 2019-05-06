@@ -10,8 +10,8 @@
 #endif()
 
 
-set(OPENSSL_INCLUDE_PATH /usr/include/)
-set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
+#set(OPENSSL_INCLUDE_PATH /usr/include/)
+#set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 
 set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
 set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
@@ -22,8 +22,8 @@ set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
 set(POW_INCLUDE_PATH pow/include)
 
 include_directories(${SGX_INCLUDE_PATH} ${POW_INCLUDE_PATH})
-include_directories(${ENCLAVE_INCLUDE_PATH} ${BOOST_INCLUDE_DIR} ${OPENSSL_INCLUDE_PATH} ${LEVELDB_INCLUDE_PATH} ../include)
-link_directories(${BOOST_LIBRARY_DIR} ${OPENSSL_LIBRARY_PATH} ${LEVELDB_LIBRARY_PATH} util)
+include_directories(${ENCLAVE_INCLUDE_PATH} ${BOOST_INCLUDE_DIR} ${LEVELDB_INCLUDE_PATH} ../include)
+link_directories(${BOOST_LIBRARY_DIR} ${LEVELDB_LIBRARY_PATH} util)
 
 set(BOOST_LIBRARY_OBJ boost_thread boost_system boost_serialization)
 set(SYSTEM_LIBRARY_OBJ pthread rt dl)
@@ -37,7 +37,7 @@ set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ}
 set(CLIENT_OBJ chunker _chunker encoder _encoder keyClient sender _sender receiver _receiver
         decoder _decoder retriever _retriever powClient kmServer)
 set(SERVER_OBJ dataSR _dataSR dedupCore _dedupCore storage _storage powServer)
-set(KEYSERVER_OBJ keyServer _keyManager kmClient)
+set(KEYSERVER_OBJ keyServer kmClient)
 
 #-fno-builtin-memset
 set(CMAKE_C_FLAGS "-g")

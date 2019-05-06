@@ -21,7 +21,7 @@ target_link_libraries(km_enclave ${SGXOPENSSL_OBJECTS})
 
 enclave_sign(km_enclave KEY km_enclave_private.pem CONFIG km_enclave.config.xml)
 
-set(U_SRC ../src/km_client.cpp)
+set(U_SRC ../src/kmClient.cpp)
 add_untrusted_library(kmClient
                      STATIC
                      SRCS ${U_SRC}

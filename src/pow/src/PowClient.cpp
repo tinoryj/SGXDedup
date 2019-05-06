@@ -115,7 +115,7 @@ bool powClient::do_attestation () {
     int rv;
     size_t msg4sz = 0;
 
-    string enclaveName = config.getEnclaveName();
+    string enclaveName = config.getPOWEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;

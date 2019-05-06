@@ -6,7 +6,7 @@
 		"_avgChunkSize":4096,
 		"_maxChunkSize":16384,
 		"_slidingWinSize":256,
-		"_segmentSize":6666,
+		"_segmentSize":4194304,
 		"_ReadSize":128
 	},
 	"MessageQueue":{
@@ -16,25 +16,24 @@
 	"KeyServerConfig":{
 		"_keyBatchSizeMin":10000,
 		"_keyBatchSizeMax":2000000,
-		"_keyServerNumber":6666,
+		"_keyServerNumber":1,
 		"_keyCacheSize":10000,
 		"_keyServerIP":[
-			"127.0.0.1",
-			"127.0.0.2"
+			"127.0.0.1"
 		],
 		"_keyServerPort":[
 			6666
 		]
 	},
 	"SPConfig":{
-		"_storageServerNumber":6666,
+		"_storageServerNumber":1,
 		"_storageServerIP":[
 			"127.0.0.1"
 		],
 		"_storageServerPort":[
 			6668
 		],
-		"_maxContainerSize":6666
+		"_maxContainerSize":4096
 	},
 	"mutiThread":{
 		"_encodeThreadLimit":1,
@@ -51,9 +50,18 @@
 	"pow":{
 		"_quoteType":0,
 		"_iasVersion":3,
-		"_POWServerIp":"127.0.0.1",
-		"_powServerPort":6667,
+		"_ServerIp":"127.0.0.1",
+		"_ServerPort":6667,
 		"_enclave_name":"pow_enclave.signed.so",
+		"_SPID":"797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType":0
+	},
+	"km":{
+		"_quoteType":0,
+		"_iasVersion":3,
+		"_ServerIp":"127.0.0.1",
+		"_ServerPort":6666,
+		"_enclave_name":"km_enclave.signed.so",
 		"_SPID":"797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType":0
 	},

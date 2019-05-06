@@ -8,8 +8,8 @@ keyServer::keyServer(){
     _rsa=RSA_new();
     _key=NULL;
     _key=BIO_new_file(KEYMANGER_PRIVATE_KEY,"r");
-
-    char passwd[5]="1111";passwd[4]='\0';
+    char passwd[5] = "1111";
+    passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(_key,&_rsa,NULL,passwd);
     RSA_get0_key(_rsa,&_keyN, nullptr,&_keyD);
     BIO_free_all(_key);
@@ -23,11 +23,11 @@ void keyServer::run(Socket socket){
     int lenKeyn,lenKeyd;
     keyn.resize(2048);
     keyd.resize(2048);
-    lenKeyn=BN_bn2bin(_keyN,(unsigned char*)keyn.c_str());
-    lenKeyd=BN_bn2bin(_keyD,(unsigned char*)keyd.c_str());
+    lenKeyn = BN_bn2bin(_keyN,(unsigned char*)keyn.c_str());
+    lenKeyd = BN_bn2bin(_keyD,(unsigned char*)keyd.c_str());
     keyn.resize(lenKeyn);
     keyd.resize(lenKeyd);
-    kmClient *client=new kmClient(keyn,keyd);
+    kmClient *client = new kmClient(keyn,keyd);
     if(!client->init(socket)){
         printf("keyServer: enclave not truster\n");
         return;

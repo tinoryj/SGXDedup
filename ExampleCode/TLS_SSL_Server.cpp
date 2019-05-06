@@ -29,7 +29,7 @@ int main(){
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
 
-	ctx=SSL_CTX_new(TLSv1_server_method());
+	ctx=SSL_CTX_new(TLSserver_method());
 
 	SSL_CTX_set_mode(ctx,SSL_MODE_AUTO_RETRY);
 	SSL_CTX_set_verify(ctx,SSL_VERIFY_PEER,NULL);

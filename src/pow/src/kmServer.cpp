@@ -21,7 +21,7 @@ kmServer::kmServer(Socket socket) {
         exit(1);
     }
 
-    string spid=config.getSPID();
+    string spid=config.getKMSPID();
     if(spid.length()!=32){
         cerr<<"SPID must be 32-byte hex string\n";
         exit(1);
@@ -29,16 +29,16 @@ kmServer::kmServer(Socket socket) {
 
     from_hexstring((unsigned char*)&_spid,(const void*)&spid[0],16);
 
-    _ias=new IAS_Connection(config.getIASServerType(),0);
+    _ias=new IAS_Connection(config.getKMIASServerType(),0);
     _ias->client_cert(IAS_CERT_FILE,"PEM");
     _ias->client_key(IAS_CLIENT_KEY, nullptr);
     _ias->proxy_mode(IAS_PROXY_NONE);
     _ias->cert_store(_store);
     _ias->ca_bundle(CA_BUNDLE);
 
-    _quote_type=config.getQuoteType();
+    _quote_type=config.getKMQuoteType();
     _service_private_key=key_private_from_bytes(def_service_private_key);
-    _iasVersion=config.getIASVersion();
+    _iasVersion=config.getKMIASVersion();
     _socket=socket;
 }
 
@@ -294,32 +294,32 @@ powSession* kmServer::authkm() {
     sgx_ra_msg2_t msg2;
     ra_msg4_t msg4;
     if (!_socket.Recv(msg01Buffer)) {
-        printf("raServer: error socket reading\n");
+        printf("kmServer: error socket reading\n");
         return nullptr;
     }
     memcpy(&msg01, (const void *) msg01Buffer.c_str(), sizeof msg01);
     if (!this->process_msg01(ans, msg01, msg2)) {
-        printf("raServer: error msg01\n");
+        printf("kmServer: error msg01\n");
         return nullptr;
     }
     msg2Buffer.resize(sizeof(msg2) + msg2.sig_rl_size);
     memcpy((void *) msg2Buffer.c_str(), &msg2, sizeof(msg2) + msg2.sig_rl_size);
     if (!_socket.Send(msg2Buffer)) {
-        printf("raServer: error socket reading\n");
+        printf("kmServer: error socket reading\n");
         return nullptr;
     }
     if (!_socket.Recv(msg3Buffer)) {
-        printf("raServer: error msg01\n");
+        printf("kmServer: error msg01\n");
         return nullptr;
     }
     uint32_t quote_size;
     if (!this->process_msg3(ans, (sgx_ra_msg3_t *) msg3Buffer.c_str(), msg4, quote_size)) {
-        printf("raServer: error msg3\n");
+        printf("kmServer: error msg3\n");
         return nullptr;
     }
     memcpy((void *) msg4Buffer.c_str(), &msg4, sizeof msg4);
     if (!_socket.Send(msg4Buffer)) {
-        printf("raServer: error socket reading\n");
+        printf("kmServer: error socket reading\n");
         return nullptr;
     }
     return ans;
