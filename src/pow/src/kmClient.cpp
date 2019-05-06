@@ -56,10 +56,12 @@ kmClient::kmClient(string keyn,string keyd) {
 
 bool kmClient::init(Socket socket) {
     _ctx = 0xdeadbeef;
+    /*
     if(!createEnclave(_eid,_ctx,"kmenclave.so")){
         printf("kmenclave:create enclave failed\n");
         return false;
     }
+    */
     _socket = socket;
     enclave_trusted = doAttestation();
     return enclave_trusted;

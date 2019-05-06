@@ -251,12 +251,12 @@ std::vector<int> Configure::getKeyServerPort() {
 
 */
 
-std::string Configure::getKeyServerIP(){
-    return _keyServerIP[0];
+std::string Configure::getKeyServerIP(int index){
+    return _keyServerIP[index];
 }
 
-int Configure::getKeyServerPort(){
-    return _keyServerPort[0];
+int Configure::getKeyServerPort(int index){
+    return _keyServerPort[index];
 }
 
 //muti thread settings
@@ -278,9 +278,9 @@ uint64_t Configure::getStorageServerNumber() {
     return _storageServerNumber;
 }
 
-std::string Configure::getStorageServerIP() {
+std::string Configure::getStorageServerIP(int index) {
 
-    return _storageServerIP[0];
+    return _storageServerIP[index];
 }
 /*
 std::vector<std::string> Configure::getStorageServerIP() {
@@ -288,9 +288,9 @@ std::vector<std::string> Configure::getStorageServerIP() {
     return _storageServerIP;
 }*/
 
-int Configure::getStorageServerPort() {
+int Configure::getStorageServerPort(int index) {
 
-    return _storageServerPort[0];
+    return _storageServerPort[index];
 }
 
 /*

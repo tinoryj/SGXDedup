@@ -8,7 +8,7 @@
 extern Configure config;
 
 Sender::Sender() {
-    _socket.init(CLIENTTCP,config.getStorageServerIP(),config.getStorageServerPort());
+    _socket.init(CLIENTTCP,config.getStorageServerIP(0),config.getStorageServerPort(0));
 }
 Sender::~Sender() {
     _socket.finish();

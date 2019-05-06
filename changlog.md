@@ -4,13 +4,14 @@
 
 ## New Bugs
 
-* key manager enclave create failed.
+* key manager enclave remote attestation aborts by server ("msg0 Extended Epid Group ID is not zero.").
 
 ## Fixed Bugs
 
 [*] Compile error by openssl & sgxssl link.
 [*] Configure compact with two enclave.
 [*] Compile error because _keymanager valture function not implemented (remove _keymanager | no use). 
+[*] Key manager enclave create failed.
 
 ## May 5 2019:
 

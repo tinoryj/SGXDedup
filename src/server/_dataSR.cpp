@@ -12,7 +12,7 @@ _DataSR::_DataSR() {
     _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
     _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
      */
-    _socket.init(SERVERTCP,"",config.getStorageServerPort());
+    _socket.init(SERVERTCP,"",config.getStorageServerPort(0));
 }
 
 _DataSR::~_DataSR() {

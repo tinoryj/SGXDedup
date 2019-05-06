@@ -11,7 +11,7 @@ Configure config("config.json");
 util::keyCache kCache;
 
 int main(){
-    Socket socket(SERVERTCP,"",config.getKeyServerPort());
+    Socket socket(SERVERTCP,"",config.getKeyServerPort(0));
     boost::thread *th;
     keyServer server;
     while (1){
