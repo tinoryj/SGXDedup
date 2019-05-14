@@ -1,3 +1,12 @@
+## may 14 2019:
+
+> Tionryj
+
+## Bugs
+
+* need to generate new spid for km_enclave (waiting for intel)
+
+
 ## May 6 2019:
 
 > Tinoryj
