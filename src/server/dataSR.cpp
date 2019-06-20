@@ -3,6 +3,8 @@
 //
 
 #include <dataSR.hpp>
+//tmp
+#include "../../include/dataSR.hpp"
 
 void dataSR::run(){
     boost::thread th(boost::bind(&_DataSR::extractMQ,this));

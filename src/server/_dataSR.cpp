@@ -35,6 +35,7 @@ bool _DataSR::extractMQ() {
         }
         ev.data.ptr = (void *) _epollSession.at(msg->_fd);
         _epollSession.at(msg->_fd)->_data = msg->_data;
+        _epollSession.at(msg->_fd)->_type = msg->_type;
 //        ev.data.ptr=(void*)msg;
         epoll_ctl(msg->_epfd, EPOLL_CTL_MOD, msg->_fd, &ev);
     }
@@ -70,6 +71,7 @@ bool _DataSR::workloadProgress() {
     string buffer;
     Socket tmpSock;
     networkStruct netBody(0, 0);
+
     while (1) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {
@@ -89,34 +91,36 @@ bool _DataSR::workloadProgress() {
                 continue;
             }
             if (event[i].events & EPOLLOUT) {
-                if (!socketConnection[msg->_fd].Send(msg->_data)) {
-                    cerr << "perr closed\n";
-                    netBody._type=POW_CLOSE_SESSION;
-                    netBody._data.clear();
-                    serialize(netBody,msg->_data);
+                netBody._data=msg->_data;
+                netBody._cid=msg->_cid;
+                netBody._type=msg->_type;
+                serialize(netBody,buffer);
+                if (!socketConnection[msg->_fd].Send(buffer)) {
+                    cerr << "perr closed A\n";
+                    msg->_type=POW_CLOSE_SESSION;
+                    msg->_data.clear();
                     epoll_ctl(epfd,EPOLL_CTL_DEL,msg->_fd,&ev);
                     _epollSession.erase(msg->_fd);
                     this->insertMQ(MESSAGE2RASERVER,msg);
                     continue;
                 }
-                deserialize(msg->_data,netBody);
+//                deserialize(msg->_data,netBody);
                 ev.data.ptr = (void *) msg;
                 epoll_ctl(epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
                 continue;
             }
             if (event[i].events & EPOLLIN) {
                 if (!socketConnection[msg->_fd].Recv(buffer)) {
-                    cerr << "peer closed\n";
-                    netBody._type=POW_CLOSE_SESSION;
-                    netBody._data.clear();
-                    serialize(netBody,msg->_data);
+                    cerr << "peer closed B\n"<<msg->_fd<<endl;
+                    msg->_type=POW_CLOSE_SESSION;
+                    msg->_data.clear();
                     epoll_ctl(epfd,EPOLL_CTL_DEL,msg->_fd,&ev);
                     _epollSession.erase(msg->_fd);
                     this->insertMQ(MESSAGE2RASERVER,msg);
                     continue;
                 }
                 deserialize(buffer, netBody);
-                serialize(netBody,msg->_data);
+                msg->setNetStruct(netBody);
                 switch (netBody._type) {
                     case SGX_RA_MSG01: {
                         this->insertMQ(MESSAGE2RASERVER, msg);

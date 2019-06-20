@@ -3,6 +3,8 @@
 //
 
 #include "Socket.hpp"
+#include <iostream>
+#include <iomanip>
 using namespace std;
 
 Socket::Socket(const int type, string ip, int port) {
@@ -81,21 +83,35 @@ Socket Socket::Listen() {
 }
 
 bool Socket::Send(const string buffer) {
-    int sentSize = 0, cnt = 0, sendSize = buffer.length();
+    cerr<<setbase(10);
+    int sentSize = 0, sendSize = buffer.length();
     int len;
-    write(this->fd, (char *) &sendSize, sizeof(int));
-    while (sentSize < sendSize && cnt < 5) {
-        cnt++;
+    size_t s=write(this->fd, (char *) &sendSize, sizeof(int));
+    if(s<0){
+        cerr<<"send errno: "<<errno<<endl;
+        this->finish();
+        return false;
+    }
+    while (sentSize < sendSize) {
         len = write(this->fd, buffer.c_str() + sentSize, buffer.length() - sentSize);
         //should check errno here
-        if (len <= 0) return false;
+        if (len <= 0) {
+            if(errno==EAGAIN){
+
+            }
+        }
         sentSize += len;
     }
-    return (sentSize == sendSize);
+    if(sentSize!=sendSize){
+        this->finish();
+        return false;
+    }
+    return true;
 }
 
 bool Socket::Recv(string &buffer) {
-    size_t recvedSize = 0, cnt = 0, s;
+    cerr<<setbase(10);
+    size_t recvedSize = 0, s;
     int recvSize;
     buffer.clear();
     s = read(this->fd, (char *) &recvSize, sizeof(int));
@@ -103,14 +119,26 @@ bool Socket::Recv(string &buffer) {
         this->finish();
         return false;
     }
+    if(recvedSize<0){
+        cerr<<"Socket: recvSize: "<<setbase(10)<<recvedSize<<endl;
+        exit(0);
+    }
     buffer.resize(recvSize);
 
-    while (recvedSize < recvSize && cnt < 5) {
-        cnt++;
+    while (recvedSize < recvSize) {
         s = read(this->fd, &buffer[recvedSize], recvSize - recvedSize);
         //should check errno here
-        if (s <= 0) return false;
+        if (s <= 0) {
+            cout<<"recv errno: "<<errno<<endl;
+            this->finish();
+            return false;
+        }
         recvedSize += s;
     }
-    return (recvedSize == recvSize);
+    if(recvedSize!=recvSize){
+        this->finish();
+        return false;
+    }
+
+    return true;
 }

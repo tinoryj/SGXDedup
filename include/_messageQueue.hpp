@@ -11,18 +11,18 @@
 #define WRITE_MESSAGE 1
 
 /* Chunk */
-#define CHUNKER_TO_KEYCLIENT_MQ             "MQ0"
+#define CHUNKER_TO_KEYCLIENT_MQ             0
 
 /* Chunk */
-#define KEYCLIENT_TO_ENCODER_MQ             "MQ1"
+#define KEYCLIENT_TO_ENCODER_MQ             1
 
 /* Chunk */
-#define ENCODER_TO_POW_MQ                   "MQ2"
+#define ENCODER_TO_POW_MQ                   2
 
 /* networkStruct
  *      chunkList
  */
-#define SENDER_IN_MQ                        "MQ3"
+#define SENDER_IN_MQ                        3
 
 /* networkStruct
  *      chunkList
@@ -31,40 +31,39 @@
  *      status_msg
  *      Recipe
  */
-#define DATASR_IN_MQ                        "MQ4"
+#define DATASR_IN_MQ                        4
 
 /*
  * sgx_msg
  * */
-#define DATASR_TO_POWSERVER_MQ              "MQ5"
-
+#define DATASR_TO_POWSERVER_MQ              5
 
 /*
  * signed Hash
  * chunkList
  * */
-#define DATASR_TO_DEDUPCORE_MQ              "MQ6"
-
+#define DATASR_TO_DEDUPCORE_MQ              6
 /*
  * Recipe
  * */
-#define DATASR_TO_STORAGECORE_MQ            "MQ7"
+#define DATASR_TO_STORAGECORE_MQ            7
 
 /*
  * ChunkList
  * */
-#define DEDUPCORE_TO_STORAGECORE_MQ         "MQ8"
+#define DEDUPCORE_TO_STORAGECORE_MQ         8
 
-#define RECEIVER_TO_DECODER_MQ              "MQ9"
+#define RECEIVER_TO_DECODER_MQ              9
 
-#define DECODER_TO_RETRIEVER                "MQ10"
+#define DECODER_TO_RETRIEVER                10
 
-#define KEYMANGER_SR_TO_KEYGEN              "MQ11"
+#define KEYMANGER_SR_TO_KEYGEN              11
 
-#define POWSERVER_TO_DEDUPCORE_MQ           "MQ12"
+#define POWSERVER_TO_DEDUPCORE_MQ           12
 
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/queue.hpp>
+#include <boost/pool/pool.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
 
@@ -82,18 +81,18 @@ void initMQForKeyServer();
 class _messageQueue {
 private:
     message_queue *_mq;
-    unsigned long _messageQueueCnt, _messageQueueUnitSize;
+    boost::pool<> *_alloc;
+    unsigned long _messageQueueCnt, _messageQueueUnitSize,_messageQueueIndex;
     string _mqName;
-    string _buffer;
 
 public:
     _messageQueue();
 
-    _messageQueue(std::string name, int rw);
+    _messageQueue(int index, int rw);
 
-    ~_messageQueue();
+//    ~_messageQueue();
 
-    void createQueue(std::string name, int rw);
+    void createQueue(int index, int rw);
 
     template<class T>
     void push(T data) {
@@ -101,6 +100,12 @@ public:
 
         string tmp;
         serialize(data, tmp);
+        if(tmp.length()>this->_messageQueueUnitSize){
+            cerr<<setbase(10);
+            cerr<<"_messageQueue: mq size overflow for mq "<<this->_messageQueueIndex<<
+                "("<<tmp.length()<<">"<<this->_messageQueueUnitSize<<")"<<endl;
+            exit(0);
+        }
         bool status = false;
         while (true) {
             ptime abs_time = microsec_clock::universal_time() + boost::posix_time::microseconds(100);
@@ -115,20 +120,20 @@ public:
 
     template<class T>
     bool pop(T &ans) {
-        string &tmp=_buffer;
+        void *tmp=this->_alloc->malloc();
         unsigned int priority;
         message_queue::size_type recvd_size = 0;
-        //tmp.resize(_messageQueueUnitSize);
 
         using namespace boost::posix_time;
 
         ptime abs_time = microsec_clock::universal_time() + boost::posix_time::microseconds(100);
-        bool status = _mq->timed_receive(&tmp[0], _messageQueueUnitSize,
-                                         recvd_size, priority, abs_time);
-        if (!status) return false;
-    //    _mq->receive(&tmp[0], _messageQueueUnitSize, recvd_size, priority);
-        //tmp.resize(recvd_size);
-        deserialize(tmp.substr(0,recvd_size), ans);
+        bool status = _mq->timed_receive(tmp, _messageQueueUnitSize,recvd_size, priority, abs_time);
+        if (!status){
+            this->_alloc->free(tmp);
+            return false;
+        }
+        deserialize(string((const char*)tmp,recvd_size), ans);
+        this->_alloc->free(tmp);
         return true;
     }
 };

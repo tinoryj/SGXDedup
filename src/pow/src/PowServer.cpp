@@ -1,4 +1,9 @@
 #include "PowServer.hpp"
+//tmp
+#include "../include/PowServer.hpp"
+#include "../../../include/_messageQueue.hpp"
+#include "../../../include/protocol.hpp"
+
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
 // -A AttestationReportSigningCACert.pem -C client.crt
@@ -49,7 +54,6 @@ powServer::powServer() {
 }
 
 void powServer::run() {
-    networkStruct networkBody(0,0);
     epoll_message msg;
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
@@ -60,79 +64,73 @@ void powServer::run() {
         if(!_inputMQ.pop(msg)){
             continue;
         }
-        deserialize(msg._data,networkBody);
-        switch (networkBody._type){
+        switch (msg._type){
             case SGX_RA_MSG01:{
-                memcpy(&msg01,&networkBody._data[0],sizeof(sgx_msg01_t));
-                networkBody._data.clear();
+                memcpy(&msg01,&msg._data[0],sizeof(sgx_msg01_t));
+                msg._data.clear();
                 if(!process_msg01(msg._fd,msg01,msg2)){
                     cerr<<"error process msg01\n";
-                    networkBody._type=ERROR_RESEND;
+                    msg._type=ERROR_RESEND;
                 }
                 else{
-                    networkBody._type=SUCCESS;
-                    networkBody._data.resize(sizeof(sgx_ra_msg2_t));
-                    memcpy(&networkBody._data[0],&msg2,sizeof(sgx_ra_msg2_t));
+                    msg._type=SUCCESS;
+                    msg._data.resize(sizeof(sgx_ra_msg2_t));
+                    memcpy(&msg._data[0],&msg2,sizeof(sgx_ra_msg2_t));
                 }
-                serialize(networkBody,msg._data);
                 _netMQ.push(msg);
                 break;
 
             }
             case SGX_RA_MSG3:{
-                msg3=(sgx_ra_msg3_t*)new char[networkBody._data.length()];
-                memcpy(msg3,&networkBody._data[0],networkBody._data.length());
+                msg3=(sgx_ra_msg3_t*)new char[msg._data.length()];
+                memcpy(msg3,&msg._data[0],msg._data.length());
                 if(sessions.find(msg._fd)==sessions.end()){
                     cerr<<"client had not send msg01 before\n";
-                    networkBody._type=ERROR_CLOSE;
-                    networkBody._data.clear();
+                    msg._type=ERROR_CLOSE;
+                    msg._data.clear();
                 }
                 else{
                     if(this->process_msg3(sessions[msg._fd],msg3,msg4,
-                                           networkBody._data.length()-sizeof(sgx_ra_msg3_t))) {
-                        networkBody._type=SUCCESS;
-                        networkBody._data.resize(sizeof(ra_msg4_t));
-                        memcpy(&networkBody._data[0],&msg4,sizeof(ra_msg4_t));
+                                          msg._data.length()-sizeof(sgx_ra_msg3_t))) {
+                        msg._type=SUCCESS;
+                        msg._data.resize(sizeof(ra_msg4_t));
+                        memcpy(&msg._data[0],&msg4,sizeof(ra_msg4_t));
                     }
                     else{
                         cerr<<"sgx msg3 error\n";
-                        networkBody._type=ERROR_CLOSE;
-                        networkBody._data.clear();
+                        msg._type=ERROR_CLOSE;
+                        msg._data.clear();
                     }
                 }
-                serialize(networkBody,msg._data);
                 _netMQ.push(msg);
                 break;
             }
             case SGX_SIGNED_HASH:{
                 powSignedHash clientReq;
-                deserialize(networkBody._data,clientReq);
-                networkBody._data.clear();
+                deserialize(msg._data,clientReq);
                 if(sessions.find(msg._fd)==sessions.end()){
                     cerr<<"client not trusted yet\n";
-                    networkBody._type=ERROR_CLOSE;
+                    msg._type=ERROR_CLOSE;
                 }
                 else{
                     if(!sessions.at(msg._fd)->enclaveTrusted){
                         cerr<<"client not trusted yet\n";
-                        networkBody._type=ERROR_CLOSE;
+                        msg._type=ERROR_CLOSE;
                     }
                     else{
                         if(this->process_signedHash(sessions.at(msg._fd),clientReq)){
-                            networkBody._type=SUCCESS;
                             _outputMQ.push(msg);
                             break;
                         }
                         else{
-                            networkBody._type=ERROR_RESEND;
+                            msg._type=ERROR_RESEND;
                         }
                     }
                 }
-                serialize(networkBody,msg._data);
                 _netMQ.push(msg);
                 break;
             }
-            case POW_CLOSE_SESSION:{
+            case POW_CLOSE_SESSION:{\
                 this->closeSession(msg._fd);
                 break;
             }

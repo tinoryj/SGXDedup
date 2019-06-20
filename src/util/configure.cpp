@@ -37,11 +37,18 @@ void Configure::readConf(std::string path) {
     ("ChunkerConfig._ReadSize");
 
     //message queue Configure
-    _messageQueueCnt = root.get<uint64_t>\
-    ("MessageQueue._messageQueueCnt");
-    _messageQueueUnitSize = root.get<uint64_t>\
-    ("MessageQueue._messageQueueUnitSize");
-
+    _mqCnt = root.get<uint64_t>\
+    ("MessageQueue._mqCnt");
+    _messageQueueCnt=new uint64_t[_mqCnt];
+    _messageQueueUnitSize=new uint64_t[_mqCnt];
+    for(int i=0;i<_mqCnt;i++){
+        std::string num;
+        num.resize(20);
+        int n=sprintf(&num[0],"%d",i);
+        num.resize(n);
+        _messageQueueCnt[i]=root.get<uint64_t>("MessageQueue._messageQueueCnt"+num);
+        _messageQueueUnitSize[i]=root.get<uint64_t>("MessageQueue._messageQueueUnitSize"+num);
+    }
 
     //Key Server Congigure
     _keyServerNumber = root.get<uint64_t>\
@@ -106,7 +113,7 @@ void Configure::readConf(std::string path) {
     _POWServerIp=root.get<std::string>\
     ("pow._POWServerIp");
     _POWServerPort=root.get<int>\
-    ("pow._powServerPort");
+    ("pow._POWServerPort");
     _enclaveName=root.get<std::string>\
     ("pow._enclave_name");
     _SPID=root.get<std::string>\
@@ -179,14 +186,14 @@ uint64_t Configure::getReadSize() {
 }
 
 // message queue settions
-uint64_t Configure::getMessageQueueCnt() {
+uint64_t Configure::getMessageQueueCnt(int index) {
 
-    return _messageQueueCnt;
+    return _messageQueueCnt[index];
 }
 
-uint64_t Configure::getMessageQueueUnitSize() {
+uint64_t Configure::getMessageQueueUnitSize(int index) {
 
-    return _messageQueueUnitSize;
+    return _messageQueueUnitSize[index];
 }
 
 // key management settings

@@ -1,18 +1,22 @@
 #/
 
-find_package(Boost 1.36.0 REQUIRED COMPONENTS thread system serialization)
-if(Boost_FOUND)
+#find_package(Boost 1.36.0 REQUIRED COMPONENTS thread system serialization)
+#if(Boost_FOUND)
+  set(Boost_INCLUDE_DIRS /home/public/include)
+  set(BOOST_LIBRARY_DIR /home/public/lib)
   include_directories(${Boost_INCLUDE_DIRS})
-  link_directories(${Boost_LIBRARIES})
+# link_directories(${Boost_LIBRARIES})
   link_directories(${BOOST_LIBRARY_DIR})
-endif()
+#endif()
 
 
 set(OPENSSL_INCLUDE_PATH /usr/include/)
 set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 
-set(LEVELDB_INCLUDE_PATH ../lib/leveldb/include)
-set(LEVELDB_LIBRARY_PATH ../lib/leveldb/out-shared)
+set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
+set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
+#set(LEVELDB_INCLUDE_PATH ../lib/leveldb/include)
+#set(LEVELDB_LIBRARY_PATH ../lib/leveldb/out-shared)
 
 set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
 
@@ -35,7 +39,7 @@ set(KEYSERVER_OBJ keyServer _keyManager)
 
 #-fno-builtin-memset
 set(CMAKE_C_FLAGS "-g")
-set(CMAKE_CXX_FLAGS "-O3 -g -std=c++1z")
+set(CMAKE_CXX_FLAGS "-g -std=c++1z")
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
 list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
 find_package(SGX REQUIRED)

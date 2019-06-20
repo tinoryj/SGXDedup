@@ -31,8 +31,9 @@ private:
     uint64_t _ReadSize;     //128M per time
 
     // message queue settings
-    uint64_t _messageQueueCnt;
-    uint64_t _messageQueueUnitSize;
+    uint64_t _mqCnt;
+    uint64_t *_messageQueueCnt;
+    uint64_t *_messageQueueUnitSize;
 
     // key management settings
     uint64_t _keyServerNumber;
@@ -115,9 +116,9 @@ public:
     uint64_t getReadSize();
 
     // message queue settions
-    uint64_t getMessageQueueCnt();
+    uint64_t getMessageQueueCnt(int index);
 
-    uint64_t getMessageQueueUnitSize();
+    uint64_t getMessageQueueUnitSize(int index);
 
     // key management settings
     uint64_t getKeyServerNumber();

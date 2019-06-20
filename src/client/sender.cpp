@@ -20,7 +20,7 @@ bool Sender::sendRecipe(Recipe_t &request, int &status) {
     networkStruct respondBody(0, 0);
 
     /**********************/
-    //temp implement
+    //TODO:temp implement
     char recipekey[128];
     memset(recipekey, 0, sizeof(recipekey));
     CryptoPrimitive *_crypto=new CryptoPrimitive();
@@ -138,11 +138,13 @@ bool Sender::sendData(string &request, string &respond) {
         boost::unique_lock<boost::shared_mutex> t(this->_sockMtx);
         if(!_socket.Send(request)){
             cerr<<"Sender : peer closed\n";
-            return false;
+            // return false;
+            exit(0);
         }
         if(!_socket.Recv(respond)){
             cerr<<"Sender : peer closed\n";
-            return false;
+            exit(0);
+            // return false;
         }
     }
     return true;
@@ -181,7 +183,8 @@ void Sender::run() {
             memcpy(recipe->_f._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
             memcpy(recipe->_k._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
 
-            if (recipe->_chunkCnt == 0) {
+            if (recipe->_chunkCnt==0) {
+                recipe->_chunkCnt--;
                 while (1) {
                     this->sendRecipe(*recipe, status);
                     if (status == SUCCESS) {

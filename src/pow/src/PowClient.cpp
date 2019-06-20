@@ -1,7 +1,9 @@
 //-s 928A6B0E3CDDAD56EB3BADAA3B63F71F -r -d -v
 
-
 #include "powClient.hpp"
+//TODO:tmp
+#include "../include/powClient.hpp"
+
 
 using  namespace std;
 
@@ -56,7 +58,6 @@ void powClient::run() {
         }
 
         sender->sendEnclaveSignedHash(request, lists, netstatus);
-
         if (netstatus != SUCCESS) {
             cerr << "POWClient : send pow signed hash error\n";
             exit(1);
@@ -92,8 +93,6 @@ bool powClient::request(string &logicDataBatch, uint8_t cmac[16]) {
         return false;
     }
 
-
-    //cerr<<cmac<<endl;
     return true;
 }
 

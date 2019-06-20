@@ -8,6 +8,24 @@
 #include <string>
 using namespace std;
 
+struct networkStruct {
+    int _type;
+    int _cid;
+    string _data;
+
+    networkStruct(int msgType, int clientID) : _type(msgType), _cid(clientID) {};
+
+    networkStruct() {};
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & _type;
+        ar & _cid;
+        ar & _data;
+    }
+};
+
+
 struct message{
     int fd,epfd;
     char hash[128];
@@ -24,14 +42,22 @@ struct message{
 
 class epoll_message{
 public:
-    int _fd,_epfd;
+    int _fd,_epfd,_type,_cid;
     string _data;
+
+    void setNetStruct(networkStruct &n){
+        this->_type=n._type;
+        this->_cid=n._cid;
+        this->_data=n._data;
+    }
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
         ar & _fd;
         ar & _epfd;
         ar & _data;
+        ar & _type;
+        ar & _cid;
     }
 };
 

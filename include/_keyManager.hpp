@@ -27,7 +27,7 @@
 
 class _keyManager {
 private:
-    _messageQueue receiveQue;
+//    _messageQueue receiveQue;
 //  _messageQueue sendQue;
 //    std::deque<Chunk> receiveQue;
 //    std::deque<Chunk> sendQue;

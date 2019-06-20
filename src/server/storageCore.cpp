@@ -3,6 +3,9 @@
 //
 
 #include "storageCore.hpp"
+//tmp
+#include "../../include/storageCore.hpp"
+
 extern Configure config;
 extern database fp2ChunkDB;
 extern database fileName2metaDB;
@@ -243,7 +246,9 @@ bool storageCore::restoreChunk(std::string chunkHash, std::string &chunkData) {
     return haveData;
 }
 
+//TODO: non-repudiation
 //maybe should check all chunk in recipe had been storage in container
+//reason: make sure no fake recipe
 
 bool storageCore::verifyRecipe(Recipe_t recipe, int version) {
     fileRecipe_t f=recipe._f;
