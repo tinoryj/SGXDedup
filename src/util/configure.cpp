@@ -142,7 +142,6 @@ void Configure::readConf(std::string path) {
     _KMIasServerType=root.get<int>\
     ("km._iasServerType");
 
-
     //server Configure
     _fileRecipeRootPath=root.get<std::string>\
     ("server._fileRecipeRootPath");
@@ -251,12 +250,12 @@ std::vector<int> Configure::getKeyServerPort() {
 
 */
 
-std::string Configure::getKeyServerIP(int index){
-    return _keyServerIP[index];
+std::string Configure::getKeyServerIP(){
+    return _keyServerIP[0];
 }
 
-int Configure::getKeyServerPort(int index){
-    return _keyServerPort[index];
+int Configure::getKeyServerPort(){
+    return _keyServerPort[0];
 }
 
 //muti thread settings
@@ -278,9 +277,9 @@ uint64_t Configure::getStorageServerNumber() {
     return _storageServerNumber;
 }
 
-std::string Configure::getStorageServerIP(int index) {
+std::string Configure::getStorageServerIP() {
 
-    return _storageServerIP[index];
+    return _storageServerIP[0];
 }
 /*
 std::vector<std::string> Configure::getStorageServerIP() {
@@ -288,9 +287,9 @@ std::vector<std::string> Configure::getStorageServerIP() {
     return _storageServerIP;
 }*/
 
-int Configure::getStorageServerPort(int index) {
+int Configure::getStorageServerPort() {
 
-    return _storageServerPort[index];
+    return _storageServerPort[0];
 }
 
 /*

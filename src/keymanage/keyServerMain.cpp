@@ -2,7 +2,7 @@
 // Created by a on 11/17/18.
 //
 
-#define DEBUG 
+#define DEBUG
 
 #include "keyServer.hpp"
 #include "Socket.hpp"
@@ -11,7 +11,7 @@ Configure config("config.json");
 util::keyCache kCache;
 
 int main(){
-    Socket socket(SERVERTCP,"",config.getKeyServerPort(0));
+    Socket socket(SERVERTCP,"",config.getKeyServerPort());
     boost::thread *th;
     keyServer server;
     while (1){

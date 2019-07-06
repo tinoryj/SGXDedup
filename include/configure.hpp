@@ -131,11 +131,11 @@ public:
 
     // key management settings
     uint64_t getKeyServerNumber();
-
-    std::string getKeyServerIP(int index);
+//TODO:confirm
+    std::string getKeyServerIP();
     //std::vector<std::string> getkeyServerIP();
 
-    int getKeyServerPort(int index);
+    int getKeyServerPort();
     //std::vector<int> getKeyServerPort();
 
     uint64_t getKeyBatchSizeMin();
@@ -178,11 +178,10 @@ public:
 
     // storage management settings
     uint64_t getStorageServerNumber();
-
-    std::string getStorageServerIP(int index);
+    std::string getStorageServerIP();
     //std::vector<std::string> getStorageServerIP();
 
-    int getStorageServerPort(int index);
+    int getStorageServerPort();
     //std::vector<int> getStorageServerPort();
 
     uint64_t getMaxContainerSize();

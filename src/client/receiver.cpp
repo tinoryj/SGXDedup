@@ -7,7 +7,7 @@
 extern Configure config;
 
 receiver::receiver() {
-    _socket.init(CLIENTSIDE,config.getStorageServerIP(0),config.getStorageServerPort(0));
+    _socket.init(CLIENTSIDE,config.getStorageServerIP(),config.getStorageServerPort());
 }
 
 receiver::~receiver() {

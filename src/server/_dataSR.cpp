@@ -12,7 +12,7 @@ _DataSR::_DataSR() {
     _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
     _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
      */
-    _socket.init(SERVERTCP,"",config.getStorageServerPort(0));
+    _socket.init(SERVERTCP,"",config.getStorageServerPort());
 }
 
 _DataSR::~_DataSR() {
@@ -104,7 +104,6 @@ bool _DataSR::workloadProgress() {
                     this->insertMQ(MESSAGE2RASERVER,msg);
                     continue;
                 }
-//                deserialize(msg->_data,netBody);
                 ev.data.ptr = (void *) msg;
                 epoll_ctl(epfd,EPOLL_CTL_MOD,msg->_fd,&ev);
                 continue;

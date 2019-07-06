@@ -33,6 +33,15 @@ _messageQueue::_messageQueue(int index,int rw){
     createQueue(index,rw);
 }
 //
+_messageQueue::~_messageQueue(){
+//    //if delete _mq here, will cause error when use temp object
+//    //so do not do that
+///*
+//    if(_mq!=NULL)
+//        delete _mq;
+//*/
+}
+//
 //_messageQueue::~_messageQueue(){
 //    //if delete _mq here, will cause error when use temp object
 //    //so do not do that

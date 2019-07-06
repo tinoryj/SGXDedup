@@ -30,7 +30,8 @@ Usage:
 #include "retriever.hpp"
 #include "reciver.hpp"
 #include "decoder.hpp"
-#include "powClient.hpp"
+//TODO:refrac
+#include "../pow/include/powClient.hpp"
 
 
 using namespace std;

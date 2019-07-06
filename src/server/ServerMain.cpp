@@ -8,7 +8,7 @@
 #include "_messageQueue.hpp"
 #include "dataSR.hpp"
 #include "dedupCore.hpp"
-#include "PowServer.hpp"
+#include "../pow/include/PowServer.hpp"
 #include "boost/thread.hpp"
 #include <signal.h>
 Configure config("config.json");
@@ -42,7 +42,6 @@ void CTRLC(int s) {
 int main() {
 
     initMQForServer();
-
 
     struct sigaction sa;
     sa.sa_handler = SIG_IGN;

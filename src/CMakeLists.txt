@@ -1,5 +1,12 @@
 #/
 
+set(BOOST_INCLUDE_DIR /home/public/include)
+set(BOOST_LIBRARY_DIR /home/public/lib)
+
+
+set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
+set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
+
 #find_package(Boost 1.36.0 REQUIRED COMPONENTS thread system serialization)
 #if(Boost_FOUND)
   set(Boost_INCLUDE_DIRS /home/public/include)
@@ -10,13 +17,13 @@
 #endif()
 
 
-#set(OPENSSL_INCLUDE_PATH /usr/include/)
-#set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
+set(OPENSSL_INCLUDE_PATH /usr/include/)
+set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 
 set(LEVELDB_INCLUDE_PATH /home/public/lib/leveldb/include)
 set(LEVELDB_LIBRARY_PATH /home/public/lib/leveldb/lib)
 #set(LEVELDB_INCLUDE_PATH ../lib/leveldb/include)
-#set(LEVELDB_LIBRARY_PATH ../lib/leveldb/out-shared)
+#set(LEVELDB_LIBRARY_PATH ../lib/leveldb/out-shared).
 
 set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
 set(POW_INCLUDE_PATH pow/include)

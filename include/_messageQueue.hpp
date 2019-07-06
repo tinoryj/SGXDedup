@@ -88,6 +88,7 @@ private:
 
 public:
     _messageQueue();
+    ~_messageQueue();
 
     _messageQueue(int index, int rw);
 

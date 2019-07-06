@@ -373,6 +373,7 @@ bool chunker::insertMQ(Chunk newChunk) {
                                                        ""));
     this->recipe->_f._fileSize += newChunk.getLogicDataSize();
     this->recipe->_k._fileSize += newChunk.getLogicDataSize();
+//TODO:lock
     this->recipe->_chunkCnt++;
 
     _outputMq.push(newChunk);

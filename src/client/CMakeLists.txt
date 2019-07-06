@@ -1,7 +1,10 @@
 #src/client
 
-set(OPENSSL_INCLUDE_PATH /usr/include/)
-set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
+#TODO:redo
+set(OPENSSL_INCLUDE_PATH /usr/local/openssl1.1.1/include)
+set(OPENSSL_LIBRARY_PATH /usr/local/openssl1.1.1/lib)
+#link_directories(${OPENSSL_LIBRARY_PATH})
+#include_directories(${OPENSSL_INCLUDE_PATH})
 
 add_library(_chunker STATIC _chunker.cpp)
 add_library(chunker STATIC chunker.cpp)

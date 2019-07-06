@@ -19,7 +19,7 @@ keyClient::keyClient(){
     _outputMQ.createQueue(KEYCLIENT_TO_ENCODER_MQ,WRITE_MESSAGE);
     _keyBatchSizeMin=(int)config.getKeyBatchSizeMin();
     _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
-    _socket.init(CLIENTTCP,config.getKeyServerIP(0),config.getKeyServerPort(0));
+    _socket.init(CLIENTTCP,config.getKeyServerIP(),config.getKeyServerPort());
     kmServer server(_socket);
     powSession *session=server.authkm();
     if(session!= nullptr){

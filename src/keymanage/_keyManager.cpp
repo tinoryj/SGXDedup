@@ -11,7 +11,7 @@ _keyManager::_keyManager(){
 _keyManager::~_keyManager(){}
 
 bool _keyManager::workloadProgress(std::string hash,std::string &key){
-    return true;
+    return keyGen(hash,key);
 }
 bool _keyManager::insertQue(){
 
