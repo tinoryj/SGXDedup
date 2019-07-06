@@ -47,6 +47,7 @@ bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg
     EVP_PKEY *Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
 
+    msg01.msg0_extended_epid_group_id=0;
     if (msg01.msg0_extended_epid_group_id != 0) {
         cerr << "msg0 Extended Epid Group ID is not zero.  Exiting.\n";
         return false;
@@ -312,7 +313,7 @@ powSession* kmServer::authkm() {
         printf("kmServer: error msg01\n");
         return nullptr;
     }
-    uint32_t quote_size;
+    uint32_t quote_size=msg3Buffer.length()- sizeof(sgx_ra_msg3_t);
     if (!this->process_msg3(ans, (sgx_ra_msg3_t *) msg3Buffer.c_str(), msg4, quote_size)) {
         printf("kmServer: error msg3\n");
         return nullptr;

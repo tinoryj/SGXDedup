@@ -176,7 +176,7 @@ bool kmClient::doAttestation () {
     string enclaveName = config.getKMEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : Can not launch pow_enclave : " << enclaveName << endl;
+        cerr << "kmClient : Can not launch km_enclave : " << enclaveName << endl;
         printf("%08x\n",status);
         return false;
     }

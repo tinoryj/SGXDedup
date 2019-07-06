@@ -131,7 +131,7 @@ public:
 
     // key management settings
     uint64_t getKeyServerNumber();
-//TODO:confirm
+
     std::string getKeyServerIP();
     //std::vector<std::string> getkeyServerIP();
 

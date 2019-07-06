@@ -103,10 +103,7 @@ void keyClient::run() {
 string keyClient::keyExchange(Chunk champion){
     string key,buffer;
     key.resize(16);
-    if (!_trustdKM){
-        printf("keyClient: can not do keyExchange before peer trusted\n");
-        return key;
-    }
+    while(!_trustdKM);
     if(!_socket.Send(champion.getChunkHash())){
         printf("keyClient: socket error\n");
         return key;

@@ -113,13 +113,8 @@ void Configure::readConf(std::string path) {
     _POWServerIp=root.get<std::string>\
     ("pow._ServerIp");
     _POWServerPort=root.get<int>\
-<<<<<<< HEAD
-    ("pow._POWServerPort");
-    _enclaveName=root.get<std::string>\
-=======
     ("pow._ServerPort");
     _POWEnclaveName=root.get<std::string>\
->>>>>>> Temp 19-5-5 1213 | fixed compile errors , begin to fix km enclave create failed error
     ("pow._enclave_name");
     _POWSPID=root.get<std::string>\
     ("pow._SPID");
