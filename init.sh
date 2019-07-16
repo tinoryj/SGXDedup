@@ -1,3 +1,8 @@
+cd ./build
+rm -rf ./*
+cmake ..
+make -j6
+cd ..
 cd ./bin
 mkdir cr fr kr
 cd ..
