@@ -1,82 +1,82 @@
 {
-	"ChunkerConfig":{
-		"_runningType":0,
-		"_chunkingType":1,
-		"_minChunkSize":2048,
-		"_avgChunkSize":4096,
-		"_maxChunkSize":16384,
-		"_slidingWinSize":256,
-		"_segmentSize":4194304,
-		"_ReadSize":128
+	"ChunkerConfig": {
+		"_runningType": 0,
+		"_chunkingType": 1,
+		"_minChunkSize": 2048,
+		"_avgChunkSize": 4096,
+		"_maxChunkSize": 16384,
+		"_slidingWinSize": 256,
+		"_segmentSize": 4194304,
+		"_ReadSize": 128
 	},
-	"MessageQueue":{
-		"_messageQueueCnt":250,
-		"_messageQueueUnitSize":5000000
+	"MessageQueue": {
+		"_messageQueueCnt": 250,
+		"_messageQueueUnitSize": 5000000
 	},
-	"KeyServerConfig":{
-		"_keyBatchSizeMin":10000,
-		"_keyBatchSizeMax":2000000,
-		"_keyServerNumber":1,
-		"_keyCacheSize":10000,
-		"_keyServerIP":[
+	"KeyServerConfig": {
+		"_keyBatchSizeMin": 10000,
+		"_keyBatchSizeMax": 2000000,
+		"_keyServerNumber": 1,
+		"_keyCacheSize": 10000,
+		"_keyServerIP": [
 			"127.0.0.1"
 		],
-		"_keyServerPort":[
+		"_keyServerPort": [
 			6666
 		]
 	},
-	"SPConfig":{
-		"_storageServerNumber":1,
-		"_storageServerIP":[
+	"SPConfig": {
+		"_storageServerNumber": 1,
+		"_storageServerIP": [
 			"127.0.0.1"
 		],
-		"_storageServerPort":[
+		"_storageServerPort": [
 			6668
 		],
-		"_maxContainerSize":4096
+		"_maxContainerSize": 4096
 	},
-	"mutiThread":{
-		"_encodeThreadLimit":1,
-		"_keyClientThreadLimit":1,
-		"_keyServerThreadLimit":1,
-		"_senderThreadLimit":1,
-		"_receiverThreadLimit":1,
-		"_decoderThreadLimit":1,
-		"_dataSRThreadLimit":1,
-		"_retriverThreadLimit":1,
-		"_dedupCoreThreadLimit":1,
-        "_storageCoreThreadLimit":1
+	"mutiThread": {
+		"_encodeThreadLimit": 1,
+		"_keyClientThreadLimit": 1,
+		"_keyServerThreadLimit": 1,
+		"_senderThreadLimit": 1,
+		"_receiverThreadLimit": 1,
+		"_decoderThreadLimit": 1,
+		"_dataSRThreadLimit": 1,
+		"_retriverThreadLimit": 1,
+		"_dedupCoreThreadLimit": 1,
+		"_storageCoreThreadLimit": 1
 	},
-	"pow":{
-		"_quoteType":0,
-		"_iasVersion":3,
-		"_ServerIp":"127.0.0.1",
-		"_ServerPort":6668,
-		"_enclave_name":"pow_enclave.signed.so",
-		"_SPID":"797F0D90EE75B24B554A73AB01FD3335",
-		"_iasServerType":0
+	"pow": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "127.0.0.1",
+		"_ServerPort": 6668,
+		"_enclave_name": "pow_enclave.signed.so",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType": 0
 	},
-	"km":{
-		"_quoteType":0,
-		"_iasVersion":3,
-		"_ServerIp":"127.0.0.1",
-		"_ServerPort":6666,
-		"_enclave_name":"km_enclave.signed.so",
-		"_SPID":"797F0D90EE75B24B554A73AB01FD3335",
-		"_iasServerType":0
+	"km": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "127.0.0.1",
+		"_ServerPort": 6666,
+		"_enclave_name": "km_enclave.signed.so",
+		"_SPID": "BF0C56B2E29A4674756A8EA62DAA8762",
+		"_iasServerType": 0
 	},
-	"server":{
-		"_fileRecipeRootPath":"fr/",
-		"_keyRecipeRootPath":"kr/",
-		"_containerRootPath":"cr/",
-		"_fp2ChunkDBName":"db1",
-		"_fn2MetaDBame":"db2"
+	"server": {
+		"_fileRecipeRootPath": "fr/",
+		"_keyRecipeRootPath": "kr/",
+		"_containerRootPath": "cr/",
+		"_fp2ChunkDBName": "db1",
+		"_fn2MetaDBame": "db2"
 	},
-	"client":{
-		"_clientID":1,
-		"_sendChunkBatchSize":250
+	"client": {
+		"_clientID": 1,
+		"_sendChunkBatchSize": 250
 	},
-	"timer":{
-		"_timeScale":1
+	"timer": {
+		"_timeScale": 1
 	}
 }
