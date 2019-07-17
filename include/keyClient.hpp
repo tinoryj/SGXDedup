@@ -5,35 +5,38 @@
 #ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 
-#include "Socket.hpp"
-#include "_messageQueue.hpp"
-#include "configure.hpp"
-#include "seriazation.hpp"
-#include "chunk.hpp"
-#include "cache.hpp"
-#include "powSession.hpp"
-#include "kmServer.hpp"
 #include "CryptoPrimitive.hpp"
+#include "Socket.hpp"
+#include "cache.hpp"
+#include "configure.hpp"
+#include "dataStructure.hpp"
+#include "encoder.hpp"
+#include "kmServer.hpp"
+#include "messageQueue.hpp"
+#include "powSession.hpp"
 
 #include <boost/compute/detail/lru_cache.hpp>
 
 #define KEYMANGER_PUBLIC_KEY_FILE "key/serverpub.key"
 
-class keyClient{
+class keyClient {
 private:
-    _messageQueue _inputMQ;
-    _messageQueue _outputMQ;
-    int _keyBatchSizeMin,_keyBatchSizeMax;
-    Socket _socket;
-    bool _trustdKM;
-    CryptoPrimitive _crypto;
+    messageQueue<Chunk_t> inputMQ;
+    encoder* encoderObj;
+    CryptoPrimitive* cryptoObj;
+    int keyBatchSizeMin, keyBatchSizeMax;
+    Socket socket;
+    bool trustdKM;
 
 public:
     keyClient();
     ~keyClient();
     void run();
-    bool insertMQ(Chunk &newChunk);
-    string keyExchange(Chunk champion);
+    bool insertMQFromChunker(Chunk_t newChunk);
+    bool extractMQFromChunker(Chunk_t newChunk);
+    bool insertMQtoEncoder(Chunk_t newChunk);
+    bool editJobDoneFlag();
+    string keyExchange(Chunk_t champion);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP

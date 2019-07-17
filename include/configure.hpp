@@ -5,35 +5,67 @@
 #ifndef GENERALDEDUPSYSTEM_CONFIGURE_HPP
 #define GENERALDEDUPSYSTEM_CONFIGURE_HPP
 
-#include <vector>
-#include <string>
-
-#include <boost/property_tree/ptree.hpp>
+#include <bits/stdc++.h>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
-#define SIMPLE_CHUNKER 0
-#define RABIN_CHUNKER 1
-#define FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
-#define VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
+#define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
+#define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
+#define MIN_CHUNK_SIZE 4096 //macro for the min size of variable-size chunker
+#define AVG_CHUNK_SIZE 8192 //macro for the average size of variable-size chunker
+#define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
+
+#define CHUNK_FINGER_PRINT_SIZE 32
+#define CHUNK_HASH_SIZE 32
+#define CHUNK_ENCRYPT_KEY_SIZE 32
+#define FILE_NAME_HASH_SIZE 32
+
+#define CHUNK_TYPE_ENCRYPTED 0
+#define CHUNK_TYPE_VERIFY_PASSED 1
+#define CHUNK_TYPE_VERIFY_NOT_PASSED 2
+#define CHUNK_TYPE_SENDING_OVER 3
+#define CHUNK_TYPE_UNIQUE 4
+#define CHUNK_TYPE_DUPLICATE 5
+#define CHUNK_TYPE_INIT 6
+
+#define EPOLL_MESSAGE_DATA_SIZE 4 * 1000 * 1000
+#define NETWORK_STRUCT_DATA_SIZE 4 * 1000 * 1000
+
+#define MQ_TOTAL_NUMBER 13
+#define MQ_CHUNKER_TO_KEYCLIENT 0
+#define MQ_KEYCLIENT_TO_ENCODER 1
+#define MQ_ENCODER_TO_POW 2
+#define MQ_SENDER_IN 3
+#define MQ_DATASR_IN 4
+#define MQ_DATASR_TO_POWSERVER 5
+#define MQ_DATASR_TO_DEDUPCORE 6
+#define MQ_DATASR_TO_STORAGECORE 7
+#define MQ_DEDUPCORE_TO_STORAGECORE 8
+#define MQ_RECEIVER_TO_DECODER 9
+#define MQ_DECODER_TO_RETRIEVER 10
+#define MQ_KEYMANGER_SR_TO_KEYGEN 11
+#define MQ_POWSERVER_TO_DEDUPCORE 12
+
+#define JOB_DONE_FLAG_CHUNKER 0
 
 class Configure {
 private:
     // following settings configure by macro set
-    uint64_t _runningType;      // localDedup \ serverDedup
+    uint64_t _runningType; // localDedup \ serverDedup
 
     // chunking settings
-    uint64_t _chunkingType;     // varSize \ fixedSize \ simple
+    uint64_t _chunkingType; // varSize \ fixedSize \ simple
     uint64_t _maxChunkSize;
     uint64_t _minChunkSize;
     uint64_t _averageChunkSize;
     uint64_t _slidingWinSize;
-    uint64_t _segmentSize;  // if exist segment function
-    uint64_t _ReadSize;     //128M per time
+    uint64_t _segmentSize; // if exist segment function
+    uint64_t _ReadSize; //128M per time
 
     // message queue settings
     uint64_t _mqCnt;
-    uint64_t *_messageQueueCnt;
-    uint64_t *_messageQueueUnitSize;
+    uint64_t* _messageQueueCnt;
+    uint64_t* _messageQueueUnitSize;
 
     // key management settings
     uint64_t _keyServerNumber;
@@ -62,7 +94,8 @@ private:
     int _POWServerPort;
     std::string _POWEnclaveName;
     std::string _POWSPID;
-    int _POWIasServerType;     //0 for develop; 1 for production
+    int _POWIasServerType; //0 for develop; 1 for production
+    uint64_t _POWBatchSize;
 
     //km enclave settings
     int _KMQuoteType; //0x00 linkable; 0x01 unlinkable
@@ -71,7 +104,7 @@ private:
     int _KMServerPort;
     std::string _KMEnclaveName;
     std::string _KMSPID;
-    int _KMIasServerType;     //0 for develop; 1 for production
+    int _KMIasServerType; //0 for develop; 1 for production
 
     // storage management settings
     uint64_t _storageServerNumber;
@@ -90,14 +123,12 @@ private:
     int _clientID;
     int _sendChunkBatchSize;
 
-	//timer settings
-	double _timeOutScale;
+    //timer settings
+    double _timeOutScale;
 
     // any additional settings
 
 public:
-
-
     //  Configure(std::ifstream& confFile); // according to setting json to init configure class
     Configure(std::string path);
 
@@ -157,7 +188,6 @@ public:
     int getDedupCoreThreadLimit();
     int getStorageCoreThreadLimit();
 
-
     //pow settings
     int getPOWQuoteType();
     int getPOWIASVersion();
@@ -166,6 +196,7 @@ public:
     std::string getPOWEnclaveName();
     std::string getPOWSPID();
     int getPOWIASServerType();
+    uint64_t getPOWBatchSize();
 
     //km settings
     int getKMQuoteType();
@@ -199,9 +230,6 @@ public:
 
     //timer settings
     double getTimeOutScale();
-
 };
-
-
 
 #endif //GENERALDEDUPSYSTEM_CONFIGURE_HPP

@@ -4,33 +4,58 @@
 
 #include "encoder.hpp"
 
-
-encoder::encoder() {
-    _cryptoObj = new CryptoPrimitive();
+encoder::encoder(powClient* powObjTemp)
+{
+    cryptoObj = new CryptoPrimitive();
+    powObj = powObjTemp;
 }
 
-encoder::~encoder() {
-    if (_cryptoObj != NULL) {
-        delete _cryptoObj;
+encoder::~encoder()
+{
+    if (cryptoObj != NULL) {
+        delete cryptoObj;
     }
 }
 
-void encoder::run() {
+void encoder::run()
+{
 
-    while (1) {
-        Chunk tmpChunk;
-        if (!extractMQ(tmpChunk)) {
-            continue;
+    while (true) {
+        Chunk_t tempChunk;
+        if (inputMQ.done && !extractMQFromKeyClient(tempChunk)) {
+            break;
         }
-        encodeChunk(tmpChunk);
-        string data = tmpChunk.getLogicData(), hash;
-        _cryptoObj->sha256_digest(data, hash);
-        tmpChunk.editChunkHash(hash);
-        insertMQ(tmpChunk);
+        encodeChunk(tempChunk);
+        string data(tempChunk.logicData), hash;
+        cryptoObj->sha256_digest(data, hash);
+        memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+        insertMQToPOW(tempChunk);
     }
+    powObj->editJobDoneFlag();
+    pthread_exit(NULL);
 }
 
+bool encoder::encodeChunk(Chunk& newChunk)
+{
+    cryptoObj->chunk_encrypt(newChunk);
+}
 
-bool encoder::encodeChunk(Chunk& tmpChunk) {
-    _cryptoObj->chunk_encrypt(tmpChunk);
+bool encoder::insertMQFromKeyClient(Chunk_t newChunk)
+{
+    return inputMQ.push(newChunk);
+}
+
+bool encoder::extractMQFromKeyClient(Chunk_t newChunk)
+{
+    return inputMQ.pop(newChunk);
+}
+
+bool encoder::insertMQToPOW(Chunk_t newChunk)
+{
+    return powObj->insertMQFromEncoder(newChunk);
+}
+
+bool encoder::editJobDoneFlag()
+{
+    inputMQ.done = true;
 }

@@ -5,24 +5,29 @@
 #ifndef GENERALDEDUPSYSTEM_ENCODER_HPP
 #define GENERALDEDUPSYSTEM_ENCODER_HPP
 
-#include "_encoder.hpp"
 #include "CryptoPrimitive.hpp"
 #include "chunker.hpp"
-#include "_keyManager.hpp"
+#include "configure.hpp"
+#include "keyClient.hpp"
+#include "powClient.hpp"
 
 extern Configure config;
-extern _keyManager *keyobj;
 
-class encoder:public _Encoder{
+class encoder {
 private:
-    CryptoPrimitive *_cryptoObj;
+    CryptoPrimitive* cryptoObj;
+    powClient* powObj;
+    messageQueue<Chunk_t> inputMQ;
 
 public:
-    bool encodeChunk(Chunk& tmpChunk);
+    bool encodeChunk(Chunk_t newChunk);
     encoder();
     ~encoder();
     void run();
+    bool insertMQFromKeyClient(Chunk_t newChunk);
+    bool extractMQFromKeyClient(Chunk_t newChunk);
+    bool insertMQToPOW(Chunk_t newChunk);
+    bool editJobDoneFlag();
 };
-
 
 #endif //GENERALDEDUPSYSTEM_ENCODER_HPP

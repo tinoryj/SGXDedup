@@ -4,378 +4,351 @@
 
 #include "chunker.hpp"
 
-
 extern Configure config;
 
-chunker::chunker() {}
-
-chunker::chunker(std::string path) {
+chunker::chunker(std::string path, keyClient* keyClientObjTemp)
+{
     loadChunkFile(path);
     chunkerInit(path);
+    cryptoObj = new CryptoPrimitive();
+    keyClientObj = keyClientObjTemp;
+}
+std::ifstream& Chunker::getChunkingFile()
+{
 
-    _outputMq.createQueue(CHUNKER_TO_KEYCLIENT_MQ, WRITE_MESSAGE);
-    _cryptoObj = new CryptoPrimitive();
+    if (!chunkingFile.is_open()) {
+        std::cerr << "chunking file open failed\n";
+        exit(1);
+    }
+    return chunkingFile;
 }
 
-chunker::~chunker() {
-    if (_powerLUT != NULL)delete _powerLUT;
-    if (_removeLUT != NULL)delete _removeLUT;
-    if (_waitingForChunkingBuffer != NULL)delete _waitingForChunkingBuffer;
-    if (_chunkBuffer != NULL)delete _chunkBuffer;
+void Chunker::loadChunkFile(std::string path)
+{
+    if (chunkingFile.is_open()) {
+        chunkingFile.close();
+    }
+    chunkingFile.open(path, std::ios::binary);
+    if (!chunkingFile.is_open()) {
+        cerr << "Chunker open file: " << path << "error" << endl;
+        exit(1);
+    }
 }
 
-void chunker::chunkerInit(string path) {
-    using namespace std;
+chunker::~chunker()
+{
+    if (_powerLUT != NULL)
+        delete _powerLUT;
+    if (_removeLUT != NULL)
+        delete _removeLUT;
+    if (waitingForChunkingBuffer != NULL)
+        delete waitingForChunkingBuffer;
+    if (chunkBuffer != NULL)
+        delete chunkBuffer;
+    delete keyClientObj;
+    delete cryptoObj;
+    if (chunkingFile.is_open()) {
+        chunkingFile.close();
+    }
+}
 
-    this->recipe = new Recipe_t;
-    recipe->_f._fileName = recipe->_k._filename = path;
+void chunker::chunkerInit(string path)
+{
+    string filePathHash;
+    cryptoObj->sha256_digest(path, filePathHash);
+    memcpy(recipe.fileRecipeHead.fileNameHash, filePathHash.c_str(), FILE_NAME_HASH_SIZE);
+    memcpy(recipe.keyRecipeHead.fileNameHash, filePathHash.c_str(), FILE_NAME_HASH_SIZE);
     ifstream fin(path, ifstream::binary);
-    recipe->_f._fileSize = recipe->_k._fileSize = fin.tellg();
+    recipe.fileRecipeHead.fileSize = fin.tellg();
+    recipe.fileRecipeHead.fileSize = recipe.fileRecipeHead.fileSize;
     fin.close();
 
+    chunkerType = (int)config.getChunkingType();
 
-    int numOfMaskBits;
+    if (chunkerType == CHUNKER_VAR_SIZE_TYPE) {
+        int numOfMaskBits;
+        avgChunkSize = (int)config.getAverageChunkSize();
+        minChunkSize = (int)config.getMinChunkSize();
+        maxChunkSize = (int)config.getMaxChunkSize();
+        slidingWinSize = (int)config.getSlidingWinSize();
+        ReadSize = config.getReadSize();
+        ReadSize = ReadSize * 1024 * 1024;
+        waitingForChunkingBuffer = new u_char[ReadSize];
+        chunkBuffer = new u_char[maxChunkSize];
 
-    _avgChunkSize = (int) config.getAverageChunkSize();
-    _minChunkSize = (int) config.getMinChunkSize();
-    _maxChunkSize = (int) config.getMaxChunkSize();
-    _slidingWinSize = (int) config.getSlidingWinSize();
-    _ReadSize = config.getReadSize();
-    _ReadSize = _ReadSize * 1024 * 1024;
-    _waitingForChunkingBuffer = new unsigned char[_ReadSize];
-    _chunkBuffer = new unsigned char[_maxChunkSize];
-
-    if (_waitingForChunkingBuffer == NULL || _chunkBuffer == NULL) {
-        cerr << "Memory Error\n" << endl;
-        exit(1);
-    }
-    if (_minChunkSize >= _avgChunkSize) {
-        cerr << "Error: _minChunkSize should be smaller than avgChunkSize!" << endl;
-        exit(1);
-    }
-    if (_maxChunkSize <= _avgChunkSize) {
-        cerr << "Error: _maxChunkSize should be larger than avgChunkSize!" << endl;
-        exit(1);
-    }
-
-    /*initialize the base and modulus for calculating the fingerprint of a window*/
-    /*these two values were employed in open-vcdiff: "http://code.google.com/p/open-vcdiff/"*/
-    _polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
-    _polyMOD = (1 << 23) - 1; /*_polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
-    /*initialize the lookup table for accelerating the power calculation in rolling hash*/
-    _powerLUT = (uint32_t *) malloc(sizeof(uint32_t) * _slidingWinSize);
-    /*_powerLUT[i] = power(_polyBase, i) mod _polyMOD*/
-    _powerLUT[0] = 1;
-    for (int i = 1; i < _slidingWinSize; i++) {
-        /*_powerLUT[i] = (_powerLUT[i-1] * _polyBase) mod _polyMOD*/
-        _powerLUT[i] = (_powerLUT[i - 1] * _polyBase) & _polyMOD;
-    }
-    /*initialize the lookup table for accelerating the byte remove in rolling hash*/
-    _removeLUT = (uint32_t *) malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
-    for (int i = 0; i < 256; i++) {
-        /*_removeLUT[i] = (- i * _powerLUT[__slidingWinSize-1]) mod _polyMOD*/
-        _removeLUT[i] = (i * _powerLUT[_slidingWinSize - 1]) & _polyMOD;
-        if (_removeLUT[i] != 0) {
-
-            _removeLUT[i] = (_polyMOD - _removeLUT[i] + 1) & _polyMOD;
+        if (waitingForChunkingBuffer == NULL || chunkBuffer == NULL) {
+            cerr << "Memory Error" << endl;
+            exit(1);
         }
-        /*note: % is a remainder (rather than modulus) operator*/
-        /*      if a < 0,  -_polyMOD < a % _polyMOD <= 0       */
-    }
+        if (minChunkSize >= avgChunkSize) {
+            cerr << "Error: minChunkSize should be smaller than avgChunkSize!" << endl;
+            exit(1);
+        }
+        if (maxChunkSize <= avgChunkSize) {
+            cerr << "Error: maxChunkSize should be larger than avgChunkSize!" << endl;
+            exit(1);
+        }
 
-    /*initialize the _anchorMask for depolytermining an anchor*/
-    /*note: power(2, numOf_anchorMaskBits) = _avgChunkSize*/
-    numOfMaskBits = 1;
-    while ((_avgChunkSize >> numOfMaskBits) != 1) {
+        /*initialize the base and modulus for calculating the fingerprint of a window*/
+        /*these two values were employed in open-vcdiff: "http://code.google.com/p/open-vcdiff/"*/
+        polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
+        polyMOD = (1 << 23) - 1; /*polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
+        /*initialize the lookup table for accelerating the power calculation in rolling hash*/
+        _powerLUT = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize);
+        /*_powerLUT[i] = power(polyBase, i) mod polyMOD*/
+        _powerLUT[0] = 1;
+        for (int i = 1; i < slidingWinSize; i++) {
+            /*_powerLUT[i] = (_powerLUT[i-1] * polyBase) mod polyMOD*/
+            _powerLUT[i] = (_powerLUT[i - 1] * polyBase) & polyMOD;
+        }
+        /*initialize the lookup table for accelerating the byte remove in rolling hash*/
+        _removeLUT = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
+        for (int i = 0; i < 256; i++) {
+            /*_removeLUT[i] = (- i * _powerLUT[_slidingWinSize-1]) mod polyMOD*/
+            _removeLUT[i] = (i * _powerLUT[slidingWinSize - 1]) & polyMOD;
+            if (_removeLUT[i] != 0) {
 
-        numOfMaskBits++;
+                _removeLUT[i] = (polyMOD - _removeLUT[i] + 1) & polyMOD;
+            }
+            /*note: % is a remainder (rather than modulus) operator*/
+            /*      if a < 0,  -polyMOD < a % polyMOD <= 0       */
+        }
+
+        /*initialize the anchorMask for depolytermining an anchor*/
+        /*note: power(2, numOfanchorMaskBits) = avgChunkSize*/
+        numOfMaskBits = 1;
+        while ((avgChunkSize >> numOfMaskBits) != 1) {
+
+            numOfMaskBits++;
+        }
+        anchorMask = (1 << numOfMaskBits) - 1;
+        /*initialize the value for depolytermining an anchor*/
+        anchorValue = 0;
+        cerr << "A variable size chunker has been constructed!" << endl;
+        cerr << "Parameters: " << endl;
+        cerr << setw(6) << "avgChunkSize: " << avgChunkSize << endl;
+        cerr << setw(6) << "minChunkSize: " << minChunkSize << endl;
+        cerr << setw(6) << "maxChunkSize: " << maxChunkSize << endl;
+        cerr << setw(6) << "slidingWinSize: " << slidingWinSize << endl;
+        cerr << setw(6) << "polyBase: 0x" << hex << polyBase << endl;
+        cerr << setw(6) << "polyMOD: 0x" << hex << polyMOD << endl;
+        cerr << setw(6) << "_anchoranchorMask: 0x" << hex << anchorMask << endl;
+        cerr << setw(6) << "anchorValue: 0x" << hex << anchorValue << endl;
+        cerr << endl;
+    } else if (chunkerType == CHUNKER_FIX_SIZE_TYPE) {
+
+        avgChunkSize = (int)config.getAverageChunkSize();
+        minChunkSize = (int)config.getMinChunkSize();
+        maxChunkSize = (int)config.getMaxChunkSize();
+        ReadSize = config.getReadSize();
+        ReadSize = ReadSize * 1024 * 1024;
+        waitingForChunkingBuffer = new u_char[ReadSize];
+        chunkBuffer = new u_char[avgChunkSize];
+
+        if (waitingForChunkingBuffer == NULL || chunkBuffer == NULL) {
+            cerr << "Memory Error" << endl;
+            exit(1);
+        }
+        if (minChunkSize != avgChunkSize || maxChunkSize != avgChunkSize) {
+            cerr << "Error: minChunkSize and maxChunkSize should be same in fixed size mode!" << endl;
+            exit(1);
+        }
+        if (ReadSize % avgChunkSize != 0) {
+            cerr << "Setting fixed size chunking error : ReadSize not compat with average chunk size" << endl;
+        }
+        cerr << "A chunker has been constructed!" << endl;
+        cerr << "Parameters: " << endl;
+        cerr << setw(6) << "ChunkSize: " << avgChunkSize << endl;
+        cerr << endl;
     }
-    _anchorMask = (1 << numOfMaskBits) - 1;
-    /*initialize the value for depolytermining an anchor*/
-    _anchorValue = 0;
-    cerr << endl << "A variable-size chunker has been constructed!" << endl;
-    cerr << "Parameters: " << endl;
-    cerr << setw(6) << "_avgChunkSize: " << _avgChunkSize << endl;
-    cerr << setw(6) << "_minChunkSize: " << _minChunkSize << endl;
-    cerr << setw(6) << "_maxChunkSize: " << _maxChunkSize << endl;
-    cerr << setw(6) << "_slidingWinSize: " << _slidingWinSize << endl;
-    cerr << setw(6) << "_polyBase: 0x" << hex << _polyBase << endl;
-    cerr << setw(6) << "_polyMOD: 0x" << hex << _polyMOD << endl;
-    cerr << setw(6) << "_anchor_anchorMask: 0x" << hex << _anchorMask << endl;
-    cerr << setw(6) << "_anchorValue: 0x" << hex << _anchorValue << endl;
-    cerr << endl;
 }
 
-bool chunker::chunking() {
+bool chunker::chunking()
+{
     /*fixed-size chunker*/
     if (config.getChunkingType() == FIX_SIZE_TYPE) {
-
         fixSizeChunking();
     }
     /*variable-size chunker*/
     if (config.getChunkingType() == VAR_SIZE_TYPE) {
-
         varSizeChunking();
     }
-    /*simple chunker*/
-    if (config.getChunkingType() == SIMPLE_CHUNKING) {
-
-        simpleChunking();
-    }
 }
 
-void chunker::fixSizeChunking() {
+void chunker::fixSizeChunking()
+{
 
-    Chunk *tmpchunk;
-    std::ifstream &fin = getChunkingFile();
-    unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
+    std::ifstream& fin = getChunkingFile();
+    uint64_t chunkIDCounter = 0;
 
-    memset(_chunkBuffer,0,sizeof(char)*_maxChunkSize);
+    memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
 
     /*start chunking*/
-    while (1) {
-        fin.read((char *) _waitingForChunkingBuffer, sizeof(char) * _ReadSize);
-        int len = fin.gcount(), x = 0, y;
-        while (x < len) {
-            y = std::min((int)(_avgChunkSize - chunkBufferCnt), (int)(len - x));
-            memcpy(chunkBufferCnt + _chunkBuffer, _waitingForChunkingBuffer + x, sizeof(char) * y);
-            x += y;
-            chunkBufferCnt += y;
-            if (chunkBufferCnt >= _avgChunkSize) {
-                string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-
-                _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
-
-                insertMQ(*tmpchunk);
-                delete tmpchunk;
-
-#ifdef DEBUG
-                std::cout<<chunkBufferCnt<<std::endl;
-#endif
-
-                chunkBufferCnt = 0;
+    while (true) {
+        fin.read((char*)waitingForChunkingBuffer, sizeof(char) * ReadSize);
+        uint64_t totalReadSize = fin.gcount();
+        uint64_t chunkedSize = 0;
+        if (totalReadSize == ReadSize) {
+            while (chunkedSize < totalReadSize) {
+                memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
+                memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, avgChunkSize);
+                string chunkLogicData((char*)chunkBuffer, avgChunkSize), hash;
+                cryptoObj->sha256_digest(chunkLogicData, hash);
+                if (hash.length() != CHUNK_HASH_SIZE) {
+                    cerr << "fixed size chunking: compute hash error" << endl;
+                }
+                Chunk_t tempChunk;
+                tempChunk.ID = chunkIDCounter;
+                tempChunk.logicDataSize = avgChunkSize;
+                memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
+                memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+                tempChunk.type = CHUNK_TYPE_INIT;
+                insertMQ(tempChunk);
+                delete tempChunk;
+                chunkIDCounter++;
+                chunkedSize += avgChunkSize;
+            }
+        } else {
+            uint64_t retSize = 0;
+            while (chunkedSize < totalReadSize) {
+                memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
+                if (retSize > avgChunkSize) {
+                    memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, avgChunkSize);
+                } else {
+                    memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, retSize);
+                }
+                retSize = totalReadSize - chunkedSize;
+                string chunkLogicData((char*)chunkBuffer, avgChunkSize), hash;
+                cryptoObj->sha256_digest(chunkLogicData, hash);
+                if (hash.length() != CHUNK_HASH_SIZE) {
+                    cerr << "fixed size chunking: compute hash error" << endl;
+                }
+                Chunk_t tempChunk;
+                tempChunk.ID = chunkIDCounter;
+                tempChunk.logicDataSize = avgChunkSize;
+                memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
+                memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+                tempChunk.type = CHUNK_TYPE_INIT;
+                insertMQ(tempChunk);
+                delete tempChunk;
+                chunkIDCounter++;
+                chunkedSize += avgChunkSize;
             }
         }
-        if (fin.eof())break;
+        if (fin.eof()) {
+            break;
+        }
     }
-    if (chunkBufferCnt != 0) {
-        string message((char*)_chunkBuffer,chunkBufferCnt),hash;
-
-        _cryptoObj->sha256_digest(message, hash);
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
-
-        std::cout<<chunkBufferCnt<<std::endl;
-
-        insertMQ(*tmpchunk);
-        delete tmpchunk;
+    recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
+    recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    if (setJobDoneFlag() == false) {
+        cerr << "chunker: set chunking done flag error" << endl;
     }
-
+    cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
 }
 
-void chunker::varSizeChunking() {
-    using namespace std;
-
-    unsigned short int winFp;
-    unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
-    Chunk *tmpchunk;
-    ifstream &fin = getChunkingFile();
-
-    totalSize = 0; //for debug
+void chunker::varSizeChunking()
+{
+    uint16_t winFp;
+    uint64_t chunkBufferCnt = 0, chunkIDCnt = 0;
+    ifstream& fin = getChunkingFile();
 
     /*start chunking*/
-    while (1) {
-        fin.read((char *) _waitingForChunkingBuffer, sizeof(unsigned char) * _ReadSize);
-        int i, len = fin.gcount();
-        for (i = 0; i < len; i++) {
+    while (true) {
+        fin.read((char*)waitingForChunkingBuffer, sizeof(unsigned char) * ReadSize);
+        int len = fin.gcount();
+        for (int i = 0; i < len; i++) {
 
-            _chunkBuffer[chunkBufferCnt] = _waitingForChunkingBuffer[i];
+            chunkBuffer[chunkBufferCnt] = waitingForChunkingBuffer[i];
 
             /*full fill sliding window*/
-            if (chunkBufferCnt < _slidingWinSize) {
-                winFp = winFp + (_chunkBuffer[chunkBufferCnt] * _powerLUT[_slidingWinSize - chunkBufferCnt - 1]) &
-                        _polyMOD;//Refer to doc/Chunking.md hash function:RabinChunker
+            if (chunkBufferCnt < slidingWinSize) {
+                winFp = winFp + (chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - chunkBufferCnt - 1]) & polyMOD; //Refer to doc/Chunking.md hash function:RabinChunker
                 chunkBufferCnt++;
                 continue;
             }
-            winFp &= (_polyMOD);
+            winFp &= (polyMOD);
 
             /*slide window*/
-            unsigned short int v = _chunkBuffer[chunkBufferCnt - _slidingWinSize];//queue
-            winFp = ((winFp + _removeLUT[v]) * _polyBase + _chunkBuffer[chunkBufferCnt]) &
-                    _polyMOD;//remove queue front and add queue tail
+            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize]; //queue
+            winFp = ((winFp + _removeLUT[v]) * polyBase + chunkBuffer[chunkBufferCnt]) & polyMOD; //remove queue front and add queue tail
             chunkBufferCnt++;
 
-            /*chunk's size less than _minChunkSize*/
-            if (chunkBufferCnt < _minChunkSize)continue;
+            /*chunk's size less than minChunkSize*/
+            if (chunkBufferCnt < minChunkSize)
+                continue;
 
             /*find chunk pattern*/
-            if ((winFp & _anchorMask) == _anchorValue) {
-                //memset(_chunkBuffer + chunkBufferCnt, 0,
-                //       sizeof(char) * (_maxChunkSize - chunkBufferCnt));
-                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+            if ((winFp & anchorMask) == anchorValue) {
 
-                _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
-
+                string chunkLogicData((char*)chunkBuffer, chunkBufferCnt), hash;
+                cryptoObj->sha256_digest(chunkLogicData, hash);
+                Chunk_t tempChunk;
+                tempChunk.ID = chunkIDCnt;
+                tempChunk.logicDataSize = chunkBufferCnt;
+                memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
+                memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+                tempChunk.type = CHUNK_TYPE_INIT;
+                insertMQ(tempChunk);
+                delete tempChunk;
+                chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                insertMQ(*tmpchunk);
-
-                totalSize += message.length();
-
-                delete tmpchunk;
+                totalSize += chunkLogicData.length();
             }
 
-            /*chunk's size exceed _maxChunkSize*/
-            if (chunkBufferCnt >= _maxChunkSize) {
-                //memset(_chunkBuffer + chunkBufferCnt, 0,
-                //       sizeof(char) * (_maxChunkSize - chunkBufferCnt));
-                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
+            /*chunk's size exceed maxChunkSize*/
+            if (chunkBufferCnt >= maxChunkSize) {
 
-                _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
-
+                string chunkLogicData((char*)chunkBuffer, chunkBufferCnt), hash;
+                cryptoObj->sha256_digest(chunkLogicData, hash);
+                Chunk_t tempChunk;
+                tempChunk.ID = chunkIDCnt;
+                tempChunk.logicDataSize = chunkBufferCnt;
+                memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
+                memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+                tempChunk.type = CHUNK_TYPE_INIT;
+                insertMQ(tempChunk);
+                delete tempChunk;
+                chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                insertMQ(*tmpchunk);
-
-                totalSize += message.length();
-
-                delete tmpchunk;
+                totalSize += chunkLogicData.length();
             }
         }
-        if (fin.eof())break;
+        if (fin.eof())
+            break;
     }
 
     /*add final chunk*/
     if (chunkBufferCnt != 0) {
-        //memset(_chunkBuffer + chunkBufferCnt, 0, sizeof(char) * (_maxChunkSize - chunkBufferCnt));
 
-        string message((char *) _chunkBuffer, chunkBufferCnt), hash;
-
-        _cryptoObj->sha256_digest(message, hash);
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message, "", hash);
-
-#ifdef DEBUG
-        std::cout<<chunkBufferCnt<<std::endl;
-#endif
-
-        insertMQ(*tmpchunk);
-
-        totalSize += message.length();
-
-        delete tmpchunk;
+        string chunkLogicData((char*)chunkBuffer, chunkBufferCnt), hash;
+        cryptoObj->sha256_digest(chunkLogicData, hash);
+        Chunk_t tempChunk;
+        tempChunk.ID = chunkIDCnt;
+        tempChunk.logicDataSize = chunkBufferCnt;
+        memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
+        memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
+        tempChunk.type = CHUNK_TYPE_INIT;
+        insertMQ(tempChunk);
+        delete tempChunk;
+        chunkIDCnt++;
+        chunkBufferCnt = winFp = 0;
+        totalSize += chunkLogicData.length();
     }
-
-    cerr << "Chunker : file have " << setbase(10) << chunkIDCnt << " Chunk\n";
-    cerr << "Chunker : total chunk size is " << setbase(10) << totalSize << endl;
-
+    recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
+    recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
+    if (setJobDoneFlag() == false) {
+        cerr << "chunker: set chunking done flag error" << endl;
+    }
+    cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
 }
 
-
-void chunker::simpleChunking() {
-    using namespace std;
-
-    unsigned short int winFp;
-    unsigned long long chunkBufferCnt = 0, chunkIDCnt = 0;
-    Chunk *tmpchunk;
-    std::ifstream &fin = getChunkingFile();
-
-    /*start chunking*/
-    while (1) {
-        fin.read((char *) _waitingForChunkingBuffer,
-                 sizeof(unsigned char) * _ReadSize);              //read _ReadSize byte from file every times
-        int len, i;
-        len = fin.gcount();
-        for (i = 0; i < len; i++) {
-
-            /*full fill sildingwindow*/
-            winFp ^= _waitingForChunkingBuffer[i];
-            _chunkBuffer[chunkBufferCnt++] = _waitingForChunkingBuffer[i];
-            if (chunkBufferCnt < _slidingWinSize)continue;
-
-            /*slide window*/
-            unsigned short int v = _chunkBuffer[chunkBufferCnt - _slidingWinSize];//queue
-            winFp ^= v;
-
-            /*chunk's size less than _minChunkSize*/
-            if (chunkBufferCnt < _minChunkSize)continue;
-
-            /*find chunk pattern*/
-            if ((winFp & _anchorMask) == _anchorValue) {
-            //    memset(_chunkBuffer +  chunkBufferCnt, 0,
-            //           sizeof(char) * (_maxChunkSize - chunkBufferCnt));
-                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
-
-                _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
-
-
-#ifdef DEBUG
-                std::cout<<chunkBufferCnt<<std::endl;
-#endif
-
-                chunkBufferCnt = winFp = 0;
-                insertMQ(*tmpchunk);
-                delete tmpchunk;
-                continue;
-            }
-
-            /*chunk's size exceed _maxChunkSize*/
-            if (chunkBufferCnt >= _maxChunkSize) {
-            //    memset(_chunkBuffer + chunkBufferCnt, 0,
-            //           sizeof(char) * (_maxChunkSize - chunkBufferCnt));
-                string message((char *) _chunkBuffer, chunkBufferCnt), hash;
-
-                _cryptoObj->sha256_digest(message, hash);
-                tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
-
-
-#ifdef DEBUG
-                std::cout<<chunkBufferCnt<<std::endl;
-#endif
-
-                chunkBufferCnt = winFp = 0;
-                insertMQ(*tmpchunk);
-                delete tmpchunk;
-            }
-        }
-        if (fin.eof())break;
-    }
-
-    //add final chunk
-    if (chunkBufferCnt != 0) {
-    //    memset(_chunkBuffer + chunkBufferCnt, 0, sizeof(char) * (_maxChunkSize - chunkBufferCnt));
-        string message((char *) _chunkBuffer, chunkBufferCnt), hash;
-
-        _cryptoObj->sha256_digest(message, hash);
-        tmpchunk = new Chunk(chunkIDCnt++, 0, chunkBufferCnt, message,"",hash);
-
-#ifdef DEBUG
-        std::cout<<chunkBufferCnt<<std::endl;
-#endif
-
-        insertMQ(*tmpchunk);
-        delete tmpchunk;
-    }
+bool chunker::insertMQ(Chunk_t newChunk)
+{
+    return keyClientObj->insertMQFromChunker(newChunk);
 }
 
-
-bool chunker::insertMQ(Chunk newChunk) {
-
-    newChunk.editRecipePointer(this->recipe);
-
-    this->recipe->_f._body.push_back(fileRecipe_t::body(newChunk.getID(),
-                                                        newChunk.getLogicDataSize(),
-                                                        newChunk.getChunkHash()));
-
-    this->recipe->_k._body.push_back(keyRecipe_t::body(newChunk.getID(),
-                                                       newChunk.getChunkHash(),
-                                                       ""));
-    this->recipe->_f._fileSize += newChunk.getLogicDataSize();
-    this->recipe->_k._fileSize += newChunk.getLogicDataSize();
-//TODO:lock
-    this->recipe->_chunkCnt++;
-
-    _outputMq.push(newChunk);
-    return true;
+bool chunker::setJobDoneFlag()
+{
+    return keyClientObj->editJobDoneFlag();
 }

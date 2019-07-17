@@ -5,69 +5,69 @@
 #include "keyClient.hpp"
 #include "openssl/rsa.h"
 
-#include <bits/stdc++.h>
-#include "chrono"
-#include "unistd.h"
-
-#include <sys/time.h>
-
 extern Configure config;
 extern util::keyCache kCache;
 
-keyClient::keyClient(){
-    _inputMQ.createQueue(CHUNKER_TO_KEYCLIENT_MQ,READ_MESSAGE);
-    _outputMQ.createQueue(KEYCLIENT_TO_ENCODER_MQ,WRITE_MESSAGE);
-    _keyBatchSizeMin=(int)config.getKeyBatchSizeMin();
-    _keyBatchSizeMax=(int)config.getKeyBatchSizeMax();
-    _socket.init(CLIENTTCP,config.getKeyServerIP(),config.getKeyServerPort());
-    kmServer server(_socket);
-    powSession *session=server.authkm();
-    if(session!= nullptr){
-        _trustdKM= true;
-        _crypto.setSymKey((const char*)session->smk,16,(const char*)session->smk,16);
+keyClient::keyClient(encoder* encoderObjTemp)
+{
+    encoderObj = encoderObjTemp;
+    cryptoObj = new CryptoPrimitive();
+    keyBatchSizeMin = (int)config.getKeyBatchSizeMin();
+    keyBatchSizeMax = (int)config.getKeyBatchSizeMax();
+    socket.init(CLIENTTCP, config.getKeyServerIP(), config.getKeyServerPort());
+    kmServer server(socket);
+    powSession* session = server.authkm();
+    if (session != nullptr) {
+        trustdKM = true;
+        cryptoObj.setSymKey((const char*)session->smk, 16, (const char*)session->smk, 16);
         delete session;
-    }else{
-        _trustdKM=false;
+    } else {
+        trustdKM = false;
+        delete session
     }
 }
 
-keyClient::~keyClient(){
+keyClient::~keyClient()
+{
+
+    if (cryptoObj != NULL) {
+        delete cryptoObj;
+    }
 }
 
-void keyClient::run() {
+void keyClient::run()
+{
 
-    timeval st,ed;
-
-    while (1) {
-        vector<Chunk> chunkList;
+    while (true) {
+        vector<Chunk_t> chunkList;
         string segmentKey;
         string minHash;
         minHash.resize(32);
-        Chunk tmpchunk;
+        Chunk_t tempchunk;
         char mask[32];
         int segmentSize;
-        int minHashIndex, it;
-
+        int minHashIndex;
+        bool exitFlag = false;
         memset(mask, '0', sizeof(mask));
         memset(&minHash[0], 255, sizeof(char) * minHash.length());
         chunkList.clear();
 
-        for (it = segmentSize = minHashIndex = 0; segmentSize < _keyBatchSizeMax; it++) {
-            if (!_inputMQ.pop(tmpchunk)) {
+        for (int it = segmentSize = minHashIndex = 0; segmentSize < keyBatchSizeMax; it++) {
+            if (inputMQ.done && !extractMQFromChunker(tempchunk)) {
+                exitFlag = true;
                 break;
             };
-            if(it==0)
-                gettimeofday(&st,NULL);
-            chunkList.push_back(tmpchunk);
+            if (it == 0)
+                gettimeofday(&st, NULL);
+            chunkList.push_back(tempchunk);
 
-            segmentSize += chunkList[it].getLogicDataSize();
-            if (memcmp((void *) chunkList[it].getChunkHash().c_str(), &minHash[0], sizeof(minHash)) < 0) {
-                memcpy(&minHash[0], chunkList[it].getChunkHash().c_str(), sizeof(minHash));
+            segmentSize += chunkList[it].logicDataSize;
+            if (memcmp((void*)chunkList[it].chunkHash, &minHash[0], sizeof(minHash)) < 0) {
+                memcpy(&minHash[0], chunkList[it].chunkHash, sizeof(minHash));
                 minHashIndex = it;
             }
 
-            if (memcmp(chunkList[it].getChunkHash().c_str() + (32 - 9), mask, 9) == 0 &&
-                segmentSize > _keyBatchSizeMax) {
+            if (memcmp(chunkList[it].chunkHash + (32 - 9), mask, 9) == 0 && segmentSize > keyBatchSizeMax) {
                 break;
             }
         }
@@ -78,8 +78,8 @@ void keyClient::run() {
 
         if (kCache.existsKeyinCache(minHash)) {
             segmentKey = kCache.getKeyFromCache(minHash);
-            for (auto it:chunkList) {
-                it.editEncryptKey(segmentKey);
+            for (auto it : chunkList) {
+                memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
             }
             continue;
         }
@@ -89,36 +89,57 @@ void keyClient::run() {
 
         //write to hash cache
         kCache.insertKeyToCache(minHash, segmentKey);
-
-        for (auto it:chunkList) {
-            it.editEncryptKey(segmentKey);
-            this->insertMQ(it);
+        for (auto it : chunkList) {
+            memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
+            insertMQtoEncoder(it);
         }
-        gettimeofday(&ed,NULL);
-        //std::cerr<<"keyClient time scale : "<<ed.tv_usec-st.tv_usec<<endl;
+        if (exitFlag) {
+            encoderObj->editJobDoneFlag();
+            pthread_exit(NULL);
+        }
     }
     //close ssl connection
 }
 
-string keyClient::keyExchange(Chunk champion){
-    string key,buffer;
+string keyClient::keyExchange(Chunk_t champion)
+{
+    string key, buffer;
     key.resize(16);
-    while(!_trustdKM);
-    if(!_socket.Send(champion.getChunkHash())){
+    while (!trustdKM)
+        ;
+    string minHash(champion.chunkHash, CHUNK_HASH_SIZE);
+    if (!socket.Send(minHash)) {
         printf("keyClient: socket error\n");
-        return key;
+        exit(0);
     }
-    if(!_socket.Recv(buffer)){
+    if (!socket.Recv(buffer)) {
         printf("keyClient: socket error\n");
-        return key;
+        exit(0);
     }
-    _crypto.cbc128_decrypt(buffer,key);
-    return key;
+    cryptoObj.cbc128_decrypt(buffer, key);
+    u_char returnValue_char[CHUNK_ENCRYPT_KEY_SIZE];
+    memcpy(returnValue_char, key.c_str(), 16);
+    memcpy(returnValue_char + 16, key.c_str(), 16);
+    string returnValue(returnValue_char, CHUNK_ENCRYPT_KEY_SIZE);
+    return returnValue;
 }
 
-bool keyClient::insertMQ(Chunk &newChunk) {
-    _outputMQ.push(newChunk);
-    Recipe_t* _recipe=newChunk.getRecipePointer();
-    keyRecipe_t *kr=&_recipe->_k;
-    kr->_body[newChunk.getID()]._chunkKey=newChunk.getEncryptKey();
+bool keyClient::insertMQFromChunker(Chunk_t newChunk)
+{
+    return inputMQ.push(newChunk);
+}
+
+bool keyClient::extractMQFromChunker(Chunk_t newChunk)
+{
+    return inputMQ.pop(newChunk);
+}
+
+bool keyClient::insertMQtoEncoder(Chunk_t newChunk)
+{
+    return encoderObj->insertMQFromKeyClient(newChunk);
+}
+
+bool keyClient::editJobDoneFlag()
+{
+    inputMQ.done = true;
 }
