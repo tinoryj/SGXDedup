@@ -13,11 +13,14 @@ void powClient::run()
     vector<Chunk_t> batchChunk;
     vector<string> batchHash;
     uint64_t powBatchSize = config.getPOWBatchSize();
+    u_char* batchChunkLogicData_charBuffer;
+    batchChunkLogicData_charBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
     string batchChunkLogicData;
     powSignedHash request;
     RequiredChunk lists;
     Chunk_t tmpChunk;
     int netstatus;
+
     if (!this->do_attestation()) {
         exit(1);
     }

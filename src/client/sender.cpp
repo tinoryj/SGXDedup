@@ -4,17 +4,19 @@
 
 #include "sender.hpp"
 
-
 extern Configure config;
 
-Sender::Sender() {
-    _socket.init(CLIENTTCP,config.getStorageServerIP(),config.getStorageServerPort());
+Sender::Sender()
+{
+    _socket.init(CLIENTTCP, config.getStorageServerIP(), config.getStorageServerPort());
 }
-Sender::~Sender() {
+Sender::~Sender()
+{
     _socket.finish();
 }
 
-bool Sender::sendRecipe(Recipe_t &request, int &status) {
+bool Sender::sendRecipe(Recipe_t& request, int& status)
+{
     static networkStruct requestBody(CLIENT_UPLOAD_RECIPE, config.getClientID());
     static string requestBuffer, respondBuffer;
     networkStruct respondBody(0, 0);
@@ -23,9 +25,9 @@ bool Sender::sendRecipe(Recipe_t &request, int &status) {
     //TODO:temp implement
     char recipekey[128];
     memset(recipekey, 0, sizeof(recipekey));
-    CryptoPrimitive *_crypto=new CryptoPrimitive();
+    CryptoPrimitive* _crypto = new CryptoPrimitive();
     _crypto->setSymKey(recipekey, 128, recipekey, 128);
-    _crypto->recipe_encrypt(request._k,request._kencrypted);
+    _crypto->recipe_encrypt(request._k, request._kencrypted);
     delete _crypto;
     request._k._body.clear();
     /*********************/
@@ -33,40 +35,44 @@ bool Sender::sendRecipe(Recipe_t &request, int &status) {
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
 
-    if(!this->sendData(requestBuffer, respondBuffer)){
+    if (!this->sendData(requestBuffer, respondBuffer)) {
         return false;
     }
 
     deserialize(respondBuffer, respondBody);
     status = respondBody._type;
 
-    if (status == SUCCESS) return true;
+    if (status == SUCCESS)
+        return true;
     return false;
 }
 
-bool Sender::sendChunkList(chunkList &request, int &status) {
+bool Sender::sendChunkList(chunkList& request, int& status)
+{
     static networkStruct requestBody(CLIENT_UPLOAD_CHUNK, config.getClientID());
     static string requestBuffer, respondBuffer;
-    networkStruct respondBody(0,0);
+    networkStruct respondBody(0, 0);
 
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
 
-    if(!this->sendData(requestBuffer, respondBuffer)){
+    if (!this->sendData(requestBuffer, respondBuffer)) {
         return false;
     }
 
     deserialize(respondBuffer, respondBody);
     status = respondBody._type;
 
-    if (status == SUCCESS) return true;
+    if (status == SUCCESS)
+        return true;
     return false;
 }
 
-bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *&msg2, int &status) {
+bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status)
+{
     networkStruct requestBody(SGX_RA_MSG01, config.getClientID());
     networkStruct respondBody(0, 0);
-    string &requestBuffer = requestBody._data;
+    string& requestBuffer = requestBody._data;
     requestBuffer.resize(sizeof(msg0) + sizeof(msg1));
     memcpy(&requestBuffer[0], &msg0, sizeof(char));
     memcpy(&requestBuffer[sizeof(msg0)], &msg1, sizeof(msg1));
@@ -79,19 +85,21 @@ bool Sender::sendSGXmsg01(uint32_t &msg0, sgx_ra_msg1_t &msg1, sgx_ra_msg2_t *&m
     deserialize(recvBuffer, respondBody);
     status = respondBody._type;
     if (status == SUCCESS) {
-        msg2 = (sgx_ra_msg2_t *) new char[respondBody._data.length()];
+        msg2 = (sgx_ra_msg2_t*)new char[respondBody._data.length()];
         memcpy(msg2, &respondBody._data[0], respondBody._data.length());
         return true;
     }
     return false;
 }
 
-bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *&msg4, int &status) {
+bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t sz, ra_msg4_t*& msg4, int& status)
+{
     networkStruct requestBody(SGX_RA_MSG3, config.getClientID());
     networkStruct respondBody(0, 0);
     string requestBuffer, respondBuffer;
 
     requestBody._data.resize(sz);
+
     memcpy(&requestBody._data[0], &msg3, sz);
     serialize(requestBody, requestBuffer);
 
@@ -108,7 +116,8 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t &msg3, uint32_t sz, ra_msg4_t *&msg4, int
     return false;
 }
 
-bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respond, int &status) {
+bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respond, int& status)
+{
     static networkStruct requestBody(SGX_SIGNED_HASH, config.getClientID());
     static string requestBuffer, respondBuffer;
     networkStruct respondBody(0, 0);
@@ -116,14 +125,13 @@ bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respon
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
 
-    if(!this->sendData(requestBuffer, respondBuffer)){
-        cerr<<"Sender : peer closed\n";
+    if (!this->sendData(requestBuffer, respondBuffer)) {
+        cerr << "Sender : peer closed\n";
         return false;
     }
 
     deserialize(respondBuffer, respondBody);
     status = respondBody._type;
-
 
     if (status == SUCCESS) {
         deserialize(respondBody._data, respond);
@@ -133,16 +141,17 @@ bool Sender::sendEnclaveSignedHash(powSignedHash &request, RequiredChunk &respon
     return false;
 }
 
-bool Sender::sendData(string &request, string &respond) {
+bool Sender::sendData(string& request, string& respond)
+{
     {
         boost::unique_lock<boost::shared_mutex> t(this->_sockMtx);
-        if(!_socket.Send(request)){
-            cerr<<"Sender : peer closed\n";
+        if (!_socket.Send(request)) {
+            cerr << "Sender : peer closed\n";
             // return false;
             exit(0);
         }
-        if(!_socket.Recv(respond)){
-            cerr<<"Sender : peer closed\n";
+        if (!_socket.Recv(respond)) {
+            cerr << "Sender : peer closed\n";
             exit(0);
             // return false;
         }
@@ -150,12 +159,11 @@ bool Sender::sendData(string &request, string &respond) {
     return true;
 }
 
-
-
-void Sender::run() {
+void Sender::run()
+{
     chunkList chunks;
     Chunk tmpChunk;
-    Recipe_t *recipe;
+    Recipe_t* recipe;
     int status;
 
     bool start = false;
@@ -183,7 +191,7 @@ void Sender::run() {
             memcpy(recipe->_f._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
             memcpy(recipe->_k._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
 
-            if (recipe->_chunkCnt==0) {
+            if (recipe->_chunkCnt == 0) {
                 recipe->_chunkCnt--;
                 while (1) {
                     this->sendRecipe(*recipe, status);
@@ -212,7 +220,8 @@ void Sender::run() {
         while (1) {
             success = this->sendChunkList(chunks, status);
             if (success) {
-                cerr << "Sender : " << "sent " << setbase(10) << chunks._FP.size() << " chunk\n";
+                cerr << "Sender : "
+                     << "sent " << setbase(10) << chunks._FP.size() << " chunk\n";
                 break;
             }
             if (status == ERROR_CLOSE) {
