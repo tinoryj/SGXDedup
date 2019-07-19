@@ -6,11 +6,13 @@
 typedef struct {
     uint64_t ID;
     int type;
-    uint64_t logicDataSize;
+    int logicDataSize;
     u_char logicData[MAX_CHUNK_SIZE];
     u_char chunkHash[CHUNK_HASH_SIZE];
     u_char encryptKey[CHUNK_ENCRYPT_KEY_SIZE];
 } Chunk_t;
+
+typedef vector<Chunk_t> ChunkList_t;
 
 typedef struct {
     uint64_t fileSize;
@@ -58,9 +60,9 @@ typedef struct {
 } Message_t;
 
 typedef struct {
-    int type;
-    int cid;
-    u_char data[NETWORK_STRUCT_DATA_SIZE];
+    int messageType;
+    int clientID;
+    string data;
 } NetworkStruct_t;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

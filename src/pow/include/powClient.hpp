@@ -36,7 +36,7 @@ private:
     messageQueue<Chunk_t> inputMQ;
     sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
-    CryptoPrimitive cryptoObj;
+    CryptoPrimitive* cryptoObj;
 
 public:
     sgx_launch_token_t _token = { 0 };

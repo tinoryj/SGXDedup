@@ -9,26 +9,31 @@ extern Configure config;
 Sender::Sender()
 {
     _socket.init(CLIENTTCP, config.getStorageServerIP(), config.getStorageServerPort());
+    cryptoObj = new CryptoPrimitive();
 }
 Sender::~Sender()
 {
     _socket.finish();
+    delete cryptoObj;
 }
 
 bool Sender::sendRecipe(Recipe_t& request, int& status)
 {
-    static networkStruct requestBody(CLIENT_UPLOAD_RECIPE, config.getClientID());
-    static string requestBuffer, respondBuffer;
-    networkStruct respondBody(0, 0);
+    NetworkStruct_t requestBody, respondBody;
+    string requestBuffer, respondBuffer;
+    requestBody.clientID = config.getClientID();
+    requestBody.messageType = CLIENT_UPLOAD_RECIPE;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
 
     /**********************/
     //TODO:temp implement
     char recipekey[128];
     memset(recipekey, 0, sizeof(recipekey));
-    CryptoPrimitive* _crypto = new CryptoPrimitive();
-    _crypto->setSymKey(recipekey, 128, recipekey, 128);
-    _crypto->recipe_encrypt(request._k, request._kencrypted);
-    delete _crypto;
+
+    cryptoObj->setSymKey(recipekey, 128, recipekey, 128);
+    cryptoObj->recipe_encrypt(request._k, request._kencrypted);
+
     request._k._body.clear();
     /*********************/
 
@@ -49,9 +54,13 @@ bool Sender::sendRecipe(Recipe_t& request, int& status)
 
 bool Sender::sendChunkList(chunkList& request, int& status)
 {
-    static networkStruct requestBody(CLIENT_UPLOAD_CHUNK, config.getClientID());
-    static string requestBuffer, respondBuffer;
-    networkStruct respondBody(0, 0);
+
+    NetworkStruct_t requestBody, respondBody;
+    string requestBuffer, respondBuffer;
+    requestBody.clientID = config.getClientID();
+    requestBody.messageType = CLIENT_UPLOAD_CHUNK;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
 
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
@@ -70,8 +79,14 @@ bool Sender::sendChunkList(chunkList& request, int& status)
 
 bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status)
 {
-    networkStruct requestBody(SGX_RA_MSG01, config.getClientID());
-    networkStruct respondBody(0, 0);
+
+    NetworkStruct_t requestBody, respondBody;
+    string requestBuffer, respondBuffer;
+    requestBody.clientID = config.getClientID();
+    requestBody.messageType = SGX_RA_MSG01;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
+
     string& requestBuffer = requestBody._data;
     requestBuffer.resize(sizeof(msg0) + sizeof(msg1));
     memcpy(&requestBuffer[0], &msg0, sizeof(char));
@@ -94,9 +109,13 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
 
 bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t sz, ra_msg4_t*& msg4, int& status)
 {
-    networkStruct requestBody(SGX_RA_MSG3, config.getClientID());
-    networkStruct respondBody(0, 0);
+
+    NetworkStruct_t requestBody, respondBody;
     string requestBuffer, respondBuffer;
+    requestBody.clientID = config.getClientID();
+    requestBody.messageType = SGX_RA_MSG3;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
 
     requestBody._data.resize(sz);
 
@@ -118,9 +137,13 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t sz, ra_msg4_t*& msg4, int
 
 bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respond, int& status)
 {
-    static networkStruct requestBody(SGX_SIGNED_HASH, config.getClientID());
-    static string requestBuffer, respondBuffer;
-    networkStruct respondBody(0, 0);
+    NetworkStruct_t requestBody, respondBody;
+    requestBody.messageType = SGX_SIGNED_HASH;
+    requestBody.clientID = config.getClientID();
+    respondBody.messageType = 0;
+    respondBody.clientID = 0;
+
+    string requestBuffer, respondBuffer;
 
     serialize(request, requestBody._data);
     serialize(requestBody, requestBuffer);
@@ -143,53 +166,50 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
 
 bool Sender::sendData(string& request, string& respond)
 {
-    {
-        boost::unique_lock<boost::shared_mutex> t(this->_sockMtx);
-        if (!_socket.Send(request)) {
-            cerr << "Sender : peer closed\n";
-            // return false;
-            exit(0);
-        }
-        if (!_socket.Recv(respond)) {
-            cerr << "Sender : peer closed\n";
-            exit(0);
-            // return false;
-        }
+    boost::unique_lock<boost::shared_mutex> t(this->_sockMtx);
+    if (!_socket.Send(request)) {
+        cerr << "Sender : peer closed\n";
+
+        exit(0);
+    }
+    if (!_socket.Recv(respond)) {
+        cerr << "Sender : peer closed\n";
+        exit(0);
     }
     return true;
 }
 
 void Sender::run()
 {
-    chunkList chunks;
-    Chunk tmpChunk;
-    Recipe_t* recipe;
+    chunkList_t chunkList;
+    Chunk_t tempChunk;
+    Recipe_t recipe;
     int status;
 
     bool start = false;
 
-    while (1) {
-        chunks.clear();
+    while (true) {
+        chunkList.clear();
         for (int i = 0; i < config.getSendChunkBatchSize(); i++) {
-            if (!extractMQ(tmpChunk)) {
+            if (inputMQ.done && !extractMQFromPow(tempChunk)) {
                 if (start) {
-                    cerr << "Sender : end\n";
+                    cerr << "Sender : sending chunks and recipes end" << endl;
                     start = false;
                 }
                 break;
             }
 
             if (!start) {
-                cerr << "Sender : start\n";
+                cerr << "Sender : start sending chunks and recipes" << endl;
                 start = true;
             }
 
-            chunks.push_back(tmpChunk);
-            recipe = tmpChunk.getRecipePointer();
+            chunkList.push_back(tempChunk);
+            recipe = tempChunk.getRecipePointer();
             recipe->_chunkCnt--;
-            string hash = tmpChunk.getChunkHash();
-            memcpy(recipe->_f._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
-            memcpy(recipe->_k._body[tmpChunk.getID()]._chunkHash, hash.c_str(), 32);
+            string hash(tempChunk.chunkHash, CHUNK_HASH_SIZE);
+            memcpy(recipe->_f._body[tempChunk.getID()]._chunkHash, hash.c_str(), 32);
+            memcpy(recipe->_k._body[tempChunk.getID()]._chunkHash, hash.c_str(), 32);
 
             if (recipe->_chunkCnt == 0) {
                 recipe->_chunkCnt--;
@@ -212,16 +232,15 @@ void Sender::run()
             }
         }
 
-        if (chunks._chunks.empty()) {
+        if (chunkList._chunkList.empty()) {
             continue;
         }
 
         bool success = false;
         while (1) {
-            success = this->sendChunkList(chunks, status);
+            success = this->sendChunkList(chunkList, status);
             if (success) {
-                cerr << "Sender : "
-                     << "sent " << setbase(10) << chunks._FP.size() << " chunk\n";
+                cerr << "Sender : sent " << setbase(10) << chunkList._FP.size() << " chunk\n";
                 break;
             }
             if (status == ERROR_CLOSE) {
@@ -232,5 +251,24 @@ void Sender::run()
                 std::cerr << "Sender : Server Reject Chunk and send resend flag\n";
             }
         }
+        if (!start) {
+            break;
+        }
     }
+    pthread_exit(NULL);
+}
+
+bool Sender::insertMQFromPow(Chunk_t newChunk)
+{
+    return inputMQ.push(newChunk);
+}
+
+bool Sender::extractMQFromPow(Chunk_t newChunk)
+{
+    return inputMQ.pop(newChunk);
+}
+
+bool Sender::editJobDoneFlag()
+{
+    inputMQ.done = true;
 }

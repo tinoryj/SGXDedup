@@ -1,21 +1,17 @@
-//
-// Created by a on 12/14/18.
-//
-
 #ifndef GENERALDEDUPSYSTEM_NETWORK_HPP
 #define GENERALDEDUPSYSTEM_NETWORK_HPP
 
-#include <iostream>
-#include <string>
+#include <arpa/inet.h>
+#include <bits/stdc++.h>
 #include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <netinet/in.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
 
 using namespace std;
-
 
 #define SERVERTCP 0
 #define CLIENTTCP 1
@@ -24,6 +20,7 @@ using namespace std;
 class Socket {
 private:
     sockaddr_in addr;
+
 public:
     int fd;
 
@@ -31,9 +28,9 @@ public:
 
     Socket(int fd, sockaddr_in addr);
 
-    Socket();
+    Socket(){};
 
-    ~Socket();
+    ~Socket(){};
 
     void init(const int type, string ip, int port);
 
@@ -42,13 +39,11 @@ public:
     // void setNonBlock();
     bool Send(const string buffer);
 
-    bool Recv(string &buffer);
+    bool Recv(string& buffer);
 
     Socket Listen();
+
+    bool printErrnoMessage(auto errno);
 };
-
-/*void Socket::setNonBlock() {
-
-}*/
 
 #endif //GENERALDEDUPSYSTEM_NETWORK_HPP

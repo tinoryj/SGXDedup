@@ -5,7 +5,6 @@
 
 using namespace std;
 
-extern Sender* sender;
 extern Configure config;
 
 void powClient::run()
@@ -15,10 +14,9 @@ void powClient::run()
     uint64_t powBatchSize = config.getPOWBatchSize();
     u_char* batchChunkLogicData_charBuffer;
     batchChunkLogicData_charBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
-    string batchChunkLogicData;
     powSignedHash request;
     RequiredChunk lists;
-    Chunk_t tmpChunk;
+    Chunk_t tempChunk;
     int netstatus;
 
     if (!this->do_attestation()) {
@@ -32,39 +30,36 @@ void powClient::run()
         request.hash.clear();
 
         //% TODO
+        uint64_t currentBatchSize = 0;
         for (uint64_t i = 0, cnt = 0; i < powBatchSize; i++) {
-            if (extractMQFromEncoder(tmpChunk)) {
-                request.hash.push_back(tmpChunk.getChunkHash());
-                batchChunk.push_back(tmpChunk);
-                batchHash.push_back(tmpChunk.getChunkHash());
-                int currentBatchLen = batchChunkLogicData.length();
-                int newBatchDataLen = tmpChunk.getLogicData().length();
-                batchChunkLogicData.resize(currentBatchLen + sizeof(int));
-                memcpy(&batchChunkLogicData[currentBatchLen], &newBatchDataLen, sizeof(int));
-                currentBatchLen += sizeof(int);
-                memcpy(&batchChunkLogicData[currentBatchLen], tempChunk.logicData, tempChunk.logicDataSize);
-
-                string data, hash;
-
-                data = tmpChunk.getLogicData();
-                crypto.sha256_digest(data, hash);
+            if (inputMQ.done && !extractMQFromEncoder(tempChunk)) {
+                senderObj->editJobDoneFlag();
+                break;
+            } else {
+                string tempChunkHash(tempChunk.chunkHash, CHUNK_HASH_SIZE);
+                request.hash.push_back(tempChunkHash);
+                batchChunk.push_back(tempChunk);
+                batchHash.push_back(tempChunkHash);
+                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, &tempChunk.logicDataSize, sizeof(int));
+                currentBatchSize += sizeof(int);
+                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, tempChunk.logicData, tempChunk.logicDataSize);
+                currentBatchSize += tempChunk.logicDataSize;
             }
         }
-
+        string batchChunkLogicData(batchChunkLogicData_charBuffer, currentBatchSize);
         if (batchChunk.empty())
             continue;
         if (!this->request(batchChunkLogicData, request.signature)) {
             cerr << "POWClient : sgx request failed\n";
             exit(1);
         }
-
-        sender->sendEnclaveSignedHash(request, lists, netstatus);
+        senderObj->sendEnclaveSignedHash(request, lists, netstatus);
         if (netstatus != SUCCESS) {
             cerr << "POWClient : send pow signed hash error\n";
             exit(1);
         }
 
-        cerr << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
+        cout << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
 
         for (auto it : lists) {
             insertMQToSender(batchChunk[it])
@@ -152,18 +147,17 @@ bool powClient::do_attestation()
     status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg1);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "POWClient : sgx error get msg1\n"
-             << status << endl;
+        cerr << "POWClient : sgx error get msg1" << status << endl;
         return false;
     }
 
     int netstatus;
-    if (!sender->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
-        cerr << "POWClient : send msg01 error : " << netstatus;
+    if (!senderObj->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
+        cerr << "POWClient : send msg01 error : " << netstatus << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     } else {
-        cerr << "POWClient : Send msg01 and Recv msg2 success\n";
+        cerr << "POWClient : Send msg01 and Recv msg2 success" << endl;
     }
 
     /* Process Msg2, Get Msg3  */
@@ -182,14 +176,14 @@ bool powClient::do_attestation()
         }
         return false;
     } else {
-        cerr << "POWClient : process msg2 success\n";
+        cerr << "POWClient : process msg2 success" << endl;
     }
 
     if (msg2 != nullptr) {
         delete msg2;
     }
 
-    if (!sender->sendSGXmsg3(*msg3, msg3_sz, msg4, netstatus)) {
+    if (!senderObj->sendSGXmsg3(*msg3, msg3_sz, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : error send_msg3 : " << netstatus << endl;
         if (msg3 != nullptr) {
@@ -197,7 +191,7 @@ bool powClient::do_attestation()
         }
         return false;
     } else {
-        cerr << "POWClient : send msg3 and Recv msg4 success\n";
+        cerr << "POWClient : send msg3 and Recv msg4 success" << endl;
     }
 
     if (msg3 != nullptr) {
@@ -205,9 +199,9 @@ bool powClient::do_attestation()
     }
 
     if (msg4->status) {
-        cerr << "POWClient : Enclave TRUSTED\n";
+        cerr << "POWClient : Enclave TRUSTED" << endl;
     } else if (!msg4->status) {
-        cerr << "POWClient : Enclave NOT TRUSTED\n";
+        cerr << "POWClient : Enclave NOT TRUSTED" << endl;
         delete msg4;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
