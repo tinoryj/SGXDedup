@@ -4,19 +4,20 @@
 
 #define DEBUG
 
-#include "keyServer.hpp"
 #include "Socket.hpp"
+#include "keyServer.hpp"
 
 Configure config("config.json");
 util::keyCache kCache;
 
-int main(){
-    Socket socket(SERVERTCP,"",config.getKeyServerPort());
-    boost::thread *th;
+int main()
+{
+    Socket socket(SERVERTCP, "", config.getKeyServerPort());
+    boost::thread* th;
     keyServer server;
-    while (1){
-        Socket tmpSocket=socket.Listen();
-        th=new boost::thread(boost::bind(&keyServer::run,&server,tmpSocket));
+    while (true) {
+        Socket tmpSocket = socket.Listen();
+        th = new boost::thread(boost::bind(&keyServer::run, &server, tmpSocket));
     }
     return 0;
 }

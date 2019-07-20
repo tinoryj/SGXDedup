@@ -2,26 +2,27 @@
 // Created by a on 1/25/19.
 //
 
-#include "database.hpp"
-#include "configure.hpp"
-#include "storageCore.hpp"
-#include "_messageQueue.hpp"
-#include "dataSR.hpp"
-#include "dedupCore.hpp"
 #include "../pow/include/PowServer.hpp"
 #include "boost/thread.hpp"
+#include "configure.hpp"
+#include "dataSR.hpp"
+#include "database.hpp"
+#include "dedupCore.hpp"
+#include "messageQueue.hpp"
+#include "storageCore.hpp"
 #include <signal.h>
 Configure config("config.json");
 
 database fp2ChunkDB;
 database fileName2metaDB;
 
-storageCore *storage;
-dataSR *SR;
-dedupCore *dedup;
-powServer *Pow;
+storageCore* storage;
+dataSR* SR;
+dedupCore* dedup;
+powServer* Pow;
 
-void CTRLC(int s) {
+void CTRLC(int s)
+{
     cerr << "server close\n";
 
     if (storage != nullptr)
@@ -39,7 +40,8 @@ void CTRLC(int s) {
     exit(0);
 }
 
-int main() {
+int main()
+{
 
     initMQForServer();
 
@@ -54,8 +56,8 @@ int main() {
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
     fileName2metaDB.openDB(config.getFn2MetaDBame());
 
-    vector<boost::thread *> thList;
-    boost::thread *th;
+    vector<boost::thread*> thList;
+    boost::thread* th;
     SR = new dataSR();
     dedup = new dedupCore();
     storage = new storageCore();
@@ -86,7 +88,7 @@ int main() {
         thList.push_back(th);
     }
 
-    for (auto it:thList) {
+    for (auto it : thList) {
         it->join();
     }
 

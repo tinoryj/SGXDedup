@@ -4,24 +4,24 @@
 
 #ifndef GENERALDEDUPSYSTEM_POWSESSION_HPP
 #define GENERALDEDUPSYSTEM_POWSESSION_HPP
-#include "_messageQueue.hpp"
-#include "configure.hpp"
-#include "protocol.hpp"
-#include "iasrequest.h"
-#include "powSession.hpp"
-#include "byteorder.h"
-#include "json.hpp"
-#include "base64.h"
-#include "crypto.h"
-#include "Socket.hpp"
 #include "CryptoPrimitive.hpp"
+#include "Socket.hpp"
+#include "base64.h"
+#include "byteorder.h"
+#include "configure.hpp"
+#include "crypto.h"
+#include "iasrequest.h"
+#include "json.hpp"
+#include "messageQueue.hpp"
+#include "powSession.hpp"
+#include "protocol.hpp"
 #include <iostream>
 struct sgx_msg01_t {
     uint32_t msg0_extended_epid_group_id;
     sgx_ra_msg1_t msg1;
 };
 
-struct powSession{
+struct powSession {
     bool enclaveTrusted;
     unsigned char g_a[64];
     unsigned char g_b[64];

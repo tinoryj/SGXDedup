@@ -28,8 +28,7 @@ set(UTIL_OBJ _messageQueue chunk configure CryptoPrimitive SSL_TLS Sock database
 set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ}
         ${BOOST_LIBRARY_OBJ} ${UTIL_OBJ} ${SYSTEM_LIBRARY_OBJ})
 
-set(CLIENT_OBJ chunker _chunker encoder _encoder keyClient sender _sender receiver _receiver
-        decoder _decoder retriever _retriever powClient kmServer)
+set(CLIENT_OBJ chunker  encoder  keyClient sender  receiver  decoder  retriever  powClient kmServer)
 set(SERVER_OBJ dataSR _dataSR dedupCore _dedupCore storage _storage powServer)
 set(KEYSERVER_OBJ keyServer kmClient)
 
