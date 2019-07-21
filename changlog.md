@@ -1,21 +1,27 @@
+## Jul 21 2019:
+
+> Tinoryj
+
+* Replace message queue to lock free queue.
+* Rewrite system structure (remove general header).
+
 ## may 14 2019:
 
 > Tionryj
 
-## Bugs
+### Bugs
 
-* need to generate new spid for km_enclave (waiting for intel)
-
+* Need to generate new spid for km_enclave (waiting for intel)
 
 ## May 6 2019:
 
 > Tinoryj
 
-## New Bugs
+### New Bugs
 
 * key manager enclave remote attestation aborts by server ("msg0 Extended Epid Group ID is not zero.").
 
-## Fixed Bugs
+### Fixed Bugs
 
 [*] Compile error by openssl & sgxssl link.
 [*] Configure compact with two enclave.
@@ -30,7 +36,7 @@
 
 * Contains km_enclave version for key server using sgx enclave.
 
-### SGXSSL Guide
+### SGX_SSL Guide
 
 In order to avoid pthread errors in compile, sgxssl file need to edit after install.
 
