@@ -6,20 +6,49 @@
 //tmp
 #include "../../include/dedupCore.hpp"
 
-
 chunkCache cache;
 
 extern database fp2ChunkDB;
 extern Configure config;
+_DedupCore::_DedupCore()
+{
+    _inputMQ.createQueue(DATASR_TO_DEDUPCORE_MQ, READ_MESSAGE);
+    _outputMQ.createQueue(DEDUPCORE_TO_STORAGECORE_MQ, WRITE_MESSAGE);
+}
 
-dedupCore::dedupCore() {
-    _netSendMQ.createQueue(DATASR_IN_MQ,WRITE_MESSAGE);
-    _powMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ,READ_MESSAGE);
-    _crypto=new CryptoPrimitive();
+_DedupCore::~_DedupCore() {}
+
+bool _DedupCore::insertMQ(epoll_message& msg)
+{
+    _outputMQ.push(msg);
+    return true;
+}
+
+bool _DedupCore::extractMQ(epoll_message& msg)
+{
+    return _inputMQ.pop(msg);
+}
+
+_messageQueue _DedupCore::getOutputMQ()
+{
+    return _outputMQ;
+}
+
+_messageQueue _DedupCore::getInputMQ()
+{
+    return _inputMQ;
+}
+
+dedupCore::dedupCore()
+{
+    _netSendMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
+    _powMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ, READ_MESSAGE);
+    _crypto = new CryptoPrimitive();
     _timer.startTimer();
 }
 
-dedupCore::~dedupCore() {
+dedupCore::~dedupCore()
+{
     if (_crypto != nullptr)
         delete _crypto;
 }
@@ -30,54 +59,55 @@ dedupCore::~dedupCore() {
  *      sgx_signed_hash     : for dedup stage one, regist to timer
  *      client_upload_chunk : for dedup stage two, save chunk to cache
  * */
-void dedupCore::run() {
+void dedupCore::run()
+{
     epoll_message msg1;
     powSignedHash msg3;
     RequiredChunk msg4;
     chunkList msg5;
 
     while (1) {
-        if(this->extractMQ(msg1)) {
+        if (this->extractMQ(msg1)) {
             switch (msg1._type) {
-                case CLIENT_UPLOAD_CHUNK: {
-                    deserialize(msg1._data, msg5);
-                    if (this->dedupStage2(msg5)) {
-                        msg1._type = SUCCESS;
-                    } else {
-                        msg1._type = ERROR_RESEND;
-                    }
-                    msg1._data.clear();
-                    _netSendMQ.push(msg1);
+            case CLIENT_UPLOAD_CHUNK: {
+                deserialize(msg1._data, msg5);
+                if (this->dedupStage2(msg5)) {
+                    msg1._type = SUCCESS;
+                } else {
+                    msg1._type = ERROR_RESEND;
                 }
+                msg1._data.clear();
+                _netSendMQ.push(msg1);
+            }
             }
         }
 
-        if(_powMQ.pop(msg1)){
+        if (_powMQ.pop(msg1)) {
             switch (msg1._type) {
-                case SGX_SIGNED_HASH: {
-                    deserialize(msg1._data, msg3);
-                    if (this->dedupStage1(msg3, msg4)) {
-                        msg1._type = SUCCESS;
-                        serialize(msg4, msg1._data);
-                    } else {
-                        msg1._type = ERROR_RESEND;
-                        msg1._data.clear();
-                    }
-                    _netSendMQ.push(msg1);
-                    break;
+            case SGX_SIGNED_HASH: {
+                deserialize(msg1._data, msg3);
+                if (this->dedupStage1(msg3, msg4)) {
+                    msg1._type = SUCCESS;
+                    serialize(msg4, msg1._data);
+                } else {
+                    msg1._type = ERROR_RESEND;
+                    msg1._data.clear();
                 }
+                _netSendMQ.push(msg1);
+                break;
+            }
             }
         }
     }
 }
 
-bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk &out) {
+bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk& out)
+{
     out.clear();
     bool status = true;
 
-    signedHash *sig = new signedHash();
+    signedHash* sig = new signedHash();
     sig->setMQ(this->getOutputMQ());
-
 
     if (status) {
         string tmpdata;
@@ -97,19 +127,21 @@ bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk &out) {
      * or not, then delete(de-refer) all chunk in cache
      */
     sig->_startTime = std::chrono::high_resolution_clock::now();
-    sig->_outDataTime = (int) ((double) sig->_hashList.size() * config.getTimeOutScale());
-    cerr << "dedupCore : " << "regist " << setbase(10) << sig->_hashList.size() << " chunk to Timer\n";
+    sig->_outDataTime = (int)((double)sig->_hashList.size() * config.getTimeOutScale());
+    cerr << "dedupCore : "
+         << "regist " << setbase(10) << sig->_hashList.size() << " chunk to Timer" << endl;
     _timer.registerHashList(sig);
 
     return status;
 }
 
-bool dedupCore::dedupStage2(chunkList in) {
+bool dedupCore::dedupStage2(chunkList in)
+{
     string hash;
     int size = in._chunks.size(), i;
     for (i = 0; i < size; i++) {
         //check chunk hash correct or not
-        _crypto->sha256_digest(in._chunks[i],hash);
+        _crypto->sha256_digest(in._chunks[i], hash);
         if (hash != in._FP[i]) {
             break;
         }
@@ -120,52 +152,57 @@ bool dedupCore::dedupStage2(chunkList in) {
     */
     if (i == size) {
         cache.setChunk(in._FP, in._chunks);
-        cerr << "dedupCore : " << "recv " << setbase(10) << in._FP.size() << " chunk from client\n";
+        cerr << "dedupCore : "
+             << "recv " << setbase(10) << in._FP.size() << " chunk from client" << endl;
         return true;
     }
     return false;
 }
 
-
-chunkCache_t::chunkCache_t() {
-    this->_cnt=1;
+chunkCache_t::chunkCache_t()
+{
+    this->_cnt = 1;
     this->_avaiable;
     this->_chunkLogicData.clear();
-
 }
 
-void chunkCache_t::refer() {
+void chunkCache_t::refer()
+{
     {
         boost::unique_lock<boost::shared_mutex> t(this->_cntMtx);
         this->_cnt++;
     }
 }
 
-void chunkCache_t::derefer() {
+void chunkCache_t::derefer()
+{
     {
         boost::unique_lock<boost::shared_mutex> t(this->_cntMtx);
         this->_cnt--;
     }
 }
 
-int chunkCache_t::readCnt() {
+int chunkCache_t::readCnt()
+{
     int ans;
     {
         boost::shared_lock<boost::shared_mutex> t(this->_cntMtx);
-        ans=this->_cnt;
+        ans = this->_cnt;
     }
     return ans;
 }
 
-void chunkCache_t::setChunk(string &chunkLogicData) {
+void chunkCache_t::setChunk(string& chunkLogicData)
+{
     {
-        this->_chunkLogicData=chunkLogicData;
+        this->_chunkLogicData = chunkLogicData;
         boost::unique_lock<boost::shared_mutex> t(this->_avaiMtx);
-        this->_avaiable= true;
+        this->_avaiable = true;
     }
 }
 
-bool chunkCache_t::readChunk(string &chunkLogicData) {
+bool chunkCache_t::readChunk(string& chunkLogicData)
+{
     bool status;
     {
         boost::shared_lock<boost::shared_mutex> t(this->_avaiMtx);
@@ -178,24 +215,27 @@ bool chunkCache_t::readChunk(string &chunkLogicData) {
     return status;
 }
 
-chunkCache::chunkCache() {
-    this->_crypto=new CryptoPrimitive();
+chunkCache::chunkCache()
+{
+    this->_crypto = new CryptoPrimitive();
 }
 
-void chunkCache::refer(string &chunkHash) {
-    map<string, chunkCache_t *>::iterator it;
+void chunkCache::refer(string& chunkHash)
+{
+    map<string, chunkCache_t*>::iterator it;
     {
         boost::unique_lock<boost::shared_mutex> t(this->_mtx);
         it = _memBuffer.find(chunkHash);
         if (it == _memBuffer.end()) {
-            chunkCache_t *tmp = new chunkCache_t();
+            chunkCache_t* tmp = new chunkCache_t();
             _memBuffer.insert(make_pair(chunkHash, tmp));
         }
     }
 }
 
-void chunkCache::derefer(string &chunkHash) {
-    map<string, chunkCache_t *>::iterator it;
+void chunkCache::derefer(string& chunkHash)
+{
+    map<string, chunkCache_t*>::iterator it;
     {
         boost::unique_lock<boost::shared_mutex> t(this->_mtx);
         it = _memBuffer.find(chunkHash);
@@ -209,10 +249,11 @@ void chunkCache::derefer(string &chunkHash) {
     }
 }
 
-void chunkCache::setChunk(vector<string> &fp,vector<string> &chunks) {
+void chunkCache::setChunk(vector<string>& fp, vector<string>& chunks)
+{
     int size = fp.size();
     for (int i = 0; i < size; i++) {
-        map<string, chunkCache_t *>::iterator it1;
+        map<string, chunkCache_t*>::iterator it1;
         {
             boost::unique_lock<boost::shared_mutex> t(this->_mtx);
             it1 = _memBuffer.find(fp[i]);
@@ -223,8 +264,9 @@ void chunkCache::setChunk(vector<string> &fp,vector<string> &chunks) {
     }
 }
 
-bool chunkCache::readChunk(string &chunkHash, string &chunkLogicData) {
-    map<string, chunkCache_t *>::iterator it;
+bool chunkCache::readChunk(string& chunkHash, string& chunkLogicData)
+{
+    map<string, chunkCache_t*>::iterator it;
     bool status;
     {
         boost::shared_lock<boost::shared_mutex> t(this->_mtx);
@@ -237,14 +279,16 @@ bool chunkCache::readChunk(string &chunkHash, string &chunkLogicData) {
     return status;
 }
 
-void signedHash::setMQ(_messageQueue mq) {
+void signedHash::setMQ(_messageQueue mq)
+{
     this->_outputMQ = mq;
 }
 
-bool signedHash::checkDone() {
+bool signedHash::checkDone()
+{
     string chunkLogicData;
     bool success;
-    for (auto it:this->_hashList) {
+    for (auto it : this->_hashList) {
         success = cache.readChunk(it, chunkLogicData);
         if (!success) {
             return false;
@@ -264,17 +308,19 @@ bool signedHash::checkDone() {
     return true;
 }
 
-void signedHash::timeout() {
+void signedHash::timeout()
+{
     int size = _chunks.size();
     for (int i = 0; i < size; i++) {
         cache.derefer(_hashList[i]);
     }
-//  _hashList.clear();
-//  _chunks.clear();
+    //  _hashList.clear();
+    //  _chunks.clear();
 }
 
-void Timer::registerHashList(signedHash *job) {
-    for(auto it:job->_hashList){
+void Timer::registerHashList(signedHash* job)
+{
+    for (auto it : job->_hashList) {
         cache.refer(it);
     }
 
@@ -284,9 +330,10 @@ void Timer::registerHashList(signedHash *job) {
     }
 }
 
-void Timer::run() {
+void Timer::run()
+{
     using namespace std::chrono;
-    signedHash *nowJob;
+    signedHash* nowJob;
     system_clock::time_point now;
     duration<int, std::milli> dtn;
     bool emptyFlag;
@@ -309,19 +356,20 @@ void Timer::run() {
             this_thread::sleep_for(milliseconds(nowJob->_outDataTime - dtn.count()));
         }
 
-        cerr << "Timer : " << "check time for " << setbase(10) << nowJob->_hashList.size() << " chunk  ";
+        cerr << "Timer : "
+             << "check time for " << setbase(10) << nowJob->_hashList.size() << " chunk  ";
         if (!nowJob->checkDone()) {
             nowJob->timeout();
-            cerr <<"timeout\n";
+            cerr << "timeout" << endl;
             return;
         }
-        cerr << "success\n";
+        cerr << "success" << endl;
         delete nowJob;
     }
-
 }
 
-void Timer::startTimer() {
+void Timer::startTimer()
+{
     boost::thread th(boost::bind(&Timer::run, this));
     th.detach();
 }

@@ -17,7 +17,7 @@ std::ifstream& Chunker::getChunkingFile()
 {
 
     if (!chunkingFile.is_open()) {
-        std::cerr << "chunking file open failed\n";
+        std::cerr << "chunking file open failed" << endl;
         exit(1);
     }
     return chunkingFile;
@@ -156,7 +156,7 @@ void chunker::chunkerInit(string path)
         if (ReadSize % avgChunkSize != 0) {
             cerr << "Setting fixed size chunking error : ReadSize not compat with average chunk size" << endl;
         }
-        cerr << "A chunker has been constructed!" << endl;
+        cerr << "A fixed size chunker has been constructed!" << endl;
         cerr << "Parameters: " << endl;
         cerr << setw(6) << "ChunkSize: " << avgChunkSize << endl;
         cerr << endl;

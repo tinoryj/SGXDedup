@@ -5,12 +5,12 @@
 #ifndef GENERALDEDUPSYSTEM_SENDER_HPP
 #define GENERALDEDUPSYSTEM_SENDER_HPP
 
-#include "CryptoPrimitive.hpp"
 #include "configure.hpp"
+#include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
 #include "protocol.hpp"
-
+#include "socket.hpp"
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 
@@ -30,7 +30,7 @@ public:
     bool sendRecipe(Recipe_t& request, int& status);
 
     //status define in protocol.hpp
-    bool sendChunkList(chunkList& request, int& status);
+    bool sendChunkList(ChunkList_t& request, int& status);
 
     //for pow
     bool sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status);

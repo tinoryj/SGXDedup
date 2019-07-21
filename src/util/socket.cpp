@@ -26,22 +26,22 @@ void Socket::init(const int type, string ip, int port)
     this->addr.sin_family = AF_INET;
     this->addr.sin_port = htons(port);
     switch (type) {
-    case SERVERTCP: {
+    case SERVER_TCP: {
         this->fd = socket(AF_INET, SOCK_STREAM, 0);
         this->addr.sin_addr.s_addr = htons(INADDR_ANY);
         if (bind(this->fd, (struct sockaddr*)&this->addr, sizeof this->addr) != 0) {
-            cerr << "Error at bind fd to Socket\n";
+            cerr << "Error at bind fd to Socket" << endl;
             exit(1);
         }
         listen(this->fd, 10);
         return;
     }
-    case CLIENTTCP: {
+    case CLIENT_TCP: {
         this->fd = socket(AF_INET, SOCK_STREAM, 0);
         inet_pton(AF_INET, ip.c_str(), &this->addr.sin_addr);
         if (connect(this->fd, (struct sockaddr*)&this->addr, sizeof this->addr) < 0) {
-            cerr << "Can not connect server when init for Client Socket\n";
-            cerr << "Socket.cpp::Socket::init\n";
+            cerr << "Can not connect server when init for Client Socket" << endl;
+            cerr << "Socket.cpp::Socket::init" << endl;
             exit(1);
         }
         return;
@@ -50,16 +50,16 @@ void Socket::init(const int type, string ip, int port)
         this->fd = socket(AF_INET, SOCK_DGRAM, 0);
         inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
         if (bind(this->fd, (struct sockaddr*)&this->addr, sizeof this->addr) == -1) {
-            std::cerr << "Can not bind to sockfd\n";
-            std::cerr << "May cause by shutdown server before client\n";
-            std::cerr << "Wait for 30 sec and try again\n";
+            std::cerr << "Can not bind to sockfd" << endl;
+            std::cerr << "May cause by shutdown server before client" << endl;
+            std::cerr << "Wait for 30 sec and try again" << endl;
             exit(1);
         }
         return;
     }
     default: {
-        cerr << "Type Error at Socket(const int type, string ip, int port)\n";
-        cerr << "Type supported SERVERTCP-0 CLIENTTCP-1 UDP-2\n";
+        cerr << "Type Error at Socket(const int type, string ip, int port)" << endl;
+        cerr << "Type supported SERVER_TCP-0 CLIENT_TCP-1 UDP-2" << endl;
         exit(1);
     }
     }

@@ -5,10 +5,11 @@
 #ifndef GENERALDEDUPSYSTEM_DATASR_HPP
 #define GENERALDEDUPSYSTEM_DATASR_HPP
 
-#include "_dataSR.hpp"
 #include "boost/thread.hpp"
+#include "configure.hpp"
+#include "dataStructure.hpp"
 
-class dataSR:public _DataSR{
+class dataSR {
 public:
     void run();
     bool receiveData();

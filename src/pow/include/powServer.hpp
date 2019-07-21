@@ -5,17 +5,17 @@
 #ifndef GENERALDEDUPSYSTEM_POWSERVER_HPP
 #define GENERALDEDUPSYSTEM_POWSERVER_HPP
 
-#include "CryptoPrimitive.hpp"
-#include "Socket.hpp"
+#include "../../../include/configure.hpp"
+#include "../../../include/cryptoPrimitive.hpp"
+#include "../../../include/messageQueue.hpp"
+#include "../../../include/protocol.hpp"
+#include "../../../include/socket.hpp"
 #include "base64.h"
 #include "byteorder.h"
-#include "configure.hpp"
 #include "crypto.h"
 #include "iasrequest.h"
 #include "json.hpp"
-#include "messageQueue.hpp"
 #include "powSession.hpp"
-#include "protocol.hpp"
 #include <iostream>
 
 #define CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"

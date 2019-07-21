@@ -5,7 +5,6 @@
 #ifndef GENERALDEDUPSYSTEM_KEYSERVER_HPP
 #define GENERALDEDUPSYSTEM_KEYSERVER_HPP
 
-#include "Socket.hpp"
 #include "cache.hpp"
 #include "configure.hpp"
 #include "dataStructure.hpp"
@@ -13,9 +12,9 @@
 #include "message.hpp"
 #include "messageQueue.hpp"
 #include "openssl/bn.h"
+#include "socket.hpp"
 #include "ssl.hpp"
-
-#include <string>
+#include <bits/stdc++.h>
 
 #define SERVERSIDE 0
 #define CLIENTSIDE 1

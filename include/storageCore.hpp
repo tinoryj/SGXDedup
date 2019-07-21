@@ -5,23 +5,29 @@
 #ifndef GENERALDEDUPSYSTEM_STORAGECORE_HPP
 #define GENERALDEDUPSYSTEM_STORAGECORE_HPP
 
-#include "_storage.hpp"
+#include "configure.hpp"
+#include "cryptoPrimitive.hpp"
+#include "dataStructure.hpp"
+#include "database.hpp"
+#include "messageQueue.hpp"
+#include "protocol.hpp"
+#include "socket.hpp"
+#include <bits/stdc++.h>
 
+using namespace std;
 
-struct _Container{
+struct _Container {
     uint32_t _used;
-    char _body[4<<20];  //4 M
+    char _body[4 << 20]; //4 M
     _Container();
     ~_Container();
     void saveTOFile(string fileName);
 };
 
-
-class storageCore:public _StorageCore{
+class storageCore {
 private:
-
-    _messageQueue _netRecvMQ;
-    _messageQueue _netSendMQ;
+    messageQueue<Chunk_t> _netRecvMQ;
+    messageQueue<Chunk_t> _netSendMQ;
 
     std::string _lastContainerFileName;
     std::string _lastFileRecipeFileName;
@@ -36,13 +42,12 @@ private:
     std::string _keyRecipeNamePrefix;
     std::string _keyRecipeNameTail;
 
-
-    CryptoPrimitive *_crypto;
+    CryptoPrimitive* _crypto;
 
     _Container _currentContainer;
 
-    bool writeContainer(keyValueForChunkHash &key,std::string &data);
-    bool readContainer(keyValueForChunkHash key,std::string &data);
+    bool writeContainer(keyValueForChunkHash& key, std::string& data);
+    bool readContainer(keyValueForChunkHash key, std::string& data);
 
 public:
     storageCore();
@@ -50,14 +55,13 @@ public:
 
     void run();
 
-    bool saveRecipe(std::string &recipeName,fileRecipe_t &fileRecipe,std::string &keyRecipe);
-    bool restoreRecipe(std::string recipeName,fileRecipe_t &fileRecipe,std::string &keyRecipe);
-    bool saveChunk(std::string chunkHash,std::string &chunkData);
-    bool restoreChunk(std::string chunkHash,std::string &chunkData);
+    bool saveRecipe(std::string& recipeName, FileRecipeHead_t& fileRecipe, std::string& keyRecipe);
+    bool restoreRecipe(std::string recipeName, FileRecipeHead_t& fileRecipe, std::string& keyRecipe);
+    bool saveChunk(std::string chunkHash, std::string& chunkData);
+    bool restoreChunk(std::string chunkHash, std::string& chunkData);
 
-
-    bool verifyRecipe(Recipe_t recipe,int version);
-    void sendRecipe(std::string recipeName,int version,int fd,int epfd);
+    bool verifyRecipe(Recipe_t recipe, int version);
+    void sendRecipe(std::string recipeName, int version, int fd, int epfd);
 
     bool createContainer();
 };

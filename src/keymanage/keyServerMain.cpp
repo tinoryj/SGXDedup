@@ -4,15 +4,15 @@
 
 #define DEBUG
 
-#include "Socket.hpp"
 #include "keyServer.hpp"
+#include "socket.hpp"
 
 Configure config("config.json");
-util::keyCache kCache;
+keyCache kCache;
 
 int main()
 {
-    Socket socket(SERVERTCP, "", config.getKeyServerPort());
+    Socket socket(SERVER_TCP, "", config.getKeyServerPort());
     boost::thread* th;
     keyServer server;
     while (true) {

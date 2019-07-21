@@ -1,8 +1,8 @@
 #ifndef GENERALDEDUPSYSTEM__CHUNKER_HPP
 #define GENERALDEDUPSYSTEM__CHUNKER_HPP
 
-#include "CryptoPrimitive.hpp"
 #include "configure.hpp"
+#include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "keyClient.hpp"
 #include "messageQueue.hpp"

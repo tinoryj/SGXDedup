@@ -6,76 +6,83 @@
 
 extern Configure config;
 
-receiver::receiver() {
-    _socket.init(CLIENTSIDE,config.getStorageServerIP(),config.getStorageServerPort());
+receiver::receiver()
+{
+    _socket.init(CLIENTSIDE, config.getStorageServerIP(), config.getStorageServerPort());
 }
 
-receiver::~receiver() {
+receiver::~receiver()
+{
     _socket.finish();
 }
 
-void receiver::receiveChunk() {
+void receiver::receiveChunk()
+{
     string tmp;
     int status;
     chunkList chunks;
-    int chunkID=0;
-    while(1){
-        this->receiveData(tmp,status);
-        deserialize(tmp,chunks);
-        int i,sz=chunks._FP.size();
-        for(i=0;i<sz;i++,chunkID++){
-            Chunk *tmpChunk=new Chunk(chunkID,0,chunks._chunks[i].length(),chunks._chunks[i],"","");
+    int chunkID = 0;
+    while (1) {
+        this->receiveData(tmp, status);
+        deserialize(tmp, chunks);
+        int i, sz = chunks._FP.size();
+        for (i = 0; i < sz; i++, chunkID++) {
+            Chunk* tmpChunk = new Chunk(chunkID, 0, chunks._chunks[i].length(), chunks._chunks[i], "", "");
             this->insertMQ(*tmpChunk);
         }
     }
 }
 
-void receiver::run(std::string fileName) {
+void receiver::run(std::string fileName)
+{
     networkStruct request(CLIENT_DOWNLOAD_RECIPE, config.getClientID()), respond(0, 0);
     request._data = fileName;
-    string reqBuffer,resBuffer;
+    string reqBuffer, resBuffer;
     serialize(request, reqBuffer);
     while (1) {
-        if(!_socket.Send(reqBuffer)){
-            cerr<<"peer closed\n";
+        if (!_socket.Send(reqBuffer)) {
+            cerr << "peer closed" << endl;
             return;
         }
-        if(!_socket.Recv(resBuffer)){
-            cerr<<"peer closed\n";
+        if (!_socket.Recv(resBuffer)) {
+            cerr << "peer closed" << endl;
             return;
         }
-        deserialize(resBuffer,respond);
-        if(respond._type==ERROR_RESEND) continue;
-        if(respond._type==ERROR_CLOSE){
-            std::cerr<<"Server reject!\n";
+        deserialize(resBuffer, respond);
+        if (respond._type == ERROR_RESEND)
+            continue;
+        if (respond._type == ERROR_CLOSE) {
+            std::cerr << "Server reject!" << endl;
             exit(1);
         }
-        if(respond._type==SUCCESS)   break;
+        if (respond._type == SUCCESS)
+            break;
     }
     this->insertMQ(respond._data);
 
-    int i,maxThread=config.getReceiverThreadLimit();
-    for(i=0;i<maxThread;i++){
-        boost::thread th(boost::bind(&receiver::receiveChunk,this));
+    int i, maxThread = config.getReceiverThreadLimit();
+    for (i = 0; i < maxThread; i++) {
+        boost::thread th(boost::bind(&receiver::receiveChunk, this));
         th.detach();
     }
 }
 
-bool receiver::receiveData(string &data, int status) {
+bool receiver::receiveData(string& data, int status)
+{
     networkStruct networkBody;
     string networkBodyBuffer;
-    Resend:
+Resend:
     _socket.Recv(networkBodyBuffer);
-    deserialize(networkBodyBuffer,networkBody);
-    status=networkBody._type;
-    if(status==ERROR_RESEND){
+    deserialize(networkBodyBuffer, networkBody);
+    status = networkBody._type;
+    if (status == ERROR_RESEND) {
         goto Resend;
     }
-    if(status==ERROR_CLOSE){
-        std::cerr<<"receiver error\n";
+    if (status == ERROR_CLOSE) {
+        std::cerr << "receiver error" << endl;
         exit(1);
     }
-    data=networkBody._data;
+    data = networkBody._data;
 }
 
 /*

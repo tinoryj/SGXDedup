@@ -5,11 +5,14 @@
 #ifndef GENERALDEDUPSYSTEM_RETRIEVER_HPP
 #define GENERALDEDUPSYSTEM_RETRIEVER_HPP
 
-#include "_retriever.hpp"
+#include <bits/stdc++.h>
 
-class Retriever:public _Retriever{
+using namespace std;
+
+class Retriever {
 private:
     int _chunkCnt;
+
 public:
     Retriever(string filename);
     void run();

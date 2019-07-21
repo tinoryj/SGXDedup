@@ -22,11 +22,11 @@ void encoder::run()
 
     while (true) {
         Chunk_t tempChunk;
-        if (inputMQ.done && !extractMQFromKeyClient(tempChunk)) {
+        if (inputMQ.done_ && !extractMQFromKeyClient(tempChunk)) {
             break;
         }
         encodeChunk(tempChunk);
-        string data(tempChunk.logicData), hash;
+        string data(tempChunk.logicData, tempChunk.logicDataSize), hash;
         cryptoObj->sha256_digest(data, hash);
         memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
         insertMQToPOW(tempChunk);
@@ -35,7 +35,7 @@ void encoder::run()
     pthread_exit(NULL);
 }
 
-bool encoder::encodeChunk(Chunk& newChunk)
+bool encoder::encodeChunk(Chunk_t& newChunk)
 {
     cryptoObj->chunk_encrypt(newChunk);
 }
@@ -57,5 +57,5 @@ bool encoder::insertMQToPOW(Chunk_t newChunk)
 
 bool encoder::editJobDoneFlag()
 {
-    inputMQ.done = true;
+    inputMQ.done_ = true;
 }

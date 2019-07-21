@@ -4,19 +4,19 @@
 
 #ifndef GENERALDEDUPSYSTEM_KMCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KMCLIENT_HPP
-#include "Socket.hpp"
+#include "../../../include/messageQueue.hpp"
+#include "../../../include/protocol.hpp"
+#include "../../../include/sender.hpp"
+#include "../../../include/socket.hpp"
 #include "crypto.h"
 #include "km_enclave_u.h"
-#include "messageQueue.hpp"
 #include "powSession.hpp"
-#include "protocol.hpp"
 #include "pthread.h"
-#include "sender.hpp"
+#include <bits/stdc++.h>
 #include <iostream>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 #include <sgx_urts.h>
-#include <string>
 
 static const sgx_ec256_public_t def_service_public_key = {
     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,

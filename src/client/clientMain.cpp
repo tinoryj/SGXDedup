@@ -16,7 +16,7 @@ using namespace std;
 
 //MessageQueue<Chunk>mq1;
 Configure config("config.json");
-util::keyCache kCache;
+keyCache kCache;
 
 chunker* Chunker;
 keyClient* keyClientObj;
@@ -29,8 +29,8 @@ powClient* Pow;
 
 void usage()
 {
-    cout << "client -r filename for receive file\n";
-    cout << "client -s filename for send file\n";
+    cout << "client -r filename for receive file" << endl;
+    cout << "client -s filename for send file" << endl;
 }
 
 int main(int argv, char* argc[])

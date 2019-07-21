@@ -7,71 +7,57 @@
 
 #include "leveldb/db.h"
 #include "seriazation.hpp"
+#include <bits/stdc++.h>
 #include <boost/thread.hpp>
-#include <string>
-#include <fstream>
 using namespace std;
 
-struct keyValueForChunkHash{
+struct keyValueForChunkHash {
 
-    //key:
-    //string _chunkHash;
+    //key: string _chunkHash;
+    //value: containerName, offset in container, chunk size;
 
-    //value:
     string _containerName;
     uint32_t _offset;
     uint32_t _length;
 
-    void set(string containerName,uint32_t offset,uint32_t length){
-        this->_containerName=containerName;
-        this->_offset=offset;
-        this->_length=length;
-    }
-
-    template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-        ar&_containerName;
-        ar&_offset;
-        ar&_length;
+    void set(string containerName, uint32_t offset, uint32_t length)
+    {
+        this->_containerName = containerName;
+        this->_offset = offset;
+        this->_length = length;
     }
 };
 
-struct keyValueForFilename{
+struct keyValueForFilename {
 
-    //key:
-    //string _filename;
+    //key: string _filename;
+    //value: file recipe name, key recipe name, version;
 
-    //value:
     string _fileRecipeName;
     string _keyRecipeName;
     uint32_t _version;
 
-    void set(string fileRecipe,string keyRecipe,uint32_t version) {
-        this->_fileRecipeName=fileRecipe;
-        this->_keyRecipeName=keyRecipe;
-        this->_version=version;
-    }
-
-    template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-        ar&_fileRecipeName;
-        ar&_keyRecipeName;
-        ar&_version;
+    void set(string fileRecipe, string keyRecipe, uint32_t version)
+    {
+        this->_fileRecipeName = fileRecipe;
+        this->_keyRecipeName = keyRecipe;
+        this->_version = version;
     }
 };
 
-class database{
+class database {
 private:
-    leveldb::DB *_levelDB= nullptr;
-    boost::shared_mutex _mtx;
-    std::string _dbName;
+    leveldb::DB* levelDBObj_ = nullptr;
+    std::mutex mutexDataBase_;
+    std::string dbName_;
+
 public:
-    database();
+    database(){};
     database(std::string dbName);
     ~database();
-    void openDB(std::string dbName);
-    bool query(std::string key,std::string& value);
-    bool insert(std::string key,std::string value);
+    bool openDB(std::string dbName);
+    bool query(std::string key, std::string& value);
+    bool insert(std::string key, std::string value);
 };
 
 #endif //GENERALDEDUPSYSTEM_DATABASE_HPP

@@ -1,21 +1,19 @@
-//
-// Created by a on 3/20/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_POWSESSION_HPP
 #define GENERALDEDUPSYSTEM_POWSESSION_HPP
-#include "CryptoPrimitive.hpp"
-#include "Socket.hpp"
+
+#include "../../../include/configure.hpp"
+#include "../../../include/cryptoPrimitive.hpp"
+#include "../../../include/messageQueue.hpp"
+#include "../../../include/protocol.hpp"
+#include "../../../include/socket.hpp"
 #include "base64.h"
 #include "byteorder.h"
-#include "configure.hpp"
 #include "crypto.h"
 #include "iasrequest.h"
 #include "json.hpp"
-#include "messageQueue.hpp"
 #include "powSession.hpp"
-#include "protocol.hpp"
 #include <iostream>
+
 struct sgx_msg01_t {
     uint32_t msg0_extended_epid_group_id;
     sgx_ra_msg1_t msg1;

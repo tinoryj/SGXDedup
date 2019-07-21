@@ -3,7 +3,6 @@
 set(OPENSSL_INCLUDE_PATH /usr/local/openssl1.1.1/include)
 set(OPENSSL_LIBRARY_PATH /usr/local/openssl1.1.1/lib)
 
-
 add_library(chunker STATIC chunker.cpp)
 add_library(encoder STATIC encoder.cpp)
 add_library(keyClient STATIC keyClient.cpp)
@@ -11,7 +10,6 @@ add_library(sender STATIC sender.cpp)
 add_library(receiver STATIC receiver.cpp)
 add_library(decoder STATIC decoder.cpp)
 add_library(retriever STATIC retriever.cpp)
-
 
 add_executable(client clientMain.cpp)
 

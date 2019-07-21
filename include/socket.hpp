@@ -13,8 +13,8 @@
 
 using namespace std;
 
-#define SERVERTCP 0
-#define CLIENTTCP 1
+#define SERVER_TCP 0
+#define CLIENT_TCP 1
 #define UDP 2
 
 class Socket {

@@ -9,47 +9,49 @@ extern Configure config;
 // -A AttestationReportSigningCACert.pem -C client.crt
 // -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
 
-kmServer::kmServer(Socket socket) {
-    if(!cert_load_file(&_signing_ca,IAS_SIGNING_CA_FILE)){
-        cerr<<"can not load IAS Signing Cert CA\n";
+kmServer::kmServer(Socket socket)
+{
+    if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
+        cerr << "can not load IAS Signing Cert CA" << endl;
         exit(1);
     }
 
-    _store=cert_init_ca(_signing_ca);
-    if(_store== nullptr){
-        cerr<<"can not init cert file\n";
+    _store = cert_init_ca(_signing_ca);
+    if (_store == nullptr) {
+        cerr << "can not init cert file" << endl;
         exit(1);
     }
 
-    string spid=config.getKMSPID();
-    if(spid.length()!=32){
-        cerr<<"SPID must be 32-byte hex string\n";
+    string spid = config.getKMSPID();
+    if (spid.length() != 32) {
+        cerr << "SPID must be 32-byte hex string" << endl;
         exit(1);
     }
 
-    from_hexstring((unsigned char*)&_spid,(const void*)&spid[0],16);
+    from_hexstring((unsigned char*)&_spid, (const void*)&spid[0], 16);
 
-    _ias=new IAS_Connection(config.getKMIASServerType(),0);
-    _ias->client_cert(IAS_CERT_FILE,"PEM");
+    _ias = new IAS_Connection(config.getKMIASServerType(), 0);
+    _ias->client_cert(IAS_CERT_FILE, "PEM");
     _ias->client_key(IAS_CLIENT_KEY, nullptr);
     _ias->proxy_mode(IAS_PROXY_NONE);
     _ias->cert_store(_store);
     _ias->ca_bundle(CA_BUNDLE);
 
-    _quote_type=config.getKMQuoteType();
-    _service_private_key=key_private_from_bytes(def_service_private_key);
-    _iasVersion=config.getKMIASVersion();
-    _socket=socket;
+    _quote_type = config.getKMQuoteType();
+    _service_private_key = key_private_from_bytes(def_service_private_key);
+    _iasVersion = config.getKMIASVersion();
+    _socket = socket;
 }
 
-bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg2_t &msg2) {
+bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
+{
 
-    EVP_PKEY *Gb;
+    EVP_PKEY* Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
 
-    msg01.msg0_extended_epid_group_id=0;
+    msg01.msg0_extended_epid_group_id = 0;
     if (msg01.msg0_extended_epid_group_id != 0) {
-        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting.\n";
+        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
         return false;
     }
 
@@ -57,17 +59,17 @@ bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg
 
     Gb = key_generate();
     if (Gb == nullptr) {
-        cerr << "can not create session key\n";
+        cerr << "can not create session key" << endl;
         return false;
     }
 
     if (!derive_kdk(Gb, session->kdk, msg01.msg1.g_a)) {
-        cerr << "can not derive KDK\n";
+        cerr << "can not derive KDK" << endl;
         return false;
     }
 
-    cmac128(session->kdk, (unsigned char *) ("\x01SMK\x00\x80\x00"), 7,
-            session->smk);
+    cmac128(session->kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7,
+        session->smk);
 
     //build msg2
     memset(&msg2, 0, sizeof(sgx_ra_msg2_t));
@@ -77,8 +79,8 @@ bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg
     msg2.quote_type = _quote_type;
     msg2.kdf_id = 1;
 
-    if (!get_sigrl(msg01.msg1.gid, (char **) &msg2.sig_rl, &msg2.sig_rl_size)) {
-        cerr << "can not retrieve sigrl form ias server\n";
+    if (!get_sigrl(msg01.msg1.gid, (char**)&msg2.sig_rl, &msg2.sig_rl_size)) {
+        cerr << "can not retrieve sigrl form ias server" << endl;
         return false;
     }
 
@@ -92,24 +94,25 @@ bool kmServer::process_msg01(powSession *session, sgx_msg01_t &msg01, sgx_ra_msg
     reverse_bytes(&msg2.sign_gb_ga.x, r, 32);
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
-    cmac128(session->smk, (unsigned char *) &msg2, 148, (unsigned char *) &msg2.mac);
+    cmac128(session->smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
 
     return true;
 }
 
-bool kmServer::derive_kdk(EVP_PKEY *Gb, unsigned char *kdk, sgx_ec256_public_t g_a) {
-    unsigned char *Gab_x;
+bool kmServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t g_a)
+{
+    unsigned char* Gab_x;
     unsigned char cmacKey[16];
     size_t len;
-    EVP_PKEY *Ga;
+    EVP_PKEY* Ga;
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
-        cerr << "can not get ga from msg1\n";
+        cerr << "can not get ga from msg1" << endl;
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
-        cerr << "can not get shared secret\n";
+        cerr << "can not get shared secret" << endl;
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
@@ -119,55 +122,56 @@ bool kmServer::derive_kdk(EVP_PKEY *Gb, unsigned char *kdk, sgx_ec256_public_t g
     return true;
 }
 
-bool kmServer::get_sigrl(uint8_t *gid, char **sig_rl, uint32_t *sig_rl_size) {
-    IAS_Request *req = nullptr;
+bool kmServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
+{
+    IAS_Request* req = nullptr;
 
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
-        cerr << "can not make ias request\n";
+        cerr << "can not make ias request" << endl;
         return false;
     }
     string sigrlstr;
-    if (req->sigrl(*(uint32_t *) gid, sigrlstr) != IAS_OK) {
-        cerr << "ias get sigrl error\n";
+    if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
+        cerr << "ias get sigrl error" << endl;
         return false;
     }
     *sig_rl = strdup(sigrlstr.c_str());
     if (*sig_rl == nullptr) {
         return false;
     }
-    *sig_rl_size = (uint32_t) sigrlstr.length();
+    *sig_rl_size = (uint32_t)sigrlstr.length();
     return true;
 }
 
-bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
-                             ra_msg4_t &msg4,uint32_t quote_sz) {
+bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+    ra_msg4_t& msg4, uint32_t quote_sz)
+{
 
     if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
-                      sizeof(sgx_ec256_public_t))) {
-        cerr << "msg1.ga != msg3.ga\n";
+            sizeof(sgx_ec256_public_t))) {
+        cerr << "msg1.ga != msg3.ga" << endl;
         return false;
     }
     sgx_mac_t msgMAC;
-    cmac128(current->smk, (unsigned char *) &msg3->g_a, sizeof(sgx_ra_msg3_t) -
-                                                        sizeof(sgx_mac_t) + quote_sz, (unsigned char *) msgMAC);
+    cmac128(current->smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
     if (CRYPTO_memcmp(msg3->mac, msgMAC, sizeof(sgx_mac_t))) {
-        cerr << "broken msg3 from client\n";
+        cerr << "broken msg3 from client" << endl;
         return false;
     }
-    char *b64quote;
-    b64quote = base64_encode((char *) &msg3->quote, quote_sz);
-    sgx_quote_t *q;
-    q = (sgx_quote_t *) msg3->quote;
+    char* b64quote;
+    b64quote = base64_encode((char*)&msg3->quote, quote_sz);
+    sgx_quote_t* q;
+    q = (sgx_quote_t*)msg3->quote;
     if (memcmp(current->msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
-        cerr << "Attestation failed. Differ gid\n";
+        cerr << "Attestation failed. Differ gid" << endl;
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
         unsigned char vfy_rdata[64];
         unsigned char msg_rdata[144]; /* for Ga || Gb || VK */
 
-        sgx_report_body_t *r = (sgx_report_body_t *) &q->report_body;
+        sgx_report_body_t* r = (sgx_report_body_t*)&q->report_body;
 
         memset(vfy_rdata, 0, 64);
 
@@ -182,8 +186,8 @@ bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
 
         /* Derive VK */
 
-        cmac128(current->kdk, (unsigned char *) ("\x01VK\x00\x80\x00"),
-                6, current->vk);
+        cmac128(current->kdk, (unsigned char*)("\x01VK\x00\x80\x00"),
+            6, current->vk);
 
         /* Build our plaintext */
 
@@ -195,10 +199,10 @@ bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
 
         sha256_digest(msg_rdata, 144, vfy_rdata);
 
-        if (CRYPTO_memcmp((void *) vfy_rdata, (void *) &r->report_data,
-                          64)) {
+        if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data,
+                64)) {
 
-            cerr << "Report verification failed.\n";
+            cerr << "Report verification failed." << endl;
             return false;
         }
 
@@ -213,8 +217,6 @@ bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
          * attesting, and ensuring the TCB is not out of date.
          */
 
-
-
         /*
          * If the pow_enclave is trusted, derive the MK and SK. Also get
          * SHA256 hashes of these so we can verify there's a shared
@@ -223,38 +225,39 @@ bool kmServer::process_msg3(powSession *current, sgx_ra_msg3_t *msg3,
 
         if (msg4.status) {
 
-            cmac128(current->kdk, (unsigned char *) ("\x01MK\x00\x80\x00"),
-                    6, current->mk);
-            cmac128(current->kdk, (unsigned char *) ("\x01SK\x00\x80\x00"),
-                    6, current->sk);
+            cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
+                6, current->mk);
+            cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
+                6, current->sk);
 
             current->enclaveTrusted = true;
         }
     } else {
-        cerr << "Attestation failed\n";
+        cerr << "Attestation failed" << endl;
         return false;
     }
 
     return true;
 }
 
-bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t *msg4) {
-    IAS_Request *req = nullptr;
-    map<string,string> payload;
+bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4)
+{
+    IAS_Request* req = nullptr;
+    map<string, string> payload;
     vector<string> messages;
     ias_error_t status;
     string content;
 
-    req= new IAS_Request(_ias, (uint16_t) _iasVersion);
-    if(req== nullptr) {
-        cerr<<"Exception while creating IAS request object\n";
+    req = new IAS_Request(_ias, (uint16_t)_iasVersion);
+    if (req == nullptr) {
+        cerr << "Exception while creating IAS request object" << endl;
         return false;
     }
 
     payload.insert(make_pair("isvEnclaveQuote", b64quote));
 
-    status= req->report(payload, content, messages);
-    if ( status == IAS_OK ) {
+    status = req->report(payload, content, messages);
+    if (status == IAS_OK) {
         using namespace json;
         JSON reportObj = JSON::Load(content);
 
@@ -265,62 +268,62 @@ bool kmServer::get_attestation_report(const char *b64quote, sgx_ps_sec_prop_desc
          * For API v3 and up, this field MUST be in the report.
          */
 
-        if ( reportObj.hasKey("version") ) {
-            unsigned int rversion= (unsigned int) reportObj["version"].ToInt();
-            if ( _iasVersion != rversion ) {
-                cerr<<"Report version "<<rversion<<" does not match API version "<<_iasVersion<<endl;
+        if (reportObj.hasKey("version")) {
+            unsigned int rversion = (unsigned int)reportObj["version"].ToInt();
+            if (_iasVersion != rversion) {
+                cerr << "Report version " << rversion << " does not match API version " << _iasVersion << endl;
                 return false;
             }
         }
 
         memset(msg4, 0, sizeof(ra_msg4_t));
 
-
-        if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
+        if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
             msg4->status = true;
-        } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status=true;
-        } else if ( !(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
+        } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
+            msg4->status = true;
+        } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
             msg4->status = true;
         } else {
-            msg4->status =false;
+            msg4->status = false;
         }
     }
     return true;
 }
-powSession* kmServer::authkm() {
-    powSession *ans = new powSession();
+powSession* kmServer::authkm()
+{
+    powSession* ans = new powSession();
     string msg01Buffer, msg2Buffer, msg3Buffer, msg4Buffer;
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
     ra_msg4_t msg4;
     if (!_socket.Recv(msg01Buffer)) {
-        printf("kmServer: error socket reading\n");
+        cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
-    memcpy(&msg01, (const void *) msg01Buffer.c_str(), sizeof msg01);
+    memcpy(&msg01, (const void*)msg01Buffer.c_str(), sizeof msg01);
     if (!this->process_msg01(ans, msg01, msg2)) {
-        printf("kmServer: error msg01\n");
+        cerr << "kmServer: error msg01" << endl;
         return nullptr;
     }
     msg2Buffer.resize(sizeof(msg2) + msg2.sig_rl_size);
-    memcpy((void *) msg2Buffer.c_str(), &msg2, sizeof(msg2) + msg2.sig_rl_size);
+    memcpy((void*)msg2Buffer.c_str(), &msg2, sizeof(msg2) + msg2.sig_rl_size);
     if (!_socket.Send(msg2Buffer)) {
-        printf("kmServer: error socket reading\n");
+        cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
     if (!_socket.Recv(msg3Buffer)) {
-        printf("kmServer: error msg01\n");
+        cerr << "kmServer: error msg01" << endl;
         return nullptr;
     }
-    uint32_t quote_size=msg3Buffer.length()- sizeof(sgx_ra_msg3_t);
-    if (!this->process_msg3(ans, (sgx_ra_msg3_t *) msg3Buffer.c_str(), msg4, quote_size)) {
-        printf("kmServer: error msg3\n");
+    uint32_t quote_size = msg3Buffer.length() - sizeof(sgx_ra_msg3_t);
+    if (!this->process_msg3(ans, (sgx_ra_msg3_t*)msg3Buffer.c_str(), msg4, quote_size)) {
+        cerr << "kmServer: error msg3" << endl;
         return nullptr;
     }
-    memcpy((void *) msg4Buffer.c_str(), &msg4, sizeof msg4);
+    memcpy((void*)msg4Buffer.c_str(), &msg4, sizeof msg4);
     if (!_socket.Send(msg4Buffer)) {
-        printf("kmServer: error socket reading\n");
+        cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
     return ans;

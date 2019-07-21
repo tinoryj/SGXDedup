@@ -1,43 +1,40 @@
-//
-// Created by a on 11/19/18.
-//
-
 #include <cache.hpp>
-#include <boost/thread/mutex.hpp>
 
 using namespace std;
 using namespace boost::compute::detail;
 
+keyCache::keyCache()
+{
+    this->lruKeyCache_ = new lru_cache<string, string>(config.getKeyCacheSize());
+}
 
-namespace util {
+keyCache::~keyCache()
+{
+    delete lruKeyCache_;
+}
 
-    keyCache::keyCache(){
-        this->_kCache=new lru_cache<string,string>(config.getKeyCacheSize());
-    }
+void keyCache::insertKeyToCache(string& hash, string& key)
+{
+    std::lock_guard<std::mutex> locker(this->mutexKeyCache_);
+    this->lruKeyCache_->insert(hash, key);
+}
 
-    void keyCache::insertKeyToCache(string& hash, string& key) {
-        {
-            boost::unique_lock<boost::shared_mutex> t(this->mtx);
-            this->_kCache->insert(hash, key);
-        }
-    }
+bool keyCache::existsKeyinCache(string& hash)
+{
+    bool flag = false;
+    std::lock_guard<std::mutex> locker(this->mutexKeyCache_);
+    flag = this->lruKeyCache_->contains(hash);
+    return flag;
+}
 
-    bool util::keyCache::existsKeyinCache(string& hash) {
-        bool flag=false;
-        {
-            boost::shared_lock<boost::shared_mutex> t(this->mtx);
-            flag=this->_kCache->contains(hash);
-        }
-        return flag;
-    }
-
-    string util::keyCache::getKeyFromCache(string& hash) {
-        string ans="";
-        if (!existsKeyinCache(hash))return ans;
-        {
-            boost::shared_lock<boost::shared_mutex> t(this->mtx);
-            ans=this->_kCache->get(hash).get();
-        }
+string keyCache::getKeyFromCache(string& hash)
+{
+    string ans = "";
+    if (!existsKeyinCache(hash)) {
+        return ans;
+    } else {
+        std::lock_guard<std::mutex> locker(this->mutexKeyCache_);
+        ans = this->lruKeyCache_->get(hash).get();
         return ans;
     }
 }

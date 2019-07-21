@@ -5,9 +5,9 @@
 #ifndef GENERALDEDUPSYSTEM_ENCODER_HPP
 #define GENERALDEDUPSYSTEM_ENCODER_HPP
 
-#include "CryptoPrimitive.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
+#include "cryptoPrimitive.hpp"
 #include "keyClient.hpp"
 #include "powClient.hpp"
 

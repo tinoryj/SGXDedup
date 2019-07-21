@@ -31,7 +31,7 @@ void keyServer::run(Socket socket)
     keyd.resize(lenKeyd);
     kmClient* client = new kmClient(keyn, keyd);
     if (!client->init(socket)) {
-        printf("keyServer: enclave not truster\n");
+        cerr << "keyServer: enclave not truster" << endl;
         return;
     }
     string hash, key;

@@ -1,6 +1,4 @@
 //-s 928A6B0E3CDDAD56EB3BADAA3B63F71F -r -d -v
-
-#include "powClient.hpp"
 #include "../include/powClient.hpp"
 
 using namespace std;
@@ -26,17 +24,18 @@ void powClient::run()
     while (true) {
         batchChunk.clear();
         batchHash.clear();
-        batchChunkLogicData.clear();
         request.hash.clear();
 
         //% TODO
         uint64_t currentBatchSize = 0;
         for (uint64_t i = 0, cnt = 0; i < powBatchSize; i++) {
-            if (inputMQ.done && !extractMQFromEncoder(tempChunk)) {
+            if (inputMQ.done_ && !extractMQFromEncoder(tempChunk)) {
                 senderObj->editJobDoneFlag();
                 break;
             } else {
-                string tempChunkHash(tempChunk.chunkHash, CHUNK_HASH_SIZE);
+                string tempChunkHash;
+                tempChunkHash.resize(CHUNK_HASH_SIZE);
+                memcpy(&tempChunkHash[0], tempChunk.chunkHash, CHUNK_HASH_SIZE);
                 request.hash.push_back(tempChunkHash);
                 batchChunk.push_back(tempChunk);
                 batchHash.push_back(tempChunkHash);
@@ -46,23 +45,25 @@ void powClient::run()
                 currentBatchSize += tempChunk.logicDataSize;
             }
         }
-        string batchChunkLogicData(batchChunkLogicData_charBuffer, currentBatchSize);
+        string batchChunkLogicData;
+        batchChunkLogicData.resize(currentBatchSize);
+        memcpy(&batchChunkLogicData[0], batchChunkLogicData_charBuffer, currentBatchSize);
         if (batchChunk.empty())
             continue;
         if (!this->request(batchChunkLogicData, request.signature)) {
-            cerr << "POWClient : sgx request failed\n";
+            cerr << "POWClient : sgx request failed" << endl;
             exit(1);
         }
         senderObj->sendEnclaveSignedHash(request, lists, netstatus);
         if (netstatus != SUCCESS) {
-            cerr << "POWClient : send pow signed hash error\n";
+            cerr << "POWClient : send pow signed hash error" << endl;
             exit(1);
         }
 
         cout << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
 
         for (auto it : lists) {
-            insertMQToSender(batchChunk[it])
+            insertMQToSender(batchChunk[it]);
         }
     }
 }
@@ -71,7 +72,7 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "POWClient : can do a request before pow_enclave trusted\n";
+        cerr << "POWClient : can do a request before pow_enclave trusted" << endl;
         return false;
     }
 
@@ -80,20 +81,20 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
     uint8_t* src = new uint8_t[logicDataBatch.length()];
 
     if (src == nullptr) {
-        cerr << "mem error\n";
+        cerr << "mem error" << endl;
         return false;
     }
     memcpy(src, &logicDataBatch[0], logicDataBatch.length());
     status = ecall_calcmac(_eid, &retval, &_ctx, SGX_RA_KEY_SK, src, srcLen, cmac);
     if (status != SGX_SUCCESS) {
-        cerr << "POWClient : ecall failed\n";
+        cerr << "POWClient : ecall failed" << endl;
         return false;
     }
 
     return true;
 }
 
-powClient::powClient(sender* senderObjTemp)
+powClient::powClient(Sender* senderObjTemp)
 {
     updated = 0;
     enclave_trusted = false;
@@ -118,7 +119,7 @@ bool powClient::do_attestation()
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;
-        printf("%08x\n", status);
+        printf("%08x", status);
         return false;
     }
 
@@ -215,7 +216,7 @@ bool powClient::do_attestation()
 
 bool powClient::editJobDoneFlag()
 {
-    inputMQ.done = true;
+    inputMQ.done_ = true;
 }
 
 bool powClient::insertMQFromEncoder(Chunk_t newChunk)

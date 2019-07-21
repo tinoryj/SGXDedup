@@ -23,7 +23,7 @@ powServer* Pow;
 
 void CTRLC(int s)
 {
-    cerr << "server close\n";
+    cerr << "server close" << endl;
 
     if (storage != nullptr)
         delete storage;

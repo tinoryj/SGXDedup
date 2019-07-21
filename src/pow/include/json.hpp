@@ -1,6 +1,3 @@
-/**********************************************************************************
-* Obtained from https://github.com/nbsdx/SimpleJSON , under the terms of the WTFPL.
-***********************************************************************************/
 #ifndef POW_JSON
 #define POW_JSON
 

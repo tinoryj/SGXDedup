@@ -5,18 +5,17 @@
 #ifndef GENERALDEDUPSYSTEM_DECODER_HPP
 #define GENERALDEDUPSYSTEM_DECODER_HPP
 
-#include "_decoder.hpp"
-#include "CryptoPrimitive.hpp"
-#include "seriazation.hpp"
+#include "configure.hpp"
+#include "cryptoPrimitive.hpp"
+#include "dataStructure.hpp"
 #include "protocol.hpp"
 
-
-class decoder:public _Decoder{
+class decoder {
 private:
-    CryptoPrimitive *_crypto;
-    map<string,string>_keyRecipe;
-    bool getKey(Chunk &newChunk);
-    bool decodeChunk(Chunk &newChunk);
+    CryptoPrimitive* crypto;
+    map<string, string> _keyRecipe;
+    bool getKey(Chunk_t& newChunk);
+    bool decodeChunk(Chunk_t& newChunk);
     void runDecode();
     bool outputDecodeRecoder();
 
@@ -25,6 +24,5 @@ public:
     decoder();
     ~decoder();
 };
-
 
 #endif //GENERALDEDUPSYSTEM_DECODER_HPP

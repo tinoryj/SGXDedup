@@ -8,21 +8,23 @@
 #ifndef HTTPPARSER_RESPONSE_H
 #define HTTPPARSER_RESPONSE_H
 
-#include <string>
-#include <vector>
 #include <algorithm> // Added by JM
 #include <sstream>
+#include <string>
+#include <vector>
 
-namespace httpparser
-{
+namespace httpparser {
 
 struct Response {
     Response()
-        : versionMajor(0), versionMinor(0), keepAlive(false), statusCode(0)
-    {}
-    
-    struct HeaderItem
+        : versionMajor(0)
+        , versionMinor(0)
+        , keepAlive(false)
+        , statusCode(0)
     {
+    }
+
+    struct HeaderItem {
         std::string name;
         std::string value;
     };
@@ -32,7 +34,7 @@ struct Response {
     std::vector<HeaderItem> headers;
     std::vector<char> content;
     bool keepAlive;
-    
+
     unsigned int statusCode;
     std::string status;
 
@@ -42,54 +44,52 @@ struct Response {
         stream << "HTTP/" << versionMajor << "." << versionMinor
                << " " << statusCode << " " << status << "\n";
 
-        for(std::vector<Response::HeaderItem>::const_iterator it = headers.begin();
-            it != headers.end(); ++it)
-        {
+        for (std::vector<Response::HeaderItem>::const_iterator it = headers.begin();
+             it != headers.end(); ++it) {
             stream << it->name << ": " << it->value << "\n";
         }
 
         std::string data(content.begin(), content.end());
-		// Added "\n" so it prints like its received. - JM
-        stream << "\n" << data << "\n";
+        // Added "\n" so it prints like its received. - JM
+        stream << "\n"
+               << data << "\n";
         return stream.str();
     }
 
-	// content_string() by JM
-	std::string content_string() const
-	{
+    // content_string() by JM
+    std::string content_string() const
+    {
         std::stringstream stream;
 
         std::string data(content.begin(), content.end());
         stream << data;
 
-		return stream.str();
-	}
+        return stream.str();
+    }
 
-	// headers_as_string() by JM
-	std::string headers_as_string(std::string name) const
-	{
+    // headers_as_string() by JM
+    std::string headers_as_string(std::string name) const
+    {
         std::stringstream stream;
-		// Just in case we get more than one header with the same name.
-		for(std::vector<Response::HeaderItem>::const_iterator it = headers.begin();
-            it != headers.end(); ++it)
-		{
-			if ( is_equal_ncase(it->name, name) ) stream << it->value << "\n";
-		}
+        // Just in case we get more than one header with the same name.
+        for (std::vector<Response::HeaderItem>::const_iterator it = headers.begin();
+             it != headers.end(); ++it) {
+            if (is_equal_ncase(it->name, name))
+                stream << it->value << "\n";
+        }
 
-		return stream.str();
-	}
+        return stream.str();
+    }
 
-	// Case-insensitive string comparison - JM
-	bool is_equal_ncase(std::string a, std::string b) const
-	{
-		transform(a.begin(), a.end(), a.begin(), ::toupper);
-		transform(b.begin(), b.end(), b.begin(), ::toupper);
-		return ( a == b );
-	}
-
+    // Case-insensitive string comparison - JM
+    bool is_equal_ncase(std::string a, std::string b) const
+    {
+        transform(a.begin(), a.end(), a.begin(), ::toupper);
+        transform(b.begin(), b.end(), b.begin(), ::toupper);
+        return (a == b);
+    }
 };
 
 } // namespace httpparser
 
 #endif // HTTPPARSER_RESPONSE_H
-

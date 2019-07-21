@@ -4,15 +4,14 @@
 
 #ifndef GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
 #define GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
+#include "configure.hpp"
+#include "dataStructure.hpp"
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-
-#include "configure.hpp"
-#include "dataStructure.hpp"
 
 using namespace std;
 
@@ -78,10 +77,14 @@ public:
     bool base64_encode(string message, string code);
     bool base64_decode(string code, string message);
 */
-    bool recipe_encrypt(keyRecipe_t& recipe, string& ans);
-    bool recipe_decrypt(string buffer, keyRecipe_t& recipe);
-    bool chunk_encrypt(Chunk& chunk);
-    bool chunk_decrypt(Chunk& chunk);
+    // bool recipe_encrypt(keyRecipe_t& recipe, string& ans);
+    // bool recipe_decrypt(string buffer, keyRecipe_t& recipe);
+
+    bool recipe_encrypt(string originRecipe, string encryptedRecipe);
+    bool recipe_decrypt(string encryptedRecipe, string decryptedRecipe);
+
+    bool chunk_encrypt(Chunk_t& chunk);
+    bool chunk_decrypt(Chunk_t& chunk);
 };
 
 #endif //GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP

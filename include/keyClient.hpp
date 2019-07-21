@@ -5,17 +5,15 @@
 #ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 
-#include "CryptoPrimitive.hpp"
-#include "Socket.hpp"
 #include "cache.hpp"
 #include "configure.hpp"
+#include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "encoder.hpp"
 #include "kmServer.hpp"
 #include "messageQueue.hpp"
 #include "powSession.hpp"
-
-#include <boost/compute/detail/lru_cache.hpp>
+#include "socket.hpp"
 
 #define KEYMANGER_PUBLIC_KEY_FILE "key/serverpub.key"
 

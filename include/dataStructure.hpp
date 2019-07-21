@@ -2,6 +2,9 @@
 #define GENERALDEDUPSYSTEM_CHUNK_HPP
 
 #include "configure.hpp"
+#include <bits/stdc++.h>
+
+using namespace std;
 
 typedef struct {
     uint64_t ID;

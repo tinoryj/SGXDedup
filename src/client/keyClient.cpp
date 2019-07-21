@@ -6,7 +6,7 @@
 #include "openssl/rsa.h"
 
 extern Configure config;
-extern util::keyCache kCache;
+extern keyCache kCache;
 
 keyClient::keyClient(encoder* encoderObjTemp)
 {
@@ -14,7 +14,7 @@ keyClient::keyClient(encoder* encoderObjTemp)
     cryptoObj = new CryptoPrimitive();
     keyBatchSizeMin = (int)config.getKeyBatchSizeMin();
     keyBatchSizeMax = (int)config.getKeyBatchSizeMax();
-    socket.init(CLIENTTCP, config.getKeyServerIP(), config.getKeyServerPort());
+    socket.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
     kmServer server(socket);
     powSession* session = server.authkm();
     if (session != nullptr) {
@@ -23,7 +23,7 @@ keyClient::keyClient(encoder* encoderObjTemp)
         delete session;
     } else {
         trustdKM = false;
-        delete session
+        delete session;
     }
 }
 
@@ -53,12 +53,10 @@ void keyClient::run()
         chunkList.clear();
 
         for (int it = segmentSize = minHashIndex = 0; segmentSize < keyBatchSizeMax; it++) {
-            if (inputMQ.done && !extractMQFromChunker(tempchunk)) {
+            if (inputMQ.done_ && !extractMQFromChunker(tempchunk)) {
                 exitFlag = true;
                 break;
             };
-            if (it == 0)
-                gettimeofday(&st, NULL);
             chunkList.push_back(tempchunk);
 
             segmentSize += chunkList[it].logicDataSize;
@@ -109,11 +107,11 @@ string keyClient::keyExchange(Chunk_t champion)
         ;
     string minHash(champion.chunkHash, CHUNK_HASH_SIZE);
     if (!socket.Send(minHash)) {
-        printf("keyClient: socket error\n");
+        cerr << "keyClient: socket error" << endl;
         exit(0);
     }
     if (!socket.Recv(buffer)) {
-        printf("keyClient: socket error\n");
+        cerr "keyClient: socket error" << endl;
         exit(0);
     }
     cryptoObj.cbc128_decrypt(buffer, key);
@@ -141,5 +139,5 @@ bool keyClient::insertMQtoEncoder(Chunk_t newChunk)
 
 bool keyClient::editJobDoneFlag()
 {
-    inputMQ.done = true;
+    inputMQ.done_ = true;
 }

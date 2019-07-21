@@ -5,17 +5,17 @@
 #ifndef GENERALDEDUPSYSTEM_KMSERVER_HPP
 #define GENERALDEDUPSYSTEM_KMSERVER_HPP
 
-#include "CryptoPrimitive.hpp"
-#include "Socket.hpp"
+#include "../../../include/configure.hpp"
+#include "../../../include/cryptoPrimitive.hpp"
+#include "../../../include/messageQueue.hpp"
+#include "../../../include/protocol.hpp"
+#include "../../../include/socket.hpp"
 #include "base64.h"
 #include "byteorder.h"
-#include "configure.hpp"
 #include "crypto.h"
 #include "iasrequest.h"
 #include "json.hpp"
-#include "messageQueue.hpp"
 #include "powSession.hpp"
-#include "protocol.hpp"
 #include "sgx_quote.h"
 #include <iostream>
 
