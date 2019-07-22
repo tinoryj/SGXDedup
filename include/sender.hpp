@@ -5,6 +5,7 @@
 #ifndef GENERALDEDUPSYSTEM_SENDER_HPP
 #define GENERALDEDUPSYSTEM_SENDER_HPP
 
+#include "chunker.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -16,10 +17,10 @@
 
 class Sender {
 private:
-    boost::shared_mutex _sockMtx;
-    Socket _socket;
-    messageQueue<Chunk_t> inputMQ;
-    CryptoPrimitive* cryptoObj;
+    std::mutex mutexSocket_;
+    Socket socket_;
+    messageQueue<Chunk_t> inputMQ_;
+    CryptoPrimitive* cryptoObj_;
 
 public:
     Sender();

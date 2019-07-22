@@ -19,10 +19,10 @@ using namespace std;
 
 class Socket {
 private:
-    sockaddr_in addr;
+    sockaddr_in addr_;
 
 public:
-    int fd;
+    int fd_;
 
     Socket(const int type, string ip, int port);
 
@@ -42,8 +42,6 @@ public:
     bool Recv(string& buffer);
 
     Socket Listen();
-
-    bool printErrnoMessage(auto errno);
 };
 
 #endif //GENERALDEDUPSYSTEM_NETWORK_HPP

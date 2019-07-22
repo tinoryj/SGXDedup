@@ -1,17 +1,10 @@
-//
-// Created by a on 11/17/18.
-//
-
 #ifndef GENERALDEDUPSYSTEM_SERIAZATION_HPP
 #define GENERALDEDUPSYSTEM_SERIAZATION_HPP
 
-#include "message.hpp"
+#include <bits/stdc++.h>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/vector.hpp>
-#include <string>
-
-#include <iostream>
 
 using namespace std;
 using namespace boost::archive;

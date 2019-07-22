@@ -1,7 +1,3 @@
-//
-// Created by a on 2/3/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_STORAGECORE_HPP
 #define GENERALDEDUPSYSTEM_STORAGECORE_HPP
 
@@ -16,35 +12,35 @@
 
 using namespace std;
 
-struct _Container {
-    uint32_t _used;
-    char _body[4 << 20]; //4 M
-    _Container();
-    ~_Container();
+class Container {
+    uint32_t used_;
+    char body_[4 << 20]; //4 M container size
+    Container();
+    ~Container();
     void saveTOFile(string fileName);
 };
 
 class storageCore {
 private:
-    messageQueue<Chunk_t> _netRecvMQ;
-    messageQueue<Chunk_t> _netSendMQ;
+    messageQueue<Chunk_t> netRecvMQ_;
+    messageQueue<Chunk_t> netSendMQ_;
 
-    std::string _lastContainerFileName;
-    std::string _lastFileRecipeFileName;
-    std::string _lastkeyRecipeFileName;
+    std::string lastContainerFileName_;
+    std::string lastFileRecipeFileName_;
+    std::string lastkeyRecipeFileName_;
 
-    std::string _containerNamePrefix;
-    std::string _containerNameTail;
+    std::string containerNamePrefix_;
+    std::string containerNameTail_;
 
-    std::string _fileRecipeNamePrefix;
-    std::string _fileRecipeNameTail;
+    std::string fileRecipeNamePrefix_;
+    std::string fileRecipeNameTail_;
 
-    std::string _keyRecipeNamePrefix;
-    std::string _keyRecipeNameTail;
+    std::string keyRecipeNamePrefix_;
+    std::string keyRecipeNameTail_;
 
-    CryptoPrimitive* _crypto;
+    CryptoPrimitive* cryptoObj_;
 
-    _Container _currentContainer;
+    Container currentContainer_;
 
     bool writeContainer(keyValueForChunkHash& key, std::string& data);
     bool readContainer(keyValueForChunkHash key, std::string& data);

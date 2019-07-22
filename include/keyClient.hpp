@@ -1,7 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
 #ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 
@@ -19,12 +15,11 @@
 
 class keyClient {
 private:
-    messageQueue<Chunk_t> inputMQ;
-    encoder* encoderObj;
-    CryptoPrimitive* cryptoObj;
-    int keyBatchSizeMin, keyBatchSizeMax;
-    Socket socket;
-    bool trustdKM;
+    messageQueue<Chunk_t> inputMQ_;
+    encoder* encoderObj_;
+    CryptoPrimitive* cryptoObj_;
+    Socket socket_;
+    bool trustdKM_;
 
 public:
     keyClient();

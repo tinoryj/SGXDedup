@@ -1,7 +1,3 @@
-//
-// Created by a on 2/3/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_DEDUPCORE_HPP
 #define GENERALDEDUPSYSTEM_DEDUPCORE_HPP
 
@@ -9,6 +5,7 @@
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
+#include "protocol.hpp"
 #include <bits/stdc++.h>
 #include <boost/thread.hpp>
 
@@ -16,10 +13,10 @@ using namespace std;
 
 class chunkCache_t {
 private:
-    int _cnt;
-    bool _avaiable;
-    string _chunkLogicData;
-    boost::shared_mutex _cntMtx, _avaiMtx;
+    int cnt_;
+    bool avaiable_;
+    string chunkLogicData_;
+    std::mutex cntMutex_, avaiMutex_;
 
 public:
     chunkCache_t();
@@ -32,9 +29,9 @@ public:
 
 class chunkCache {
 private:
-    map<string, chunkCache_t*> _memBuffer;
-    CryptoPrimitive* _crypto;
-    boost::shared_mutex _mtx;
+    map<string, chunkCache_t*> memBuffer_;
+    CryptoPrimitive* cryptoObj_;
+    std::mutex chunkCacheMutex_;
 
 public:
     chunkCache();
@@ -46,14 +43,8 @@ public:
 
 class signedHash {
 public:
-    vector<string> _hashList;
-    vector<string> _chunks;
-    messageQueue _outputMQ;
-    int _outDataTime;
-
-    std::chrono::system_clock::time_point _startTime;
-
-    void setMQ(messageQueue mq);
+    signedHashList_t signedHashList_;
+    messageQueue<signedHashList_t> outPutMQ_;
     bool checkDone();
     void timeout();
 };
@@ -63,11 +54,11 @@ private:
     struct cmp {
         bool operator()(signedHash* x, signedHash* y)
         {
-            return x->_startTime.time_since_epoch().count() > y->_startTime.time_since_epoch().count();
+            return x->signedHashList_.startTime.time_since_epoch().count() > y->signedHashList_.startTime.time_since_epoch().count();
         }
     };
-    priority_queue<signedHash*, vector<signedHash*>, cmp> _jobQueue;
-    boost::shared_mutex _mtx;
+    priority_queue<signedHash*, vector<signedHash*>, cmp> jobQueue_;
+    std::mutex timerMutex_;
 
 public:
     void registerHashList(signedHash* job);
@@ -77,10 +68,10 @@ public:
 
 class dedupCore {
 private:
-    messageQueue<Chunk_t> _netSendMQ;
-    messageQueue<Chunk_t> _powMQ;
-    CryptoPrimitive* _crypto;
-    Timer _timer;
+    messageQueue<Chunk_t> netSendMQ_;
+    messageQueue<Chunk_t> powMQ_;
+    CryptoPrimitive* cryptoObj_;
+    Timer timer_;
     bool dedupStage1(powSignedHash in, RequiredChunk& out);
     bool dedupStage2(ChunkList_t in);
 

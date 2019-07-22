@@ -7,13 +7,13 @@
 #include "keyClient.hpp"
 #include "messageQueue.hpp"
 
-class chunker {
+class Chunker {
 private:
     CryptoPrimitive* cryptoObj;
     keyClient* keyClientObj;
 
-    //chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
-    int chunkerType;
+    //Chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
+    int ChunkerType;
     //chunk size setting
     int avgChunkSize;
     int minChunkSize;
@@ -41,6 +41,8 @@ private:
     uint64_t totalSize;
 
     Recipe_t recipe;
+    FileRecipeList_t fileRecipeList;
+    KeyRecipeList_t keyRecipeList;
 
     std::ifstream chunkingFile;
 
@@ -48,9 +50,9 @@ private:
 
     void varSizeChunking();
 
-    void chunkerInit(string path);
+    void ChunkerInit(string path);
 
-    bool insertMQ(Chunk_t newChunk);
+    bool insertMQToKeyClient(Chunk_t newChunk);
 
     bool setJobDoneFlag();
 
@@ -59,9 +61,12 @@ private:
     std::ifstream& getChunkingFile();
 
 public:
-    chunker(std::string path, keyClient* keyClientObjTemp);
-    ~chunker();
+    Chunker(std::string path, keyClient* keyClientObjTemp);
+    ~Chunker();
     bool chunking();
+    KeyRecipeList_t getKeyRecipeList();
+    FileRecipeList_t getFileRecipeList();
+    Recipe_t getRecipeHead();
 };
 
 #endif //GENERALDEDUPSYSTEM_CHUNKER_HPP

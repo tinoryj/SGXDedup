@@ -1,7 +1,3 @@
-//
-// Created by a on 3/19/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_KMCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KMCLIENT_HPP
 #include "../../../include/messageQueue.hpp"

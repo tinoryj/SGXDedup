@@ -18,14 +18,14 @@ using namespace std;
 Configure config("config.json");
 keyCache kCache;
 
-chunker* Chunker;
+Chunker* chunkerObj;
 keyClient* keyClientObj;
-encoder* coder;
-Sender* sender;
-receiver* recver;
-decoder* dcoder;
-Retriever* retriever;
-powClient* Pow;
+encoder* encoderObj;
+Sender* senderObj;
+receiver* recverObj;
+decoder* dcoderObj;
+Retriever* retrieverObj;
+powClient* PowClientObj;
 
 void usage()
 {
@@ -37,8 +37,6 @@ int main(int argv, char* argc[])
 {
     cerr << setbase(10);
 
-    initMQForClient();
-
     vector<boost::thread*> thList;
     boost::thread* th;
 
@@ -49,48 +47,48 @@ int main(int argv, char* argc[])
 
     if (strcmp("-r", argc[1]) == 0) {
         //run receive
-        dcoder = new decoder();
-        recver = new receiver();
-        retriever = new Retriever(argc[2]);
+        dcoderObj = new decoder();
+        recverObj = new receiver();
+        retrieverObj = new Retriever(argc[2]);
 
         //start receiver thread
-        recver->run(argc[2]);
+        recverObj->run(argc[2]);
 
         //start decoder thread
-        dcoder->run();
+        dcoderObj->run();
 
-        retriever->run();
+        retrieverObj->run();
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send
-        keyClientObj = new keyClient();
-        Chunker = new chunker(argc[2], keyClientObj);
-        coder = new encoder();
-        sender = new Sender();
-        Pow = new powClient();
+        encoderObj = new encoder();
+        senderObj = new Sender();
+        PowClientObj = new powClient(senderObj);
+        keyClientObj = new keyClient(encoderObj);
+        chunkerObj = new Chunker(argc[2], keyClientObj);
 
         //start pow thread
-        th = new boost::thread(boost::bind(&powClient::run, Pow));
+        th = new boost::thread(boost::bind(&powClient::run, PowClientObj));
         thList.push_back(th);
 
         //start chunking thread
-        th = new boost::thread(boost::bind(&chunker::chunking, Chunker));
+        th = new boost::thread(boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
 
         //start key client thread
         for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&keyClient::run, kex));
+            th = new boost::thread(boost::bind(&keyClient::run, keyClientObj));
             thList.push_back(th);
         }
 
         //start encode thread
         for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&encoder::run, coder));
+            th = new boost::thread(boost::bind(&encoder::run, encoderObj));
             thList.push_back(th);
         }
 
         //start sender thread
         for (int i = 0; i < config.getSenderThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&Sender::run, sender));
+            th = new boost::thread(boost::bind(&Sender::run, senderObj));
             thList.push_back(th);
         }
     } else {

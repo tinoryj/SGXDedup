@@ -6,6 +6,7 @@
 
 using namespace std;
 
+// system basic data structures
 typedef struct {
     uint64_t ID;
     int type;
@@ -15,7 +16,21 @@ typedef struct {
     u_char encryptKey[CHUNK_ENCRYPT_KEY_SIZE];
 } Chunk_t;
 
+typedef struct {
+    uint64_t chunkID;
+    int chunkSize;
+    u_char chunkHash[CHUNK_HASH_SIZE];
+} FileRecipeEntry_t;
+
+typedef struct {
+    uint64_t chunkID;
+    u_char chunkHash[CHUNK_HASH_SIZE];
+    u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE];
+} KeyRecipeEntry_t;
+
 typedef vector<Chunk_t> ChunkList_t;
+typedef vector<FileRecipeEntry_t> FileRecipeList_t;
+typedef vector<KeyRecipeEntry_t> KeyRecipeList_t;
 
 typedef struct {
     uint64_t fileSize;
@@ -47,6 +62,7 @@ typedef struct {
     u_char key[CHUNK_ENCRYPT_KEY_SIZE];
 } KeyGenEntry_t;
 
+// network data structures
 typedef struct {
     int fd;
     int epfd;
@@ -67,5 +83,37 @@ typedef struct {
     int clientID;
     string data;
 } NetworkStruct_t;
+
+// database data structures
+
+typedef struct {
+
+    //key: string _chunkHash;
+    //value: containerName, offset in container, chunk size;
+    string containerName;
+    uint32_t offset;
+    uint32_t length;
+} keyValueForChunkHash;
+
+typedef struct {
+
+    //key: string _filename;
+    //value: file recipe name, key recipe name, version;
+    string fileRecipeName;
+    string keyRecipeName;
+    uint32_t version;
+
+} keyValueForFilename;
+
+//dedup core data structures
+
+typedef struct {
+    vector<string> hashList;
+    vector<string> chunks;
+    std::chrono::system_clock::time_point startTime;
+    int outDataTime;
+} signedHashList_t;
+
+typedef vector<uint64_t> RequiredChunk;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

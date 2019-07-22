@@ -1,4 +1,3 @@
-//-s 928A6B0E3CDDAD56EB3BADAA3B63F71F -r -d -v
 #include "../include/powClient.hpp"
 
 using namespace std;
@@ -216,20 +215,20 @@ bool powClient::do_attestation()
 
 bool powClient::editJobDoneFlag()
 {
-    inputMQ.done_ = true;
+    return inputMQ.done_ = true;
 }
 
 bool powClient::insertMQFromEncoder(Chunk_t newChunk)
 {
-    inputMQ.push(newChunk);
+    return inputMQ.push(newChunk);
 }
 
 bool powClient::extractMQFromEncoder(Chunk_t newChunk)
 {
-    inputMQ.pop(newChunk);
+    return inputMQ.pop(newChunk);
 }
 
 bool powClient::insertMQToSender(Chunk_t newChunk)
 {
-    senderObj->insertMQFromPow(newChunk);
+    return senderObj->insertMQFromPow(newChunk);
 }

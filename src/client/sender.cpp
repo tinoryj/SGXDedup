@@ -8,13 +8,15 @@ extern Configure config;
 
 Sender::Sender()
 {
-    _socket.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
+    socket.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj = new CryptoPrimitive();
 }
 Sender::~Sender()
 {
-    _socket.finish();
-    delete cryptoObj;
+    socket.finish();
+    if (cryptoObj != NULL) {
+        delete cryptoObj;
+    }
 }
 
 bool Sender::sendRecipe(Recipe_t& request, int& status)
@@ -166,13 +168,13 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
 
 bool Sender::sendData(string& request, string& respond)
 {
-    boost::unique_lock<boost::shared_mutex> t(this->_sockMtx);
-    if (!_socket.Send(request)) {
+    std::lock_guard<std::mutex> locker(mutexSocket);
+    if (!socket.Send(request)) {
         cerr << "Sender : peer closed" << endl;
 
         exit(0);
     }
-    if (!_socket.Recv(respond)) {
+    if (!socket.Recv(respond)) {
         cerr << "Sender : peer closed" << endl;
         exit(0);
     }
@@ -273,4 +275,9 @@ bool Sender::extractMQFromPow(Chunk_t newChunk)
 bool Sender::editJobDoneFlag()
 {
     inputMQ.done_ = true;
+    if (inputMQ.done_) {
+        return true;
+    } else {
+        return false;
+    }
 }

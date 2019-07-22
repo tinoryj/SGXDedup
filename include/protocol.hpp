@@ -1,7 +1,3 @@
-//
-// Created by a on 1/23/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_PROTOCOL_HPP
 #define GENERALDEDUPSYSTEM_PROTOCOL_HPP
 
@@ -29,15 +25,13 @@
 #define SAVE_RECIPE
 
 typedef struct _ra_msg4_struct {
-    bool status;
+    bool status_;
     //sgx_platform_info_t platformInfoBlob;
 } ra_msg4_t;
 
 typedef struct {
-    uint8_t signature[16];
-    vector<string> hash;
+    uint8_t signature_[16];
+    vector<string> hash_;
 } powSignedHash;
-
-typedef vector<int> RequiredChunk;
 
 #endif //GENERALDEDUPSYSTEM_PROTOCOL_HPP

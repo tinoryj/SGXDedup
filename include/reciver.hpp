@@ -1,7 +1,3 @@
-//
-// Created by a on 1/21/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_RECIVER_HPP
 #define GENERALDEDUPSYSTEM_RECIVER_HPP
 
@@ -9,7 +5,7 @@
 #include <boost/thread.hpp>
 class receiver {
 private:
-    Socket _socket;
+    Socket socket_;
     void receiveChunk();
 
 public:

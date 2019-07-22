@@ -1,7 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
 #ifndef GENERALDEDUPSYSTEM_CONFIGURE_HPP
 #define GENERALDEDUPSYSTEM_CONFIGURE_HPP
 

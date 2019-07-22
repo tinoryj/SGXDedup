@@ -1,11 +1,9 @@
-//
-// Created by a on 11/17/18.
-//
-
 #ifndef GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
 #define GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
 #include "configure.hpp"
 #include "dataStructure.hpp"
+#include "seriazation.hpp"
+#include <bits/stdc++.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
@@ -17,17 +15,17 @@ using namespace std;
 
 class CryptoPrimitive {
 private:
-    EVP_PKEY *_pubKey, *_priKey;
+    EVP_PKEY *pubKey_, *priKey_;
 
-    unsigned char* _symKey;
-    unsigned char* _iv;
-    unsigned int _symKeyLen;
-    unsigned int _ivLen;
+    unsigned char* symKey_;
+    unsigned char* iv_;
+    unsigned int symKeyLen_;
+    unsigned int ivLen_;
 
-    bool _pubKeySet;
-    bool _priKeySet;
-    bool _symKeySet;
-    bool _ivSet;
+    bool pubKeySet_;
+    bool priKeySet_;
+    bool symKeySet_;
+    bool ivSet_;
 
     bool encrypt(string& plaintext, string& ciphertext, const EVP_CIPHER* type);
     bool decrypt(string& ciphertext, string& plaintext, const EVP_CIPHER* type);
@@ -77,11 +75,9 @@ public:
     bool base64_encode(string message, string code);
     bool base64_decode(string code, string message);
 */
-    // bool recipe_encrypt(keyRecipe_t& recipe, string& ans);
-    // bool recipe_decrypt(string buffer, keyRecipe_t& recipe);
 
-    bool recipe_encrypt(string originRecipe, string encryptedRecipe);
-    bool recipe_decrypt(string encryptedRecipe, string decryptedRecipe);
+    bool recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe);
+    bool recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList);
 
     bool chunk_encrypt(Chunk_t& chunk);
     bool chunk_decrypt(Chunk_t& chunk);

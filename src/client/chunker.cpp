@@ -6,13 +6,14 @@
 
 extern Configure config;
 
-chunker::chunker(std::string path, keyClient* keyClientObjTemp)
+Chunker::Chunker(std::string path, keyClient* keyClientObjTemp)
 {
     loadChunkFile(path);
-    chunkerInit(path);
+    ChunkerInit(path);
     cryptoObj = new CryptoPrimitive();
     keyClientObj = keyClientObjTemp;
 }
+
 std::ifstream& Chunker::getChunkingFile()
 {
 
@@ -35,24 +36,29 @@ void Chunker::loadChunkFile(std::string path)
     }
 }
 
-chunker::~chunker()
+Chunker::~Chunker()
 {
-    if (_powerLUT != NULL)
-        delete _powerLUT;
-    if (_removeLUT != NULL)
-        delete _removeLUT;
-    if (waitingForChunkingBuffer != NULL)
+    if (powerLUT != NULL) {
+        delete powerLUT;
+    }
+    if (removeLUT != NULL) {
+        delete removeLUT;
+    }
+    if (waitingForChunkingBuffer != NULL) {
         delete waitingForChunkingBuffer;
-    if (chunkBuffer != NULL)
+    }
+    if (chunkBuffer != NULL) {
         delete chunkBuffer;
-    delete keyClientObj;
-    delete cryptoObj;
+    }
+    if (cryptoObj != NULL) {
+        delete cryptoObj;
+    }
     if (chunkingFile.is_open()) {
         chunkingFile.close();
     }
 }
 
-void chunker::chunkerInit(string path)
+void Chunker::ChunkerInit(string path)
 {
     string filePathHash;
     cryptoObj->sha256_digest(path, filePathHash);
@@ -63,9 +69,17 @@ void chunker::chunkerInit(string path)
     recipe.fileRecipeHead.fileSize = recipe.fileRecipeHead.fileSize;
     fin.close();
 
-    chunkerType = (int)config.getChunkingType();
+    ChunkerType = (int)config.getChunkingType();
+    // init recipe list vector size avoid too much memory malloc
+    if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
+        keyRecipeList.resize(recipe.fileRecipeHead.fileSize / AVG_CHUNK_SIZE + 1);
+        fileRecipeList.resize(recipe.fileRecipeHead.fileSize / AVG_CHUNK_SIZE + 1);
+    } else if (ChunkerType == CHUNKER_VAR_SIZE_TYPE) {
+        keyRecipeList.resize(recipe.fileRecipeHead.fileSize / MIN_CHUNK_SIZE);
+        fileRecipeList.resize(recipe.fileRecipeHead.fileSize / MIN_CHUNK_SIZE);
+    }
 
-    if (chunkerType == CHUNKER_VAR_SIZE_TYPE) {
+    if (ChunkerType == CHUNKER_VAR_SIZE_TYPE) {
         int numOfMaskBits;
         avgChunkSize = (int)config.getAverageChunkSize();
         minChunkSize = (int)config.getMinChunkSize();
@@ -94,21 +108,21 @@ void chunker::chunkerInit(string path)
         polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
         polyMOD = (1 << 23) - 1; /*polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
         /*initialize the lookup table for accelerating the power calculation in rolling hash*/
-        _powerLUT = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize);
-        /*_powerLUT[i] = power(polyBase, i) mod polyMOD*/
-        _powerLUT[0] = 1;
+        powerLUT = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize);
+        /*powerLUT[i] = power(polyBase, i) mod polyMOD*/
+        powerLUT[0] = 1;
         for (int i = 1; i < slidingWinSize; i++) {
-            /*_powerLUT[i] = (_powerLUT[i-1] * polyBase) mod polyMOD*/
-            _powerLUT[i] = (_powerLUT[i - 1] * polyBase) & polyMOD;
+            /*powerLUT[i] = (powerLUT[i-1] * polyBase) mod polyMOD*/
+            powerLUT[i] = (powerLUT[i - 1] * polyBase) & polyMOD;
         }
         /*initialize the lookup table for accelerating the byte remove in rolling hash*/
-        _removeLUT = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
+        removeLUT = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
         for (int i = 0; i < 256; i++) {
-            /*_removeLUT[i] = (- i * _powerLUT[_slidingWinSize-1]) mod polyMOD*/
-            _removeLUT[i] = (i * _powerLUT[slidingWinSize - 1]) & polyMOD;
-            if (_removeLUT[i] != 0) {
+            /*removeLUT[i] = (- i * powerLUT[_slidingWinSize-1]) mod polyMOD*/
+            removeLUT[i] = (i * powerLUT[slidingWinSize - 1]) & polyMOD;
+            if (removeLUT[i] != 0) {
 
-                _removeLUT[i] = (polyMOD - _removeLUT[i] + 1) & polyMOD;
+                removeLUT[i] = (polyMOD - removeLUT[i] + 1) & polyMOD;
             }
             /*note: % is a remainder (rather than modulus) operator*/
             /*      if a < 0,  -polyMOD < a % polyMOD <= 0       */
@@ -124,7 +138,7 @@ void chunker::chunkerInit(string path)
         anchorMask = (1 << numOfMaskBits) - 1;
         /*initialize the value for depolytermining an anchor*/
         anchorValue = 0;
-        cerr << "A variable size chunker has been constructed!" << endl;
+        cerr << "A variable size Chunker has been constructed!" << endl;
         cerr << "Parameters: " << endl;
         cerr << setw(6) << "avgChunkSize: " << avgChunkSize << endl;
         cerr << setw(6) << "minChunkSize: " << minChunkSize << endl;
@@ -135,7 +149,7 @@ void chunker::chunkerInit(string path)
         cerr << setw(6) << "_anchoranchorMask: 0x" << hex << anchorMask << endl;
         cerr << setw(6) << "anchorValue: 0x" << hex << anchorValue << endl;
         cerr << endl;
-    } else if (chunkerType == CHUNKER_FIX_SIZE_TYPE) {
+    } else if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
 
         avgChunkSize = (int)config.getAverageChunkSize();
         minChunkSize = (int)config.getMinChunkSize();
@@ -156,26 +170,26 @@ void chunker::chunkerInit(string path)
         if (ReadSize % avgChunkSize != 0) {
             cerr << "Setting fixed size chunking error : ReadSize not compat with average chunk size" << endl;
         }
-        cerr << "A fixed size chunker has been constructed!" << endl;
+        cerr << "A fixed size Chunker has been constructed!" << endl;
         cerr << "Parameters: " << endl;
         cerr << setw(6) << "ChunkSize: " << avgChunkSize << endl;
         cerr << endl;
     }
 }
 
-bool chunker::chunking()
+bool Chunker::chunking()
 {
-    /*fixed-size chunker*/
-    if (config.getChunkingType() == FIX_SIZE_TYPE) {
+    /*fixed-size Chunker*/
+    if (config.getChunkingType() == CHUNKER_FIX_SIZE_TYPE) {
         fixSizeChunking();
     }
-    /*variable-size chunker*/
-    if (config.getChunkingType() == VAR_SIZE_TYPE) {
+    /*variable-size Chunker*/
+    if (config.getChunkingType() == CHUNKER_VAR_SIZE_TYPE) {
         varSizeChunking();
     }
 }
 
-void chunker::fixSizeChunking()
+void Chunker::fixSizeChunking()
 {
 
     std::ifstream& fin = getChunkingFile();
@@ -203,8 +217,16 @@ void chunker::fixSizeChunking()
                 memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
-                insertMQ(tempChunk);
-                delete tempChunk;
+                insertMQToKeyClient(tempChunk);
+
+                FileRecipeEntry_t newFileRecipeEntry;
+                KeyRecipeEntry_t newKeyRecipeEntry;
+                newFileRecipeEntry.chunkID = tempChunk.ID;
+                newKeyRecipeEntry.chunkID = tempChunk.ID;
+                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
+                keyRecipeList.push_back(newKeyRecipeEntry);
+                fileRecipeList.push_back(newFileRecipeEntry);
+
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
             }
@@ -229,8 +251,16 @@ void chunker::fixSizeChunking()
                 memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
-                insertMQ(tempChunk);
-                delete tempChunk;
+                insertMQToKeyClient(tempChunk);
+
+                FileRecipeEntry_t newFileRecipeEntry;
+                KeyRecipeEntry_t newKeyRecipeEntry;
+                newFileRecipeEntry.chunkID = tempChunk.ID;
+                newKeyRecipeEntry.chunkID = tempChunk.ID;
+                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
+                keyRecipeList.push_back(newKeyRecipeEntry);
+                fileRecipeList.push_back(newFileRecipeEntry);
+
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
             }
@@ -242,12 +272,12 @@ void chunker::fixSizeChunking()
     recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
     recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
     if (setJobDoneFlag() == false) {
-        cerr << "chunker: set chunking done flag error" << endl;
+        cerr << "Chunker: set chunking done flag error" << endl;
     }
     cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
 }
 
-void chunker::varSizeChunking()
+void Chunker::varSizeChunking()
 {
     uint16_t winFp;
     uint64_t chunkBufferCnt = 0, chunkIDCnt = 0;
@@ -263,7 +293,7 @@ void chunker::varSizeChunking()
 
             /*full fill sliding window*/
             if (chunkBufferCnt < slidingWinSize) {
-                winFp = winFp + (chunkBuffer[chunkBufferCnt] * _powerLUT[slidingWinSize - chunkBufferCnt - 1]) & polyMOD; //Refer to doc/Chunking.md hash function:RabinChunker
+                winFp = winFp + (chunkBuffer[chunkBufferCnt] * powerLUT[slidingWinSize - chunkBufferCnt - 1]) & polyMOD; //Refer to doc/Chunking.md hash function:RabinChunker
                 chunkBufferCnt++;
                 continue;
             }
@@ -271,7 +301,7 @@ void chunker::varSizeChunking()
 
             /*slide window*/
             unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize]; //queue
-            winFp = ((winFp + _removeLUT[v]) * polyBase + chunkBuffer[chunkBufferCnt]) & polyMOD; //remove queue front and add queue tail
+            winFp = ((winFp + removeLUT[v]) * polyBase + chunkBuffer[chunkBufferCnt]) & polyMOD; //remove queue front and add queue tail
             chunkBufferCnt++;
 
             /*chunk's size less than minChunkSize*/
@@ -289,8 +319,16 @@ void chunker::varSizeChunking()
                 memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
-                insertMQ(tempChunk);
-                delete tempChunk;
+                insertMQToKeyClient(tempChunk);
+
+                FileRecipeEntry_t newFileRecipeEntry;
+                KeyRecipeEntry_t newKeyRecipeEntry;
+                newFileRecipeEntry.chunkID = tempChunk.ID;
+                newKeyRecipeEntry.chunkID = tempChunk.ID;
+                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
+                keyRecipeList.push_back(newKeyRecipeEntry);
+                fileRecipeList.push_back(newFileRecipeEntry);
+
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
                 totalSize += chunkLogicData.length();
@@ -307,8 +345,16 @@ void chunker::varSizeChunking()
                 memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
-                insertMQ(tempChunk);
-                delete tempChunk;
+                insertMQToKeyClient(tempChunk);
+
+                FileRecipeEntry_t newFileRecipeEntry;
+                KeyRecipeEntry_t newKeyRecipeEntry;
+                newFileRecipeEntry.chunkID = tempChunk.ID;
+                newKeyRecipeEntry.chunkID = tempChunk.ID;
+                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
+                keyRecipeList.push_back(newKeyRecipeEntry);
+                fileRecipeList.push_back(newFileRecipeEntry);
+
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
                 totalSize += chunkLogicData.length();
@@ -329,8 +375,7 @@ void chunker::varSizeChunking()
         memcpy(tempChunk.logicData, chunkLogicData.c_str(), chunkLogicData.length());
         memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
         tempChunk.type = CHUNK_TYPE_INIT;
-        insertMQ(tempChunk);
-        delete tempChunk;
+        insertMQToKeyClient(tempChunk);
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
         totalSize += chunkLogicData.length();
@@ -338,17 +383,32 @@ void chunker::varSizeChunking()
     recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
     recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
     if (setJobDoneFlag() == false) {
-        cerr << "chunker: set chunking done flag error" << endl;
+        cerr << "Chunker: set chunking done flag error" << endl;
     }
     cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
 }
 
-bool chunker::insertMQ(Chunk_t newChunk)
+FileRecipeList_t Chunker::getFileRecipeList()
+{
+    return fileRecipeList;
+}
+
+KeyRecipeList_t Chunker::getKeyRecipeList()
+{
+    return keyRecipeList;
+}
+
+Recipe_t Chunker::getRecipeHead()
+{
+    return recipe;
+}
+
+bool Chunker::insertMQToKeyClient(Chunk_t newChunk)
 {
     return keyClientObj->insertMQFromChunker(newChunk);
 }
 
-bool chunker::setJobDoneFlag()
+bool Chunker::setJobDoneFlag()
 {
     return keyClientObj->editJobDoneFlag();
 }

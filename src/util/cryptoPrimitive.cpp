@@ -1,4 +1,4 @@
-#include "CryptoPrimitive.hpp"
+#include "cryptoPrimitive.hpp"
 
 bool CryptoPrimitive::readKeyFromPEM(string pubfile, string prifile, string passwd)
 {
@@ -210,6 +210,8 @@ bool CryptoPrimitive::decrypt(string& ciphertext, string& plaintext, const EVP_C
 
     EVP_CIPHER_CTX_cleanup(ctx);
     return true;
+    chunk.editLogicData(plaintChunk, plaintChunk.length());
+    return true;
 }
 
 bool CryptoPrimitive::cmac(vector<string>& messge, string& mac, const EVP_CIPHER* type)
@@ -299,7 +301,8 @@ bool CryptoPrimitive::cbc128_decrypt(string& ciphertext, string& plaintext)
 {
     return decrypt(ciphertext, plaintext, EVP_aes_128_cbc());
 }
-bool CryptoPrimitive::cbc256_encrypt(string& plaintext, string& ciphertext)
+bool CryptoPrimitive::cbc256_encrypt(string& chunk.editLogicData(plaintChunk, plaintChunk.length());
+                                     return true; plaintext, string& ciphertext)
 {
     return encrypt(plaintext, ciphertext, EVP_aes_256_cbc());
 }
@@ -389,32 +392,61 @@ bool CryptoPrimitive::sha512_digest(string& message, string& digest)
 //     return true;
 // }
 
-bool CryptoPrimitive::chunk_encrypt(Chunk& chunk)
+bool CryptoPrimitive::recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe)
 {
-    string cipherChunk, plaintChunk;
-    plaintChunk = chunk.getLogicData();
-    string key;
-    key = chunk.getEncryptKey();
-    this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
-    if (!this->cbc256_encrypt(plaintChunk, cipherChunk)) {
-        cerr << "chunk encrypt error" << endl;
+    string recipeBuffer;
+    serialize(recipeList, recipeBuffer);
+    if (!this->cbc256_encrypt(recipeBuffer, encryptedRecipe)) {
+        cerr << "recipe encrypt error" << endl;
         return false;
+    } else {
+        return true;
     }
-    chunk.editLogicData(cipherChunk, cipherChunk.length());
-    return true;
 }
 
-bool CryptoPrimitive::chunk_decrypt(Chunk& chunk)
+bool CryptoPrimitive::recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList)
 {
-    string cipherChunk, plaintChunk;
-    cipherChunk = chunk.getLogicData();
-    string key;
-    key = chunk.getEncryptKey();
+    string recipeBuffer;
+
+    if (!this->cbc256_decrypt(encryptedRecipe, recipeBuffer)) {
+        cerr << "recipe decrypt error" << endl;
+        return false;
+    } else {
+        deserialize(recipeBuffer, recipeList);
+        return true;
+    }
+}
+
+bool CryptoPrimitive::chunk_encrypt(Chunk_t& chunk)
+{
+    string cipherChunk, plaintChunk, key;
+    plaintChunk.resize(chunk.logicDataSize);
+    key.resize(CHUNK_ENCRYPT_KEY_SIZE);
+    memcpy(&plaintChunk[0], chunk.logicData, chunk.logicDataSize);
+    memcpy(&key[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
     this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
-    if (!this->cbc256_decrypt(cipherChunk, plaintChunk)) {
+    if (!this->cbc256_encrypt(plaintChunk, cipherChunk) || cipherChunk.length() != chunk.logicDataSize) {
+        cerr << "chunk encrypt error" << endl;
+        return false;
+    } else {
+        memcpy(chunk.logicData, &cipherChunk[0], cipherChunk.length());
+        return true;
+    }
+}
+
+bool CryptoPrimitive::chunk_decrypt(Chunk_t& chunk)
+{
+    string cipherChunk, plaintChunk, key;
+    plaintChunk.resize(chunk.logicDataSize);
+    key.resize(CHUNK_ENCRYPT_KEY_SIZE);
+    memcpy(&cipherChunk[0], chunk.logicData, chunk.logicDataSize);
+    memcpy(&key[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+    this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
+    if (!this->cbc256_decrypt(cipherChunk, plaintChunk) || plaintChunk.length() != chunk.logicDataSize) {
         cerr << "Crypto{rimitive : chunk decrypt error" << endl;
         return false;
+    } else {
+        memcpy(chunk.logicData, &plaintChunk[0], plaintChunk.length());
+        return true;
     }
-    chunk.editLogicData(plaintChunk, plaintChunk.length());
-    return true;
 }

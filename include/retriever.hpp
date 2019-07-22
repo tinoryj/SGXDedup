@@ -1,7 +1,3 @@
-//
-// Created by a on 1/30/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_RETRIEVER_HPP
 #define GENERALDEDUPSYSTEM_RETRIEVER_HPP
 
@@ -11,7 +7,7 @@ using namespace std;
 
 class Retriever {
 private:
-    int _chunkCnt;
+    int chunkCnt_;
 
 public:
     Retriever(string filename);
