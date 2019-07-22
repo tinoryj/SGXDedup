@@ -41,9 +41,6 @@ private:
     uint64_t totalSize;
 
     Recipe_t recipe;
-    FileRecipeList_t fileRecipeList;
-    KeyRecipeList_t keyRecipeList;
-
     std::ifstream chunkingFile;
 
     void fixSizeChunking();
@@ -64,8 +61,6 @@ public:
     Chunker(std::string path, keyClient* keyClientObjTemp);
     ~Chunker();
     bool chunking();
-    KeyRecipeList_t getKeyRecipeList();
-    FileRecipeList_t getFileRecipeList();
     Recipe_t getRecipeHead();
 };
 

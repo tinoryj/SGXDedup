@@ -65,21 +65,16 @@ public:
     bool ofb256_decrypt(string& ciphertext, string& plaintext);
 
     bool cmac128(vector<string>& message, string& mac);
+    bool cmac128(u_char* messages, int messageNumber, int messageSize, u_char* mac, int& macSize);
     bool cmac256(vector<string>& message, string& mac);
+    bool cmac256(u_char* messages, int messageNumber, int messageSize, u_char* mac, int& macSize);
 
     bool sha1_digest(string& message, string& digest);
+    bool sha1Digest(u_char* message, int messageSize, u_char* hash, int& hashSize);
     bool sha256_digest(string& message, string& digest);
+    bool sha256Digest(u_char* message, int messageSize, u_char* hash, int& hashSize);
     bool sha512_digest(string& message, string& digest);
-
-    /*
-    bool base64_encode(string message, string code);
-    bool base64_decode(string code, string message);
-*/
-
-    // bool recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe);
-    // bool recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList);
-    bool recipe_encrypt(Chunk_t newChunk);
-    bool recipe_decrypt(Chunk_t newChunk);
+    bool sha512Digest(u_char* message, int messageSize, u_char* hash, int& hashSize);
 
     bool chunk_encrypt(Chunk_t& chunk);
     bool chunk_decrypt(Chunk_t& chunk);
