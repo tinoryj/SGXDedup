@@ -1,15 +1,11 @@
-//
-// Created by a on 2/16/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_POWSERVER_HPP
 #define GENERALDEDUPSYSTEM_POWSERVER_HPP
 
 #include "../../../include/configure.hpp"
 #include "../../../include/cryptoPrimitive.hpp"
+#include "../../../include/dataStructure.hpp"
 #include "../../../include/messageQueue.hpp"
 #include "../../../include/protocol.hpp"
-#include "../../../include/socket.hpp"
 #include "base64.h"
 #include "byteorder.h"
 #include "crypto.h"
@@ -37,11 +33,11 @@ using namespace std;
 
 class powServer {
 private:
-    _messageQueue _inputMQ;
-    _messageQueue _outputMQ;
-    _messageQueue _netMQ;
+    messageQueue<EpollMessage_t> inputMQ_;
+    messageQueue<EpollMessage_t> outputMQ_;
+    messageQueue<EpollMessage_t> netMQ_;
     map<int, powSession*> sessions;
-    CryptoPrimitive _crypto;
+    CryptoPrimitive cryptoObj_;
     void closeSession(int fd);
     bool process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2);
     bool process_msg3(powSession* session, sgx_ra_msg3_t* msg3, ra_msg4_t& msg4, uint32_t quote_sz);

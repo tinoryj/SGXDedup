@@ -1,4 +1,3 @@
-//TODO: big change
 #include "../include/powServer.hpp"
 #include "../../../include/messageQueue.hpp"
 #include "../../../include/protocol.hpp"
@@ -14,11 +13,12 @@ void powServer::closeSession(int fd)
 
 powServer::powServer()
 {
-    _inputMQ.createQueue(DATASR_TO_POWSERVER_MQ, READ_MESSAGE);
-    _outputMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ, WRITE_MESSAGE);
-    _netMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
+    // _inputMQ.createQueue(DATASR_TO_POWSERVER_MQ, READ_MESSAGE);
+    // _outputMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ, WRITE_MESSAGE);
+    // _netMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
 
-    ERR_load_crypto_strings();
+    //ERR_load_crypto_strings();
+    ERR_load_CRYPTO_strings();
     OpenSSL_add_all_algorithms();
 
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
@@ -54,77 +54,78 @@ powServer::powServer()
 
 void powServer::run()
 {
-    epoll_message msg;
+    EpollMessage_t msg;
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
     sgx_ra_msg3_t* msg3;
     ra_msg4_t msg4;
 
+    //Data_t msg01, msg2, msg3, msg4;
+
     while (1) {
-        if (!_inputMQ.pop(msg)) {
+        if (!inputMQ_.pop(msg)) {
             continue;
         }
-        switch (msg._type) {
+        switch (msg.type) {
         case SGX_RA_MSG01: {
-            memcpy(&msg01, &msg._data[0], sizeof(sgx_msg01_t));
-            msg._data.clear();
-            if (!process_msg01(msg._fd, msg01, msg2)) {
+            memcpy(&msg01, msg.data, sizeof(sgx_msg01_t));
+
+            if (!process_msg01(msg.fd, msg01, msg2)) {
                 cerr << "error process msg01" << endl;
-                msg._type = ERROR_RESEND;
+                msg.type = ERROR_RESEND;
             } else {
-                msg._type = SUCCESS;
-                msg._data.resize(sizeof(sgx_ra_msg2_t));
-                memcpy(&msg._data[0], &msg2, sizeof(sgx_ra_msg2_t));
+                msg.type = SUCCESS;
+                memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
             }
-            _netMQ.push(msg);
+            netMQ_.push(msg);
             break;
         }
         case SGX_RA_MSG3: {
-            msg3 = (sgx_ra_msg3_t*)new char[msg._data.length()];
-            memcpy(msg3, &msg._data[0], msg._data.length());
-            if (sessions.find(msg._fd) == sessions.end()) {
+            msg3 = (sgx_ra_msg3_t*)new char[msg.data.length()];
+            memcpy(msg3, &msg.data[0], msg.data.length());
+            if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "client had not send msg01 before" << endl;
-                msg._type = ERROR_CLOSE;
-                msg._data.clear();
+                msg.type = ERROR_CLOSE;
+
             } else {
-                if (this->process_msg3(sessions[msg._fd], msg3, msg4,
-                        msg._data.length() - sizeof(sgx_ra_msg3_t))) {
-                    msg._type = SUCCESS;
-                    msg._data.resize(sizeof(ra_msg4_t));
-                    memcpy(&msg._data[0], &msg4, sizeof(ra_msg4_t));
+                if (this->process_msg3(sessions[msg.fd], msg3, msg4,
+                        msg.data.length() - sizeof(sgx_ra_msg3_t))) {
+                    msg.type = SUCCESS;
+                    memcpy(&msg.data[0], &msg4, sizeof(ra_msg4_t));
                 } else {
                     cerr << "sgx msg3 error" << endl;
-                    msg._type = ERROR_CLOSE;
-                    msg._data.clear();
+                    msg.type = ERROR_CLOSE;
                 }
             }
-            _netMQ.push(msg);
+            netMQ_.push(msg);
             break;
         }
         case SGX_SIGNED_HASH: {
             powSignedHash clientReq;
-            deserialize(msg._data, clientReq);
-            if (sessions.find(msg._fd) == sessions.end()) {
+            deserialize(msg.data, clientReq);
+            if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "client not trusted yet" << endl;
-                msg._type = ERROR_CLOSE;
+                msg.type = ERROR_CLOSE;
             } else {
-                if (!sessions.at(msg._fd)->enclaveTrusted) {
+                if (!sessions.at(msg.fd)->enclaveTrusted) {
                     cerr << "client not trusted yet" << endl;
-                    msg._type = ERROR_CLOSE;
+                    msg.type = ERROR_CLOSE;
                 } else {
-                    if (this->process_signedHash(sessions.at(msg._fd), clientReq)) {
-                        _outputMQ.push(msg);
+                    if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
+                        outputMQ_.push(msg);
                         break;
                     } else {
-                        msg._type = ERROR_RESEND;
+                        s
+                            msg.type
+                            = ERROR_RESEND;
                     }
                 }
             }
-            _netMQ.push(msg);
+            netMQ_.push(msg);
             break;
         }
         case POW_CLOSE_SESSION: {
-            this->closeSession(msg._fd);
+            this->closeSession(msg.fd);
             break;
         }
         default: {
@@ -235,9 +236,11 @@ bool powServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
     *sig_rl_size = (uint32_t)sigrlstr.length();
     return true;
 }
+Data_t
 
-bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
-    ra_msg4_t& msg4, uint32_t quote_sz)
+    bool
+    powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+        ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
     if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
@@ -385,9 +388,9 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
 bool powServer::process_signedHash(powSession* session, powSignedHash req)
 {
-    _crypto.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
+    cryptoObj_.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
     string Mac, signature((char*)req.signature_, 16);
-    _crypto.cmac128(req.hash_, Mac);
+    cryptoObj_.cmac128(req.hash_, Mac);
     if (Mac.compare(signature)) {
         cerr << "client signature unvalid" << endl;
         return false;
