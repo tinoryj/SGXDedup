@@ -1,6 +1,4 @@
-#include <bits/stdc++.h>
-#include <boost/thread/thread.hpp>
-
+#include "../pow/include/powClient.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
 #include "decoder.hpp"
@@ -9,15 +7,13 @@
 #include "reciver.hpp"
 #include "retriever.hpp"
 #include "sender.hpp"
-//TODO:refrac
-#include "../pow/include/powClient.hpp"
+#include <bits/stdc++.h>
+#include <boost/thread/thread.hpp>
 
 using namespace std;
 
-//MessageQueue<Chunk>mq1;
 Configure config("config.json");
 keyCache kCache;
-
 Chunker* chunkerObj;
 keyClient* keyClientObj;
 encoder* encoderObj;
@@ -35,8 +31,6 @@ void usage()
 
 int main(int argv, char* argc[])
 {
-    cerr << setbase(10);
-
     vector<boost::thread*> thList;
     boost::thread* th;
 
@@ -50,19 +44,17 @@ int main(int argv, char* argc[])
         dcoderObj = new decoder();
         recverObj = new receiver();
         retrieverObj = new Retriever(argc[2]);
-
         //start receiver thread
         recverObj->run(argc[2]);
-
         //start decoder thread
         dcoderObj->run();
-
         retrieverObj->run();
+
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send
-        encoderObj = new encoder();
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
+        encoderObj = new encoder(PowClientObj);
         keyClientObj = new keyClient(encoderObj);
         chunkerObj = new Chunker(argc[2], keyClientObj);
 

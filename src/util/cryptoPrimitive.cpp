@@ -392,58 +392,72 @@ bool CryptoPrimitive::sha512_digest(string& message, string& digest)
 //     return true;
 // }
 
-bool CryptoPrimitive::recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe)
-{
-    string recipeBuffer;
-    serialize(recipeList, recipeBuffer);
-    if (!this->cbc256_encrypt(recipeBuffer, encryptedRecipe)) {
-        cerr << "recipe encrypt error" << endl;
-        return false;
-    } else {
-        return true;
-    }
-}
+// bool CryptoPrimitive::recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe)
+// {
+//     string recipeBuffer;
+//     serialize(recipeList, recipeBuffer);
+//     if (!this->cbc256_encrypt(recipeBuffer, encryptedRecipe)) {
+//         cerr << "recipe encrypt error" << endl;
+//         return false;
+//     } else {
+//         return true;
+//     }
+// }
 
-bool CryptoPrimitive::recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList)
-{
-    string recipeBuffer;
+// bool CryptoPrimitive::recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList)
+// {
+//     string recipeBuffer;
 
-    if (!this->cbc256_decrypt(encryptedRecipe, recipeBuffer)) {
-        cerr << "recipe decrypt error" << endl;
-        return false;
-    } else {
-        deserialize(recipeBuffer, recipeList);
-        return true;
-    }
-}
+//     if (!this->cbc256_decrypt(encryptedRecipe, recipeBuffer)) {
+//         cerr << "recipe decrypt error" << endl;
+//         return false;
+//     } else {
+//         deserialize(recipeBuffer, recipeList);
+//         return true;
+//     }
+// }
 
 bool CryptoPrimitive::chunk_encrypt(Chunk_t& chunk)
 {
-    string cipherChunk, plaintChunk, key;
+    string cipherChunk, plaintChunk, key, plaintKey, cipherKey;
     plaintChunk.resize(chunk.logicDataSize);
+    plaintKey.resize(CHUNK_ENCRYPT_KEY_SIZE);
     key.resize(CHUNK_ENCRYPT_KEY_SIZE);
     memcpy(&plaintChunk[0], chunk.logicData, chunk.logicDataSize);
-    memcpy(&key[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+    memcpy(&plaintKey[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+    this->setSymKey(plaintKey.c_str(), plaintKey.length(), plaintKey.c_str(), plaintKey.length());
+    bool logicDataFlag = this->cbc256_encrypt(plaintChunk, cipherChunk);
+    memset(&key[0], 0, CHUNK_ENCRYPT_KEY_SIZE);
     this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
-    if (!this->cbc256_encrypt(plaintChunk, cipherChunk) || cipherChunk.length() != chunk.logicDataSize) {
-        cerr << "chunk encrypt error" << endl;
+    bool keyFlag = this->cbc256_encrypt(plaintKey, cipherKey);
+    if (!logicDataFlag || !keyFlag || cipherChunk.length() != chunk.logicDataSize || cipherKey.length() != CHUNK_ENCRYPT_KEY_SIZE) {
+        cerr << "chunk & key encrypt error" << endl;
         return false;
     } else {
         memcpy(chunk.logicData, &cipherChunk[0], cipherChunk.length());
+        memcpy(chunk.encryptKey, &cipherKey[0], CHUNK_ENCRYPT_KEY_SIZE);
         return true;
     }
 }
 
 bool CryptoPrimitive::chunk_decrypt(Chunk_t& chunk)
 {
-    string cipherChunk, plaintChunk, key;
+    string cipherChunk, plaintChunk, key, cipherKey, plaintKey;
     plaintChunk.resize(chunk.logicDataSize);
+    plaintKey.resize(CHUNK_ENCRYPT_KEY_SIZE);
+    cipherKey.resize(CHUNK_ENCRYPT_KEY_SIZE);
     key.resize(CHUNK_ENCRYPT_KEY_SIZE);
     memcpy(&cipherChunk[0], chunk.logicData, chunk.logicDataSize);
-    memcpy(&key[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+    memcpy(&cipherKey[0], chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+    memset(&key[0], 0, CHUNK_ENCRYPT_KEY_SIZE);
+    this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
+    if (!this->cbc256_decrypt(cipherKey, plaintKey) || plaintKey.length() != CHUNK_ENCRYPT_KEY_SIZE) {
+        cerr << "Cryptorimitive : chunk key decrypt error" << endl;
+    }
+    memcpy(&key[0], &plaintKey[0], CHUNK_ENCRYPT_KEY_SIZE);
     this->setSymKey(key.c_str(), key.length(), key.c_str(), key.length());
     if (!this->cbc256_decrypt(cipherChunk, plaintChunk) || plaintChunk.length() != chunk.logicDataSize) {
-        cerr << "Crypto{rimitive : chunk decrypt error" << endl;
+        cerr << "Cryptorimitive : chunk logic data decrypt error" << endl;
         return false;
     } else {
         memcpy(chunk.logicData, &plaintChunk[0], plaintChunk.length());

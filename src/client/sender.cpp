@@ -8,18 +8,18 @@ extern Configure config;
 
 Sender::Sender()
 {
-    socket.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
-    cryptoObj = new CryptoPrimitive();
+    socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
+    cryptoObj_ = new CryptoPrimitive();
 }
 Sender::~Sender()
 {
-    socket.finish();
-    if (cryptoObj != NULL) {
-        delete cryptoObj;
+    socket_.finish();
+    if (cryptoObj_ != NULL) {
+        delete cryptoObj_;
     }
 }
 
-bool Sender::sendRecipe(Recipe_t& request, int& status)
+bool Sender::sendRecipeList(RecipeList_t& request, int& status)
 {
     NetworkStruct_t requestBody, respondBody;
     string requestBuffer, respondBuffer;
@@ -27,17 +27,6 @@ bool Sender::sendRecipe(Recipe_t& request, int& status)
     requestBody.messageType = CLIENT_UPLOAD_RECIPE;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
-
-    /**********************/
-    //TODO:temp implement
-    char recipekey[128];
-    memset(recipekey, 0, sizeof(recipekey));
-
-    cryptoObj->setSymKey(recipekey, 128, recipekey, 128);
-    cryptoObj->recipe_encrypt(request._k, request._kencrypted);
-
-    request._k._body.clear();
-    /*********************/
 
     serialize(request, requestBody.data);
     serialize(requestBody, requestBuffer);
@@ -49,9 +38,11 @@ bool Sender::sendRecipe(Recipe_t& request, int& status)
     deserialize(respondBuffer, respondBody);
     status = respondBody.messageType;
 
-    if (status == SUCCESS)
+    if (status == SUCCESS) {
         return true;
-    return false;
+    } else {
+        return false;
+    }
 }
 
 bool Sender::sendChunkList(ChunkList_t& request, int& status)
@@ -168,13 +159,13 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
 
 bool Sender::sendData(string& request, string& respond)
 {
-    std::lock_guard<std::mutex> locker(mutexSocket);
-    if (!socket.Send(request)) {
+    std::lock_guard<std::mutex> locker(mutexSocket_);
+    if (!socket_.Send(request)) {
         cerr << "Sender : peer closed" << endl;
 
         exit(0);
     }
-    if (!socket.Recv(respond)) {
+    if (!socket_.Recv(respond)) {
         cerr << "Sender : peer closed" << endl;
         exit(0);
     }
@@ -185,15 +176,17 @@ void Sender::run()
 {
     ChunkList_t chunkList;
     Chunk_t tempChunk;
-    Recipe_t recipe;
+    RecipeList_t recipeList;
+
     int status;
 
     bool start = false;
 
     while (true) {
         chunkList.clear();
+        recipeList.clear();
         for (int i = 0; i < config.getSendChunkBatchSize(); i++) {
-            if (inputMQ.done_ && !extractMQFromPow(tempChunk)) {
+            if (inputMQ_.done_ && !extractMQFromPow(tempChunk)) {
                 if (start) {
                     cerr << "Sender : sending chunks and recipes end" << endl;
                     start = false;
@@ -205,46 +198,27 @@ void Sender::run()
                 cerr << "Sender : start sending chunks and recipes" << endl;
                 start = true;
             }
-
-            chunkList.push_back(tempChunk);
-            recipe = tempChunk.getRecipePointer();
-            recipe->_chunkCnt--;
-            string hash;
-            hash.resize(CHUNK_HASH_SIZE);
-            memcpy(&hash[0], tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            memcpy(recipe->_f._body[tempChunk.getID()]._chunkHash, hash.c_str(), 32);
-            memcpy(recipe->_k._body[tempChunk.getID()]._chunkHash, hash.c_str(), 32);
-
-            if (recipe->_chunkCnt == 0) {
-                recipe->_chunkCnt--;
-                while (1) {
-                    this->sendRecipe(*recipe, status);
-                    if (status == SUCCESS) {
-                        std::cerr << "Sender : send recipe success" << endl;
-                        break;
-                    }
-                    if (status == ERROR_CLOSE) {
-                        std::cerr << "Sender : Server Reject Chunk and send close flag" << endl;
-                        exit(1);
-                    }
-                    if (status == ERROR_RESEND) {
-                        std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
-                        continue;
-                    }
-                }
-                delete &recipe;
+            if (tempChunk.type == CHUNK_TYPE_NEED_UPLOAD) {
+                chunkList.push_back(tempChunk);
             }
+
+            RecipeEntry_t newRecipeEntry;
+            newRecipeEntry.chunkID = tempChunk.ID;
+            newRecipeEntry.chunkSize = tempChunk.logicDataSize;
+            memcpy(newRecipeEntry.chunkHash, tempChunk.chunkHash, CHUNK_HASH_SIZE);
+            memcpy(newRecipeEntry.chunkKey, tempChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+            recipeList.push_back(newRecipeEntry);
         }
 
-        if (chunkList._chunkList.empty()) {
+        if (chunkList.empty()) {
             continue;
         }
 
         bool success = false;
-        while (1) {
-            success = this->sendChunkList(chunkList, status);
-            if (success) {
-                cerr << "Sender : sent " << setbase(10) << chunkList._FP.size() << " chunk" << endl;
+        while (true) {
+            this->sendChunkList(chunkList, status);
+            if (status == SUCCESS) {
+                cerr << "Sender : sent " << setbase(10) << chunkList.size() << " chunk" << endl;
                 break;
             }
             if (status == ERROR_CLOSE) {
@@ -253,6 +227,20 @@ void Sender::run()
             }
             if (status == ERROR_RESEND) {
                 std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
+            }
+
+            this->sendRecipeList(recipeList, status);
+            if (status == SUCCESS) {
+                std::cerr << "Sender : send recipe success" << endl;
+                break;
+            }
+            if (status == ERROR_CLOSE) {
+                std::cerr << "Sender : Server Reject Chunk and send close flag" << endl;
+                exit(1);
+            }
+            if (status == ERROR_RESEND) {
+                std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
+                continue;
             }
         }
         if (!start) {
@@ -264,18 +252,18 @@ void Sender::run()
 
 bool Sender::insertMQFromPow(Chunk_t newChunk)
 {
-    return inputMQ.push(newChunk);
+    return inputMQ_.push(newChunk);
 }
 
 bool Sender::extractMQFromPow(Chunk_t newChunk)
 {
-    return inputMQ.pop(newChunk);
+    return inputMQ_.pop(newChunk);
 }
 
 bool Sender::editJobDoneFlag()
 {
-    inputMQ.done_ = true;
-    if (inputMQ.done_) {
+    inputMQ_.done_ = true;
+    if (inputMQ_.done_) {
         return true;
     } else {
         return false;

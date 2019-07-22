@@ -23,7 +23,7 @@ void powClient::run()
     while (true) {
         batchChunk.clear();
         batchHash.clear();
-        request.hash.clear();
+        request.hash_.clear();
 
         //% TODO
         uint64_t currentBatchSize = 0;
@@ -35,7 +35,7 @@ void powClient::run()
                 string tempChunkHash;
                 tempChunkHash.resize(CHUNK_HASH_SIZE);
                 memcpy(&tempChunkHash[0], tempChunk.chunkHash, CHUNK_HASH_SIZE);
-                request.hash.push_back(tempChunkHash);
+                request.hash_.push_back(tempChunkHash);
                 batchChunk.push_back(tempChunk);
                 batchHash.push_back(tempChunkHash);
                 memcpy(batchChunkLogicData_charBuffer + currentBatchSize, &tempChunk.logicDataSize, sizeof(int));
@@ -49,7 +49,7 @@ void powClient::run()
         memcpy(&batchChunkLogicData[0], batchChunkLogicData_charBuffer, currentBatchSize);
         if (batchChunk.empty())
             continue;
-        if (!this->request(batchChunkLogicData, request.signature)) {
+        if (!this->request(batchChunkLogicData, request.signature_)) {
             cerr << "POWClient : sgx request failed" << endl;
             exit(1);
         }
@@ -62,7 +62,10 @@ void powClient::run()
         cout << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
 
         for (auto it : lists) {
-            insertMQToSender(batchChunk[it]);
+            batchChunk[it].type = CHUNK_TYPE_NEED_UPLOAD;
+        }
+        for (int i; i < batchChunk.size(); i++) {
+            insertMQToSender(batchChunk[i]);
         }
     }
 }

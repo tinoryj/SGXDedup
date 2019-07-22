@@ -8,20 +8,20 @@ extern Configure config;
 
 decoder::decoder()
 {
-    _crypto = new CryptoPrimitive();
+    cryptoObj_ = new CryptoPrimitive();
 }
 
 decoder::~decoder() {}
 
 bool decoder::getKey(Chunk_t& newChunk)
 {
-    string key = _keyRecipe.at(newChunk.getChunkHash());
+    string key = keyRecipe_.at(newChunk.getChunkHash());
     newChunk.editEncryptKey(key);
 }
 
 bool decoder::decodeChunk(Chunk_t& newChunk)
 {
-    _crypto->chunk_decrypt(newChunk);
+    cryptoObj_->chunk_decrypt(newChunk);
 }
 
 void decoder::run()
@@ -33,17 +33,16 @@ void decoder::run()
         ;
     deserialize(buffer, recipe);
 
-    _messageQueue tmpMQ = this->getOutputMQ();
     tmpMQ.push(recipe._f._body.size());
 
     /**********************/
     //temp implement
     char recipekey[128];
     memset(recipekey, 0, sizeof(recipekey));
-    _crypto->setSymKey(recipekey, 128, recipekey, 128);
+    cryptoObj_->setSymKey(recipekey, 128, recipekey, 128);
     /*********************/
 
-    _crypto->recipe_decrypt(recipe._kencrypted, recipe._k);
+    cryptoObj_->recipe_decrypt(recipe._kencrypted, recipe._k);
     for (auto it : recipe._k._body) {
         this->_keyRecipe.insert(make_pair(it._chunkHash, it._chunkKey));
     }

@@ -1,7 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
 #include "chunker.hpp"
 
 extern Configure config;
@@ -16,7 +12,6 @@ Chunker::Chunker(std::string path, keyClient* keyClientObjTemp)
 
 std::ifstream& Chunker::getChunkingFile()
 {
-
     if (!chunkingFile.is_open()) {
         std::cerr << "chunking file open failed" << endl;
         exit(1);
@@ -219,14 +214,6 @@ void Chunker::fixSizeChunking()
                 tempChunk.type = CHUNK_TYPE_INIT;
                 insertMQToKeyClient(tempChunk);
 
-                FileRecipeEntry_t newFileRecipeEntry;
-                KeyRecipeEntry_t newKeyRecipeEntry;
-                newFileRecipeEntry.chunkID = tempChunk.ID;
-                newKeyRecipeEntry.chunkID = tempChunk.ID;
-                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
-                keyRecipeList.push_back(newKeyRecipeEntry);
-                fileRecipeList.push_back(newFileRecipeEntry);
-
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
             }
@@ -252,14 +239,6 @@ void Chunker::fixSizeChunking()
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
                 insertMQToKeyClient(tempChunk);
-
-                FileRecipeEntry_t newFileRecipeEntry;
-                KeyRecipeEntry_t newKeyRecipeEntry;
-                newFileRecipeEntry.chunkID = tempChunk.ID;
-                newKeyRecipeEntry.chunkID = tempChunk.ID;
-                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
-                keyRecipeList.push_back(newKeyRecipeEntry);
-                fileRecipeList.push_back(newFileRecipeEntry);
 
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
@@ -321,14 +300,6 @@ void Chunker::varSizeChunking()
                 tempChunk.type = CHUNK_TYPE_INIT;
                 insertMQToKeyClient(tempChunk);
 
-                FileRecipeEntry_t newFileRecipeEntry;
-                KeyRecipeEntry_t newKeyRecipeEntry;
-                newFileRecipeEntry.chunkID = tempChunk.ID;
-                newKeyRecipeEntry.chunkID = tempChunk.ID;
-                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
-                keyRecipeList.push_back(newKeyRecipeEntry);
-                fileRecipeList.push_back(newFileRecipeEntry);
-
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
                 totalSize += chunkLogicData.length();
@@ -346,14 +317,6 @@ void Chunker::varSizeChunking()
                 memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
                 tempChunk.type = CHUNK_TYPE_INIT;
                 insertMQToKeyClient(tempChunk);
-
-                FileRecipeEntry_t newFileRecipeEntry;
-                KeyRecipeEntry_t newKeyRecipeEntry;
-                newFileRecipeEntry.chunkID = tempChunk.ID;
-                newKeyRecipeEntry.chunkID = tempChunk.ID;
-                newFileRecipeEntry.chunkSize = tempChunk.logicDataSize;
-                keyRecipeList.push_back(newKeyRecipeEntry);
-                fileRecipeList.push_back(newFileRecipeEntry);
 
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;

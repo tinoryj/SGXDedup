@@ -10,28 +10,27 @@ extern keyCache kCache;
 
 keyClient::keyClient(encoder* encoderObjTemp)
 {
-    encoderObj = encoderObjTemp;
-    cryptoObj = new CryptoPrimitive();
-    keyBatchSizeMin = (int)config.getKeyBatchSizeMin();
-    keyBatchSizeMax = (int)config.getKeyBatchSizeMax();
-    socket.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
-    kmServer server(socket);
+    encoderObj_ = encoderObjTemp;
+    cryptoObj_ = new CryptoPrimitive();
+    keyBatchSizeMin_ = (int)config.getKeyBatchSizeMin();
+    keyBatchSizeMax_ = (int)config.getKeyBatchSizeMax();
+    socket_.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
+    kmServer server(socket_);
     powSession* session = server.authkm();
     if (session != nullptr) {
-        trustdKM = true;
-        cryptoObj.setSymKey((const char*)session->smk, 16, (const char*)session->smk, 16);
+        trustdKM_ = true;
+        cryptoObj_->setSymKey((const char*)session->smk, 16, (const char*)session->smk, 16);
         delete session;
     } else {
-        trustdKM = false;
+        trustdKM_ = false;
         delete session;
     }
 }
 
 keyClient::~keyClient()
 {
-
-    if (cryptoObj != NULL) {
-        delete cryptoObj;
+    if (cryptoObj_ != NULL) {
+        delete cryptoObj_;
     }
 }
 
@@ -52,8 +51,8 @@ void keyClient::run()
         memset(&minHash[0], 255, sizeof(char) * minHash.length());
         chunkList.clear();
 
-        for (int it = segmentSize = minHashIndex = 0; segmentSize < keyBatchSizeMax; it++) {
-            if (inputMQ.done_ && !extractMQFromChunker(tempchunk)) {
+        for (int it = segmentSize = minHashIndex = 0; segmentSize < keyBatchSizeMax_; it++) {
+            if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
                 exitFlag = true;
                 break;
             };
@@ -65,7 +64,7 @@ void keyClient::run()
                 minHashIndex = it;
             }
 
-            if (memcmp(chunkList[it].chunkHash + (32 - 9), mask, 9) == 0 && segmentSize > keyBatchSizeMax) {
+            if (memcmp(chunkList[it].chunkHash + (32 - 9), mask, 9) == 0 && segmentSize > keyBatchSizeMax_) {
                 break;
             }
         }
@@ -78,6 +77,7 @@ void keyClient::run()
             segmentKey = kCache.getKeyFromCache(minHash);
             for (auto it : chunkList) {
                 memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
+                //memcpy(chunkerObj_->getRecipeList[it.ID].chunkKey, it.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
             }
             continue;
         }
@@ -90,9 +90,10 @@ void keyClient::run()
         for (auto it : chunkList) {
             memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
             insertMQtoEncoder(it);
+            //memcpy(chunkerObj_->getRecipeList[it.ID].chunkKey, it.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
         }
         if (exitFlag) {
-            encoderObj->editJobDoneFlag();
+            encoderObj_->editJobDoneFlag();
             pthread_exit(NULL);
         }
     }
@@ -103,41 +104,50 @@ string keyClient::keyExchange(Chunk_t champion)
 {
     string key, buffer;
     key.resize(16);
-    while (!trustdKM)
+    while (!trustdKM_)
         ;
-    string minHash(champion.chunkHash, CHUNK_HASH_SIZE);
-    if (!socket.Send(minHash)) {
+    string minHash;
+    minHash.resize(CHUNK_HASH_SIZE);
+    memcpy(&minHash[0], champion.chunkHash, CHUNK_HASH_SIZE);
+    if (!socket_.Send(minHash)) {
         cerr << "keyClient: socket error" << endl;
         exit(0);
     }
-    if (!socket.Recv(buffer)) {
-        cerr "keyClient: socket error" << endl;
+    if (!socket_.Recv(buffer)) {
+        cerr << "keyClient: socket error" << endl;
         exit(0);
     }
-    cryptoObj.cbc128_decrypt(buffer, key);
+    cryptoObj_->cbc128_decrypt(buffer, key);
     u_char returnValue_char[CHUNK_ENCRYPT_KEY_SIZE];
     memcpy(returnValue_char, key.c_str(), 16);
     memcpy(returnValue_char + 16, key.c_str(), 16);
-    string returnValue(returnValue_char, CHUNK_ENCRYPT_KEY_SIZE);
+    string returnValue;
+    returnValue.resize(CHUNK_ENCRYPT_KEY_SIZE);
+    memcpy(&returnValue[0], returnValue_char, CHUNK_ENCRYPT_KEY_SIZE);
     return returnValue;
 }
 
 bool keyClient::insertMQFromChunker(Chunk_t newChunk)
 {
-    return inputMQ.push(newChunk);
+    return inputMQ_.push(newChunk);
 }
 
 bool keyClient::extractMQFromChunker(Chunk_t newChunk)
 {
-    return inputMQ.pop(newChunk);
+    return inputMQ_.pop(newChunk);
 }
 
 bool keyClient::insertMQtoEncoder(Chunk_t newChunk)
 {
-    return encoderObj->insertMQFromKeyClient(newChunk);
+    return encoderObj_->insertMQFromKeyClient(newChunk);
 }
 
 bool keyClient::editJobDoneFlag()
 {
-    inputMQ.done_ = true;
+    inputMQ_.done_ = true;
+    if (inputMQ_.done_) {
+        return true;
+    } else {
+        return false;
+    }
 }

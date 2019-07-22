@@ -1,26 +1,22 @@
-//
-// Created by a on 1/30/19.
-//
-
 #include "reciver.hpp"
 
 extern Configure config;
 
 receiver::receiver()
 {
-    _socket.init(CLIENTSIDE, config.getStorageServerIP(), config.getStorageServerPort());
+    socket_.init(CLIENTSIDE, config.getStorageServerIP(), config.getStorageServerPort());
 }
 
 receiver::~receiver()
 {
-    _socket.finish();
+    socket_.finish();
 }
 
 void receiver::receiveChunk()
 {
     string tmp;
     int status;
-    chunkList chunks;
+    ChunkList_t chunks;
     int chunkID = 0;
     while (1) {
         this->receiveData(tmp, status);
@@ -40,11 +36,11 @@ void receiver::run(std::string fileName)
     string reqBuffer, resBuffer;
     serialize(request, reqBuffer);
     while (1) {
-        if (!_socket.Send(reqBuffer)) {
+        if (!socket_.Send(reqBuffer)) {
             cerr << "peer closed" << endl;
             return;
         }
-        if (!_socket.Recv(resBuffer)) {
+        if (!socket_.Recv(resBuffer)) {
             cerr << "peer closed" << endl;
             return;
         }
@@ -72,7 +68,7 @@ bool receiver::receiveData(string& data, int status)
     networkStruct networkBody;
     string networkBodyBuffer;
 Resend:
-    _socket.Recv(networkBodyBuffer);
+    socket_.Recv(networkBodyBuffer);
     deserialize(networkBodyBuffer, networkBody);
     status = networkBody._type;
     if (status == ERROR_RESEND) {
@@ -88,20 +84,20 @@ Resend:
 /*
 receiver::receiver() {
     _outputMQ=this->getOutputMQ();
-    _socket.init(CLIENTSIDE,config.getStorageServerIP(),config.getStorageServerPort());
+    socket_.init(CLIENTSIDE,config.getStorageServerIP(),config.getStorageServerPort());
     readyForChunkDownload=false;
 }
 
 receiver::~receiver() {
-    _socket.finish();
+    socket_.finish();
 }
 
 bool receiver::receiveData(string &respond, int &status) {
     networkStruct respondBody(0,0);
     string tmp;
     {
-        boost::unique_lock<boost::shared_mutex> t(this->_socketMtx);
-        _socket.Recv(tmp);
+        boost::unique_lock<boost::shared_mutex> t(this->socket_Mtx);
+        socket_.Recv(tmp);
     }
     deserialize(tmp,respondBody);
     status=respondBody._type;

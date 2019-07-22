@@ -1,8 +1,11 @@
 #ifndef GENERALDEDUPSYSTEM_RECIVER_HPP
 #define GENERALDEDUPSYSTEM_RECIVER_HPP
 
+#include "configure.hpp"
+#include "dataStructure.hpp"
 #include "socket.hpp"
 #include <boost/thread.hpp>
+
 class receiver {
 private:
     Socket socket_;

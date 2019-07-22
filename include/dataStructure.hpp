@@ -20,17 +20,11 @@ typedef struct {
     uint64_t chunkID;
     int chunkSize;
     u_char chunkHash[CHUNK_HASH_SIZE];
-} FileRecipeEntry_t;
-
-typedef struct {
-    uint64_t chunkID;
-    u_char chunkHash[CHUNK_HASH_SIZE];
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE];
-} KeyRecipeEntry_t;
+} RecipeEntry_t;
 
 typedef vector<Chunk_t> ChunkList_t;
-typedef vector<FileRecipeEntry_t> FileRecipeList_t;
-typedef vector<KeyRecipeEntry_t> KeyRecipeList_t;
+typedef vector<RecipeEntry_t> RecipeList_t;
 
 typedef struct {
     uint64_t fileSize;

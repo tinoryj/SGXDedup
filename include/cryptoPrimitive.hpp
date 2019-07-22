@@ -76,8 +76,10 @@ public:
     bool base64_decode(string code, string message);
 */
 
-    bool recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe);
-    bool recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList);
+    // bool recipe_encrypt(KeyRecipeList_t& recipeList, string& encryptedRecipe);
+    // bool recipe_decrypt(string& encryptedRecipe, KeyRecipeList_t& recipeList);
+    bool recipe_encrypt(Chunk_t newChunk);
+    bool recipe_decrypt(Chunk_t newChunk);
 
     bool chunk_encrypt(Chunk_t& chunk);
     bool chunk_decrypt(Chunk_t& chunk);

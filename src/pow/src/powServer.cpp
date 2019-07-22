@@ -315,7 +315,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          * secret between us and the client.
          */
 
-        if (msg4.status) {
+        if (msg4.status_) {
 
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
@@ -371,13 +371,13 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else {
-            msg4->status = false;
+            msg4->status_ = false;
         }
     }
     return true;
@@ -386,8 +386,8 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 bool powServer::process_signedHash(powSession* session, powSignedHash req)
 {
     _crypto.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
-    string Mac, signature((char*)req.signature, 16);
-    _crypto.cmac128(req.hash, Mac);
+    string Mac, signature((char*)req.signature_, 16);
+    _crypto.cmac128(req.hash_, Mac);
     if (Mac.compare(signature)) {
         cerr << "client signature unvalid" << endl;
         return false;

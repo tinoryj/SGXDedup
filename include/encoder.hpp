@@ -16,7 +16,7 @@ private:
     messageQueue<Chunk_t> inputMQ_;
 
 public:
-    bool encodeChunk(Chunk_t newChunk);
+    bool encodeChunk(Chunk_t& newChunk);
     encoder(powClient* powObjTemp);
     ~encoder();
     void run();

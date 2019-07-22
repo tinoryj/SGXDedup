@@ -18,11 +18,12 @@ private:
     messageQueue<Chunk_t> inputMQ_;
     encoder* encoderObj_;
     CryptoPrimitive* cryptoObj_;
+    int keyBatchSizeMin_, keyBatchSizeMax_;
     Socket socket_;
     bool trustdKM_;
 
 public:
-    keyClient();
+    keyClient(encoder* encoderObjTemp);
     ~keyClient();
     void run();
     bool insertMQFromChunker(Chunk_t newChunk);
