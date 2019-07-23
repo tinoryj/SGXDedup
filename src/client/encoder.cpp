@@ -19,18 +19,12 @@ encoder::~encoder()
 
 void encoder::run()
 {
-
     while (true) {
         Chunk_t tempChunk;
         if (inputMQ_.done_ && !extractMQFromKeyClient(tempChunk)) {
             break;
         }
         encodeChunk(tempChunk);
-        string data, hash;
-        data.resize(tempChunk.logicDataSize);
-        memcpy(&data[0], tempChunk.logicData, tempChunk.logicDataSize);
-        cryptoObj_->sha256_digest(data, hash);
-        memcpy(tempChunk.chunkHash, hash.c_str(), CHUNK_HASH_SIZE);
         insertMQToPOW(tempChunk);
     }
     powObj_->editJobDoneFlag();
@@ -39,7 +33,8 @@ void encoder::run()
 
 bool encoder::encodeChunk(Chunk_t& newChunk)
 {
-    cryptoObj_->chunk_encrypt(newChunk);
+    cryptoObj_->encryptChunk(newChunk);
+    cryptoObj_->generateHash(newChunk.logicData, newChunk.logicDataSize, newChunk.chunkHash);
 }
 
 bool encoder::insertMQFromKeyClient(Chunk_t newChunk)
@@ -60,4 +55,9 @@ bool encoder::insertMQToPOW(Chunk_t newChunk)
 bool encoder::editJobDoneFlag()
 {
     inputMQ_.done_ = true;
+    if (inputMQ_.done_) {
+        return true;
+    } else {
+        return false;
+    }
 }

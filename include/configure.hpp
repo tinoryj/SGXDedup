@@ -47,6 +47,8 @@ using namespace std;
 
 #define JOB_DONE_FLAG_CHUNKER 0
 
+#define CRYPTO_BLOCK_SZIE 16
+
 class Configure {
 private:
     // following settings configure by macro set
@@ -60,11 +62,6 @@ private:
     uint64_t _slidingWinSize;
     uint64_t _segmentSize; // if exist segment function
     uint64_t _ReadSize; //128M per time
-
-    // message queue settings
-    uint64_t _mqCnt;
-    uint64_t* _messageQueueCnt;
-    uint64_t* _messageQueueUnitSize;
 
     // key management settings
     uint64_t _keyServerNumber;
@@ -121,6 +118,7 @@ private:
     //client settings
     int _clientID;
     int _sendChunkBatchSize;
+    int _sendRecipeBatchSize;
 
     //timer settings
     double _timeOutScale;
@@ -153,11 +151,6 @@ public:
     uint64_t getSegmentSize();
 
     uint64_t getReadSize();
-
-    // message queue settions
-    uint64_t getMessageQueueCnt(int index);
-
-    uint64_t getMessageQueueUnitSize(int index);
 
     // key management settings
     uint64_t getKeyServerNumber();
@@ -226,6 +219,7 @@ public:
     //client settings
     int getClientID();
     int getSendChunkBatchSize();
+    int getSendRecipeBatchSize();
 
     //timer settings
     double getTimeOutScale();

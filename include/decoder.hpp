@@ -12,7 +12,7 @@ using namespace std;
 class decoder {
 private:
     CryptoPrimitive* cryptoObj_;
-    KeyRecipeList_t keyRecipeList_;
+    RecipeList_t RecipeList_;
     bool getKey(Chunk_t& newChunk);
     bool decodeChunk(Chunk_t& newChunk);
     void runDecode();

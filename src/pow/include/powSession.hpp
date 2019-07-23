@@ -21,13 +21,13 @@ struct sgx_msg01_t {
 
 struct powSession {
     bool enclaveTrusted;
-    unsigned char g_a[64];
-    unsigned char g_b[64];
-    unsigned char kdk[16];
-    unsigned char smk[16];
-    unsigned char sk[16];
-    unsigned char mk[16];
-    unsigned char vk[16];
+    u_char g_a[64];
+    u_char g_b[64];
+    u_char kdk[16];
+    u_char smk[16];
+    u_char sk[16];
+    u_char mk[16];
+    u_char vk[16];
     sgx_ra_msg1_t msg1;
 };
 

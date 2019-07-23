@@ -1,18 +1,20 @@
 #ifndef GENERALDEDUPSYSTEM_POWSERVER_HPP
 #define GENERALDEDUPSYSTEM_POWSERVER_HPP
 
-#include "../../../include/configure.hpp"
-#include "../../../include/cryptoPrimitive.hpp"
-#include "../../../include/dataStructure.hpp"
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
 #include "base64.h"
 #include "byteorder.h"
+#include "configure.hpp"
 #include "crypto.h"
+#include "cryptoPrimitive.hpp"
+#include "dataSR.hpp"
+#include "dataStructure.hpp"
 #include "iasrequest.h"
 #include "json.hpp"
+#include "messageQueue.hpp"
 #include "powSession.hpp"
-#include <iostream>
+#include "protocol.hpp"
+#include <bits/stdc++.h>
+#include <openssl/err.h>
 
 #define CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
 #define IAS_SIGNING_CA_FILE "key/AttestationReportSigningCACert.pem"
@@ -33,9 +35,7 @@ using namespace std;
 
 class powServer {
 private:
-    messageQueue<EpollMessage_t> inputMQ_;
-    messageQueue<EpollMessage_t> outputMQ_;
-    messageQueue<EpollMessage_t> netMQ_;
+    dataSR* dataSRObj_;
     map<int, powSession*> sessions;
     CryptoPrimitive cryptoObj_;
     void closeSession(int fd);

@@ -25,8 +25,8 @@ void powClient::run()
         batchHash.clear();
         request.hash_.clear();
 
-        //% TODO
         uint64_t currentBatchSize = 0;
+        memset(batchChunkLogicData_charBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
         for (uint64_t i = 0, cnt = 0; i < powBatchSize; i++) {
             if (inputMQ.done_ && !extractMQFromEncoder(tempChunk)) {
                 senderObj->editJobDoneFlag();
@@ -64,6 +64,7 @@ void powClient::run()
         for (auto it : lists) {
             batchChunk[it].type = CHUNK_TYPE_NEED_UPLOAD;
         }
+        lists.clear();
         for (int i; i < batchChunk.size(); i++) {
             insertMQToSender(batchChunk[i]);
         }
@@ -218,7 +219,12 @@ bool powClient::do_attestation()
 
 bool powClient::editJobDoneFlag()
 {
-    return inputMQ.done_ = true;
+    inputMQ.done_ = true;
+    if (inputMQ.done) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool powClient::insertMQFromEncoder(Chunk_t newChunk)

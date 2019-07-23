@@ -75,13 +75,11 @@ typedef struct {
 typedef struct {
     int messageType;
     int clientID;
-    string data;
-} NetworkStruct_t;
+} NetworkHeadStruct_t;
 
 // database data structures
 
 typedef struct {
-
     //key: string _chunkHash;
     //value: containerName, offset in container, chunk size;
     string containerName;
@@ -90,13 +88,11 @@ typedef struct {
 } keyValueForChunkHash;
 
 typedef struct {
-
     //key: string _filename;
     //value: file recipe name, key recipe name, version;
     string fileRecipeName;
     string keyRecipeName;
     uint32_t version;
-
 } keyValueForFilename;
 
 //dedup core data structures

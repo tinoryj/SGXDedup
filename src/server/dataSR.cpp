@@ -1,37 +1,21 @@
-//
-// Created by a on 2/3/19.
-//
-
 #include <dataSR.hpp>
-//TODO:tmp
-#include "../../include/dataSR.hpp"
-_DataSR::_DataSR()
+dataSR::dataSR()
 {
-    _inputMQ.createQueue(DATASR_IN_MQ, READ_MESSAGE);
-    _mq2DedupCore.createQueue(DATASR_TO_DEDUPCORE_MQ, WRITE_MESSAGE);
-    _mq2StorageCore.createQueue(DATASR_TO_STORAGECORE_MQ, WRITE_MESSAGE);
-    _mq2RAServer.createQueue(DATASR_TO_POWSERVER_MQ, WRITE_MESSAGE);
-    /*
-    _outputMQ[0].createQueue(DATASR_TO_DEDUPCORE_MQ,WRITE_MESSAGE);
-    _outputMQ[1].createQueue(DATASR_TO_STORAGECORE_MQ,WRITE_MESSAGE);
-    _outputMQ[2].createQueue(DATASR_TO_POWSERVER_MQ,WRITE_MESSAGE);
-     */
     _socket.init(SERVER_TCP, "", config.getStorageServerPort());
 }
 
-_DataSR::~_DataSR()
+dataSR::~dataSR()
 {
     _socket.finish();
 }
 
-bool _DataSR::extractMQ()
+bool dataSR::extractMQ()
 {
-    epoll_message* msg = new epoll_message();
-    ;
+    EpollMessage_t msg;
     epoll_event ev;
     ev.events = EPOLLOUT | EPOLLET;
     while (1) {
-        //        epoll_message *msg=new epoll_message();;
+        //        EpollMessage_t *msg=new EpollMessage_t();;
         if (!_inputMQ.pop(*msg)) {
             continue;
         }
@@ -41,14 +25,14 @@ bool _DataSR::extractMQ()
             continue;
         }
         ev.data.ptr = (void*)_epollSession.at(msg->_fd);
-        _epollSession.at(msg->_fd)->_data = msg->_data;
-        _epollSession.at(msg->_fd)->_type = msg->_type;
+        _epollSession.at(msg->fd)->_data = msg->data;
+        _epollSession.at(msg->fd)->_type = msg->type;
         //        ev.data.ptr=(void*)msg;
-        epoll_ctl(msg->_epfd, EPOLL_CTL_MOD, msg->_fd, &ev);
+        epoll_ctl(msg->epfd, EPOLL_CTL_MOD, msg->fd, &ev);
     }
 }
 
-bool _DataSR::insertMQ(int queueSwitch, epoll_message* msg)
+bool dataSR::insertMQ(int queueSwitch, EpollMessage_t msg)
 {
     switch (queueSwitch) {
     case MESSAGE2RASERVER: {
@@ -65,13 +49,13 @@ bool _DataSR::insertMQ(int queueSwitch, epoll_message* msg)
     }
 }
 
-bool _DataSR::workloadProgress()
+bool dataSR::workloadProgress()
 {
     int epfd;
     map<int, Socket> socketConnection;
     epoll_event ev, event[100];
     epfd = epoll_create(20);
-    epoll_message* msg = new epoll_message();
+    EpollMessage_t msg;
     msg->_fd = _socket.fd;
     msg->_epfd = epfd;
     ev.data.ptr = (void*)msg;
@@ -84,11 +68,11 @@ bool _DataSR::workloadProgress()
     while (1) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {
-            msg = (epoll_message*)event[i].data.ptr;
+            msg = (EpollMessage_t*)event[i].data.ptr;
 
             //Listen fd
             if (msg->_fd == _socket.fd) {
-                epoll_message* msg1 = new epoll_message();
+                EpollMessage_t msg1;
                 tmpSock = _socket.Listen();
                 socketConnection[tmpSock.fd] = tmpSock;
                 msg1->_fd = tmpSock.fd;
@@ -168,7 +152,7 @@ bool _DataSR::workloadProgress()
 
 void dataSR::run()
 {
-    boost::thread th(boost::bind(&_DataSR::extractMQ, this));
+    boost::thread th(boost::bind(&dataSR::extractMQ, this));
     this->workloadProgress();
     th.detach();
 }

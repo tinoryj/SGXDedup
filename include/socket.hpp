@@ -33,13 +33,11 @@ public:
     ~Socket(){};
 
     void init(const int type, string ip, int port);
-
     void finish();
 
     // void setNonBlock();
-    bool Send(const string buffer);
-
-    bool Recv(string& buffer);
+    bool Send(u_char* buffer, int sendSize);
+    bool Recv(u_char* buffer, int& recvSize);
 
     Socket Listen();
 };

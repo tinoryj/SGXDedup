@@ -8,35 +8,6 @@
 		"_slidingWinSize": 256,
 		"_ReadSize": 128
 	},
-	"MessageQueue": {
-		"_mqCnt": 13,
-		"_messageQueueCnt0": 50,
-		"_messageQueueUnitSize0": 5000000,
-		"_messageQueueCnt1": 50,
-		"_messageQueueUnitSize1": 5000000,
-		"_messageQueueCnt2": 50,
-		"_messageQueueUnitSize2": 5000000,
-		"_messageQueueCnt3": 50,
-		"_messageQueueUnitSize3": 5000000,
-		"_messageQueueCnt4": 50,
-		"_messageQueueUnitSize4": 5000000,
-		"_messageQueueCnt5": 50,
-		"_messageQueueUnitSize5": 5000000,
-		"_messageQueueCnt6": 50,
-		"_messageQueueUnitSize6": 5000000,
-		"_messageQueueCnt7": 50,
-		"_messageQueueUnitSize7": 5000000,
-		"_messageQueueCnt8": 50,
-		"_messageQueueUnitSize8": 5000000,
-		"_messageQueueCnt9": 50,
-		"_messageQueueUnitSize9": 5000000,
-		"_messageQueueCnt10": 50,
-		"_messageQueueUnitSize10": 5000000,
-		"_messageQueueCnt11": 50,
-		"_messageQueueUnitSize11": 5000000,
-		"_messageQueueCnt12": 50,
-		"_messageQueueUnitSize12": 5000000
-	},
 	"KeyServerConfig": {
 		"_keyBatchSizeMin": 10000,
 		"_keyBatchSizeMax": 2000000,
@@ -99,7 +70,8 @@
 	},
 	"client": {
 		"_clientID": 1,
-		"_sendChunkBatchSize": 250
+		"_sendChunkBatchSize": 250,
+		"_sendRecipeBatchSize": 2500
 	},
 	"timer": {
 		"_timeScale": 1

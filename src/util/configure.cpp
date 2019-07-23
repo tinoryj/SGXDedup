@@ -96,6 +96,7 @@ void Configure::readConf(std::string path)
     //client Configure
     _clientID = root.get<int>("client._clientID");
     _sendChunkBatchSize = root.get<int>("client._sendChunkBatchSize");
+    _sendRecipeBatchSize = root.get<int>("client._sendRecipeBatchSize");
 
     //timer Configure
     _timeOutScale = root.get<double>("timer._timeScale");
@@ -147,19 +148,6 @@ uint64_t Configure::getSegmentSize()
 uint64_t Configure::getReadSize()
 {
     return _ReadSize;
-}
-
-// message queue settions
-uint64_t Configure::getMessageQueueCnt(int index)
-{
-
-    return _messageQueueCnt[index];
-}
-
-uint64_t Configure::getMessageQueueUnitSize(int index)
-{
-
-    return _messageQueueUnitSize[index];
 }
 
 // key management settings
@@ -412,4 +400,9 @@ int Configure::getDedupCoreThreadLimit()
 int Configure::getStorageCoreThreadLimit()
 {
     return _storageCoreThreadLimit;
+}
+
+int Configure::getSendRecipeBatchSize()
+{
+    return _sendRecipeBatchSize;
 }

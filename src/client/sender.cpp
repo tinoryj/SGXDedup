@@ -11,6 +11,7 @@ Sender::Sender()
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_ = new CryptoPrimitive();
 }
+
 Sender::~Sender()
 {
     socket_.finish();
@@ -21,21 +22,25 @@ Sender::~Sender()
 
 bool Sender::sendRecipeList(RecipeList_t& request, int& status)
 {
-    NetworkStruct_t requestBody, respondBody;
-    string requestBuffer, respondBuffer;
+    NetworkHeadStruct_t requestBody, respondBody;
     requestBody.clientID = config.getClientID();
     requestBody.messageType = CLIENT_UPLOAD_RECIPE;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
-
-    serialize(request, requestBody.data);
-    serialize(requestBody, requestBuffer);
-
-    if (!this->sendData(requestBuffer, respondBuffer)) {
+    int recipeNumber = request.size();
+    int sendSize = sizeof(NetworkHeadStruct_t) + recipeNumber * sizeof(RecipeEntry_t) + sizeof(int);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &recipeNumber, sizeof(int));
+    for (int i = 0; i < recipeNumber; i++) {
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(RecipeEntry_t) * i, &request[i], sizeof(RecipeEntry_t));
+    }
+    u_char* respondBuffer;
+    int recvSize = 0;
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
     }
-
-    deserialize(respondBuffer, respondBody);
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
 
     if (status == SUCCESS) {
@@ -48,81 +53,99 @@ bool Sender::sendRecipeList(RecipeList_t& request, int& status)
 bool Sender::sendChunkList(ChunkList_t& request, int& status)
 {
 
-    NetworkStruct_t requestBody, respondBody;
-    string requestBuffer, respondBuffer;
+    NetworkHeadStruct_t requestBody, respondBody;
     requestBody.clientID = config.getClientID();
     requestBody.messageType = CLIENT_UPLOAD_CHUNK;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
 
-    serialize(request, requestBody.data);
-    serialize(requestBody, requestBuffer);
+    int chunkNumber = request.size();
+    int sendSize = sizeof(NetworkHeadStruct_t) + chunkNumber * sizeof(Chunk_t) + sizeof(int);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &chunkNumber, sizeof(int));
+    for (int i = 0; i < chunkNumber; i++) {
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(Chunk_t) * i, &request[i], sizeof(Chunk_t));
+    }
+    u_char* respondBuffer;
+    int recvSize = 0;
 
-    if (!this->sendData(requestBuffer, respondBuffer)) {
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
     }
 
-    deserialize(respondBuffer, respondBody);
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
 
-    if (status == SUCCESS)
+    if (status == SUCCESS) {
         return true;
-    return false;
+    } else {
+        return false;
+    }
 }
 
 bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status)
 {
 
-    NetworkStruct_t requestBody, respondBody;
-    string requestBuffer, respondBuffer;
+    NetworkHeadStruct_t requestBody, respondBody;
     requestBody.clientID = config.getClientID();
     requestBody.messageType = SGX_RA_MSG01;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
 
-    string& requestBuffer = requestBody.data;
-    requestBuffer.resize(sizeof(msg0) + sizeof(msg1));
-    memcpy(&requestBuffer[0], &msg0, sizeof(char));
-    memcpy(&requestBuffer[sizeof(msg0)], &msg1, sizeof(msg1));
-    string sendBuffer, recvBuffer;
-    serialize(requestBody, sendBuffer);
-    if (!this->sendData(sendBuffer, recvBuffer)) {
+    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(msg0) + sizeof(msg1);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg0, sizeof(msg0));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg0), &msg1, sizeof(msg1));
+
+    u_char* respondBuffer;
+    int recvSize = 0;
+
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed" << endl;
         return false;
     }
-    deserialize(recvBuffer, respondBody);
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
+
     if (status == SUCCESS) {
-        msg2 = (sgx_ra_msg2_t*)new char[respondBody.data.length()];
-        memcpy(msg2, &respondBody.data[0], respondBody.data.length());
+        msg2 = (sgx_ra_msg2_t*)new char[recvSize - sizeof(NetworkHeadStruct_t)];
+        memcpy(msg2, respondBuffer + sizeof(NetworkHeadStruct_t), recvSize - sizeof(NetworkHeadStruct_t));
         return true;
     }
     return false;
 }
 
-bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t sz, ra_msg4_t*& msg4, int& status)
+bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, int& status)
 {
 
-    NetworkStruct_t requestBody, respondBody;
-    string requestBuffer, respondBuffer;
+    NetworkHeadStruct_t requestBody, respondBody;
+
     requestBody.clientID = config.getClientID();
     requestBody.messageType = SGX_RA_MSG3;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
 
-    requestBody.data.resize(sz);
+    int sendSize = sizeof(NetworkHeadStruct_t) + size;
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg3, size);
 
-    memcpy(&requestBody.data[0], &msg3, sz);
-    serialize(requestBody, requestBuffer);
+    u_char* respondBuffer;
+    int recvSize = 0;
 
-    this->sendData(requestBuffer, respondBuffer);
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+        cerr << "Sender : peer closed" << endl;
+        return false;
+    }
 
-    deserialize(respondBuffer, respondBody);
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
 
     if (status == SUCCESS) {
         msg4 = new ra_msg4_t;
-        memcpy(msg4, &respondBuffer[0], sizeof(ra_msg4_t));
+        memcpy(msg4, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(ra_msg4_t));
         return true;
     }
     return false;
@@ -130,42 +153,52 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t sz, ra_msg4_t*& msg4, int
 
 bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respond, int& status)
 {
-    NetworkStruct_t requestBody, respondBody;
+    NetworkHeadStruct_t requestBody, respondBody;
     requestBody.messageType = SGX_SIGNED_HASH;
     requestBody.clientID = config.getClientID();
     respondBody.messageType = 0;
     respondBody.clientID = 0;
 
-    string requestBuffer, respondBuffer;
+    int signedHashNumber = request.hash_.size();
+    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request.signature_, 16 * sizeof(uint8_t));
+    for (int i = 0; i < signedHashNumber; i++) {
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + 16 * sizeof(uint8_t), &request.hash_[i][0], CHUNK_HASH_SIZE);
+    }
 
-    serialize(request, requestBody.data);
-    serialize(requestBody, requestBuffer);
-
-    if (!this->sendData(requestBuffer, respondBuffer)) {
+    u_char* respondBuffer;
+    int recvSize = 0;
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed" << endl;
         return false;
     }
 
-    deserialize(respondBuffer, respondBody);
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
-
+    int requiredChunkNumber;
+    memcpy(&requiredChunkNumber, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int));
     if (status == SUCCESS) {
-        deserialize(respondBody.data, respond);
+        for (int i = 0; i < requiredChunkNumber; i++) {
+            uint64_t tempID;
+            memcpy(&tempID, respondBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), sizeof(uint64_t));
+            respond.push_back(tempID);
+        }
         return true;
+    } else {
+        return false;
     }
-
-    return false;
 }
 
-bool Sender::sendData(string& request, string& respond)
+bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& respondSize)
 {
     std::lock_guard<std::mutex> locker(mutexSocket_);
-    if (!socket_.Send(request)) {
+    if (!socket_.Send(request, requestSize)) {
         cerr << "Sender : peer closed" << endl;
-
         exit(0);
     }
-    if (!socket_.Recv(respond)) {
+    if (!socket_.Recv(respond, respondSize)) {
         cerr << "Sender : peer closed" << endl;
         exit(0);
     }
@@ -180,28 +213,17 @@ void Sender::run()
 
     int status;
 
-    bool start = false;
+    bool jobDoneFlag = false;
 
     while (true) {
-        chunkList.clear();
-        recipeList.clear();
         for (int i = 0; i < config.getSendChunkBatchSize(); i++) {
             if (inputMQ_.done_ && !extractMQFromPow(tempChunk)) {
-                if (start) {
-                    cerr << "Sender : sending chunks and recipes end" << endl;
-                    start = false;
-                }
+                jobDoneFlag = true;
                 break;
-            }
-
-            if (!start) {
-                cerr << "Sender : start sending chunks and recipes" << endl;
-                start = true;
             }
             if (tempChunk.type == CHUNK_TYPE_NEED_UPLOAD) {
                 chunkList.push_back(tempChunk);
             }
-
             RecipeEntry_t newRecipeEntry;
             newRecipeEntry.chunkID = tempChunk.ID;
             newRecipeEntry.chunkSize = tempChunk.logicDataSize;
@@ -210,11 +232,6 @@ void Sender::run()
             recipeList.push_back(newRecipeEntry);
         }
 
-        if (chunkList.empty()) {
-            continue;
-        }
-
-        bool success = false;
         while (true) {
             this->sendChunkList(chunkList, status);
             if (status == SUCCESS) {
@@ -228,22 +245,28 @@ void Sender::run()
             if (status == ERROR_RESEND) {
                 std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
             }
-
-            this->sendRecipeList(recipeList, status);
-            if (status == SUCCESS) {
-                std::cerr << "Sender : send recipe success" << endl;
-                break;
-            }
-            if (status == ERROR_CLOSE) {
-                std::cerr << "Sender : Server Reject Chunk and send close flag" << endl;
-                exit(1);
-            }
-            if (status == ERROR_RESEND) {
-                std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
-                continue;
-            }
+            chunkList.clear();
         }
-        if (!start) {
+
+        if (recipeList.size() == config.getSendRecipeBatchSize() || jobDoneFlag == true) {
+            while (true) {
+                this->sendRecipeList(recipeList, status);
+                if (status == SUCCESS) {
+                    std::cerr << "Sender : send recipe success" << endl;
+                    break;
+                }
+                if (status == ERROR_CLOSE) {
+                    std::cerr << "Sender : Server Reject Chunk and send close flag" << endl;
+                    exit(1);
+                }
+                if (status == ERROR_RESEND) {
+                    std::cerr << "Sender : Server Reject Chunk and send resend flag" << endl;
+                    continue;
+                }
+            }
+            recipeList.clear();
+        }
+        if (jobDoneFlag == true) {
             break;
         }
     }

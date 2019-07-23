@@ -1,7 +1,4 @@
-#include "../include/powServer.hpp"
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
-
+#include "powServer.hpp"
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
 // -A AttestationReportSigningCACert.pem -C client.crt
@@ -13,28 +10,24 @@ void powServer::closeSession(int fd)
 
 powServer::powServer()
 {
-    // _inputMQ.createQueue(DATASR_TO_POWSERVER_MQ, READ_MESSAGE);
-    // _outputMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ, WRITE_MESSAGE);
-    // _netMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
 
-    //ERR_load_crypto_strings();
-    ERR_load_CRYPTO_strings();
+    ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
 
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
-        cerr << "can not load IAS Signing Cert CA" << endl;
+        cerr << "can not load IAS Signing Cert CA\n";
         exit(1);
     }
 
     _store = cert_init_ca(_signing_ca);
     if (_store == nullptr) {
-        cerr << "can not init cert file" << endl;
+        cerr << "can not init cert file\n";
         exit(1);
     }
 
     string spid = config.getPOWSPID();
     if (spid.length() != 32) {
-        cerr << "SPID must be 32-byte hex string" << endl;
+        cerr << "SPID must be 32-byte hex string\n";
         exit(1);
     }
 
@@ -60,72 +53,71 @@ void powServer::run()
     sgx_ra_msg3_t* msg3;
     ra_msg4_t msg4;
 
-    //Data_t msg01, msg2, msg3, msg4;
-
     while (1) {
-        if (!inputMQ_.pop(msg)) {
+        if (!_inputMQ.pop(msg)) {
             continue;
         }
-        switch (msg.type) {
+        switch (msg._type) {
         case SGX_RA_MSG01: {
-            memcpy(&msg01, msg.data, sizeof(sgx_msg01_t));
-
-            if (!process_msg01(msg.fd, msg01, msg2)) {
-                cerr << "error process msg01" << endl;
-                msg.type = ERROR_RESEND;
+            memcpy(&msg01, &msg._data[0], sizeof(sgx_msg01_t));
+            msg._data.clear();
+            if (!process_msg01(msg._fd, msg01, msg2)) {
+                cerr << "error process msg01\n";
+                msg._type = ERROR_RESEND;
             } else {
-                msg.type = SUCCESS;
-                memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
+                msg._type = SUCCESS;
+                msg._data.resize(sizeof(sgx_ra_msg2_t));
+                memcpy(&msg._data[0], &msg2, sizeof(sgx_ra_msg2_t));
             }
-            netMQ_.push(msg);
+            _netMQ.push(msg);
             break;
         }
         case SGX_RA_MSG3: {
-            msg3 = (sgx_ra_msg3_t*)new char[msg.data.length()];
-            memcpy(msg3, &msg.data[0], msg.data.length());
-            if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "client had not send msg01 before" << endl;
-                msg.type = ERROR_CLOSE;
-
+            msg3 = (sgx_ra_msg3_t*)new char[msg._data.length()];
+            memcpy(msg3, &msg._data[0], msg._data.length());
+            if (sessions.find(msg._fd) == sessions.end()) {
+                cerr << "client had not send msg01 before\n";
+                msg._type = ERROR_CLOSE;
+                msg._data.clear();
             } else {
-                if (this->process_msg3(sessions[msg.fd], msg3, msg4,
-                        msg.data.length() - sizeof(sgx_ra_msg3_t))) {
-                    msg.type = SUCCESS;
-                    memcpy(&msg.data[0], &msg4, sizeof(ra_msg4_t));
+                if (this->process_msg3(sessions[msg._fd], msg3, msg4,
+                        msg._data.length() - sizeof(sgx_ra_msg3_t))) {
+                    msg._type = SUCCESS;
+                    msg._data.resize(sizeof(ra_msg4_t));
+                    memcpy(&msg._data[0], &msg4, sizeof(ra_msg4_t));
                 } else {
-                    cerr << "sgx msg3 error" << endl;
-                    msg.type = ERROR_CLOSE;
+                    cerr << "sgx msg3 error\n";
+                    msg._type = ERROR_CLOSE;
+                    msg._data.clear();
                 }
             }
-            netMQ_.push(msg);
+            _netMQ.push(msg);
             break;
         }
         case SGX_SIGNED_HASH: {
             powSignedHash clientReq;
-            deserialize(msg.data, clientReq);
-            if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "client not trusted yet" << endl;
-                msg.type = ERROR_CLOSE;
+            deserialize(msg._data, clientReq);
+            if (sessions.find(msg._fd) == sessions.end()) {
+                cerr << "client not trusted yet\n";
+                msg._type = ERROR_CLOSE;
             } else {
-                if (!sessions.at(msg.fd)->enclaveTrusted) {
-                    cerr << "client not trusted yet" << endl;
-                    msg.type = ERROR_CLOSE;
+                if (!sessions.at(msg._fd)->enclaveTrusted) {
+                    cerr << "client not trusted yet\n";
+                    msg._type = ERROR_CLOSE;
                 } else {
-                    if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
-                        outputMQ_.push(msg);
+                    if (this->process_signedHash(sessions.at(msg._fd), clientReq)) {
+                        _outputMQ.push(msg);
                         break;
                     } else {
-                        s
-                            msg.type
-                            = ERROR_RESEND;
+                        msg._type = ERROR_RESEND;
                     }
                 }
             }
-            netMQ_.push(msg);
+            _netMQ.push(msg);
             break;
         }
         case POW_CLOSE_SESSION: {
-            this->closeSession(msg.fd);
+            this->closeSession(msg._fd);
             break;
         }
         default: {
@@ -144,7 +136,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     unsigned char digest[32], r[32], s[32], gb_ga[128];
 
     if (msg01.msg0_extended_epid_group_id != 0) {
-        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
+        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting.\n";
         return false;
     }
 
@@ -152,12 +144,12 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 
     Gb = key_generate();
     if (Gb == nullptr) {
-        cerr << "can not create session key" << endl;
+        cerr << "can not create session key\n";
         return false;
     }
 
     if (!derive_kdk(Gb, current->kdk, msg01.msg1.g_a)) {
-        cerr << "can not derive KDK" << endl;
+        cerr << "can not derive KDK\n";
         return false;
     }
 
@@ -173,7 +165,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     msg2.kdf_id = 1;
 
     if (!get_sigrl(msg01.msg1.gid, (char**)&msg2.sig_rl, &msg2.sig_rl_size)) {
-        cerr << "can not retrieve sigrl form ias server" << endl;
+        cerr << "can not retrieve sigrl form ias server\n";
         return false;
     }
 
@@ -200,12 +192,12 @@ bool powServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t 
     EVP_PKEY* Ga;
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
-        cerr << "can not get ga from msg1" << endl;
+        cerr << "can not get ga from msg1\n";
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
-        cerr << "can not get shared secret" << endl;
+        cerr << "can not get shared secret\n";
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
@@ -221,12 +213,12 @@ bool powServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
 
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
-        cerr << "can not make ias request" << endl;
+        cerr << "can not make ias request\n";
         return false;
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
-        cerr << "ias get sigrl error" << endl;
+        cerr << "ias get sigrl error\n";
         return false;
     }
     *sig_rl = strdup(sigrlstr.c_str());
@@ -236,22 +228,20 @@ bool powServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
     *sig_rl_size = (uint32_t)sigrlstr.length();
     return true;
 }
-Data_t
 
-    bool
-    powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
-        ra_msg4_t& msg4, uint32_t quote_sz)
+bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+    ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
     if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
             sizeof(sgx_ec256_public_t))) {
-        cerr << "msg1.ga != msg3.ga" << endl;
+        cerr << "msg1.ga != msg3.ga\n";
         return false;
     }
     sgx_mac_t msgMAC;
     cmac128(current->smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
     if (CRYPTO_memcmp(msg3->mac, msgMAC, sizeof(sgx_mac_t))) {
-        cerr << "broken msg3 from client" << endl;
+        cerr << "broken msg3 from client\n";
         return false;
     }
     char* b64quote;
@@ -259,7 +249,7 @@ Data_t
     sgx_quote_t* q;
     q = (sgx_quote_t*)msg3->quote;
     if (memcmp(current->msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
-        cerr << "Attestation failed. Differ gid" << endl;
+        cerr << "Attestation failed. Differ gid\n";
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
@@ -297,7 +287,7 @@ Data_t
         if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data,
                 64)) {
 
-            cerr << "Report verification failed." << endl;
+            cerr << "Report verification failed.\n";
             return false;
         }
 
@@ -318,7 +308,7 @@ Data_t
          * secret between us and the client.
          */
 
-        if (msg4.status_) {
+        if (msg4.status) {
 
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
@@ -328,7 +318,7 @@ Data_t
             current->enclaveTrusted = true;
         }
     } else {
-        cerr << "Attestation failed" << endl;
+        cerr << "Attestation failed\n";
         return false;
     }
 
@@ -345,7 +335,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
     req = new IAS_Request(_ias, (uint16_t)_iasVersion);
     if (req == nullptr) {
-        cerr << "Exception while creating IAS request object" << endl;
+        cerr << "Exception while creating IAS request object\n";
         return false;
     }
 
@@ -374,13 +364,13 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else {
-            msg4->status_ = false;
+            msg4->status = false;
         }
     }
     return true;
@@ -388,11 +378,11 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
 bool powServer::process_signedHash(powSession* session, powSignedHash req)
 {
-    cryptoObj_.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
-    string Mac, signature((char*)req.signature_, 16);
-    cryptoObj_.cmac128(req.hash_, Mac);
+    _crypto.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
+    string Mac, signature((char*)req.signature, 16);
+    _crypto.cmac128(req.hash, Mac);
     if (Mac.compare(signature)) {
-        cerr << "client signature unvalid" << endl;
+        cerr << "client signature unvalid\n";
         return false;
     }
     return true;

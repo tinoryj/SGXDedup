@@ -42,7 +42,7 @@ public:
     void run();
 
     //general send data
-    bool sendData(string& request, string& respond);
+    bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize);
 
     bool insertMQFromPow(Chunk_t newChunk);
     bool extractMQFromPow(Chunk_t newChunk);

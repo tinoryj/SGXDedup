@@ -19,7 +19,7 @@ keyClient::keyClient(encoder* encoderObjTemp)
     powSession* session = server.authkm();
     if (session != nullptr) {
         trustdKM_ = true;
-        cryptoObj_->setSymKey((const char*)session->smk, 16, (const char*)session->smk, 16);
+        memcpy(keyExchangeKey_, session->smk, 16);
         delete session;
     } else {
         trustdKM_ = false;
@@ -36,9 +36,8 @@ keyClient::~keyClient()
 
 void keyClient::run()
 {
-
     while (true) {
-        vector<Chunk_t> chunkList;
+        ChunkList_t chunkList;
         string segmentKey;
         string minHash;
         minHash.resize(32);
@@ -76,51 +75,49 @@ void keyClient::run()
         if (kCache.existsKeyinCache(minHash)) {
             segmentKey = kCache.getKeyFromCache(minHash);
             for (auto it : chunkList) {
-                memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
-                //memcpy(chunkerObj_->getRecipeList[it.ID].chunkKey, it.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                memcpy(it.encryptKey, &segmentKey[0], CHUNK_ENCRYPT_KEY_SIZE);
             }
             continue;
         }
         segmentKey = keyExchange(chunkList[minHashIndex]);
 
-        //std::cout<<"get key : "<<segmentKey<<endl;
-
         //write to hash cache
         kCache.insertKeyToCache(minHash, segmentKey);
         for (auto it : chunkList) {
-            memcpy(it.encryptKey, segmentKey.c_str(), CHUNK_ENCRYPT_KEY_SIZE);
+            memcpy(it.encryptKey, &segmentKey[0], CHUNK_ENCRYPT_KEY_SIZE);
             insertMQtoEncoder(it);
-            //memcpy(chunkerObj_->getRecipeList[it.ID].chunkKey, it.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
         }
         if (exitFlag) {
             encoderObj_->editJobDoneFlag();
-            pthread_exit(NULL);
+            break;
         }
     }
+    pthread_exit(NULL);
     //close ssl connection
 }
 
 string keyClient::keyExchange(Chunk_t champion)
 {
-    string key, buffer;
-    key.resize(16);
     while (!trustdKM_)
         ;
-    string minHash;
-    minHash.resize(CHUNK_HASH_SIZE);
-    memcpy(&minHash[0], champion.chunkHash, CHUNK_HASH_SIZE);
-    if (!socket_.Send(minHash)) {
+    u_char minHash[CHUNK_HASH_SIZE];
+    memcpy(minHash, champion.chunkHash, CHUNK_HASH_SIZE);
+    u_char sendHash[CHUNK_HASH_SIZE];
+    cryptoObj_->keyExchangeEncrypt(minHash, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
+    if (!socket_.Send(sendHash, CHUNK_HASH_SIZE)) {
         cerr << "keyClient: socket error" << endl;
         exit(0);
     }
-    if (!socket_.Recv(buffer)) {
+    u_char* recvBuffer;
+    int recvSize;
+    if (!socket_.Recv(recvBuffer, recvSize) || recvSize != CHUNK_ENCRYPT_KEY_SIZE) {
         cerr << "keyClient: socket error" << endl;
         exit(0);
     }
-    cryptoObj_->cbc128_decrypt(buffer, key);
+    u_char key[CHUNK_ENCRYPT_KEY_SIZE];
+    cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, key);
     u_char returnValue_char[CHUNK_ENCRYPT_KEY_SIZE];
-    memcpy(returnValue_char, key.c_str(), 16);
-    memcpy(returnValue_char + 16, key.c_str(), 16);
+    memcpy(returnValue_char, key, CHUNK_ENCRYPT_KEY_SIZE);
     string returnValue;
     returnValue.resize(CHUNK_ENCRYPT_KEY_SIZE);
     memcpy(&returnValue[0], returnValue_char, CHUNK_ENCRYPT_KEY_SIZE);

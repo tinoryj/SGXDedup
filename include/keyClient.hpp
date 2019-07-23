@@ -21,6 +21,7 @@ private:
     int keyBatchSizeMin_, keyBatchSizeMax_;
     Socket socket_;
     bool trustdKM_;
+    u_char keyExchangeKey_[16];
 
 public:
     keyClient(encoder* encoderObjTemp);
