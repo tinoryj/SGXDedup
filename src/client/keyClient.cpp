@@ -37,73 +37,35 @@ keyClient::~keyClient()
 void keyClient::run()
 {
     while (true) {
-        ChunkList_t chunkList;
-        string segmentKey;
-        string minHash;
-        minHash.resize(32);
+        string chunkKey, chunkHash;
+        chunkHash.resize(CHUNK_HASH_SIZE);
         Chunk_t tempchunk;
-        char mask[32];
-        int segmentSize;
-        int minHashIndex;
-        bool exitFlag = false;
-        memset(mask, '0', sizeof(mask));
-        memset(&minHash[0], 255, sizeof(char) * minHash.length());
-        chunkList.clear();
-
-        for (int it = segmentSize = minHashIndex = 0; segmentSize < keyBatchSizeMax_; it++) {
-            if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
-                exitFlag = true;
-                break;
-            };
-            chunkList.push_back(tempchunk);
-
-            segmentSize += chunkList[it].logicDataSize;
-            if (memcmp((void*)chunkList[it].chunkHash, &minHash[0], sizeof(minHash)) < 0) {
-                memcpy(&minHash[0], chunkList[it].chunkHash, sizeof(minHash));
-                minHashIndex = it;
-            }
-
-            if (memcmp(chunkList[it].chunkHash + (32 - 9), mask, 9) == 0 && segmentSize > keyBatchSizeMax_) {
-                break;
-            }
-        }
-
-        if (chunkList.empty()) {
-            continue;
-        }
-
-        if (kCache.existsKeyinCache(minHash)) {
-            segmentKey = kCache.getKeyFromCache(minHash);
-            for (auto it : chunkList) {
-                memcpy(it.encryptKey, &segmentKey[0], CHUNK_ENCRYPT_KEY_SIZE);
-            }
-            continue;
-        }
-        segmentKey = keyExchange(chunkList[minHashIndex]);
-
-        //write to hash cache
-        kCache.insertKeyToCache(minHash, segmentKey);
-        for (auto it : chunkList) {
-            memcpy(it.encryptKey, &segmentKey[0], CHUNK_ENCRYPT_KEY_SIZE);
-            insertMQtoEncoder(it);
-        }
-        if (exitFlag) {
-            encoderObj_->editJobDoneFlag();
+        if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
             break;
+        };
+        memcpy(&chunkKey[0], tempchunk.chunkHash, CHUNK_HASH_SIZE);
+        if (kCache.existsKeyinCache(chunkHash)) {
+            chunkKey = kCache.getKeyFromCache(chunkHash);
+            memcpy(tempchunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
+        } else {
+            chunkKey = keyExchange(tempchunk);
+            kCache.insertKeyToCache(chunkHash, chunkKey);
+            memcpy(tempchunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
         }
+        insertMQtoEncoder(tempchunk);
     }
     pthread_exit(NULL);
     //close ssl connection
 }
 
-string keyClient::keyExchange(Chunk_t champion)
+string keyClient::keyExchange(Chunk_t newChunk)
 {
     while (!trustdKM_)
         ;
-    u_char minHash[CHUNK_HASH_SIZE];
-    memcpy(minHash, champion.chunkHash, CHUNK_HASH_SIZE);
+    u_char chunkHash[CHUNK_HASH_SIZE];
+    memcpy(chunkHash, newChunk.chunkHash, CHUNK_HASH_SIZE);
     u_char sendHash[CHUNK_HASH_SIZE];
-    cryptoObj_->keyExchangeEncrypt(minHash, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
+    cryptoObj_->keyExchangeEncrypt(chunkHash, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
     if (!socket_.Send(sendHash, CHUNK_HASH_SIZE)) {
         cerr << "keyClient: socket error" << endl;
         exit(0);
@@ -124,17 +86,17 @@ string keyClient::keyExchange(Chunk_t champion)
     return returnValue;
 }
 
-bool keyClient::insertMQFromChunker(Chunk_t newChunk)
+bool keyClient::insertMQFromChunker(Chunk_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool keyClient::extractMQFromChunker(Chunk_t newChunk)
+bool keyClient::extractMQFromChunker(Chunk_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }
 
-bool keyClient::insertMQtoEncoder(Chunk_t newChunk)
+bool keyClient::insertMQtoEncoder(Chunk_t& newChunk)
 {
     return encoderObj_->insertMQFromKeyClient(newChunk);
 }

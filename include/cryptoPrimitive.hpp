@@ -13,7 +13,6 @@
 #include <openssl/rsa.h>
 #include <pthread.h>
 
-#define OPENSSL_VERSION_1_1 1
 #define OPENSSL_THREAD_DEFINES
 
 using namespace std;
@@ -53,6 +52,7 @@ public:
     bool keyExchangeDecrypt(u_char* ciphertext, const int& dataSize, u_char* key, u_char* iv, u_char* dataBuffer);
     bool encryptChunk(Chunk_t& chunk);
     bool decryptChunk(Chunk_t& chunk);
+    bool cmac128(vector<string>& message, string& mac, u_char* key, int keyLen);
 };
 
 #endif //GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP

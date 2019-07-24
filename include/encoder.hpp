@@ -20,9 +20,9 @@ public:
     encoder(powClient* powObjTemp);
     ~encoder();
     void run();
-    bool insertMQFromKeyClient(Chunk_t newChunk);
-    bool extractMQFromKeyClient(Chunk_t newChunk);
-    bool insertMQToPOW(Chunk_t newChunk);
+    bool insertMQFromKeyClient(Chunk_t& newChunk);
+    bool extractMQFromKeyClient(Chunk_t& newChunk);
+    bool insertMQToPOW(Chunk_t& newChunk);
     bool editJobDoneFlag();
 };
 

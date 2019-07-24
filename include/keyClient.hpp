@@ -27,9 +27,9 @@ public:
     keyClient(encoder* encoderObjTemp);
     ~keyClient();
     void run();
-    bool insertMQFromChunker(Chunk_t newChunk);
-    bool extractMQFromChunker(Chunk_t newChunk);
-    bool insertMQtoEncoder(Chunk_t newChunk);
+    bool insertMQFromChunker(Chunk_t& newChunk);
+    bool extractMQFromChunker(Chunk_t& newChunk);
+    bool insertMQtoEncoder(Chunk_t& newChunk);
     bool editJobDoneFlag();
     string keyExchange(Chunk_t champion);
 };

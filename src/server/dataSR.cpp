@@ -1,12 +1,17 @@
 #include <dataSR.hpp>
+#define MESSAGE2RASERVER 1
+#define MESSAGE2STORAGE 2
+#define MESSAGE2DEDUPCORE 3
+
 dataSR::dataSR()
 {
-    _socket.init(SERVER_TCP, "", config.getStorageServerPort());
+    config_ = new Configure("config.json");
+    socket_.init(SERVER_TCP, "", config_->getStorageServerPort());
 }
 
 dataSR::~dataSR()
 {
-    _socket.finish();
+    socket_.finish();
 }
 
 bool dataSR::extractMQ()
@@ -14,37 +19,38 @@ bool dataSR::extractMQ()
     EpollMessage_t msg;
     epoll_event ev;
     ev.events = EPOLLOUT | EPOLLET;
-    while (1) {
-        //        EpollMessage_t *msg=new EpollMessage_t();;
-        if (!_inputMQ.pop(*msg)) {
+    while (true) {
+        if (!extractMQ2DataSR_CallBack(msg)) {
             continue;
         }
-
         //client had closed,abandon these data
-        if (_epollSession.find(msg->_fd) == _epollSession.end()) {
+        if (epollSession_.find(msg.fd) == epollSession_.end()) {
             continue;
         }
-        ev.data.ptr = (void*)_epollSession.at(msg->_fd);
-        _epollSession.at(msg->fd)->_data = msg->data;
-        _epollSession.at(msg->fd)->_type = msg->type;
+        ev.data.ptr = (void*)epollSession_.at(msg.fd);
+        memcpy(epollSession_.at(msg.fd)->data, msg.data, msg.dataSize);
+        epollSession_.at(msg.fd)->type = msg.type;
         //        ev.data.ptr=(void*)msg;
-        epoll_ctl(msg->epfd, EPOLL_CTL_MOD, msg->fd, &ev);
+        epoll_ctl(msg.epfd, EPOLL_CTL_MOD, msg.fd, &ev);
     }
 }
 
-bool dataSR::insertMQ(int queueSwitch, EpollMessage_t msg)
+bool dataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
 {
     switch (queueSwitch) {
     case MESSAGE2RASERVER: {
-        _mq2RAServer.push(*msg);
+        insertMQ2RAServer(msg);
         break;
     }
     case MESSAGE2STORAGE: {
-        _mq2StorageCore.push(*msg);
+        insertMQ2StorageCore(msg);
         break;
     }
-    case MESSAGE2DUPCORE: {
-        _mq2DedupCore.push(*msg);
+    case MESSAGE2DEDUPCORE: {
+        insertMQ2DedupCore(msg);
+    }
+    default: {
+        cerr << "dataSR insert message queue error : wrong message queue name" << endl;
     }
     }
 }
@@ -56,65 +62,74 @@ bool dataSR::workloadProgress()
     epoll_event ev, event[100];
     epfd = epoll_create(20);
     EpollMessage_t msg;
-    msg->_fd = _socket.fd;
-    msg->_epfd = epfd;
-    ev.data.ptr = (void*)msg;
+    msg.fd = socket_.fd_;
+    msg.epfd = epfd;
+    ev.data.ptr = &msg;
     ev.events = EPOLLIN | EPOLLET;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, msg->_fd, &ev);
-    string buffer;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, msg.fd, &ev);
+    u_char buffer[sizeof(EpollMessage_t)];
     Socket tmpSock;
-    networkStruct netBody(0, 0);
+
+    NetworkHeadStruct_t netBody;
+    netBody.clientID = 0;
+    netBody.messageType = 0;
+    netBody.dataSize = 0;
 
     while (1) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {
-            msg = (EpollMessage_t*)event[i].data.ptr;
+            memcpy(&msg, event[i].data.ptr, sizeof(EpollMessage_t));
 
             //Listen fd
-            if (msg->_fd == _socket.fd) {
-                EpollMessage_t msg1;
-                tmpSock = _socket.Listen();
-                socketConnection[tmpSock.fd] = tmpSock;
-                msg1->_fd = tmpSock.fd;
-                msg1->_epfd = epfd;
+            if (msg.fd == socket_.fd_) {
+                EpollMessage_t* msg1;
+                tmpSock = socket_.Listen();
+                socketConnection[tmpSock.fd_] = tmpSock;
+                msg1->fd = tmpSock.fd_;
+                msg1->epfd = epfd;
                 ev.data.ptr = (void*)msg1;
-                _epollSession.insert(make_pair(tmpSock.fd, msg1));
+                epollSession_.insert(make_pair(tmpSock.fd_, msg1));
                 //ev.events = EPOLLET | EPOLLIN;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->_fd, &ev);
+                epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->fd, &ev);
                 continue;
             }
             if (event[i].events & EPOLLOUT) {
-                netBody._data = msg->_data;
-                netBody._cid = msg->_cid;
-                netBody._type = msg->_type;
-                serialize(netBody, buffer);
-                if (!socketConnection[msg->_fd].Send(buffer)) {
+                netBody.clientID = msg.cid;
+                netBody.messageType = msg.type;
+                netBody.dataSize = msg.dataSize;
+                memcpy(buffer, &netBody, sizeof(NetworkHeadStruct_t));
+                memcpy(buffer + sizeof(NetworkHeadStruct_t), msg.data, msg.dataSize);
+                if (!socketConnection[msg.fd].Send(buffer, sizeof(NetworkHeadStruct_t) + msg.dataSize)) {
                     cerr << "perr closed A" << endl;
-                    msg->_type = POW_CLOSE_SESSION;
-                    msg->_data.clear();
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, msg->_fd, &ev);
-                    _epollSession.erase(msg->_fd);
+                    msg.type = POW_CLOSE_SESSION;
+                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, msg.fd, &ev);
+                    epollSession_.erase(msg.fd);
                     this->insertMQ(MESSAGE2RASERVER, msg);
                     continue;
                 }
-                ev.data.ptr = (void*)msg;
-                epoll_ctl(epfd, EPOLL_CTL_MOD, msg->_fd, &ev);
+                ev.data.ptr = (void*)&msg;
+                epoll_ctl(epfd, EPOLL_CTL_MOD, msg.fd, &ev);
                 continue;
             }
+            int recvSize;
             if (event[i].events & EPOLLIN) {
-                if (!socketConnection[msg->_fd].Recv(buffer)) {
+                if (!socketConnection[msg.fd].Recv(buffer, recvSize)) {
                     cerr << "peer closed B" << endl;
-                    cerr << msg->_fd << endl;
-                    msg->_type = POW_CLOSE_SESSION;
-                    msg->_data.clear();
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, msg->_fd, &ev);
-                    _epollSession.erase(msg->_fd);
+                    cerr << msg.fd << endl;
+                    msg.type = POW_CLOSE_SESSION;
+                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, msg.fd, &ev);
+                    epollSession_.erase(msg.fd);
                     this->insertMQ(MESSAGE2RASERVER, msg);
                     continue;
                 }
-                deserialize(buffer, netBody);
-                msg->setNetStruct(netBody);
-                switch (netBody._type) {
+                memcpy(&netBody, buffer, sizeof(NetworkHeadStruct_t));
+                memcpy(msg.data, buffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
+                msg.dataSize = netBody.dataSize;
+                msg.cid = netBody.clientID;
+                msg.type = netBody.messageType;
+                switch (netBody.messageType) {
                 case SGX_RA_MSG01: {
                     this->insertMQ(MESSAGE2RASERVER, msg);
                     break;
@@ -128,7 +143,7 @@ bool dataSR::workloadProgress()
                     break;
                 }
                 case CLIENT_UPLOAD_CHUNK: {
-                    this->insertMQ(MESSAGE2DUPCORE, msg);
+                    this->insertMQ(MESSAGE2DEDUPCORE, msg);
                     break;
                 }
                 case CLIENT_UPLOAD_RECIPE: {
@@ -152,10 +167,47 @@ bool dataSR::workloadProgress()
 
 void dataSR::run()
 {
-    boost::thread th(boost::bind(&dataSR::extractMQ, this));
+    //boost::thread th(boost::bind(&dataSR::extractMQ, this));
     this->workloadProgress();
-    th.detach();
+    //th.detach();
 }
 
-bool dataSR::receiveData() {}
-bool dataSR::sendData() {}
+bool dataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
+{
+    return MQ2DataSR_CallBack_.push(newMessage);
+}
+
+bool dataSR::insertMQ2DedupCore(EpollMessage_t& newMessage)
+{
+    return MQ2DedupCore_.push(newMessage);
+}
+
+bool dataSR::insertMQ2RAServer(EpollMessage_t& newMessage)
+{
+    return MQ2RAServer_.push(newMessage);
+}
+
+bool dataSR::insertMQ2StorageCore(EpollMessage_t& newMessage)
+{
+    return MQ2StorageCore_.push(newMessage);
+}
+
+bool dataSR::extractMQ2DedupCore(EpollMessage_t& newMessage)
+{
+    return MQ2DedupCore_.pop(newMessage);
+}
+
+bool dataSR::extractMQ2RAServer(EpollMessage_t& newMessage)
+{
+    return MQ2RAServer_.pop(newMessage);
+}
+
+bool dataSR::extractMQ2StorageCore(EpollMessage_t& newMessage)
+{
+    return MQ2StorageCore_.pop(newMessage);
+}
+
+bool dataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
+{
+    return MQ2DataSR_CallBack_.pop(newMessage);
+}

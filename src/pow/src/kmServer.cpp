@@ -1,7 +1,3 @@
-//
-// Created by a on 3/17/19.
-//
-
 #include "kmServer.hpp"
 extern Configure config;
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
@@ -223,7 +219,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          * secret between us and the client.
          */
 
-        if (msg4.status) {
+        if (msg4.status_) {
 
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
@@ -279,13 +275,13 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else {
-            msg4->status = false;
+            msg4->status_ = false;
         }
     }
     return true;
@@ -293,36 +289,48 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
 powSession* kmServer::authkm()
 {
     powSession* ans = new powSession();
-    string msg01Buffer, msg2Buffer, msg3Buffer, msg4Buffer;
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
+    sgx_ra_msg3_t msg3;
     ra_msg4_t msg4;
-    if (!_socket.Recv(msg01Buffer)) {
+
+    u_char* msg01Buffer;
+    int msg01RecvSize;
+    if (!_socket.Recv(msg01Buffer, msg01RecvSize)) {
         cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
-    memcpy(&msg01, (const void*)msg01Buffer.c_str(), sizeof msg01);
+    memcpy(&msg01, msg01Buffer, sizeof(msg01));
     if (!this->process_msg01(ans, msg01, msg2)) {
         cerr << "kmServer: error msg01" << endl;
         return nullptr;
     }
-    msg2Buffer.resize(sizeof(msg2) + msg2.sig_rl_size);
-    memcpy((void*)msg2Buffer.c_str(), &msg2, sizeof(msg2) + msg2.sig_rl_size);
-    if (!_socket.Send(msg2Buffer)) {
+
+    int msg2SendSize = sizeof(msg2) + msg2.sig_rl_size;
+    u_char msg2Buffer[msg2SendSize];
+    memcpy(msg2Buffer, &msg2, sizeof(msg2) + msg2.sig_rl_size);
+    if (!_socket.Send(msg2Buffer, msg2SendSize)) {
         cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
-    if (!_socket.Recv(msg3Buffer)) {
+
+    int msg3RecvSize;
+    u_char* msg3Buffer;
+    if (!_socket.Recv(msg3Buffer, msg3RecvSize)) {
         cerr << "kmServer: error msg01" << endl;
         return nullptr;
     }
-    uint32_t quote_size = msg3Buffer.length() - sizeof(sgx_ra_msg3_t);
-    if (!this->process_msg3(ans, (sgx_ra_msg3_t*)msg3Buffer.c_str(), msg4, quote_size)) {
+    uint32_t quote_size = msg3RecvSize - sizeof(sgx_ra_msg3_t);
+    memcpy(&msg3, msg3Buffer, sizeof(sgx_ra_msg3_t));
+    if (!this->process_msg3(ans, &msg3, msg4, quote_size)) {
         cerr << "kmServer: error msg3" << endl;
         return nullptr;
     }
-    memcpy((void*)msg4Buffer.c_str(), &msg4, sizeof msg4);
-    if (!_socket.Send(msg4Buffer)) {
+
+    int msg4SendSize = sizeof(msg4);
+    u_char* msg4Buffer;
+    memcpy(msg4Buffer, &msg4, sizeof(msg4));
+    if (!_socket.Send(msg4Buffer, msg4SendSize)) {
         cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }

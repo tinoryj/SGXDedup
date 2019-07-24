@@ -1,8 +1,7 @@
 #ifndef GENERALDEDUPSYSTEM_PROTOCOL_HPP
 #define GENERALDEDUPSYSTEM_PROTOCOL_HPP
 
-#include "seriazation.hpp"
-
+#include <bits/stdc++.h>
 //client-server network protocol
 #define SGX_RA_MSG01 0X00
 #define SGX_RA_MSG2 0X01
@@ -19,10 +18,12 @@
 #define ERROR_RESEND 0x0c
 #define ERROR_CLOSE 0x0d
 #define SUCCESS 0x0e
+#define SGX_SIGNED_HASH_TO_DEDUPCORE 0x0f
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK
 #define SAVE_RECIPE
+using namespace std;
 
 typedef struct _ra_msg4_struct {
     bool status_;

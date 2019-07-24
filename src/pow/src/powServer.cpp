@@ -8,8 +8,10 @@ void powServer::closeSession(int fd)
     sessions.erase(fd);
 }
 
-powServer::powServer()
+powServer::powServer(dataSR* dataSRObjTemp)
 {
+
+    dataSRObj_ = dataSRObjTemp;
 
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
@@ -54,70 +56,86 @@ void powServer::run()
     ra_msg4_t msg4;
 
     while (1) {
-        if (!_inputMQ.pop(msg)) {
+        if (!extractMQFromDataSR(msg)) {
             continue;
         }
-        switch (msg._type) {
+        switch (msg.type) {
         case SGX_RA_MSG01: {
-            memcpy(&msg01, &msg._data[0], sizeof(sgx_msg01_t));
-            msg._data.clear();
-            if (!process_msg01(msg._fd, msg01, msg2)) {
+            memcpy(&msg01, msg.data, sizeof(sgx_msg01_t));
+            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+            if (!process_msg01(msg.fd, msg01, msg2)) {
                 cerr << "error process msg01\n";
-                msg._type = ERROR_RESEND;
+                msg.type = ERROR_RESEND;
+                msg.dataSize = 0;
             } else {
-                msg._type = SUCCESS;
-                msg._data.resize(sizeof(sgx_ra_msg2_t));
-                memcpy(&msg._data[0], &msg2, sizeof(sgx_ra_msg2_t));
+                msg.type = SUCCESS;
+                msg.dataSize = sizeof(sgx_ra_msg2_t);
+                memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
             }
-            _netMQ.push(msg);
+            insertMQToDataSR(msg);
             break;
         }
         case SGX_RA_MSG3: {
-            msg3 = (sgx_ra_msg3_t*)new char[msg._data.length()];
-            memcpy(msg3, &msg._data[0], msg._data.length());
-            if (sessions.find(msg._fd) == sessions.end()) {
+            msg3 = (sgx_ra_msg3_t*)new char[msg.dataSize];
+            memcpy(&msg3, msg.data, msg.dataSize);
+            if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "client had not send msg01 before\n";
-                msg._type = ERROR_CLOSE;
-                msg._data.clear();
+                msg.type = ERROR_CLOSE;
+                msg.dataSize = 0;
+                memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             } else {
-                if (this->process_msg3(sessions[msg._fd], msg3, msg4,
-                        msg._data.length() - sizeof(sgx_ra_msg3_t))) {
-                    msg._type = SUCCESS;
-                    msg._data.resize(sizeof(ra_msg4_t));
-                    memcpy(&msg._data[0], &msg4, sizeof(ra_msg4_t));
+                if (this->process_msg3(sessions[msg.fd], msg3, msg4,
+                        msg.dataSize - sizeof(sgx_ra_msg3_t))) {
+                    msg.type = SUCCESS;
+                    msg.dataSize = sizeof(ra_msg4_t);
+                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    memcpy(msg.data, &msg4, sizeof(ra_msg4_t));
                 } else {
                     cerr << "sgx msg3 error\n";
-                    msg._type = ERROR_CLOSE;
-                    msg._data.clear();
+                    msg.type = ERROR_CLOSE;
+                    msg.dataSize = 0;
+                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                 }
             }
-            _netMQ.push(msg);
+            insertMQToDataSR(msg);
             break;
         }
         case SGX_SIGNED_HASH: {
             powSignedHash clientReq;
-            deserialize(msg._data, clientReq);
-            if (sessions.find(msg._fd) == sessions.end()) {
+            int signedHashNumber = (msg.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
+            memcpy(clientReq.signature_, msg.data, sizeof(uint8_t) * 16);
+            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+            for (int i = 0; i < signedHashNumber; i++) {
+                string hash;
+                hash.resize(CHUNK_HASH_SIZE);
+                memcpy(&hash[0], msg.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                clientReq.hash_.push_back(hash);
+            }
+
+            if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "client not trusted yet\n";
-                msg._type = ERROR_CLOSE;
+                msg.type = ERROR_CLOSE;
+                msg.dataSize = 0;
             } else {
-                if (!sessions.at(msg._fd)->enclaveTrusted) {
+                if (!sessions.at(msg.fd)->enclaveTrusted) {
                     cerr << "client not trusted yet\n";
-                    msg._type = ERROR_CLOSE;
+                    msg.type = ERROR_CLOSE;
+                    msg.dataSize = 0;
                 } else {
-                    if (this->process_signedHash(sessions.at(msg._fd), clientReq)) {
-                        _outputMQ.push(msg);
+                    if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
+                        msg.type = SGX_SIGNED_HASH_TO_DEDUPCORE;
+                        dataSRObj_->insertMQ2DedupCore(msg);
                         break;
                     } else {
-                        msg._type = ERROR_RESEND;
+                        msg.type = ERROR_RESEND;
                     }
                 }
             }
-            _netMQ.push(msg);
+            insertMQToDataSR(msg);
             break;
         }
         case POW_CLOSE_SESSION: {
-            this->closeSession(msg._fd);
+            this->closeSession(msg.fd);
             break;
         }
         default: {
@@ -284,9 +302,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
 
         sha256_digest(msg_rdata, 144, vfy_rdata);
 
-        if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data,
-                64)) {
-
+        if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data, 64)) {
             cerr << "Report verification failed.\n";
             return false;
         }
@@ -308,7 +324,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          * secret between us and the client.
          */
 
-        if (msg4.status) {
+        if (msg4.status_) {
 
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
@@ -364,13 +380,13 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status = true;
+            msg4->status_ = true;
         } else {
-            msg4->status = false;
+            msg4->status_ = false;
         }
     }
     return true;
@@ -378,12 +394,26 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
 bool powServer::process_signedHash(powSession* session, powSignedHash req)
 {
-    _crypto.setSymKey((const char*)session->sk, 16, (const char*)session->sk, 0);
-    string Mac, signature((char*)req.signature, 16);
-    _crypto.cmac128(req.hash, Mac);
+    string Mac, signature((char*)req.signature_, 16);
+    cryptoObj_.cmac128(req.hash_, Mac, (u_char*)((const char*)session->sk), 16);
     if (Mac.compare(signature)) {
-        cerr << "client signature unvalid\n";
+        cerr << "client signature unvalid" << endl;
         return false;
     }
     return true;
+}
+
+bool powServer::extractMQFromDataSR(EpollMessage_t& newMessage)
+{
+    return dataSRObj_->extractMQ2RAServer(newMessage);
+}
+
+bool powServer::insertMQToDataSR(EpollMessage_t& newMessage)
+{
+    return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
+}
+
+bool powServer::insertMQToDedupCore(EpollMessage_t& newMessage)
+{
+    return dataSRObj_->insertMQ2DedupCore(newMessage);
 }

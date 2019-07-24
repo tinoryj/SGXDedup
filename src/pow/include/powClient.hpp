@@ -48,9 +48,9 @@ public:
     bool do_attestation();
     void run();
 
-    bool insertMQFromEncoder(Chunk_t newChunk);
-    bool extractMQFromEncoder(Chunk_t newChunk);
-    bool insertMQToSender(Chunk_t newChunk);
+    bool insertMQFromEncoder(Chunk_t& newChunk);
+    bool extractMQFromEncoder(Chunk_t& newChunk);
+    bool insertMQToSender(Chunk_t& newChunk);
     bool editJobDoneFlag();
 };
 

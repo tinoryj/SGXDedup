@@ -20,11 +20,11 @@ public:
     ~messageQueue()
     {
     }
-    bool push(T data)
+    bool push(T& data)
     {
         return lockFreeQueue_.push(data);
     }
-    bool pop(T data)
+    bool pop(T& data)
     {
         return lockFreeQueue_.pop(data);
     }

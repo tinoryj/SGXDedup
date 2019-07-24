@@ -29,8 +29,7 @@ public:
 
     //status define in protocol.hpp
     bool sendRecipeList(RecipeList_t& request, int& status);
-
-    //status define in protocol.hpp
+    bool sendRecipeHead(Recipe_t& request, int& status);
     bool sendChunkList(ChunkList_t& request, int& status);
 
     //for pow
@@ -44,8 +43,8 @@ public:
     //general send data
     bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize);
 
-    bool insertMQFromPow(Chunk_t newChunk);
-    bool extractMQFromPow(Chunk_t newChunk);
+    bool insertMQFromPow(Chunk_t& newChunk);
+    bool extractMQFromPow(Chunk_t& newChunk);
     bool editJobDoneFlag();
 };
 

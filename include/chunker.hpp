@@ -49,7 +49,7 @@ private:
 
     void ChunkerInit(string path);
 
-    bool insertMQToKeyClient(Chunk_t newChunk);
+    bool insertMQToKeyClient(Chunk_t& newChunk);
 
     bool setJobDoneFlag();
 

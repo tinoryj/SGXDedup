@@ -37,17 +37,17 @@ bool encoder::encodeChunk(Chunk_t& newChunk)
     cryptoObj_->generateHash(newChunk.logicData, newChunk.logicDataSize, newChunk.chunkHash);
 }
 
-bool encoder::insertMQFromKeyClient(Chunk_t newChunk)
+bool encoder::insertMQFromKeyClient(Chunk_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool encoder::extractMQFromKeyClient(Chunk_t newChunk)
+bool encoder::extractMQFromKeyClient(Chunk_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }
 
-bool encoder::insertMQToPOW(Chunk_t newChunk)
+bool encoder::insertMQToPOW(Chunk_t& newChunk)
 {
     return powObj_->insertMQFromEncoder(newChunk);
 }

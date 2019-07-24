@@ -6,6 +6,7 @@
 #include "configure.hpp"
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
+#include "protocol.hpp"
 #include "socket.hpp"
 #include "sys/epoll.h"
 #include <bits/stdc++.h>
@@ -18,9 +19,9 @@ private:
     messageQueue<EpollMessage_t> MQ2DedupCore_;
     messageQueue<EpollMessage_t> MQ2StorageCore_;
     messageQueue<EpollMessage_t> MQ2RAServer_;
-
-    Socket _socket;
-    map<int, EpollMessage_t*> _epollSession;
+    Socket socket_;
+    Configure* config_;
+    map<int, EpollMessage_t*> epollSession_;
     std::mutex epollSessionMutex_;
 
 public:
@@ -30,9 +31,15 @@ public:
     bool receiveData();
     bool sendData();
     bool workloadProgress();
+    bool extractMQ();
+    bool insertMQ(int queueSwitch, EpollMessage_t& msg);
     bool insertMQ2DedupCore(EpollMessage_t& newMessage);
     bool insertMQ2StorageCore(EpollMessage_t& newMessage);
     bool insertMQ2RAServer(EpollMessage_t& newMessage);
+    bool insertMQ2DataSR_CallBack(EpollMessage_t& newMessage);
+    bool extractMQ2DedupCore(EpollMessage_t& newMessage);
+    bool extractMQ2StorageCore(EpollMessage_t& newMessage);
+    bool extractMQ2RAServer(EpollMessage_t& newMessage);
     bool extractMQ2DataSR_CallBack(EpollMessage_t& newMessage);
 };
 

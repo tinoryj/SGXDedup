@@ -276,3 +276,37 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int& dataSize
     }
     return true;
 }
+
+bool CryptoPrimitive::cmac128(vector<string>& message, string& mac, u_char* key, int keyLen)
+{
+    CMAC_CTX* ctx = CMAC_CTX_new();
+
+    if (ctx == nullptr) {
+        cerr << "error initial cmac ctx\n";
+        return false;
+    }
+
+    if (CMAC_Init(ctx, key, keyLen, EVP_aes_128_cbc(), nullptr) != 1) {
+        cerr << "cmac error\n";
+        CMAC_CTX_cleanup(ctx);
+        return false;
+    }
+
+    for (auto it : message) {
+        CMAC_Update(ctx, (void*)&it[0], it.length());
+    }
+
+    mac.clear();
+    mac.resize(16);
+    size_t maclen;
+
+    if (CMAC_Final(ctx, (unsigned char*)&mac[0], &maclen) != 1) {
+        cerr << "cmac error" << endl;
+        CMAC_CTX_cleanup(ctx);
+        return false;
+    }
+
+    mac.resize(maclen);
+    CMAC_CTX_cleanup(ctx);
+    return true;
+}

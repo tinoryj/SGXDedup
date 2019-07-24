@@ -227,17 +227,17 @@ bool powClient::editJobDoneFlag()
     }
 }
 
-bool powClient::insertMQFromEncoder(Chunk_t newChunk)
+bool powClient::insertMQFromEncoder(Chunk_t& newChunk)
 {
     return inputMQ.push(newChunk);
 }
 
-bool powClient::extractMQFromEncoder(Chunk_t newChunk)
+bool powClient::extractMQFromEncoder(Chunk_t& newChunk)
 {
     return inputMQ.pop(newChunk);
 }
 
-bool powClient::insertMQToSender(Chunk_t newChunk)
+bool powClient::insertMQToSender(Chunk_t& newChunk)
 {
     return senderObj->insertMQFromPow(newChunk);
 }

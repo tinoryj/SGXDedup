@@ -35,6 +35,7 @@ void keyServer::run(Socket socket)
         return;
     }
     string hash, key;
+    u_char hash[CHUNK_HASH_SIZE];
     while (1) {
         if (socket.Recv(hash)) {
             socket.finish();

@@ -1,41 +1,36 @@
-//
-// Created by a on 1/30/19.
-//
-
 #include "retriever.hpp"
-
-Retriever::Retriever(string filename)
-    : _Retriever(filename)
-{
-}
-
 #include "../pow/include/hexutil.h"
+
+Retriever::Retriever(string fileName)
+{
+    retrieveFile_.open(fileName, ofstream::out | ofstream::binary);
+}
 
 bool Retriever::Retrieve()
 {
     vector<string> file;
-    file.resize(_chunkCnt);
+    file.resize(chunkCnt_);
     int i;
-    Chunk tmpChunk;
-    for (i = 0; i < _chunkCnt; i++) {
+    Chunk_t tmpChunk;
+    for (i = 0; i < chunkCnt_; i++) {
         while (!this->extractMQ(tmpChunk))
             ;
         file[tmpChunk.getID()] = tmpChunk.getLogicData();
     }
-    for (i = 0; i < _chunkCnt; i++) {
-        _retrieveFile.write(file[i].c_str(), file[i].length());
+    for (i = 0; i < chunkCnt_; i++) {
+        retrieveFile_.write(file[i].c_str(), file[i].length());
         const char* s = hexstring(&file[i][0], file[i].length());
         cout << "ID : " << i << endl;
         cout << s << endl
              << endl;
     }
-    _retrieveFile.close();
+    retrieveFile_.close();
     std::cerr << "Retrieve : retrieve done" << endl;
 }
 
 void Retriever::run()
 {
-    while (!this->extractMQ(_chunkCnt))
+    while (!this->extractMQ(chunkCnt_))
         ;
     this->Retrieve();
 }

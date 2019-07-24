@@ -8,7 +8,7 @@ using namespace std;
 
 // system basic data structures
 typedef struct {
-    uint64_t ID;
+    uint32_t ID;
     int type;
     int logicDataSize;
     u_char logicData[MAX_CHUNK_SIZE];
@@ -62,6 +62,7 @@ typedef struct {
     int epfd;
     int type;
     int cid;
+    int dataSize;
     u_char data[EPOLL_MESSAGE_DATA_SIZE];
 } EpollMessage_t;
 
@@ -75,6 +76,7 @@ typedef struct {
 typedef struct {
     int messageType;
     int clientID;
+    int dataSize;
 } NetworkHeadStruct_t;
 
 // database data structures

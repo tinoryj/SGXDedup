@@ -359,7 +359,7 @@ Recipe_t Chunker::getRecipeHead()
     return recipe;
 }
 
-bool Chunker::insertMQToKeyClient(Chunk_t newChunk)
+bool Chunker::insertMQToKeyClient(Chunk_t& newChunk)
 {
     return keyClientObj->insertMQFromChunker(newChunk);
 }

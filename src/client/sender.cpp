@@ -23,12 +23,15 @@ Sender::~Sender()
 bool Sender::sendRecipeList(RecipeList_t& request, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;
+
     requestBody.clientID = config.getClientID();
     requestBody.messageType = CLIENT_UPLOAD_RECIPE;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
+    respondBody.dataSize = 0;
     int recipeNumber = request.size();
     int sendSize = sizeof(NetworkHeadStruct_t) + recipeNumber * sizeof(RecipeEntry_t) + sizeof(int);
+    requestBody.dataSize = recipeNumber * sizeof(RecipeEntry_t) + sizeof(int);
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(requestBody));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &recipeNumber, sizeof(int));
@@ -50,17 +53,47 @@ bool Sender::sendRecipeList(RecipeList_t& request, int& status)
     }
 }
 
+bool Sender::sendRecipeHead(Recipe_t& request, int& status)
+{
+    NetworkHeadStruct_t requestBody, respondBody;
+
+    requestBody.clientID = config.getClientID();
+    requestBody.messageType = CLIENT_UPLOAD_RECIPE;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
+    respondBody.dataSize = 0;
+    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t);
+    requestBody.dataSize = sizeof(Recipe_t);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
+    u_char* respondBuffer;
+    int recvSize = 0;
+    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+        return false;
+    }
+    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
+    status = respondBody.messageType;
+
+    if (status == SUCCESS) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool Sender::sendChunkList(ChunkList_t& request, int& status)
 {
-
     NetworkHeadStruct_t requestBody, respondBody;
+
     requestBody.clientID = config.getClientID();
     requestBody.messageType = CLIENT_UPLOAD_CHUNK;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
-
+    respondBody.dataSize = 0;
     int chunkNumber = request.size();
     int sendSize = sizeof(NetworkHeadStruct_t) + chunkNumber * sizeof(Chunk_t) + sizeof(int);
+    requestBody.dataSize = chunkNumber * sizeof(Chunk_t) + sizeof(int);
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(requestBody));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &chunkNumber, sizeof(int));
@@ -86,14 +119,15 @@ bool Sender::sendChunkList(ChunkList_t& request, int& status)
 
 bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status)
 {
-
     NetworkHeadStruct_t requestBody, respondBody;
+
     requestBody.clientID = config.getClientID();
     requestBody.messageType = SGX_RA_MSG01;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
-
+    respondBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(msg0) + sizeof(msg1);
+    requestBody.dataSize = sizeof(msg0) + sizeof(msg1);
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg0, sizeof(msg0));
@@ -126,8 +160,10 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, i
     requestBody.messageType = SGX_RA_MSG3;
     respondBody.clientID = 0;
     respondBody.messageType = 0;
+    respondBody.dataSize = 0;
 
     int sendSize = sizeof(NetworkHeadStruct_t) + size;
+    requestBody.dataSize = size;
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg3, size);
@@ -158,9 +194,11 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
     requestBody.clientID = config.getClientID();
     respondBody.messageType = 0;
     respondBody.clientID = 0;
+    respondBody.dataSize = 0;
 
     int signedHashNumber = request.hash_.size();
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
+    requestBody.dataSize = sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request.signature_, 16 * sizeof(uint8_t));
@@ -273,12 +311,12 @@ void Sender::run()
     pthread_exit(NULL);
 }
 
-bool Sender::insertMQFromPow(Chunk_t newChunk)
+bool Sender::insertMQFromPow(Chunk_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool Sender::extractMQFromPow(Chunk_t newChunk)
+bool Sender::extractMQFromPow(Chunk_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }

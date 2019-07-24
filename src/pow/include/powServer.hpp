@@ -55,7 +55,11 @@ public:
     EVP_PKEY* _service_private_key;
     uint16_t _iasVersion;
 
-    powServer();
+    powServer(dataSR* dataSRObjTemp);
+
+    bool extractMQFromDataSR(EpollMessage_t& newMessage);
+    bool insertMQToDataSR(EpollMessage_t& newMessage);
+    bool insertMQToDedupCore(EpollMessage_t& newMessage);
     void run();
 };
 

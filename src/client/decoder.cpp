@@ -1,7 +1,3 @@
-//
-// Created by a on 1/30/19.
-//
-
 #include "decoder.hpp"
 
 extern Configure config;
@@ -15,13 +11,14 @@ decoder::~decoder() {}
 
 bool decoder::getKey(Chunk_t& newChunk)
 {
-    string key = keyRecipe_.at(newChunk.getChunkHash());
-    newChunk.editEncryptKey(key);
+    // string key = keyRecipe_.at(newChunk.getChunkHash());
+    u_char key[CHUNK_ENCRYPT_KEY_SIZE];
+    memcpy(newChunk.encryptKey, key, CHUNK_ENCRYPT_KEY_SIZE);
 }
 
 bool decoder::decodeChunk(Chunk_t& newChunk)
 {
-    cryptoObj_->chunk_decrypt(newChunk);
+    cryptoObj_->decryptChunk(newChunk);
 }
 
 void decoder::run()
