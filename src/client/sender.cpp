@@ -1,7 +1,3 @@
-//
-// Created by a on 1/12/19.
-//
-
 #include "sender.hpp"
 
 extern Configure config;

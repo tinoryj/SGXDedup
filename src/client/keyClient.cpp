@@ -1,7 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
 #include "keyClient.hpp"
 #include "openssl/rsa.h"
 
