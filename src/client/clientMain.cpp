@@ -1,10 +1,9 @@
 #include "../pow/include/powClient.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
-#include "decoder.hpp"
 #include "encoder.hpp"
 #include "keyClient.hpp"
-#include "reciver.hpp"
+#include "recvDecode.hpp"
 #include "retriever.hpp"
 #include "sender.hpp"
 #include <bits/stdc++.h>
@@ -16,10 +15,9 @@ Configure config("config.json");
 keyCache kCache;
 Chunker* chunkerObj;
 keyClient* keyClientObj;
-encoder* encoderObj;
+Encoder* encoderObj;
 Sender* senderObj;
-receiver* recverObj;
-decoder* dcoderObj;
+RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
 powClient* PowClientObj;
 
@@ -41,20 +39,25 @@ int main(int argv, char* argc[])
 
     if (strcmp("-r", argc[1]) == 0) {
         //run receive
-        dcoderObj = new decoder();
-        recverObj = new receiver();
-        retrieverObj = new Retriever(argc[2]);
-        //start receiver thread
-        recverObj->run(argc[2]);
+        string fileName(argc[2]);
+
+        recvDecodeObj = new RecvDecode(fileName);
+        Recipe_t fileRecipe = recvDecodeObj->getFileRecipeHead();
+        //memcpy(&fileRecipe, &recvDecodeObj->getFileRecipeHead(), sizeof(Recipe_t));
+        retrieverObj = new Retriever(fileName, recvDecodeObj);
+
+        for (int i = 0; i < config.getRecvDecodeThreadLimit(); i++) {
+            th = new boost::thread(boost::bind(&RecvDecode::run, recvDecodeObj));
+            thList.push_back(th);
+        };
         //start decoder thread
-        dcoderObj->run();
         retrieverObj->run();
 
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
-        encoderObj = new encoder(PowClientObj);
+        encoderObj = new Encoder(PowClientObj);
         keyClientObj = new keyClient(encoderObj);
         chunkerObj = new Chunker(argc[2], keyClientObj);
 
@@ -74,7 +77,7 @@ int main(int argv, char* argc[])
 
         //start encode thread
         for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&encoder::run, encoderObj));
+            th = new boost::thread(boost::bind(&Encoder::run, encoderObj));
             thList.push_back(th);
         }
 

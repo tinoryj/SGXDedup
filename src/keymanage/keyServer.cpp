@@ -1,20 +1,16 @@
-//
-// Created by a on 11/17/18.
-//
-
 #include "keyServer.hpp"
 
 keyServer::keyServer()
 {
-    _rsa = RSA_new();
-    _key = NULL;
-    _key = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
+    rsa_ = RSA_new();
+    key_ = NULL;
+    key_ = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
     char passwd[5] = "1111";
     passwd[4] = '\0';
-    PEM_read_bio_RSAPrivateKey(_key, &_rsa, NULL, passwd);
-    RSA_get0_key(_rsa, &_keyN, nullptr, &_keyD);
-    BIO_free_all(_key);
-    RSA_free(_rsa);
+    PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
+    RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
+    BIO_free_all(key_);
+    RSA_free(rsa_);
 }
 
 keyServer::~keyServer() {}
@@ -25,8 +21,8 @@ void keyServer::run(Socket socket)
     int lenKeyn, lenKeyd;
     keyn.resize(2048);
     keyd.resize(2048);
-    lenKeyn = BN_bn2bin(_keyN, (unsigned char*)keyn.c_str());
-    lenKeyd = BN_bn2bin(_keyD, (unsigned char*)keyd.c_str());
+    lenKeyn = BN_bn2bin(keyN_, (unsigned char*)keyn.c_str());
+    lenKeyd = BN_bn2bin(keyD_, (unsigned char*)keyd.c_str());
     keyn.resize(lenKeyn);
     keyd.resize(lenKeyd);
     kmClient* client = new kmClient(keyn, keyd);
@@ -34,15 +30,19 @@ void keyServer::run(Socket socket)
         cerr << "keyServer: enclave not truster" << endl;
         return;
     }
-    string hash, key;
-    u_char hash[CHUNK_HASH_SIZE];
-    while (1) {
-        if (socket.Recv(hash)) {
+    while (true) {
+        u_char hash[CHUNK_HASH_SIZE];
+        int recvSize = 0;
+        if (socket.Recv(hash, recvSize)) {
             socket.finish();
             return;
         }
-        client->request(hash, key);
-        if (!socket.Send(key)) {
+        if (recvSize != CHUNK_HASH_SIZE) {
+            cerr << "key manager recv chunk hash error : hash size wrong" << endl;
+        }
+        u_char key[CHUNK_ENCRYPT_KEY_SIZE];
+        client->request(hash, CHUNK_HASH_SIZE, key, CHUNK_ENCRYPT_KEY_SIZE);
+        if (!socket.Send(key, CHUNK_ENCRYPT_KEY_SIZE)) {
             socket.finish();
             return;
         }

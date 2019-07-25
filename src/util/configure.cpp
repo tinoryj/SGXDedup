@@ -60,8 +60,7 @@ void Configure::readConf(std::string path)
     _keyClientThreadLimit = root.get<int>("mutiThread._keyClientThreadLimit");
     _keyServerThreadLimit = root.get<int>("mutiThread._keyServerThreadLimit");
     _senderThreadLimit = root.get<int>("mutiThread._senderThreadLimit");
-    _receiverThreadLimit = root.get<int>("mutiThread._receiverThreadLimit");
-    _decoderThreadLimit = root.get<int>("mutiThread._decoderThreadLimit");
+    _recvDecodeThreadLimit = root.get<int>("mutiThread._recvDecodeThreadLimit");
     _dataSRThreadLimit = root.get<int>("mutiThread._dataSRThreadLimit");
     _retriverThreadLimit = root.get<int>("mutiThread._retriverThreadLimit");
     _dedupCoreThreadLimit = root.get<int>("mutiThread._dedupCoreThreadLimit");
@@ -372,14 +371,9 @@ int Configure::getSenderThreadLimit()
     return _senderThreadLimit;
 }
 
-int Configure::getReceiverThreadLimit()
+int Configure::getRecvDecodeThreadLimit()
 {
-    return _receiverThreadLimit;
-}
-
-int Configure::getDecoderThreadLimit()
-{
-    return _decoderThreadLimit;
+    return _recvDecodeThreadLimit;
 }
 
 int Configure::getDataSRThreadLimit()

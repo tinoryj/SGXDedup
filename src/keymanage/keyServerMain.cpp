@@ -1,9 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
-#define DEBUG
-
 #include "keyServer.hpp"
 #include "socket.hpp"
 

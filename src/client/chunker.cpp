@@ -57,11 +57,11 @@ void Chunker::ChunkerInit(string path)
 {
     u_char filePathHash[FILE_NAME_HASH_SIZE];
     cryptoObj->generateHash((u_char*)&path[0], path.length(), filePathHash);
-    memcpy(recipe.fileRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
-    memcpy(recipe.keyRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
+    memcpy(recipe.recipe.fileRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
+    memcpy(recipe.recipe.keyRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
     ifstream fin(path, ifstream::binary);
-    recipe.fileRecipeHead.fileSize = fin.tellg();
-    recipe.fileRecipeHead.fileSize = recipe.fileRecipeHead.fileSize;
+    recipe.recipe.fileRecipeHead.fileSize = fin.tellg();
+    recipe.recipe.fileRecipeHead.fileSize = recipe.recipe.fileRecipeHead.fileSize;
     fin.close();
 
     ChunkerType = (int)config.getChunkingType();
@@ -197,12 +197,13 @@ void Chunker::fixSizeChunking()
                 if (!cryptoObj->generateHash(chunkBuffer, avgChunkSize, hash)) {
                     cerr << "fixed size chunking: compute hash error" << endl;
                 }
-                Chunk_t tempChunk;
-                tempChunk.ID = chunkIDCounter;
-                tempChunk.logicDataSize = avgChunkSize;
-                memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
-                memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-                tempChunk.type = CHUNK_TYPE_INIT;
+                Data_t tempChunk;
+                tempChunk.chunk.ID = chunkIDCounter;
+                tempChunk.chunk.logicDataSize = avgChunkSize;
+                memcpy(tempChunk.chunk.logicData, chunkBuffer, avgChunkSize);
+                memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+                tempChunk.chunk.type = CHUNK_TYPE_INIT;
+                tempChunk.dataType = DATA_TYPE_CHUNK;
                 insertMQToKeyClient(tempChunk);
 
                 chunkIDCounter++;
@@ -213,29 +214,30 @@ void Chunker::fixSizeChunking()
             while (chunkedSize < totalReadSize) {
                 memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
                 u_char hash[CHUNK_HASH_SIZE];
-                Chunk_t tempChunk;
+                Data_t tempChunk;
                 if (retSize > avgChunkSize) {
                     memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, avgChunkSize);
                     if (!cryptoObj->generateHash(chunkBuffer, avgChunkSize, hash)) {
                         cerr << "fixed size chunking: compute hash error" << endl;
                     }
-                    tempChunk.ID = chunkIDCounter;
-                    tempChunk.logicDataSize = avgChunkSize;
-                    memcpy(tempChunk.logicData, chunkBuffer, avgChunkSize);
-                    memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-                    tempChunk.type = CHUNK_TYPE_INIT;
+                    tempChunk.chunk.ID = chunkIDCounter;
+                    tempChunk.chunk.logicDataSize = avgChunkSize;
+                    memcpy(tempChunk.chunk.logicData, chunkBuffer, avgChunkSize);
+                    memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+                    tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 } else {
                     memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, retSize);
                     if (!cryptoObj->generateHash(chunkBuffer, retSize, hash)) {
                         cerr << "fixed size chunking: compute hash error" << endl;
                     }
-                    tempChunk.ID = chunkIDCounter;
-                    tempChunk.logicDataSize = retSize;
-                    memcpy(tempChunk.logicData, chunkBuffer, retSize);
-                    memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-                    tempChunk.type = CHUNK_TYPE_INIT;
+                    tempChunk.chunk.ID = chunkIDCounter;
+                    tempChunk.chunk.logicDataSize = retSize;
+                    memcpy(tempChunk.chunk.logicData, chunkBuffer, retSize);
+                    memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+                    tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 }
                 retSize = totalReadSize - chunkedSize;
+                tempChunk.dataType = DATA_TYPE_CHUNK;
                 insertMQToKeyClient(tempChunk);
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
@@ -245,12 +247,14 @@ void Chunker::fixSizeChunking()
             break;
         }
     }
-    recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
-    recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    recipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
+    recipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    recipe.dataType = DATA_TYPE_RECIPE;
+    insertMQToKeyClient(recipe);
     if (setJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
     }
-    cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
+    cout << "Fixed chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
 }
 
 void Chunker::varSizeChunking()
@@ -291,17 +295,18 @@ void Chunker::varSizeChunking()
                 if (!cryptoObj->generateHash(chunkBuffer, chunkBufferCnt, hash)) {
                     cerr << "average size chunking: compute hash error" << endl;
                 }
-                Chunk_t tempChunk;
-                tempChunk.ID = chunkIDCnt;
-                tempChunk.logicDataSize = chunkBufferCnt;
-                memcpy(tempChunk.logicData, chunkBuffer, chunkBufferCnt);
-                memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-                tempChunk.type = CHUNK_TYPE_INIT;
+                Data_t tempChunk;
+                tempChunk.chunk.ID = chunkIDCnt;
+                tempChunk.chunk.logicDataSize = chunkBufferCnt;
+                memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+                memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+                tempChunk.chunk.type = CHUNK_TYPE_INIT;
+                tempChunk.dataType = DATA_TYPE_CHUNK;
                 insertMQToKeyClient(tempChunk);
 
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                totalSize += tempChunk.logicDataSize;
+                totalSize += tempChunk.chunk.logicDataSize;
             }
 
             /*chunk's size exceed maxChunkSize*/
@@ -311,17 +316,18 @@ void Chunker::varSizeChunking()
                 if (!cryptoObj->generateHash(chunkBuffer, chunkBufferCnt, hash)) {
                     cerr << "average size chunking: compute hash error" << endl;
                 }
-                Chunk_t tempChunk;
-                tempChunk.ID = chunkIDCnt;
-                tempChunk.logicDataSize = chunkBufferCnt;
-                memcpy(tempChunk.logicData, chunkBuffer, chunkBufferCnt);
-                memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-                tempChunk.type = CHUNK_TYPE_INIT;
+                Data_t tempChunk;
+                tempChunk.chunk.ID = chunkIDCnt;
+                tempChunk.chunk.logicDataSize = chunkBufferCnt;
+                memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+                memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+                tempChunk.chunk.type = CHUNK_TYPE_INIT;
+                tempChunk.dataType = DATA_TYPE_CHUNK;
                 insertMQToKeyClient(tempChunk);
 
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                totalSize += tempChunk.logicDataSize;
+                totalSize += tempChunk.chunk.logicDataSize;
             }
         }
         if (fin.eof())
@@ -335,33 +341,31 @@ void Chunker::varSizeChunking()
         if (!cryptoObj->generateHash(chunkBuffer, chunkBufferCnt, hash)) {
             cerr << "average size chunking: compute hash error" << endl;
         }
-        Chunk_t tempChunk;
-        tempChunk.ID = chunkIDCnt;
-        tempChunk.logicDataSize = chunkBufferCnt;
-        memcpy(tempChunk.logicData, chunkBuffer, chunkBufferCnt);
-        memcpy(tempChunk.chunkHash, hash, CHUNK_HASH_SIZE);
-        tempChunk.type = CHUNK_TYPE_INIT;
+        Data_t tempChunk;
+        tempChunk.chunk.ID = chunkIDCnt;
+        tempChunk.chunk.logicDataSize = chunkBufferCnt;
+        memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+        memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
+        tempChunk.chunk.type = CHUNK_TYPE_INIT;
+        tempChunk.dataType = DATA_TYPE_CHUNK;
         insertMQToKeyClient(tempChunk);
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
-        totalSize += tempChunk.logicDataSize;
+        totalSize += tempChunk.chunk.logicDataSize;
     }
-    recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
-    recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
+    recipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
+    recipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
+    recipe.dataType = DATA_TYPE_RECIPE;
+    insertMQToKeyClient(recipe);
     if (setJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
     }
-    cout << "Fixed chunking over: Total file size = " << recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCnt << endl;
+    cout << "Fixed chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCnt << endl;
 }
 
-Recipe_t Chunker::getRecipeHead()
+bool Chunker::insertMQToKeyClient(Data_t& newData)
 {
-    return recipe;
-}
-
-bool Chunker::insertMQToKeyClient(Chunk_t& newChunk)
-{
-    return keyClientObj->insertMQFromChunker(newChunk);
+    return keyClientObj->insertMQFromChunker(newData);
 }
 
 bool Chunker::setJobDoneFlag()

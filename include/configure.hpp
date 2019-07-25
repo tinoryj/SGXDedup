@@ -27,6 +27,9 @@ using namespace std;
 #define CHUNK_TYPE_INIT 6
 #define CHUNK_TYPE_NEED_UPLOAD 7
 
+#define DATA_TYPE_RECIPE 1
+#define DATA_TYPE_CHUNK 2
+
 #define EPOLL_MESSAGE_DATA_SIZE 4 * 1000 * 1000
 #define NETWORK_STRUCT_DATA_SIZE 4 * 1000 * 1000
 
@@ -76,8 +79,7 @@ private:
     int _keyClientThreadLimit;
     int _keyServerThreadLimit;
     int _senderThreadLimit;
-    int _receiverThreadLimit;
-    int _decoderThreadLimit;
+    int _recvDecodeThreadLimit;
     int _dataSRThreadLimit;
     int _retriverThreadLimit;
     int _dedupCoreThreadLimit;
@@ -173,7 +175,7 @@ public:
     int getKeyServerThreadLimit();
 
     int getSenderThreadLimit();
-    int getReceiverThreadLimit();
+    int getRecvDecodeThreadLimit();
     int getDecoderThreadLimit();
     int getDataSRThreadLimit();
     int getRetriverThreadLimit();

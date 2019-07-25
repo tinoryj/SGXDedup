@@ -40,7 +40,7 @@ private:
 
     uint64_t totalSize;
 
-    Recipe_t recipe;
+    Data_t recipe;
     std::ifstream chunkingFile;
 
     void fixSizeChunking();
@@ -49,7 +49,7 @@ private:
 
     void ChunkerInit(string path);
 
-    bool insertMQToKeyClient(Chunk_t& newChunk);
+    bool insertMQToKeyClient(Data_t& newData);
 
     bool setJobDoneFlag();
 

@@ -1,28 +1,27 @@
-//
-// Created by a on 11/17/18.
-//
-
 #include "encoder.hpp"
 
-encoder::encoder(powClient* powObjTemp)
+Encoder::Encoder(powClient* powObjTemp)
 {
     cryptoObj_ = new CryptoPrimitive();
     powObj_ = powObjTemp;
 }
 
-encoder::~encoder()
+Encoder::~Encoder()
 {
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
 }
 
-void encoder::run()
+void Encoder::run()
 {
     while (true) {
-        Chunk_t tempChunk;
+        Data_t tempChunk;
         if (inputMQ_.done_ && !extractMQFromKeyClient(tempChunk)) {
             break;
+        }
+        if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+            continue;
         }
         encodeChunk(tempChunk);
         insertMQToPOW(tempChunk);
@@ -31,28 +30,28 @@ void encoder::run()
     pthread_exit(NULL);
 }
 
-bool encoder::encodeChunk(Chunk_t& newChunk)
+bool Encoder::encodeChunk(Data_t& newChunk)
 {
-    cryptoObj_->encryptChunk(newChunk);
-    cryptoObj_->generateHash(newChunk.logicData, newChunk.logicDataSize, newChunk.chunkHash);
+    cryptoObj_->encryptChunk(newChunk.chunk);
+    cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
 }
 
-bool encoder::insertMQFromKeyClient(Chunk_t& newChunk)
+bool Encoder::insertMQFromKeyClient(Data_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool encoder::extractMQFromKeyClient(Chunk_t& newChunk)
+bool Encoder::extractMQFromKeyClient(Data_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }
 
-bool encoder::insertMQToPOW(Chunk_t& newChunk)
+bool Encoder::insertMQToPOW(Data_t& newChunk)
 {
     return powObj_->insertMQFromEncoder(newChunk);
 }
 
-bool encoder::editJobDoneFlag()
+bool Encoder::editJobDoneFlag()
 {
     inputMQ_.done_ = true;
     if (inputMQ_.done_) {

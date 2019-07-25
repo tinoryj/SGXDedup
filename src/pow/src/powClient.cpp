@@ -6,14 +6,14 @@ extern Configure config;
 
 void powClient::run()
 {
-    vector<Chunk_t> batchChunk;
+    vector<Data_t> batchChunk;
     vector<string> batchHash;
     uint64_t powBatchSize = config.getPOWBatchSize();
     u_char* batchChunkLogicData_charBuffer;
     batchChunkLogicData_charBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
     powSignedHash request;
     RequiredChunk lists;
-    Chunk_t tempChunk;
+    Data_t tempChunk;
     int netstatus;
 
     if (!this->do_attestation()) {
@@ -32,16 +32,20 @@ void powClient::run()
                 senderObj->editJobDoneFlag();
                 break;
             } else {
+                if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+                    insertMQToSender(tempChunk);
+                    continue;
+                }
                 string tempChunkHash;
                 tempChunkHash.resize(CHUNK_HASH_SIZE);
-                memcpy(&tempChunkHash[0], tempChunk.chunkHash, CHUNK_HASH_SIZE);
+                memcpy(&tempChunkHash[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 request.hash_.push_back(tempChunkHash);
                 batchChunk.push_back(tempChunk);
                 batchHash.push_back(tempChunkHash);
-                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, &tempChunk.logicDataSize, sizeof(int));
+                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, &tempChunk.chunk.logicDataSize, sizeof(int));
                 currentBatchSize += sizeof(int);
-                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, tempChunk.logicData, tempChunk.logicDataSize);
-                currentBatchSize += tempChunk.logicDataSize;
+                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+                currentBatchSize += tempChunk.chunk.logicDataSize;
             }
         }
         string batchChunkLogicData;
@@ -62,7 +66,7 @@ void powClient::run()
         cout << "POWClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
 
         for (auto it : lists) {
-            batchChunk[it].type = CHUNK_TYPE_NEED_UPLOAD;
+            batchChunk[it].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
         }
         lists.clear();
         for (int i; i < batchChunk.size(); i++) {
@@ -202,16 +206,16 @@ bool powClient::do_attestation()
         delete msg3;
     }
 
-    if (msg4->status) {
+    if (msg4->status_) {
         cerr << "POWClient : Enclave TRUSTED" << endl;
-    } else if (!msg4->status) {
+    } else if (!msg4->status_) {
         cerr << "POWClient : Enclave NOT TRUSTED" << endl;
         delete msg4;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    enclave_trusted = msg4->status;
+    enclave_trusted = msg4->status_;
 
     delete msg4;
     return true;
@@ -220,24 +224,24 @@ bool powClient::do_attestation()
 bool powClient::editJobDoneFlag()
 {
     inputMQ.done_ = true;
-    if (inputMQ.done) {
+    if (inputMQ.done_) {
         return true;
     } else {
         return false;
     }
 }
 
-bool powClient::insertMQFromEncoder(Chunk_t& newChunk)
+bool powClient::insertMQFromEncoder(Data_t& newChunk)
 {
     return inputMQ.push(newChunk);
 }
 
-bool powClient::extractMQFromEncoder(Chunk_t& newChunk)
+bool powClient::extractMQFromEncoder(Data_t& newChunk)
 {
     return inputMQ.pop(newChunk);
 }
 
-bool powClient::insertMQToSender(Chunk_t& newChunk)
+bool powClient::insertMQToSender(Data_t& newChunk)
 {
     return senderObj->insertMQFromPow(newChunk);
 }

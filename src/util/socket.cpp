@@ -14,8 +14,6 @@ Socket::Socket(int fd, sockaddr_in addr)
 {
 }
 
-Socket::Socket() {}
-
 void Socket::init(const int type, string ip, int port)
 {
     memset(&this->addr_, 0, sizeof(this->addr_));

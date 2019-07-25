@@ -246,7 +246,7 @@ bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& re
 void Sender::run()
 {
     ChunkList_t chunkList;
-    Chunk_t tempChunk;
+    Data_t tempChunk;
     RecipeList_t recipeList;
 
     int status;
@@ -259,14 +259,17 @@ void Sender::run()
                 jobDoneFlag = true;
                 break;
             }
-            if (tempChunk.type == CHUNK_TYPE_NEED_UPLOAD) {
-                chunkList.push_back(tempChunk);
+            if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+                continue;
+            }
+            if (tempChunk.chunk.type == CHUNK_TYPE_NEED_UPLOAD) {
+                chunkList.push_back(tempChunk.chunk);
             }
             RecipeEntry_t newRecipeEntry;
-            newRecipeEntry.chunkID = tempChunk.ID;
-            newRecipeEntry.chunkSize = tempChunk.logicDataSize;
-            memcpy(newRecipeEntry.chunkHash, tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            memcpy(newRecipeEntry.chunkKey, tempChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+            newRecipeEntry.chunkID = tempChunk.chunk.ID;
+            newRecipeEntry.chunkSize = tempChunk.chunk.logicDataSize;
+            memcpy(newRecipeEntry.chunkHash, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+            memcpy(newRecipeEntry.chunkKey, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
             recipeList.push_back(newRecipeEntry);
         }
 
@@ -311,12 +314,12 @@ void Sender::run()
     pthread_exit(NULL);
 }
 
-bool Sender::insertMQFromPow(Chunk_t& newChunk)
+bool Sender::insertMQFromPow(Data_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool Sender::extractMQFromPow(Chunk_t& newChunk)
+bool Sender::extractMQFromPow(Data_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }

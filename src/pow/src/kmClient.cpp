@@ -3,7 +3,7 @@
 using namespace std;
 extern Configure config;
 
-bool kmClient::request(string& hash, string& key)
+bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
@@ -11,22 +11,21 @@ bool kmClient::request(string& hash, string& key)
         return false;
     }
 
-    uint32_t srcLen = hash.length();
     sgx_status_t status;
-    uint8_t* src = new uint8_t[srcLen];
+    uint8_t* src = new uint8_t[hashSize];
 
     if (src == nullptr) {
         cerr << "kmClient: mem error" << endl;
         return false;
     }
-    memcpy(src, &hash[0], srcLen);
+    memcpy(src, hash, hashSize);
     uint8_t* ans = new uint8_t[1024];
     status = ecall_keygen(_eid,
         &retval,
         &_ctx,
         SGX_RA_KEY_SK,
-        (uint8_t*)hash.c_str(),
-        (uint32_t)hash.length(),
+        (uint8_t*)hash,
+        (uint32_t)hashSize,
         (uint8_t*)_keyd.c_str(),
         (uint32_t)_keyd.length(),
         (uint8_t*)_keyn.c_str(),
@@ -36,9 +35,7 @@ bool kmClient::request(string& hash, string& key)
         cerr << "kmClient : ecall failed" << endl;
         return false;
     }
-
-    key.resize(16);
-    memcpy((void*)key.c_str(), ans, 16);
+    memcpy(key, ans, keySize);
     return true;
 }
 
@@ -169,7 +166,6 @@ bool kmClient::doAttestation()
     sgx_ra_msg2_t* msg2;
     sgx_ra_msg3_t* msg3;
     ra_msg4_t* msg4 = NULL;
-    string msg01Buffer, msg2Buffer, msg3Buffer, msg4Buffer;
     uint32_t msg0_extended_epid_group_id = 0;
     uint32_t msg3_sz;
     int rv;
@@ -214,20 +210,22 @@ bool kmClient::doAttestation()
     }
 
     int netstatus;
-    msg01Buffer.resize(sizeof msg01);
-    memcpy((void*)msg01Buffer.c_str(), &msg01, sizeof(msg01));
-    if (!_socket.Send(msg01Buffer)) {
+    u_char msg01Buffer[sizeof(msg01)];
+    memcpy(msg01Buffer, &msg01, sizeof(msg01));
+    u_char* msg2Buffer;
+    int msg2RecvSize = 0;
+    if (!_socket.Send(msg01Buffer, sizeof(msg01))) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    if (!_socket.Recv(msg2Buffer)) {
+    if (!_socket.Recv(msg2Buffer, msg2RecvSize)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    msg2 = (sgx_ra_msg2_t*)new uint8_t[msg2Buffer.length()];
-    memcpy(msg2, (void*)msg2Buffer.c_str(), msg2Buffer.length());
+    msg2 = (sgx_ra_msg2_t*)new uint8_t[msg2RecvSize];
+    memcpy(msg2, msg2Buffer, msg2RecvSize);
     cerr << "kmClient : Send msg01 and Recv msg2 success" << endl;
 
     /* Process Msg2, Get Msg3  */
@@ -252,38 +250,39 @@ bool kmClient::doAttestation()
         delete msg2;
     }
 
-    msg3Buffer.resize(msg3_sz);
-    memcpy((void*)msg3Buffer.c_str(), msg3, msg3_sz);
-
-    if (!_socket.Send(msg3Buffer)) {
+    u_char msg3Buffer[msg3_sz];
+    memcpy(msg3Buffer, msg3, msg3_sz);
+    u_char* msg4Buffer;
+    int msg4RecvSize = 0;
+    if (!_socket.Send(msg3Buffer, msg3_sz)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    if (!_socket.Recv(msg4Buffer)) {
+    if (!_socket.Recv(msg4Buffer, msg4RecvSize)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    msg4 = (ra_msg4_t*)new uint8_t[msg4Buffer.length()];
-    memcpy(msg4, (void*)msg4Buffer.c_str(), msg4Buffer.length());
+    msg4 = (ra_msg4_t*)new uint8_t[msg4RecvSize];
+    memcpy(msg4, msg4Buffer, msg4RecvSize);
     cerr << "kmClient : send msg3 and Recv msg4 success" << endl;
 
     if (msg3 != nullptr) {
         delete msg3;
     }
 
-    if (msg4->status) {
+    if (msg4->status_) {
         cerr << "kmClient : Enclave TRUSTED" << endl;
-    } else if (!msg4->status) {
+    } else if (!msg4->status_) {
         cerr << "kmClient : Enclave NOT TRUSTED" << endl;
         delete msg4;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    enclave_trusted = msg4->status;
+    enclave_trusted = msg4->status_;
 
     delete msg4;
     return true;

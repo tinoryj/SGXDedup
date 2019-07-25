@@ -17,6 +17,12 @@ typedef struct {
 } Chunk_t;
 
 typedef struct {
+    uint32_t ID;
+    int logicDataSize;
+    u_char logicData[MAX_CHUNK_SIZE];
+} RetrieverData_t;
+
+typedef struct {
     uint64_t chunkID;
     int chunkSize;
     u_char chunkHash[CHUNK_HASH_SIZE];

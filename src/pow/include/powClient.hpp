@@ -4,13 +4,13 @@
 
 #ifndef GENERALDEDUPSYSTEM_POWCLIENT_HPP
 #define GENERALDEDUPSYSTEM_POWCLIENT_HPP
-#include "../../../include/configure.hpp"
-#include "../../../include/dataStructure.hpp"
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
-#include "../../../include/sender.hpp"
+#include "configure.hpp"
 #include "crypto.h"
+#include "dataStructure.hpp"
+#include "messageQueue.hpp"
 #include "pow_enclave_u.h"
+#include "protocol.hpp"
+#include "sender.hpp"
 #include <bits/stdc++.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
@@ -32,7 +32,7 @@ static const sgx_ec256_public_t def_service_public_key = {
 class powClient {
 private:
     bool enclave_trusted;
-    messageQueue<Chunk_t> inputMQ;
+    messageQueue<Data_t> inputMQ;
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;
@@ -48,9 +48,9 @@ public:
     bool do_attestation();
     void run();
 
-    bool insertMQFromEncoder(Chunk_t& newChunk);
-    bool extractMQFromEncoder(Chunk_t& newChunk);
-    bool insertMQToSender(Chunk_t& newChunk);
+    bool insertMQFromEncoder(Data_t& newChunk);
+    bool extractMQFromEncoder(Data_t& newChunk);
+    bool insertMQToSender(Data_t& newChunk);
     bool editJobDoneFlag();
 };
 

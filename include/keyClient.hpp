@@ -15,8 +15,8 @@
 
 class keyClient {
 private:
-    messageQueue<Chunk_t> inputMQ_;
-    encoder* encoderObj_;
+    messageQueue<Data_t> inputMQ_;
+    Encoder* encoderObj_;
     CryptoPrimitive* cryptoObj_;
     int keyBatchSizeMin_, keyBatchSizeMax_;
     Socket socket_;
@@ -24,12 +24,12 @@ private:
     u_char keyExchangeKey_[16];
 
 public:
-    keyClient(encoder* encoderObjTemp);
+    keyClient(Encoder* encoderObjTemp);
     ~keyClient();
     void run();
-    bool insertMQFromChunker(Chunk_t& newChunk);
-    bool extractMQFromChunker(Chunk_t& newChunk);
-    bool insertMQtoEncoder(Chunk_t& newChunk);
+    bool insertMQFromChunker(Data_t& newChunk);
+    bool extractMQFromChunker(Data_t& newChunk);
+    bool insertMQtoEncoder(Data_t& newChunk);
     bool editJobDoneFlag();
     string keyExchange(Chunk_t champion);
 };

@@ -8,7 +8,7 @@
 extern Configure config;
 extern keyCache kCache;
 
-keyClient::keyClient(encoder* encoderObjTemp)
+keyClient::keyClient(Encoder* encoderObjTemp)
 {
     encoderObj_ = encoderObjTemp;
     cryptoObj_ = new CryptoPrimitive();
@@ -39,18 +39,21 @@ void keyClient::run()
     while (true) {
         string chunkKey, chunkHash;
         chunkHash.resize(CHUNK_HASH_SIZE);
-        Chunk_t tempchunk;
+        Data_t tempchunk;
         if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
             break;
         };
-        memcpy(&chunkKey[0], tempchunk.chunkHash, CHUNK_HASH_SIZE);
+        if (tempchunk.dataType = DATA_TYPE_RECIPE) {
+            continue;
+        }
+        memcpy(&chunkKey[0], tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
         if (kCache.existsKeyinCache(chunkHash)) {
             chunkKey = kCache.getKeyFromCache(chunkHash);
-            memcpy(tempchunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
+            memcpy(tempchunk.chunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
         } else {
-            chunkKey = keyExchange(tempchunk);
+            chunkKey = keyExchange(tempchunk.chunk);
             kCache.insertKeyToCache(chunkHash, chunkKey);
-            memcpy(tempchunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
+            memcpy(tempchunk.chunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
         }
         insertMQtoEncoder(tempchunk);
     }
@@ -86,17 +89,17 @@ string keyClient::keyExchange(Chunk_t newChunk)
     return returnValue;
 }
 
-bool keyClient::insertMQFromChunker(Chunk_t& newChunk)
+bool keyClient::insertMQFromChunker(Data_t& newChunk)
 {
     return inputMQ_.push(newChunk);
 }
 
-bool keyClient::extractMQFromChunker(Chunk_t& newChunk)
+bool keyClient::extractMQFromChunker(Data_t& newChunk)
 {
     return inputMQ_.pop(newChunk);
 }
 
-bool keyClient::insertMQtoEncoder(Chunk_t& newChunk)
+bool keyClient::insertMQtoEncoder(Data_t& newChunk)
 {
     return encoderObj_->insertMQFromKeyClient(newChunk);
 }

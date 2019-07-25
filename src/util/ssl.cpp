@@ -6,62 +6,62 @@
 
 ssl::ssl(std::string ip, int port, int scSwitch)
 {
-    this->_serverIP = ip;
-    this->_port = port;
-    this->listenFd = socket(AF_INET, SOCK_STREAM, 0);
+    this->serverIP_ = ip;
+    this->port_ = port;
+    this->listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
 
     SSL_load_error_strings();
     OpenSSL_add_ssl_algorithms();
-    memset(&_sockAddr, 0, sizeof(_sockAddr));
+    memset(&sockAddr_, 0, sizeof(sockAddr_));
     std::string keyFile, crtFile;
 
-    _sockAddr.sin_port = htons(port);
-    _sockAddr.sin_family = AF_INET;
+    sockAddr_.sin_port = htons(port);
+    sockAddr_.sin_family = AF_INET;
 
     char passwd[5] = "1111";
 
     switch (scSwitch) {
     case SERVERSIDE: {
-        _ctx = SSL_CTX_new(TLS_server_method());
-        SSL_CTX_set_mode(_ctx, SSL_MODE_AUTO_RETRY);
+        ctx_ = SSL_CTX_new(TLS_server_method());
+        SSL_CTX_set_mode(ctx_, SSL_MODE_AUTO_RETRY);
         crtFile = SERVER_CERT;
         keyFile = SERVER_KEY;
-        _sockAddr.sin_addr.s_addr = htons(INADDR_ANY);
-        if (bind(listenFd, (sockaddr*)&_sockAddr, sizeof(_sockAddr)) == -1) {
+        sockAddr_.sin_addr.s_addr = htons(INADDR_ANY);
+        if (bind(listenFd_, (sockaddr*)&sockAddr_, sizeof(sockAddr_)) == -1) {
             std::cerr << "Can not bind to sockfd" << endl;
             std::cerr << "May cause by shutdown server before client" << endl;
             std::cerr << "Wait for 30 sec and try again" << endl;
             exit(1);
         }
-        if (listen(listenFd, 10) == -1) {
+        if (listen(listenFd_, 10) == -1) {
             std::cerr << "Can not set listen socket" << endl;
             exit(1);
         }
         break;
     }
     case CLIENTSIDE: {
-        _ctx = SSL_CTX_new(TLS_client_method());
+        ctx_ = SSL_CTX_new(TLS_client_method());
         keyFile = CLIENT_KEY;
         crtFile = CLIENT_CERT;
-        _sockAddr.sin_addr.s_addr = inet_addr(ip.c_str());
+        sockAddr_.sin_addr.s_addr = inet_addr(ip.c_str());
         break;
     };
     }
 
-    SSL_CTX_set_verify(_ctx, SSL_VERIFY_PEER, NULL);
-    if (!SSL_CTX_load_verify_locations(_ctx, CA_CERT, NULL)) {
+    SSL_CTX_set_verify(ctx_, SSL_VERIFY_PEER, NULL);
+    if (!SSL_CTX_load_verify_locations(ctx_, CA_CERT, NULL)) {
         std::cerr << "Wrong CA crt file at ssl.cpp:ssl(ip,port)" << endl;
         exit(1);
     }
-    if (!SSL_CTX_use_certificate_file(_ctx, crtFile.c_str(), SSL_FILETYPE_PEM)) {
+    if (!SSL_CTX_use_certificate_file(ctx_, crtFile.c_str(), SSL_FILETYPE_PEM)) {
         std::cerr << "Wrong crt file at ssl.cpp:ssl(ip,port)" << endl;
         exit(1);
     }
-    if (!SSL_CTX_use_PrivateKey_file(_ctx, keyFile.c_str(), SSL_FILETYPE_PEM)) {
+    if (!SSL_CTX_use_PrivateKey_file(ctx_, keyFile.c_str(), SSL_FILETYPE_PEM)) {
         std::cerr << "Wrong key file at ssl.cpp:ssl(ip,port)" << endl;
         exit(1);
     }
-    if (!SSL_CTX_check_private_key(_ctx)) {
+    if (!SSL_CTX_check_private_key(ctx_)) {
         std::cerr << "1" << endl;
         exit(1);
     }
@@ -84,11 +84,11 @@ std::pair<int, SSL*> ssl::sslConnect()
     SSL* sslConection;
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (connect(fd, (struct sockaddr*)&_sockAddr, sizeof(sockaddr)) < 0) {
+    if (connect(fd, (struct sockaddr*)&sockAddr_, sizeof(sockaddr)) < 0) {
         std::cerr << "ERROR Occur on ssl(fd) connect" << endl;
         exit(1);
     }
-    sslConection = SSL_new(_ctx);
+    sslConection = SSL_new(ctx_);
     SSL_set_fd(sslConection, fd);
     SSL_connect(sslConection);
 
@@ -101,8 +101,8 @@ std::pair<int, SSL*> ssl::sslListen()
 {
     //std::pair<int,SSL*> ssl::sslListen(){
     int fd;
-    fd = accept(listenFd, (struct sockaddr*)NULL, NULL);
-    SSL* sslConection = SSL_new(_ctx);
+    fd = accept(listenFd_, (struct sockaddr*)NULL, NULL);
+    SSL* sslConection = SSL_new(ctx_);
     SSL_set_fd(sslConection, fd);
     SSL_accept(sslConection);
 

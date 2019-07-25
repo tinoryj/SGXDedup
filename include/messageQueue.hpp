@@ -10,16 +10,17 @@
 
 template <class T>
 class messageQueue {
+private:
+    //boost::lockfree::queue<T, boost::lockfree::capacity<8192>> lockFreeQueue_;
+    boost::lockfree::queue<T> lockFreeQueue_;
+
 public:
-    boost::lockfree::queue<T, boost::lockfree::capacity<1024>> lockFreeQueue_;
     boost::atomic<bool> done_;
     messageQueue()
     {
         done_ = false;
     }
-    ~messageQueue()
-    {
-    }
+    ~messageQueue() {}
     bool push(T& data)
     {
         return lockFreeQueue_.push(data);

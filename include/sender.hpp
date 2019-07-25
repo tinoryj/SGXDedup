@@ -1,11 +1,6 @@
-//
-// Created by a on 1/12/19.
-//
-
 #ifndef GENERALDEDUPSYSTEM_SENDER_HPP
 #define GENERALDEDUPSYSTEM_SENDER_HPP
 
-#include "chunker.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -19,7 +14,7 @@ class Sender {
 private:
     std::mutex mutexSocket_;
     Socket socket_;
-    messageQueue<Chunk_t> inputMQ_;
+    messageQueue<Data_t> inputMQ_;
     CryptoPrimitive* cryptoObj_;
 
 public:
@@ -43,8 +38,8 @@ public:
     //general send data
     bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize);
 
-    bool insertMQFromPow(Chunk_t& newChunk);
-    bool extractMQFromPow(Chunk_t& newChunk);
+    bool insertMQFromPow(Data_t& newChunk);
+    bool extractMQFromPow(Data_t& newChunk);
     bool editJobDoneFlag();
 };
 

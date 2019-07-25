@@ -1,15 +1,14 @@
 #ifndef GENERALDEDUPSYSTEM_KMCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KMCLIENT_HPP
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
-#include "../../../include/sender.hpp"
-#include "../../../include/socket.hpp"
 #include "crypto.h"
 #include "km_enclave_u.h"
+#include "messageQueue.hpp"
 #include "powSession.hpp"
+#include "protocol.hpp"
 #include "pthread.h"
+#include "sender.hpp"
+#include "socket.hpp"
 #include <bits/stdc++.h>
-#include <iostream>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 #include <sgx_urts.h>
@@ -40,7 +39,7 @@ public:
     kmClient(string keyn, string keyd);
     bool init(Socket socket);
     bool trusted();
-    bool request(string& hash, string& key);
+    bool request(u_char* hash, int hashSize, u_char* key, int keySize);
     bool doAttestation();
     bool createEnclave(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string enclaveName);
     bool getMsg01(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string& msg01);

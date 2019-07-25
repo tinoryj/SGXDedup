@@ -1,36 +1,48 @@
 #include "retriever.hpp"
 #include "../pow/include/hexutil.h"
 
-Retriever::Retriever(string fileName)
+Retriever::Retriever(string fileName, RecvDecode*& recvDecodeObjTemp)
 {
-    retrieveFile_.open(fileName, ofstream::out | ofstream::binary);
+    recvDecodeObj_ = recvDecodeObjTemp;
+    string newFileName = fileName.append(".d");
+    retrieveFile_.open(newFileName, ofstream::out | ofstream::binary);
+    Recipe_t tempRecipe = recvDecodeObj_->getFileRecipeHead();
+    totalChunkNumber_ = tempRecipe.fileRecipeHead.totalChunkNumber;
 }
 
 bool Retriever::Retrieve()
 {
-    vector<string> file;
-    file.resize(chunkCnt_);
-    int i;
-    Chunk_t tmpChunk;
-    for (i = 0; i < chunkCnt_; i++) {
-        while (!this->extractMQ(tmpChunk))
-            ;
-        file[tmpChunk.getID()] = tmpChunk.getLogicData();
+    while (currentID_ < totalChunkNumber_) {
+        multiThreadWriteMutex.lock();
+        auto current = chunkTempList_.find(currentID_);
+        if (current == chunkTempList_.end()) {
+            continue;
+        } else {
+            retrieveFile_.write(current->second.c_str(), current->second.length());
+            chunkTempList_.erase(current);
+            currentID_++;
+        }
+        multiThreadWriteMutex.unlock();
     }
-    for (i = 0; i < chunkCnt_; i++) {
-        retrieveFile_.write(file[i].c_str(), file[i].length());
-        const char* s = hexstring(&file[i][0], file[i].length());
-        cout << "ID : " << i << endl;
-        cout << s << endl
-             << endl;
-    }
-    retrieveFile_.close();
-    std::cerr << "Retrieve : retrieve done" << endl;
 }
 
 void Retriever::run()
 {
-    while (!this->extractMQ(chunkCnt_))
-        ;
-    this->Retrieve();
+    while (totalRecvNumber_ < totalChunkNumber_) {
+        RetrieverData_t newData;
+        if (!extractMQFromRecvDecode(newData)) {
+            cerr << "Error extract mq in retriever" << endl;
+        }
+        string data;
+        data.resize(newData.logicDataSize);
+        memcpy(&data[0], newData.logicData, newData.logicDataSize);
+        multiThreadWriteMutex.lock();
+        chunkTempList_.insert(make_pair(newData.ID, data));
+        multiThreadWriteMutex.unlock();
+    }
+}
+
+bool Retriever::extractMQFromRecvDecode(RetrieverData_t& newData)
+{
+    return recvDecodeObj_->extractMQToRetriever(newData);
 }

@@ -8,16 +8,16 @@
 #include <boost/thread.hpp>
 using namespace std;
 
-class database {
+class Database {
 private:
     leveldb::DB* levelDBObj_ = nullptr;
     std::mutex mutexDataBase_;
     std::string dbName_;
 
 public:
-    database(){};
-    database(std::string dbName);
-    ~database();
+    Database(){};
+    Database(std::string dbName);
+    ~Database();
     bool openDB(std::string dbName);
     bool query(std::string key, std::string& value);
     bool insert(std::string key, std::string value);

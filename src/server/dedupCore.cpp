@@ -1,20 +1,9 @@
-//
-// Created by a on 2/3/19.
-//
-
 #include "dedupCore.hpp"
-//tmp
-#include "../../include/dedupCore.hpp"
 
 chunkCache cache;
 
 extern database fp2ChunkDB;
 extern Configure config;
-_DedupCore::_DedupCore()
-{
-    _inputMQ.createQueue(DATASR_TO_DEDUPCORE_MQ, READ_MESSAGE);
-    _outputMQ.createQueue(DEDUPCORE_TO_STORAGECORE_MQ, WRITE_MESSAGE);
-}
 
 _DedupCore::~_DedupCore() {}
 
@@ -27,16 +16,6 @@ bool _DedupCore::insertMQ(epoll_message& msg)
 bool _DedupCore::extractMQ(epoll_message& msg)
 {
     return _inputMQ.pop(msg);
-}
-
-_messageQueue _DedupCore::getOutputMQ()
-{
-    return _outputMQ;
-}
-
-_messageQueue _DedupCore::getInputMQ()
-{
-    return _inputMQ;
 }
 
 dedupCore::dedupCore()
