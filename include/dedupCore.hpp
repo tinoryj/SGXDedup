@@ -11,36 +11,6 @@
 
 using namespace std;
 
-class chunkCache_t {
-private:
-    int cnt_;
-    bool avaiable_;
-    string chunkLogicData_;
-    std::mutex cntMutex_, avaiMutex_;
-
-public:
-    chunkCache_t();
-    void refer();
-    void derefer();
-    int readCnt();
-    void setChunk(string& chunkLogicData);
-    bool readChunk(string& chunkLogicData);
-};
-
-class chunkCache {
-private:
-    map<string, chunkCache_t*> memBuffer_;
-    CryptoPrimitive* cryptoObj_;
-    std::mutex chunkCacheMutex_;
-
-public:
-    chunkCache();
-    void refer(string& chunkHash);
-    void derefer(string& chunkHash);
-    void setChunk(vector<string>& fp, vector<string>& chunks);
-    bool readChunk(string& chunkHash, string& chunkLogicData);
-};
-
 class signedHash {
 public:
     signedHashList_t signedHashList_;

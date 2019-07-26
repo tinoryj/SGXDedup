@@ -27,7 +27,7 @@ void powClient::run()
 
         uint64_t currentBatchSize = 0;
         memset(batchChunkLogicData_charBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
-        for (uint64_t i = 0, cnt = 0; i < powBatchSize; i++) {
+        for (uint64_t i = 0; i < powBatchSize; i++) {
             if (inputMQ.done_ && !extractMQFromEncoder(tempChunk)) {
                 senderObj->editJobDoneFlag();
                 break;
@@ -69,7 +69,7 @@ void powClient::run()
             batchChunk[it].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
         }
         lists.clear();
-        for (int i; i < batchChunk.size(); i++) {
+        for (int i = 0; i < batchChunk.size(); i++) {
             insertMQToSender(batchChunk[i]);
         }
     }
@@ -118,9 +118,7 @@ bool powClient::do_attestation()
     sgx_ra_msg3_t* msg3;
     ra_msg4_t* msg4 = NULL;
     uint32_t msg0_extended_epid_group_id = 0;
-    uint32_t msg3_sz;
-    int rv;
-    size_t msg4sz = 0;
+    uint32_t msg3Size;
 
     string enclaveName = config.getPOWEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
@@ -174,7 +172,7 @@ bool powClient::do_attestation()
     status = sgx_ra_proc_msg2(_ctx, _eid,
         sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2,
         sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size,
-        &msg3, &msg3_sz);
+        &msg3, &msg3Size);
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
@@ -191,7 +189,7 @@ bool powClient::do_attestation()
         delete msg2;
     }
 
-    if (!senderObj->sendSGXmsg3(*msg3, msg3_sz, msg4, netstatus)) {
+    if (!senderObj->sendSGXmsg3(*msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : error send_msg3 : " << netstatus << endl;
         if (msg3 != nullptr) {

@@ -101,7 +101,6 @@ bool kmClient::getMsg01(sgx_enclave_id_t& eid,
     sgx_ra_context_t& ctx,
     string& msg01)
 {
-    sgx_status_t status;
     uint32_t msg0;
     sgx_ra_msg1_t msg1;
 
@@ -168,8 +167,6 @@ bool kmClient::doAttestation()
     ra_msg4_t* msg4 = NULL;
     uint32_t msg0_extended_epid_group_id = 0;
     uint32_t msg3_sz;
-    int rv;
-    size_t msg4sz = 0;
 
     string enclaveName = config.getKMEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
@@ -209,10 +206,9 @@ bool kmClient::doAttestation()
         return false;
     }
 
-    int netstatus;
     u_char msg01Buffer[sizeof(msg01)];
     memcpy(msg01Buffer, &msg01, sizeof(msg01));
-    u_char* msg2Buffer;
+    u_char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg2RecvSize = 0;
     if (!_socket.Send(msg01Buffer, sizeof(msg01))) {
         cerr << "kmClient: socket error" << endl;
@@ -252,7 +248,7 @@ bool kmClient::doAttestation()
 
     u_char msg3Buffer[msg3_sz];
     memcpy(msg3Buffer, msg3, msg3_sz);
-    u_char* msg4Buffer;
+    u_char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg4RecvSize = 0;
     if (!_socket.Send(msg3Buffer, msg3_sz)) {
         cerr << "kmClient: socket error" << endl;

@@ -69,7 +69,7 @@ string keyClient::keyExchange(Chunk_t newChunk)
         cerr << "keyClient: socket error" << endl;
         exit(0);
     }
-    u_char* recvBuffer;
+    u_char recvBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize;
     if (!socket_.Recv(recvBuffer, recvSize) || recvSize != CHUNK_ENCRYPT_KEY_SIZE) {
         cerr << "keyClient: socket error" << endl;

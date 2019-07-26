@@ -1,7 +1,3 @@
-//
-// Created by a on 11/17/18.
-//
-
 #include "ssl.hpp"
 
 ssl::ssl(std::string ip, int port, int scSwitch)
@@ -18,7 +14,7 @@ ssl::ssl(std::string ip, int port, int scSwitch)
     sockAddr_.sin_port = htons(port);
     sockAddr_.sin_family = AF_INET;
 
-    char passwd[5] = "1111";
+    //char passwd[5] = "1111";
 
     switch (scSwitch) {
     case SERVERSIDE: {

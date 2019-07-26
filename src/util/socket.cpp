@@ -9,8 +9,9 @@ Socket::Socket(const int type, string ip, int port)
 }
 
 Socket::Socket(int fd, sockaddr_in addr)
-    : fd_(fd)
-    , addr_(addr)
+    : addr_(addr)
+    , fd_(fd)
+
 {
 }
 

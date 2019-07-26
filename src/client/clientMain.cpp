@@ -42,7 +42,7 @@ int main(int argv, char* argc[])
         string fileName(argc[2]);
 
         recvDecodeObj = new RecvDecode(fileName);
-        Recipe_t fileRecipe = recvDecodeObj->getFileRecipeHead();
+        //Recipe_t fileRecipe = recvDecodeObj->getFileRecipeHead();
         //memcpy(&fileRecipe, &recvDecodeObj->getFileRecipeHead(), sizeof(Recipe_t));
         retrieverObj = new Retriever(fileName, recvDecodeObj);
 

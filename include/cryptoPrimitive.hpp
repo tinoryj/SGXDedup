@@ -27,7 +27,7 @@ private:
     const EVP_MD* md_;
 
     int hashSize_ = CHUNK_HASH_SIZE;
-    int keySize_ = CHUNK_ENCRYPT_KEY_SIZE;
+    //int keySize_ = CHUNK_ENCRYPT_KEY_SIZE;
     int blockSize_ = CRYPTO_BLOCK_SZIE;
 
     EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();

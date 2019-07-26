@@ -52,6 +52,9 @@ using namespace std;
 
 #define CRYPTO_BLOCK_SZIE 16
 
+#define SGX_MESSAGE_MAX_SIZE 1024 * 1024
+#define NETWORK_RESPOND_BUFFER_MAX_SIZE 4 * 1024 * 1024
+
 class Configure {
 private:
     // following settings configure by macro set

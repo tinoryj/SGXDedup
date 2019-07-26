@@ -1,11 +1,11 @@
 #ifndef POW_ENCLAVE_U_H__
 #define POW_ENCLAVE_U_H__
 
-#include <stdint.h>
-#include <wchar.h>
-#include <stddef.h>
-#include <string.h>
 #include "sgx_edger8r.h" /* for sgx_satus_t etc. */
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#include <wchar.h>
 
 #include "sgx_key_exchange.h"
 #include "sgx_trts.h"
@@ -20,7 +20,7 @@ extern "C" {
 
 #ifndef CREATE_SESSION_OCALL_DEFINED__
 #define CREATE_SESSION_OCALL_DEFINED__
-sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, create_session_ocall, (uint32_t* sid, uint8_t* dh_msg1, uint32_t dh_msg1_size, uint32_t timeout));
+sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, create_session_ocall, (uint32_t * sid, uint8_t* dh_msg1, uint32_t dh_msg1_size, uint32_t timeout));
 #endif
 #ifndef EXCHANGE_REPORT_OCALL_DEFINED__
 #define EXCHANGE_REPORT_OCALL_DEFINED__
@@ -32,7 +32,7 @@ sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, close_session_ocall, (uint32_t sid, u
 #endif
 #ifndef INVOKE_SERVICE_OCALL_DEFINED__
 #define INVOKE_SERVICE_OCALL_DEFINED__
-sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, invoke_service_ocall, (uint8_t* pse_message_req, uint32_t pse_message_req_size, uint8_t* pse_message_resp, uint32_t pse_message_resp_size, uint32_t timeout));
+sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, invoke_service_ocall, (uint8_t * pse_message_req, uint32_t pse_message_req_size, uint8_t* pse_message_resp, uint32_t pse_message_resp_size, uint32_t timeout));
 #endif
 #ifndef SGX_OC_CPUIDEX_DEFINED__
 #define SGX_OC_CPUIDEX_DEFINED__

@@ -294,7 +294,7 @@ powSession* kmServer::authkm()
     sgx_ra_msg3_t msg3;
     ra_msg4_t msg4;
 
-    u_char* msg01Buffer;
+    u_char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg01RecvSize;
     if (!_socket.Recv(msg01Buffer, msg01RecvSize)) {
         cerr << "kmServer: error socket reading" << endl;
@@ -315,7 +315,7 @@ powSession* kmServer::authkm()
     }
 
     int msg3RecvSize;
-    u_char* msg3Buffer;
+    u_char msg3Buffer[SGX_MESSAGE_MAX_SIZE];
     if (!_socket.Recv(msg3Buffer, msg3RecvSize)) {
         cerr << "kmServer: error msg01" << endl;
         return nullptr;
@@ -328,7 +328,7 @@ powSession* kmServer::authkm()
     }
 
     int msg4SendSize = sizeof(msg4);
-    u_char* msg4Buffer;
+    u_char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     memcpy(msg4Buffer, &msg4, sizeof(msg4));
     if (!_socket.Send(msg4Buffer, msg4SendSize)) {
         cerr << "kmServer: error socket reading" << endl;

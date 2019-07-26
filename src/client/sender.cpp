@@ -34,7 +34,7 @@ bool Sender::sendRecipeList(RecipeList_t& request, int& status)
     for (int i = 0; i < recipeNumber; i++) {
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(RecipeEntry_t) * i, &request[i], sizeof(RecipeEntry_t));
     }
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
@@ -63,7 +63,7 @@ bool Sender::sendRecipeHead(Recipe_t& request, int& status)
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(requestBody));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
@@ -96,7 +96,7 @@ bool Sender::sendChunkList(ChunkList_t& request, int& status)
     for (int i = 0; i < chunkNumber; i++) {
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(Chunk_t) * i, &request[i], sizeof(Chunk_t));
     }
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -129,7 +129,7 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg0, sizeof(msg0));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg0), &msg1, sizeof(msg1));
 
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -164,7 +164,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, i
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg3, size);
 
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -202,7 +202,7 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + 16 * sizeof(uint8_t), &request.hash_[i][0], CHUNK_HASH_SIZE);
     }
 
-    u_char* respondBuffer;
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed" << endl;
