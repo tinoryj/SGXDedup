@@ -1,7 +1,3 @@
-//
-// Created by a on 1/25/19.
-//
-
 #include "../pow/include/PowServer.hpp"
 #include "boost/thread.hpp"
 #include "configure.hpp"
@@ -13,8 +9,8 @@
 #include <signal.h>
 Configure config("config.json");
 
-database fp2ChunkDB;
-database fileName2metaDB;
+Database fp2ChunkDB;
+Database fileName2metaDB;
 
 storageCore* storage;
 dataSR* SR;

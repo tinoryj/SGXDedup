@@ -24,6 +24,7 @@ bool Retriever::Retrieve()
         }
         multiThreadWriteMutex.unlock();
     }
+    return true;
 }
 
 void Retriever::run()

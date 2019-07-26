@@ -2,7 +2,7 @@
 
 chunkCache cache;
 
-extern database fp2ChunkDB;
+extern Database fp2ChunkDB;
 extern Configure config;
 
 _DedupCore::~_DedupCore() {}

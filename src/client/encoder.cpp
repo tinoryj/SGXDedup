@@ -32,8 +32,17 @@ void Encoder::run()
 
 bool Encoder::encodeChunk(Data_t& newChunk)
 {
-    cryptoObj_->encryptChunk(newChunk.chunk);
-    cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
+    bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);
+    bool statusHash = cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
+    if (!statusChunk) {
+        cerr << "Encoder : error encrypt chunk" << endl;
+        return false;
+    } else if (!statusHash) {
+        cerr << "Encoder : error compute hash" << endl;
+        return false;
+    } else {
+        return true;
+    }
 }
 
 bool Encoder::insertMQFromKeyClient(Data_t& newChunk)

@@ -39,7 +39,7 @@ void keyClient::run()
         if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
             break;
         };
-        if (tempchunk.dataType = DATA_TYPE_RECIPE) {
+        if (tempchunk.dataType == DATA_TYPE_RECIPE) {
             continue;
         }
         memcpy(&chunkKey[0], tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);

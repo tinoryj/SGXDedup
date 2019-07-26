@@ -1,60 +1,52 @@
-//
-// Created by a on 2/3/19.
-//
-
 #include "storageCore.hpp"
-//TODO:tmp
-#include "../../include/storageCore.hpp"
 
 extern Configure config;
-extern database fp2ChunkDB;
-extern database fileName2metaDB;
+extern Database fp2ChunkDB;
+extern Database fileName2metaDB;
 
 storageCore::storageCore()
 {
-    _fileRecipeNamePrefix = config.getFileRecipeRootPath();
-    _keyRecipeNamePrefix = config.getKeyRecipeRootPath();
-    _containerNamePrefix = config.getContainerRootPath();
-    _fileRecipeNameTail = ".fileRecipe";
-    _keyRecipeNameTail = ".keyRecipe";
-    _containerNameTail = ".container";
+    fileRecipeNamePrefix_ = config.getFileRecipeRootPath();
+    keyRecipeNamePrefix_ = config.getKeyRecipeRootPath();
+    containerNamePrefix_ = config.getContainerRootPath();
+    fileRecipeNameTail_ = ".fileRecipe";
+    keyRecipeNameTail_ = ".keyRecipe";
+    containerNameTail_ = ".container";
     ifstream fin;
     fin.open(".StorageConfig", ifstream::in);
     if (fin.is_open()) {
-        fin >> _lastFileRecipeFileName;
-        fin >> _lastkeyRecipeFileName;
-        fin >> _lastContainerFileName;
-        fin >> _currentContainer._used;
+        fin >> lastFileRecipeFileName_;
+        fin >> lastkeyRecipeFileName_;
+        fin >> lastContainerFileName_;
+        fin >> currentContainer_.used_;
         fin.close();
 
         //read last container
-        fin.open("cr/" + _lastContainerFileName + _containerNameTail, ifstream::in | ifstream::binary);
-        fin.read(_currentContainer._body, _currentContainer._used);
+        fin.open("cr/" + lastContainerFileName_ + containerNameTail_, ifstream::in | ifstream::binary);
+        fin.read(currentContainer_.body_, currentContainer_.used_);
         fin.close();
 
     } else {
-        _lastkeyRecipeFileName = _lastContainerFileName = _lastFileRecipeFileName = "abcdefghijklmno";
-        _currentContainer._used = 0;
+        lastkeyRecipeFileName_ = lastContainerFileName_ = lastFileRecipeFileName_ = "abcdefghijklmno";
+        currentContainer_.used_ = 0;
     }
-    _crypto = new CryptoPrimitive();
-    _netRecvMQ.createQueue(DATASR_TO_STORAGECORE_MQ, READ_MESSAGE);
-    _netSendMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
+    cryptoObj_ = new CryptoPrimitive();
 }
 
 storageCore::~storageCore()
 {
     ofstream fout;
     fout.open(".StorageConfig", ofstream::out);
-    fout << _lastFileRecipeFileName << endl;
-    fout << _lastkeyRecipeFileName << endl;
-    fout << _lastContainerFileName << endl;
-    fout << _currentContainer._used << endl;
+    fout << lastFileRecipeFileName_ << endl;
+    fout << lastkeyRecipeFileName_ << endl;
+    fout << lastContainerFileName_ << endl;
+    fout << currentContainer_.used_ << endl;
     fout.close();
 
-    string writeContainerName = _containerNamePrefix + _lastContainerFileName + _containerNameTail;
-    _currentContainer.saveTOFile(writeContainerName);
+    string writeContainerName = containerNamePrefix_ + lastContainerFileName_ + containerNameTail_;
+    currentContainer_.saveTOFile(writeContainerName);
 
-    delete _crypto;
+    delete cryptoObj_;
 }
 
 /* storageCore thread handle
@@ -66,11 +58,11 @@ storageCore::~storageCore()
  */
 void storageCore::run()
 {
-    epoll_message* msg1 = new epoll_message();
-    networkStruct* msg2 = new networkStruct(0, 0);
-    chunkList chunks;
+    EpollMessage_t* msg1;
+    NetworkHeadStruct_t* msg2; //00
+    ChunkList_t chunks;
     Recipe_t recipe;
-    Chunk tmpChunk;
+    Chunk_t tmpChunk;
     while (1) {
         bool status = false;
 
@@ -98,7 +90,7 @@ void storageCore::run()
         }
 
         //wait for 5ms
-        status = _netRecvMQ.pop(*msg1);
+        status = netRecvMQ_.pop(msg1);
         if (status) {
             deserialize(msg1->_data, *msg2);
             switch (msg2->_type) {
@@ -153,10 +145,10 @@ bool storageCore::saveRecipe(std::string& recipeName, fileRecipe_t& fileRecipe, 
     ofstream fileRecipeOut, keyRecipeOut;
     string writeRecipeName, buffer;
 
-    writeRecipeName = _fileRecipeNamePrefix + _lastFileRecipeFileName + _fileRecipeNameTail;
+    writeRecipeName = fileRecipeNamePrefix_ + lastFileRecipeFileName_ + fileRecipeNameTail_;
     fileRecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
 
-    writeRecipeName = _keyRecipeNamePrefix + _lastkeyRecipeFileName + _keyRecipeNameTail;
+    writeRecipeName = keyRecipeNamePrefix_ + lastkeyRecipeFileName_ + keyRecipeNameTail_;
     keyRecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
 
     if (!(fileRecipeOut.is_open() && keyRecipeOut.is_open())) {
@@ -171,9 +163,9 @@ bool storageCore::saveRecipe(std::string& recipeName, fileRecipe_t& fileRecipe, 
     fileRecipeOut.close();
     keyRecipeOut.close();
 
-    recipeName = _lastkeyRecipeFileName = _lastFileRecipeFileName;
-    next_permutation(_lastFileRecipeFileName.begin(), _lastFileRecipeFileName.end());
-    //next_permutation(_lastkeyRecipeFileName.begin(),_lastkeyRecipeFileName.end());
+    recipeName = lastkeyRecipeFileName_ = lastFileRecipeFileName_;
+    next_permutation(lastFileRecipeFileName_.begin(), lastFileRecipeFileName_.end());
+    //next_permutation(lastkeyRecipeFileName_.begin(),lastkeyRecipeFileName_.end());
 
     return true;
 }
@@ -183,10 +175,10 @@ bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe
     ifstream fileRecipeIn, keyRecipeIn;
     string readRecipeName;
 
-    readRecipeName = _fileRecipeNamePrefix + _lastkeyRecipeFileName + _fileRecipeNameTail;
+    readRecipeName = fileRecipeNamePrefix_ + lastkeyRecipeFileName_ + fileRecipeNameTail_;
     fileRecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
 
-    readRecipeName = _keyRecipeNamePrefix + _lastkeyRecipeFileName + _keyRecipeNameTail;
+    readRecipeName = keyRecipeNamePrefix_ + lastkeyRecipeFileName_ + keyRecipeNameTail_;
     keyRecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
 
     if (!(fileRecipeIn.is_open() && keyRecipeIn.is_open())) {
@@ -232,7 +224,7 @@ bool storageCore::saveChunk(std::string chunkHash, std::string& chunkData)
         std::cerr << "Can insert chunk to database" << endl;
     }
 
-    _currentContainer._used += key._length;
+    currentContainer_.used_ += key._length;
 
     return ok;
 }
@@ -276,10 +268,10 @@ bool storageCore::verifyRecipe(Recipe_t recipe, int version)
 void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd)
 {
 
-    networkStruct sendBody(0, 0);
+    NetworkHeadStruct_t sendBody(0, 0);
     cerr << "start to send recipe to client" << endl;
 
-    epoll_message msg1;
+    EpollMessage_t msg1;
     msg1._fd = fd;
     msg1._epfd = epfd;
 
@@ -313,13 +305,13 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
     this->insertMQ(msg1);
 
     //send chunks
-    chunkList chunks;
+    ChunkList_t chunks;
     string chunkData;
     struct sockaddr_in tmpaddr;
     Socket tmpsock(fd, tmpaddr);
     int cnt = config.getSendChunkBatchSize();
     sendBody._type = CLIENT_DOWNLOAD_CHUNK;
-    for (auto it : f._body) {
+    for (auto it : f.body_) {
         cnt--;
         string hash(it._chunkHash, 32);
         if (!this->restoreChunk(hash, chunkData)) {
@@ -353,25 +345,25 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
 bool storageCore::writeContainer(keyValueForChunkHash& key, std::string& data)
 {
     key._length = data.length();
-    if (key._length + _currentContainer._used < (4 << 20)) {
-        memcpy(&_currentContainer._body[_currentContainer._used], &data[0], key._length);
-        key._containerName = _lastContainerFileName;
+    if (key._length + currentContainer_.used_ < (4 << 20)) {
+        memcpy(&currentContainer_.body_[currentContainer_.used_], &data[0], key._length);
+        key._containerName = lastContainerFileName_;
     } else {
-        string writeContainerName = _containerNamePrefix + _lastContainerFileName + _containerNameTail;
-        _currentContainer.saveTOFile(writeContainerName);
-        next_permutation(_lastContainerFileName.begin(), _lastContainerFileName.end());
-        _currentContainer._used = 0;
-        memcpy(&_currentContainer._body[_currentContainer._used], &data[0], key._length);
-        key._containerName = _lastContainerFileName;
+        string writeContainerName = containerNamePrefix_ + lastContainerFileName_ + containerNameTail_;
+        currentContainer_.saveTOFile(writeContainerName);
+        next_permutation(lastContainerFileName_.begin(), lastContainerFileName_.end());
+        currentContainer_.used_ = 0;
+        memcpy(&currentContainer_.body_[currentContainer_.used_], &data[0], key._length);
+        key._containerName = lastContainerFileName_;
     }
-    key._offset = _currentContainer._used;
+    key._offset = currentContainer_.used_;
     return true;
 }
 
 bool storageCore::readContainer(keyValueForChunkHash key, std::string& data)
 {
     ifstream containerIn;
-    string readName = _containerNamePrefix + key._containerName + _containerNameTail;
+    string readName = containerNamePrefix_ + key._containerName + containerNameTail_;
     containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
 
     if (!containerIn.is_open()) {
@@ -391,7 +383,7 @@ bool storageCore::createContainer() {}
 
 _Container::_Container()
 {
-    this->_used = 0;
+    this->used_ = 0;
 }
 
 _Container::~_Container() {}
@@ -405,8 +397,8 @@ void _Container::saveTOFile(string fileName)
         return;
         ;
     }
-    containerOut.write(this->_body, this->_used);
+    containerOut.write(this->body_, this->used_);
     cerr << "Container : "
-         << "save " << setbase(10) << this->_used << " bytes to file system" << endl;
+         << "save " << setbase(10) << this->used_ << " bytes to file system" << endl;
     containerOut.close();
 }

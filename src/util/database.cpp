@@ -31,6 +31,8 @@ bool Database::openDB(std::string dbName)
     assert(status.ok());
     if (status.ok()) {
         return true;
+    } else {
+        return false;
     }
 }
 

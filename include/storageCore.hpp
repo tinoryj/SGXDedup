@@ -13,6 +13,7 @@
 using namespace std;
 
 class Container {
+public:
     uint32_t used_;
     char body_[4 << 20]; //4 M container size
     Container();

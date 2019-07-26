@@ -174,6 +174,7 @@ bool Chunker::chunking()
     if (config.getChunkingType() == CHUNKER_VAR_SIZE_TYPE) {
         varSizeChunking();
     }
+    return true;
 }
 
 void Chunker::fixSizeChunking()
