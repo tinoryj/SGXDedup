@@ -12,20 +12,20 @@ extern Configure config;
 using namespace boost::compute::detail;
 using namespace std;
 
-class keyCache {
+class KeyCache {
 private:
     lru_cache<string, string>* lruKeyCache_;
-    std::mutex mutexKeyCache_;
+    std::mutex keyCacheMutex_;
 
 public:
-    keyCache();
-    ~keyCache();
+    KeyCache();
+    ~KeyCache();
     void insertKeyToCache(string& hash, string& key);
     bool existsKeyinCache(string& hash);
     string getKeyFromCache(string& hash);
 };
 
-class chunkCache_t {
+class ChunkCache_t {
 private:
     int cnt_;
     bool avaiable_;
@@ -33,7 +33,7 @@ private:
     std::mutex cntMutex_, avaiMutex_;
 
 public:
-    chunkCache_t();
+    ChunkCache_t();
     void refer();
     void derefer();
     int readCnt();
@@ -41,15 +41,15 @@ public:
     bool readChunk(string& chunkLogicData);
 };
 
-class chunkCache {
+class ChunkCache {
 private:
-    map<string, chunkCache_t*> memBuffer_;
+    map<string, ChunkCache_t*> memBuffer_;
     CryptoPrimitive* cryptoObj_;
     std::mutex chunkCacheMutex_;
 
 public:
-    chunkCache();
-    ~chunkCache() {}
+    ChunkCache();
+    ~ChunkCache() {}
     void refer(string& chunkHash);
     void derefer(string& chunkHash);
     void setChunk(vector<string>& fp, vector<string>& chunks);

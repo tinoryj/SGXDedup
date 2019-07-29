@@ -1,5 +1,6 @@
-#include "../pow/include/PowServer.hpp"
+#include "../pow/include/powServer.hpp"
 #include "boost/thread.hpp"
+#include "cache.hpp"
 #include "configure.hpp"
 #include "dataSR.hpp"
 #include "database.hpp"
@@ -11,35 +12,35 @@ Configure config("config.json");
 
 Database fp2ChunkDB;
 Database fileName2metaDB;
+ChunkCache* cache;
 
-storageCore* storage;
-dataSR* SR;
-dedupCore* dedup;
+StorageCore* storage;
+DataSR* SR;
+DedupCore* dedup;
 powServer* Pow;
+//Timer* timerObj;
 
 void CTRLC(int s)
 {
     cerr << "server close" << endl;
 
-    if (storage != nullptr)
-        delete storage;
+    // if (storage != nullptr)
+    //     delete storage;
 
-    if (SR != nullptr)
-        delete SR;
+    // if (SR != nullptr)
+    //     delete SR;
 
-    if (dedup != nullptr)
-        delete dedup;
+    // if (dedup != nullptr)
+    //     delete dedup;
 
-    if (Pow != nullptr)
-        delete Pow;
+    // if (Pow != nullptr)
+    //     delete Pow;
 
     exit(0);
 }
 
 int main()
 {
-
-    initMQForServer();
 
     struct sigaction sa;
     sa.sa_handler = SIG_IGN;
@@ -54,35 +55,37 @@ int main()
 
     vector<boost::thread*> thList;
     boost::thread* th;
-    SR = new dataSR();
-    dedup = new dedupCore();
-    storage = new storageCore();
-    Pow = new powServer();
+    cache = new ChunkCache();
+    //timerObj = new Timer(cache);
+    // SR = new DataSR();
+    // dedup = new DedupCore();
+    // storage = new StorageCore();
+    // Pow = new powServer();
 
-    int i, maxThread;
+    // int i, maxThread;
 
-    //start dataSR
-    th = new boost::thread(boost::bind(&dataSR::run, SR));
-    thList.push_back(th);
+    // //start DataSR
+    // th = new boost::thread(boost::bind(&DataSR::run, SR));
+    // thList.push_back(th);
 
-    //start pow
-    th = new boost::thread(boost::bind(&powServer::run, Pow));
-    thList.push_back(th);
+    // //start pow
+    // th = new boost::thread(boost::bind(&powServer::run, Pow));
+    // thList.push_back(th);
 
-    //start dedupCore
-    maxThread = config.getDedupCoreThreadLimit();
-    for (i = 0; i < maxThread; i++) {
-        th = new boost::thread(boost::bind(&dedupCore::run, dedup));
-        thList.push_back(th);
-    }
+    // //start DedupCore
+    // maxThread = config.getDedupCoreThreadLimit();
+    // for (i = 0; i < maxThread; i++) {
+    //     th = new boost::thread(boost::bind(&DedupCore::run, dedup));
+    //     thList.push_back(th);
+    // }
 
-    //start storageCore
+    // //start StorageCore
 
-    maxThread = config.getStorageCoreThreadLimit();
-    for (i = 0; i < maxThread; i++) {
-        th = new boost::thread(boost::bind(&storageCore::run, storage));
-        thList.push_back(th);
-    }
+    // maxThread = config.getStorageCoreThreadLimit();
+    // for (i = 0; i < maxThread; i++) {
+    //     th = new boost::thread(boost::bind(&StorageCore::run, storage));
+    //     thList.push_back(th);
+    // }
 
     for (auto it : thList) {
         it->join();

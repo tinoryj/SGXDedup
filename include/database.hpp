@@ -3,7 +3,6 @@
 
 #include "dataStructure.hpp"
 #include "leveldb/db.h"
-#include "seriazation.hpp"
 #include <bits/stdc++.h>
 #include <boost/thread.hpp>
 using namespace std;

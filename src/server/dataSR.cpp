@@ -3,18 +3,19 @@
 #define MESSAGE2STORAGE 2
 #define MESSAGE2DEDUPCORE 3
 
-dataSR::dataSR()
+DataSR::DataSR()
 {
     config_ = new Configure("config.json");
     socket_.init(SERVER_TCP, "", config_->getStorageServerPort());
+    timerObj_ = new Timer();
 }
 
-dataSR::~dataSR()
+DataSR::~DataSR()
 {
     socket_.finish();
 }
 
-bool dataSR::extractMQ()
+bool DataSR::extractMQ()
 {
     EpollMessage_t msg;
     epoll_event ev;
@@ -35,27 +36,26 @@ bool dataSR::extractMQ()
     }
 }
 
-bool dataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
+bool DataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
 {
     switch (queueSwitch) {
     case MESSAGE2RASERVER: {
-        insertMQ2RAServer(msg);
-        break;
+        return insertMQ2RAServer(msg);
     }
     case MESSAGE2STORAGE: {
-        insertMQ2StorageCore(msg);
-        break;
+        return insertMQ2StorageCore(msg);
     }
     case MESSAGE2DEDUPCORE: {
-        insertMQ2DedupCore(msg);
+        return insertMQ2DedupCore(msg);
     }
     default: {
-        cerr << "dataSR insert message queue error : wrong message queue name" << endl;
+        cerr << "DataSR insert message queue error : wrong message queue name" << endl;
+        return false;
     }
     }
 }
 
-bool dataSR::workloadProgress()
+bool DataSR::workloadProgress()
 {
     int epfd;
     map<int, Socket> socketConnection;
@@ -82,7 +82,7 @@ bool dataSR::workloadProgress()
 
             //Listen fd
             if (msg.fd == socket_.fd_) {
-                EpollMessage_t* msg1;
+                EpollMessage_t* msg1 = new EpollMessage_t;
                 tmpSock = socket_.Listen();
                 socketConnection[tmpSock.fd_] = tmpSock;
                 msg1->fd = tmpSock.fd_;
@@ -165,49 +165,58 @@ bool dataSR::workloadProgress()
     }
 }
 
-void dataSR::run()
+void DataSR::run()
 {
-    //boost::thread th(boost::bind(&dataSR::extractMQ, this));
+    //boost::thread th(boost::bind(&DataSR::extractMQ, this));
     this->workloadProgress();
     //th.detach();
 }
 
-bool dataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
+bool DataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
 {
     return MQ2DataSR_CallBack_.push(newMessage);
 }
 
-bool dataSR::insertMQ2DedupCore(EpollMessage_t& newMessage)
+bool DataSR::insertMQ2DedupCore(EpollMessage_t& newMessage)
 {
     return MQ2DedupCore_.push(newMessage);
 }
 
-bool dataSR::insertMQ2RAServer(EpollMessage_t& newMessage)
+bool DataSR::insertMQ2RAServer(EpollMessage_t& newMessage)
 {
     return MQ2RAServer_.push(newMessage);
 }
 
-bool dataSR::insertMQ2StorageCore(EpollMessage_t& newMessage)
+bool DataSR::insertMQ2StorageCore(EpollMessage_t& newMessage)
 {
     return MQ2StorageCore_.push(newMessage);
 }
 
-bool dataSR::extractMQ2DedupCore(EpollMessage_t& newMessage)
+bool DataSR::extractMQ2DedupCore(EpollMessage_t& newMessage)
 {
     return MQ2DedupCore_.pop(newMessage);
 }
 
-bool dataSR::extractMQ2RAServer(EpollMessage_t& newMessage)
+bool DataSR::extractMQ2RAServer(EpollMessage_t& newMessage)
 {
     return MQ2RAServer_.pop(newMessage);
 }
 
-bool dataSR::extractMQ2StorageCore(EpollMessage_t& newMessage)
+bool DataSR::extractMQ2StorageCore(EpollMessage_t& newMessage)
 {
     return MQ2StorageCore_.pop(newMessage);
 }
 
-bool dataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
+bool DataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
 {
     return MQ2DataSR_CallBack_.pop(newMessage);
+}
+
+bool DataSR::extractTimerMQToStorageCore(StorageCoreData_t& newData)
+{
+    return timerObj_->extractMQToStorageCore(newData);
+}
+bool DataSR::insertTimerMQToStorageCore(StorageCoreData_t& newData)
+{
+    return timerObj_->insertMQToStorageCore(newData);
 }

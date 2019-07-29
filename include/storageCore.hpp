@@ -3,6 +3,7 @@
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
+#include "dataSR.hpp"
 #include "dataStructure.hpp"
 #include "database.hpp"
 #include "messageQueue.hpp"
@@ -14,18 +15,16 @@ using namespace std;
 
 class Container {
 public:
-    uint32_t used_;
+    uint32_t used_ = 0;
     char body_[4 << 20]; //4 M container size
-    Container();
-    ~Container();
-    void saveTOFile(string fileName);
+    Container() {}
+    ~Container() {}
+    bool saveTOFile(string fileName);
 };
 
-class storageCore {
+class StorageCore {
 private:
-    messageQueue<Chunk_t> netRecvMQ_;
-    messageQueue<Chunk_t> netSendMQ_;
-
+    DataSR* dataSRObj_;
     std::string lastContainerFileName_;
     std::string lastFileRecipeFileName_;
     std::string lastkeyRecipeFileName_;
@@ -43,24 +42,29 @@ private:
 
     Container currentContainer_;
 
-    bool writeContainer(keyValueForChunkHash& key, std::string& data);
-    bool readContainer(keyValueForChunkHash key, std::string& data);
+    bool writeContainer(keyValueForChunkHash_t& key, char* data);
+    bool readContainer(keyValueForChunkHash_t key, char* data);
 
 public:
-    storageCore();
-    ~storageCore();
+    StorageCore(DataSR* dataSRObjTemp);
+    ~StorageCore();
 
     void run();
+    void chunkStoreThread();
 
-    bool saveRecipe(std::string& recipeName, FileRecipeHead_t& fileRecipe, std::string& keyRecipe);
-    bool restoreRecipe(std::string recipeName, FileRecipeHead_t& fileRecipe, std::string& keyRecipe);
-    bool saveChunk(std::string chunkHash, std::string& chunkData);
+    bool saveRecipe(std::string& recipeName, Recipe_t& fileRecipe, std::string& keyRecipe);
+    bool restoreRecipe(std::string recipeName, Recipe_t& fileRecipe, std::string& keyRecipe);
+    bool saveChunk(std::string chunkHash, char* chunkData, int chunkSize);
     bool restoreChunk(std::string chunkHash, std::string& chunkData);
 
     bool verifyRecipe(Recipe_t recipe, int version);
     void sendRecipe(std::string recipeName, int version, int fd, int epfd);
 
     bool createContainer();
+
+    bool extractMQFromDataSR(EpollMessage_t& newMessage);
+    bool insertMQToDataSR_CallBack(EpollMessage_t& newMessage);
+    bool extractMQFromTimer(StorageCoreData_t& newData);
 };
 
 #endif

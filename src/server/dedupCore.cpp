@@ -1,78 +1,86 @@
 #include "dedupCore.hpp"
 
-chunkCache cache;
-
 extern Database fp2ChunkDB;
 extern Configure config;
 
-_DedupCore::~_DedupCore() {}
-
-bool _DedupCore::insertMQ(epoll_message& msg)
+DedupCore::DedupCore(DataSR* dataSRTemp)
 {
-    _outputMQ.push(msg);
-    return true;
+    dataSRObj_ = dataSRTemp;
+    cryptoObj_ = new CryptoPrimitive();
+    dataSRObj_->timerObj_->startTimer();
 }
 
-bool _DedupCore::extractMQ(epoll_message& msg)
+DedupCore::~DedupCore()
 {
-    return _inputMQ.pop(msg);
-}
-
-dedupCore::dedupCore()
-{
-    _netSendMQ.createQueue(DATASR_IN_MQ, WRITE_MESSAGE);
-    _powMQ.createQueue(POWSERVER_TO_DEDUPCORE_MQ, READ_MESSAGE);
-    _crypto = new CryptoPrimitive();
-    _timer.startTimer();
-}
-
-dedupCore::~dedupCore()
-{
-    if (_crypto != nullptr)
-        delete _crypto;
+    if (cryptoObj_ != nullptr)
+        delete cryptoObj_;
 }
 
 /*
- * dedupCore thread handle
+ * DedupCore thread handle
  * process two type message:
  *      sgx_signed_hash     : for dedup stage one, regist to timer
  *      client_upload_chunk : for dedup stage two, save chunk to cache
- * */
-void dedupCore::run()
+ *
+ */
+void DedupCore::run()
 {
-    epoll_message msg1;
-    powSignedHash msg3;
-    RequiredChunk msg4;
-    chunkList msg5;
+    while (true) {
+        EpollMessage_t epollMessageTemp;
+        if (extractMQFromDataSR(epollMessageTemp)) {
+            switch (epollMessageTemp.type) {
+            case SGX_SIGNED_HASH_TO_DEDUPCORE: {
+                powSignedHash_t powSignedHashTemp;
+                RequiredChunk_t requiredChunkTemp;
+                int hashNumber = (epollMessageTemp.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
+                memcpy(powSignedHashTemp.signature_, epollMessageTemp.data, sizeof(uint8_t) * 16);
+                for (int i = 0; i < hashNumber; i++) {
+                    string hashTemp((char*)epollMessageTemp.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                    powSignedHashTemp.hash_.push_back(hashTemp);
+                    hashTemp.clear();
+                }
 
-    while (1) {
-        if (this->extractMQ(msg1)) {
-            switch (msg1._type) {
+                if (this->dedupStage1(powSignedHashTemp, requiredChunkTemp)) {
+                    epollMessageTemp.type = SUCCESS;
+                    epollMessageTemp.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
+                    int requiredChunkNumber = requiredChunkTemp.size();
+                    memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    memcpy(epollMessageTemp.data, &requiredChunkNumber, sizeof(int));
+                    for (int i = 0; i < requiredChunkNumber; i++) {
+                        memcpy(epollMessageTemp.data + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
+                    }
+                } else {
+                    epollMessageTemp.type = ERROR_RESEND;
+                    memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    epollMessageTemp.dataSize = 0;
+                }
+                insertMQToDataSR_CallBack(epollMessageTemp);
+                break;
+            }
             case CLIENT_UPLOAD_CHUNK: {
-                deserialize(msg1._data, msg5);
-                if (this->dedupStage2(msg5)) {
-                    msg1._type = SUCCESS;
-                } else {
-                    msg1._type = ERROR_RESEND;
+                StorageChunkList_t chunkListTemp;
+                int chunkNumber;
+                memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
+                int readSize = sizeof(int);
+                for (int i = 0; i < chunkNumber; i++) {
+                    int currentChunkSize;
+                    string chunkHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
+                    readSize += CHUNK_HASH_SIZE;
+                    memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
+                    readSize += sizeof(int);
+                    string chunkData((char*)epollMessageTemp.data + readSize, currentChunkSize);
+                    readSize += currentChunkSize;
+                    chunkListTemp.chunkHash.push_back(chunkHash);
+                    chunkListTemp.logicData.push_back(chunkData);
                 }
-                msg1._data.clear();
-                _netSendMQ.push(msg1);
-            }
-            }
-        }
-
-        if (_powMQ.pop(msg1)) {
-            switch (msg1._type) {
-            case SGX_SIGNED_HASH: {
-                deserialize(msg1._data, msg3);
-                if (this->dedupStage1(msg3, msg4)) {
-                    msg1._type = SUCCESS;
-                    serialize(msg4, msg1._data);
+                if (this->dedupStage2(chunkListTemp)) {
+                    epollMessageTemp.type = SUCCESS;
                 } else {
-                    msg1._type = ERROR_RESEND;
-                    msg1._data.clear();
+                    epollMessageTemp.type = ERROR_RESEND;
                 }
-                _netSendMQ.push(msg1);
+                epollMessageTemp.dataSize = 0;
+                memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                insertMQToDataSR_CallBack(epollMessageTemp);
                 break;
             }
             }
@@ -80,23 +88,21 @@ void dedupCore::run()
     }
 }
 
-bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk& out)
+bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
 {
     out.clear();
     bool status = true;
-
-    signedHash* sig = new signedHash();
-    sig->setMQ(this->getOutputMQ());
+    signedHashList_t sig;
 
     if (status) {
         string tmpdata;
-        int size = in.hash.size();
+        int size = in.hash_.size();
         for (int i = 0; i < size; i++) {
-            if (fp2ChunkDB.query(in.hash[i], tmpdata)) {
+            if (fp2ChunkDB.query(in.hash_[i], tmpdata)) {
                 continue;
             }
             out.push_back(i);
-            sig->_hashList.push_back(in.hash[i]);
+            sig.hashList.push_back(in.hash_[i]);
         }
     }
 
@@ -105,132 +111,37 @@ bool dedupCore::dedupStage1(powSignedHash in, RequiredChunk& out)
      * if yes, then push all chunk to storage
      * or not, then delete(de-refer) all chunk in cache
      */
-    sig->_startTime = std::chrono::high_resolution_clock::now();
-    sig->_outDataTime = (int)((double)sig->_hashList.size() * config.getTimeOutScale());
-    cerr << "dedupCore : "
-         << "regist " << setbase(10) << sig->_hashList.size() << " chunk to Timer" << endl;
-    _timer.registerHashList(sig);
+
+    sig.startTime = std::chrono::high_resolution_clock::now();
+    sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
+    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl;
+    dataSRObj_->timerObj_->registerHashList(sig);
 
     return status;
 }
 
-bool dedupCore::dedupStage2(chunkList in)
+bool DedupCore::dedupStage2(StorageChunkList_t& in)
 {
-    string hash;
-    int size = in._chunks.size(), i;
-    for (i = 0; i < size; i++) {
+    u_char hash[CHUNK_HASH_SIZE];
+    for (int i = 0; i < in.chunkHash.size(); i++) {
         //check chunk hash correct or not
-        _crypto->sha256_digest(in._chunks[i], hash);
-        if (hash != in._FP[i]) {
-            break;
-        }
-    }
-
-    /* if i != size, then client are not honest,it modified some chunk's hash
-     * then do not store chunk come form client
-    */
-    if (i == size) {
-        cache.setChunk(in._FP, in._chunks);
-        cerr << "dedupCore : "
-             << "recv " << setbase(10) << in._FP.size() << " chunk from client" << endl;
-        return true;
-    }
-    return false;
-}
-
-void signedHash::setMQ(_messageQueue mq)
-{
-    this->_outputMQ = mq;
-}
-
-bool signedHash::checkDone()
-{
-    string chunkLogicData;
-    bool success;
-    for (auto it : this->_hashList) {
-        success = cache.readChunk(it, chunkLogicData);
-        if (!success) {
+        cryptoObj_->generateHash((u_char*)&in.logicData[i][0], in.logicData[i].length(), hash);
+        if (memcmp(&in.chunkHash[i][0], hash, CHUNK_HASH_SIZE) != 0 && i != in.chunkHash.size() - 1) {
+            cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
             return false;
         }
-        _chunks.push_back(chunkLogicData);
     }
-
-    //protocol for dedupcore and storagecore
-    chunkList chunks;
-    int size = _hashList.size();
-    for (int i = 0; i < size; i++) {
-        chunks._FP.push_back(_hashList[i]);
-        chunks._chunks.push_back(_chunks[i]);
-    }
-    _outputMQ.push(chunks);
-
+    dataSRObj_->timerObj_->cache_->setChunk(in.chunkHash, in.logicData);
+    cerr << "DedupCore : recv " << setbase(10) << in.chunkHash.size() << " chunk from client" << endl;
     return true;
 }
 
-void signedHash::timeout()
+bool DedupCore::insertMQToDataSR_CallBack(EpollMessage_t& newMessage)
 {
-    int size = _chunks.size();
-    for (int i = 0; i < size; i++) {
-        cache.derefer(_hashList[i]);
-    }
-    //  _hashList.clear();
-    //  _chunks.clear();
+    return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
 }
 
-void Timer::registerHashList(signedHash* job)
+bool DedupCore::extractMQFromDataSR(EpollMessage_t& newMessage)
 {
-    for (auto it : job->_hashList) {
-        cache.refer(it);
-    }
-
-    {
-        boost::unique_lock<boost::shared_mutex> t(this->_mtx);
-        _jobQueue.push(job);
-    }
+    return dataSRObj_->extractMQ2DedupCore(newMessage);
 }
-
-void Timer::run()
-{
-    using namespace std::chrono;
-    signedHash* nowJob;
-    system_clock::time_point now;
-    duration<int, std::milli> dtn;
-    bool emptyFlag;
-    while (1) {
-        {
-            boost::unique_lock<boost::shared_mutex> t(this->_mtx);
-            emptyFlag = _jobQueue.empty();
-            if (!emptyFlag) {
-                nowJob = _jobQueue.top();
-                _jobQueue.pop();
-            }
-        }
-        if (emptyFlag) {
-            this_thread::sleep_for(chrono::milliseconds(500));
-            continue;
-        }
-        now = std::chrono::high_resolution_clock::now();
-        dtn = duration_cast<milliseconds>(now - nowJob->_startTime);
-        if (dtn.count() - nowJob->_outDataTime < 0) {
-            this_thread::sleep_for(milliseconds(nowJob->_outDataTime - dtn.count()));
-        }
-
-        cerr << "Timer : "
-             << "check time for " << setbase(10) << nowJob->_hashList.size() << " chunk  ";
-        if (!nowJob->checkDone()) {
-            nowJob->timeout();
-            cerr << "timeout" << endl;
-            return;
-        }
-        cerr << "success" << endl;
-        delete nowJob;
-    }
-}
-
-void Timer::startTimer()
-{
-    boost::thread th(boost::bind(&Timer::run, this));
-    th.detach();
-}
-
-bool dedupCore::dataDedup() {}

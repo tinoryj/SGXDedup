@@ -33,6 +33,6 @@ typedef struct _ra_msg4_struct {
 typedef struct {
     uint8_t signature_[16];
     vector<string> hash_;
-} powSignedHash;
+} powSignedHash_t;
 
 #endif //GENERALDEDUPSYSTEM_PROTOCOL_HPP

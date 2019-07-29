@@ -8,7 +8,7 @@ void powServer::closeSession(int fd)
     sessions.erase(fd);
 }
 
-powServer::powServer(dataSR* dataSRObjTemp)
+powServer::powServer(DataSR* dataSRObjTemp)
 {
 
     dataSRObj_ = dataSRObjTemp;
@@ -101,7 +101,7 @@ void powServer::run()
             break;
         }
         case SGX_SIGNED_HASH: {
-            powSignedHash clientReq;
+            powSignedHash_t clientReq;
             int signedHashNumber = (msg.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
             memcpy(clientReq.signature_, msg.data, sizeof(uint8_t) * 16);
             memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
@@ -124,7 +124,7 @@ void powServer::run()
                 } else {
                     if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
                         msg.type = SGX_SIGNED_HASH_TO_DEDUPCORE;
-                        dataSRObj_->insertMQ2DedupCore(msg);
+                        insertMQToDedupCore(msg);
                         break;
                     } else {
                         msg.type = ERROR_RESEND;
@@ -392,7 +392,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
     return true;
 }
 
-bool powServer::process_signedHash(powSession* session, powSignedHash req)
+bool powServer::process_signedHash(powSession* session, powSignedHash_t req)
 {
     string Mac, signature((char*)req.signature_, 16);
     cryptoObj_.cmac128(req.hash_, Mac, (u_char*)((const char*)session->sk), 16);

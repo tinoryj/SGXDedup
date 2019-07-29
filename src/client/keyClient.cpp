@@ -2,7 +2,7 @@
 #include "openssl/rsa.h"
 
 extern Configure config;
-extern keyCache kCache;
+extern KeyCache kCache;
 
 keyClient::keyClient(Encoder* encoderObjTemp)
 {

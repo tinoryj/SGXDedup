@@ -11,8 +11,8 @@ void powClient::run()
     uint64_t powBatchSize = config.getPOWBatchSize();
     u_char* batchChunkLogicData_charBuffer;
     batchChunkLogicData_charBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
-    powSignedHash request;
-    RequiredChunk lists;
+    powSignedHash_t request;
+    RequiredChunk_t lists;
     Data_t tempChunk;
     int netstatus;
 

@@ -29,7 +29,7 @@ set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ}
         ${BOOST_LIBRARY_OBJ} ${UTIL_OBJ} ${SYSTEM_LIBRARY_OBJ})
 
 set(CLIENT_OBJ chunker  encoder  keyClient sender  recvDecode  retriever  powClient kmServer)
-set(SERVER_OBJ dataSR  dedupCore  storage powServer)
+set(SERVER_OBJ dataSR  dedupCore powServer storage) 
 set(KEYSERVER_OBJ keyServer kmClient)
 
 #-fno-builtin-memset

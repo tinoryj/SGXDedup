@@ -12,7 +12,7 @@
 using namespace std;
 
 Configure config("config.json");
-keyCache kCache;
+KeyCache kCache;
 Chunker* chunkerObj;
 keyClient* keyClientObj;
 Encoder* encoderObj;

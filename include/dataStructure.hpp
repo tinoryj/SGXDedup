@@ -17,13 +17,24 @@ typedef struct {
 } Chunk_t;
 
 typedef struct {
+    vector<string> chunkHash;
+    vector<string> logicData;
+} StorageChunkList_t;
+
+typedef struct {
+    int logicDataSize;
+    u_char logicData[MAX_CHUNK_SIZE];
+    u_char chunkHash[CHUNK_HASH_SIZE];
+} StorageCoreData_t;
+
+typedef struct {
     uint32_t ID;
     int logicDataSize;
     u_char logicData[MAX_CHUNK_SIZE];
 } RetrieverData_t;
 
 typedef struct {
-    uint64_t chunkID;
+    uint32_t chunkID;
     int chunkSize;
     u_char chunkHash[CHUNK_HASH_SIZE];
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE];
@@ -93,7 +104,7 @@ typedef struct {
     string containerName;
     uint32_t offset;
     uint32_t length;
-} keyValueForChunkHash;
+} keyValueForChunkHash_t;
 
 typedef struct {
     //key: string _filename;
@@ -101,7 +112,7 @@ typedef struct {
     string fileRecipeName;
     string keyRecipeName;
     uint32_t version;
-} keyValueForFilename;
+} keyValueForFilename_t;
 
 //dedup core data structures
 
@@ -112,6 +123,6 @@ typedef struct {
     int outDataTime;
 } signedHashList_t;
 
-typedef vector<uint64_t> RequiredChunk;
+typedef vector<uint32_t> RequiredChunk_t;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

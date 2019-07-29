@@ -16,66 +16,51 @@ Sender::~Sender()
     }
 }
 
-bool Sender::sendRecipeList(RecipeList_t& request, int& status)
+bool Sender::sendRecipe(Recipe_t& request, RecipeList_t& recipeList, int& status)
 {
-    NetworkHeadStruct_t requestBody, respondBody;
+    int totalRecipeNumber = recipeList.size();
+    int sendRecipeNumber = 0;
+    int currentRecipeNumber = 0;
+    while (totalRecipeNumber != 0) {
 
-    requestBody.clientID = config.getClientID();
-    requestBody.messageType = CLIENT_UPLOAD_RECIPE;
-    respondBody.clientID = 0;
-    respondBody.messageType = 0;
-    respondBody.dataSize = 0;
-    int recipeNumber = request.size();
-    int sendSize = sizeof(NetworkHeadStruct_t) + recipeNumber * sizeof(RecipeEntry_t) + sizeof(int);
-    requestBody.dataSize = recipeNumber * sizeof(RecipeEntry_t) + sizeof(int);
-    u_char requestBuffer[sendSize];
-    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &recipeNumber, sizeof(int));
-    for (int i = 0; i < recipeNumber; i++) {
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(RecipeEntry_t) * i, &request[i], sizeof(RecipeEntry_t));
-    }
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
-    int recvSize = 0;
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        return false;
-    }
-    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
-    status = respondBody.messageType;
+        if (totalRecipeNumber - sendRecipeNumber < config.getSendRecipeBatchSize()) {
+            currentRecipeNumber = totalRecipeNumber - sendRecipeNumber;
+        } else {
+            currentRecipeNumber = config.getSendRecipeBatchSize();
+        }
+        NetworkHeadStruct_t requestBody, respondBody;
 
-    if (status == SUCCESS) {
-        return true;
-    } else {
-        return false;
-    }
-}
+        requestBody.clientID = config.getClientID();
+        requestBody.messageType = CLIENT_UPLOAD_RECIPE;
+        respondBody.clientID = 0;
+        respondBody.messageType = 0;
+        respondBody.dataSize = 0;
+        int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + currentRecipeNumber * sizeof(RecipeEntry_t);
+        requestBody.dataSize = sizeof(Recipe_t) + currentRecipeNumber * sizeof(RecipeEntry_t);
+        u_char requestBuffer[sendSize];
+        memcpy(requestBuffer, &requestBody, sizeof(requestBody));
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
+        for (int i = 0; i < currentRecipeNumber; i++) {
+            memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), &recipeList[sendRecipeNumber + i], sizeof(RecipeEntry_t));
+        }
 
-bool Sender::sendRecipeHead(Recipe_t& request, int& status)
-{
-    NetworkHeadStruct_t requestBody, respondBody;
+        u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+        int recvSize = 0;
+        if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+            return false;
+        }
+        memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
+        status = respondBody.messageType;
 
-    requestBody.clientID = config.getClientID();
-    requestBody.messageType = CLIENT_UPLOAD_RECIPE;
-    respondBody.clientID = 0;
-    respondBody.messageType = 0;
-    respondBody.dataSize = 0;
-    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t);
-    requestBody.dataSize = sizeof(Recipe_t);
-    u_char requestBuffer[sendSize];
-    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
-    int recvSize = 0;
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        return false;
+        if (status == SUCCESS) {
+            sendRecipeNumber += currentRecipeNumber;
+            currentRecipeNumber = 0;
+            totalRecipeNumber -= currentRecipeNumber;
+        } else {
+            return false;
+        }
     }
-    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
-    status = respondBody.messageType;
-
-    if (status == SUCCESS) {
-        return true;
-    } else {
-        return false;
-    }
+    return true;
 }
 
 bool Sender::sendChunkList(ChunkList_t& request, int& status)
@@ -88,14 +73,20 @@ bool Sender::sendChunkList(ChunkList_t& request, int& status)
     respondBody.messageType = 0;
     respondBody.dataSize = 0;
     int chunkNumber = request.size();
-    int sendSize = sizeof(NetworkHeadStruct_t) + chunkNumber * sizeof(Chunk_t) + sizeof(int);
-    requestBody.dataSize = chunkNumber * sizeof(Chunk_t) + sizeof(int);
-    u_char requestBuffer[sendSize];
-    memcpy(requestBuffer, &requestBody, sizeof(requestBody));
+    u_char requestBuffer[EPOLL_MESSAGE_DATA_SIZE];
+    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &chunkNumber, sizeof(int));
     for (int i = 0; i < chunkNumber; i++) {
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(Chunk_t) * i, &request[i], sizeof(Chunk_t));
+        memcpy(requestBuffer + sendSize, request[i].chunkHash, CHUNK_HASH_SIZE);
+        sendSize += CHUNK_HASH_SIZE;
+        memcpy(requestBuffer + sendSize, &request[i].logicDataSize, sizeof(int));
+        sendSize += sizeof(int);
+        memcpy(requestBuffer + sendSize, request[i].logicData, request[i].logicDataSize);
+        sendSize += request[i].logicDataSize;
     }
+    requestBody.dataSize = sendSize - sizeof(NetworkHeadStruct_t);
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+
     u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;
 
@@ -183,7 +174,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, i
     return false;
 }
 
-bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respond, int& status)
+bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& respond, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;
     requestBody.messageType = SGX_SIGNED_HASH;
@@ -215,8 +206,8 @@ bool Sender::sendEnclaveSignedHash(powSignedHash& request, RequiredChunk& respon
     memcpy(&requiredChunkNumber, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int));
     if (status == SUCCESS) {
         for (int i = 0; i < requiredChunkNumber; i++) {
-            uint64_t tempID;
-            memcpy(&tempID, respondBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), sizeof(uint64_t));
+            uint32_t tempID;
+            memcpy(&tempID, respondBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + i * sizeof(uint32_t), sizeof(uint32_t));
             respond.push_back(tempID);
         }
         return true;
@@ -244,6 +235,7 @@ void Sender::run()
     ChunkList_t chunkList;
     Data_t tempChunk;
     RecipeList_t recipeList;
+    Recipe_t fileRecipe;
 
     int status;
 
@@ -256,6 +248,7 @@ void Sender::run()
                 break;
             }
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+                fileRecipe = tempChunk.recipe;
                 continue;
             }
             if (tempChunk.chunk.type == CHUNK_TYPE_NEED_UPLOAD) {
@@ -285,9 +278,9 @@ void Sender::run()
             chunkList.clear();
         }
 
-        if (recipeList.size() == config.getSendRecipeBatchSize() || jobDoneFlag == true) {
+        if (jobDoneFlag == true) {
             while (true) {
-                this->sendRecipeList(recipeList, status);
+                this->sendRecipe(fileRecipe, recipeList, status);
                 if (status == SUCCESS) {
                     std::cerr << "Sender : send recipe success" << endl;
                     break;

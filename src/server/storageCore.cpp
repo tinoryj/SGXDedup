@@ -4,8 +4,10 @@ extern Configure config;
 extern Database fp2ChunkDB;
 extern Database fileName2metaDB;
 
-storageCore::storageCore()
+StorageCore::StorageCore(DataSR* dataSRObjTemp)
 {
+    dataSRObj_ = dataSRObjTemp;
+    //timerObj_ = dataSRObj_->timer_;
     fileRecipeNamePrefix_ = config.getFileRecipeRootPath();
     keyRecipeNamePrefix_ = config.getKeyRecipeRootPath();
     containerNamePrefix_ = config.getContainerRootPath();
@@ -33,7 +35,7 @@ storageCore::storageCore()
     cryptoObj_ = new CryptoPrimitive();
 }
 
-storageCore::~storageCore()
+StorageCore::~StorageCore()
 {
     ofstream fout;
     fout.open(".StorageConfig", ofstream::out);
@@ -49,79 +51,67 @@ storageCore::~storageCore()
     delete cryptoObj_;
 }
 
-/* storageCore thread handle
+bool StorageCore::extractMQFromDataSR(EpollMessage_t& newMessage)
+{
+    return dataSRObj_->extractMQ2StorageCore(newMessage);
+}
+
+bool StorageCore::insertMQToDataSR_CallBack(EpollMessage_t& newMessage)
+{
+    return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
+}
+
+bool StorageCore::extractMQFromTimer(StorageCoreData_t& newData)
+{
+    return dataSRObj_->extractTimerMQToStorageCore(newData);
+}
+
+/* StorageCore thread handle
  * support four type of operation
  *      upload chunk
  *      download chunk
  *      upload recipe
  *      download recipe
  */
-void storageCore::run()
+void StorageCore::run()
 {
-    EpollMessage_t* msg1;
-    NetworkHeadStruct_t* msg2; //00
+    EpollMessage_t epollMessage;
+    NetworkHeadStruct_t networkHead;
     ChunkList_t chunks;
     Recipe_t recipe;
-    Chunk_t tmpChunk;
+    StorageCoreData_t tmpChunk;
     while (1) {
-        bool status = false;
-
-        //wait for 5ms
-        status = this->extractMQ(chunks);
+        bool status = extractMQFromDataSR(epollMessage);
         if (status) {
-            int totalSaveSize = 0; //for debug
-
-            int size = (int)chunks._chunks.size();
-            for (int i = 0; i < size && status; i++) {
-                status = saveChunk(chunks._FP[i], chunks._chunks[i]);
-                totalSaveSize += chunks._chunks[i].length();
-            }
-            if (!status) {
-                std::cerr << "storageCore :Server error" << endl;
-                std::cerr << "stotageCore : Can not save chunks" << endl;
-                exit(1);
-            } else {
-                std::cerr << "storageCore : save " << size << " chunks" << endl;
-                std::cerr << "storageCore : total size is " << totalSaveSize << endl;
-            }
-
-            //priority process data from dedupCore
-            continue;
-        }
-
-        //wait for 5ms
-        status = netRecvMQ_.pop(msg1);
-        if (status) {
-            deserialize(msg1->_data, *msg2);
-            switch (msg2->_type) {
+            memcpy(&networkHead, epollMessage.data, sizeof(NetworkHeadStruct_t));
+            switch (epollMessage.type) {
             case CLIENT_DOWNLOAD_RECIPE: {
-                int version = 1, len = msg2->_data.length();
-                //memcpy(&version, &msg2->_data[len - sizeof(int)], sizeof(int));
-                //msg2->_data.resize(len - sizeof(int));
-                boost::thread th(boost::bind(&storageCore::sendRecipe, this,
-                    msg2->_data,
+                int version = 1, len = networkHead.dataSize;
+                //memcpy(&version, &networkHead._data[len - sizeof(int)], sizeof(int));
+                //networkHead._data.resize(len - sizeof(int));
+                boost::thread th(boost::bind(&StorageCore::sendRecipe,
+                    this,
+                    networkHead.data,
                     version,
-                    msg1->_fd,
-                    msg1->_epfd));
+                    epollMessage.fd,
+                    epollMessage.epfd));
                 th.detach();
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
-                int version = 1, len = msg2->_data.length();
+                int version = 1, len = networkHead.dataSize;
 
-                deserialize(msg2->_data, recipe);
-                cerr << "storageCore : "
-                     << "recv Recipe from client" << endl;
-                cerr << "storageCore : "
-                     << "verify Recipe" << endl;
+                deserialize(networkHead.data, recipe);
+                cerr << "StorageCore : recv Recipe from client" << endl;
+                cerr << "StorageCore : verify Recipe" << endl;
                 if (!this->verifyRecipe(recipe, version)) {
-                    msg2->_type = ERROR_RESEND;
+                    networkHead.messageType = ERROR_RESEND;
                 } else {
-                    msg2->_type = SUCCESS;
+                    networkHead.messageType = SUCCESS;
                 }
-                msg2->_data.clear();
-                serialize(*msg2, msg1->_data);
-                _netSendMQ.push(*msg1);
+                networkHead.data.clear();
+                serialize(*networkHead, epollMessage.data);
+                insertMQToDataSR_CallBack(epollMessage);
                 break;
             }
 
@@ -140,7 +130,27 @@ void storageCore::run()
     }
 }
 
-bool storageCore::saveRecipe(std::string& recipeName, fileRecipe_t& fileRecipe, std::string& keyRecipe)
+/* StorageCore thread handle
+ * support four type of operation
+ *      upload chunk
+ *      download chunk
+ *      upload recipe
+ *      download recipe
+ */
+void StorageCore::chunkStoreThread()
+{
+    StorageCoreData_t tempChunk;
+    while (true) {
+        if (extractMQFromTimer(tempChunk)) {
+            string hashStr((char*)tempChunk.chunkHash, CHUNK_HASH_SIZE);
+            if (!saveChunk(hashStr, (char*)tempChunk.logicData, tempChunk.logicDataSize)) {
+                cerr << "StorageCore : save chunk error" << endl;
+            }
+        }
+    }
+}
+
+bool StorageCore::saveRecipe(std::string& recipeName, Recipe_t& fileRecipe, std::string& keyRecipe)
 {
     ofstream fileRecipeOut, keyRecipeOut;
     string writeRecipeName, buffer;
@@ -170,7 +180,7 @@ bool storageCore::saveRecipe(std::string& recipeName, fileRecipe_t& fileRecipe, 
     return true;
 }
 
-bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe, string& keyRecipe)
+bool StorageCore::restoreRecipe(std::string recipeName, Recipe_t& fileRecipe, string& keyRecipe)
 {
     ifstream fileRecipeIn, keyRecipeIn;
     string readRecipeName;
@@ -182,7 +192,7 @@ bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe
     keyRecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
 
     if (!(fileRecipeIn.is_open() && keyRecipeIn.is_open())) {
-        std::cerr << "storageCore : Can not open Recipe file: " << readRecipeName;
+        std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
         return false;
     }
 
@@ -192,7 +202,7 @@ bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe
     fileRecipeIn.seekg(0, fileRecipeIn.end);
     len = fileRecipeIn.tellg();
     fileRecipeIn.seekg(0, fileRecipeIn.beg);
-    cerr << "storageCore : fileRecipe have " << setbase(10) << len << " bytes" << endl;
+    cerr << "StorageCore : fileRecipe have " << setbase(10) << len << " bytes " << endl;
     buffer.resize(len);
     fileRecipeIn.read(&buffer[0], len);
     deserialize(buffer, fileRecipe);
@@ -200,7 +210,7 @@ bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe
     keyRecipeIn.seekg(0, keyRecipeIn.end);
     len = keyRecipeIn.tellg();
     keyRecipeIn.seekg(0, keyRecipeIn.beg);
-    cerr << "storageCore : keyRecipe have " << setbase(10) << len << " bytes" << endl;
+    cerr << "StorageCore : keyRecipe have " << setbase(10) << len << " bytes " << endl;
     keyRecipe.resize(len);
     keyRecipeIn.read(&keyRecipe[0], len);
 
@@ -208,52 +218,58 @@ bool storageCore::restoreRecipe(std::string recipeName, fileRecipe_t& fileRecipe
     keyRecipeIn.close();
 }
 
-bool storageCore::saveChunk(std::string chunkHash, std::string& chunkData)
+bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSize)
 {
-    keyValueForChunkHash key;
-    bool ok = writeContainer(key, chunkData);
-    if (!ok) {
+    keyValueForChunkHash_t key;
+    key.length = chunkSize;
+    bool status = writeContainer(key, chunkData);
+    if (!status) {
         std::cerr << "Error write container" << endl;
-        return ok;
+        return status;
     }
 
-    string value;
-    serialize(key, value);
-    ok = fp2ChunkDB.insert(chunkHash, value);
-    if (!ok) {
-        std::cerr << "Can insert chunk to database" << endl;
+    string dbValue;
+    memcpy(&dbValue[0], &key, sizeof(keyValueForChunkHash_t));
+    status = fp2ChunkDB.insert(chunkHash, dbValue);
+    if (!status) {
+        std::cerr << "Can't insert chunk to database" << endl;
+        return false;
+    } else {
+        currentContainer_.used_ += key.length;
+        return true;
     }
-
-    currentContainer_.used_ += key._length;
-
-    return ok;
 }
 
-bool storageCore::restoreChunk(std::string chunkHash, std::string& chunkData)
+bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
 {
-    keyValueForChunkHash key;
+    keyValueForChunkHash_t key;
     string ans;
-    bool haveData = fp2ChunkDB.query(chunkHash, ans);
-    if (haveData) {
-        deserialize(ans, key);
-        haveData = readContainer(key, chunkData);
-        return haveData;
+    bool status = fp2ChunkDB.query(chunkHash, ans);
+    if (status) {
+        memcpy(&key, &ans[0], sizeof(keyValueForChunkHash_t));
+        char chunkData[key.length];
+        if (readContainer(key, chunkData)) {
+            memcpy(&chunkDataStr[0], chunkData, key.length);
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
     }
-    return haveData;
 }
 
-//TODO: non-repudiation
 //maybe should check all chunk in recipe had been storage in container
 //reason: make sure no fake recipe
 
-bool storageCore::verifyRecipe(Recipe_t recipe, int version)
+bool StorageCore::verifyRecipe(Recipe_t recipe, int version)
 {
-    fileRecipe_t f = recipe._f;
+    Recipe_t f = recipe._f;
     string k = recipe._kencrypted;
     string recipeName, fileRecipeBuffer, keyBuffer;
     keyValueForFilename key;
     if (!this->saveRecipe(recipeName, f, k)) {
-        std::cerr << "storageCore : save recipe failed" << endl;
+        std::cerr << "StorageCore : save recipe failed " << endl;
         return false;
     }
     std::cerr << "StorageCore : save recipe success" << endl;
@@ -263,17 +279,16 @@ bool storageCore::verifyRecipe(Recipe_t recipe, int version)
     return true;
 }
 
-// temp implement
 // send recipe and all chunk in recipe in this function
-void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd)
+void StorageCore::sendRecipe(std::string fileName, int version, int fd, int epfd)
 {
 
     NetworkHeadStruct_t sendBody(0, 0);
     cerr << "start to send recipe to client" << endl;
 
-    EpollMessage_t msg1;
-    msg1._fd = fd;
-    msg1._epfd = epfd;
+    EpollMessage_t epollMessage;
+    epollMessage.fd = fd;
+    epollMessage.epfd = epfd;
 
     keyValueForFilename key;
     string recipeName, keyBuffer;
@@ -284,13 +299,13 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
     if (fileName2metaDB.query(keyBuffer, recipeName) == false) {
         std::cerr << "Can not file recipe" << endl;
         sendBody._type = ERROR_CLOSE;
-        serialize(sendBody, msg1._data);
-        this->insertMQ(msg1);
+        serialize(sendBody, epollMessage._data);
+        this->insertMQ(epollMessage);
         return;
     }
 
     //send recipe
-    fileRecipe_t f;
+    Recipe_t f;
     string k;
     this->restoreRecipe(recipeName, f, k);
 
@@ -301,8 +316,8 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
     serialize(r, sendBody._data);
     sendBody._type = SUCCESS;
 
-    serialize(sendBody, msg1._data);
-    this->insertMQ(msg1);
+    serialize(sendBody, epollMessage._data);
+    this->insertMQ(epollMessage);
 
     //send chunks
     ChunkList_t chunks;
@@ -315,7 +330,7 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
         cnt--;
         string hash(it._chunkHash, 32);
         if (!this->restoreChunk(hash, chunkData)) {
-            cerr << "storageCore : can not locate chunk" << endl;
+            cerr << "StorageCore : can not locate chunk " << endl;
             return;
         }
         chunks._chunks.push_back(chunkData);
@@ -323,10 +338,10 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
         if (cnt == 0) {
             cnt = config.getSendChunkBatchSize();
             serialize(chunks, sendBody._data);
-            serialize(sendBody, msg1._data);
+            serialize(sendBody, epollMessage._data);
 
-            //this->insertMQ(msg1);
-            tmpsock.Send(msg1._data);
+            //this->insertMQ(epollMessage);
+            tmpsock.Send(epollMessage._data);
 
             chunks.clear();
         }
@@ -336,34 +351,33 @@ void storageCore::sendRecipe(std::string fileName, int version, int fd, int epfd
     if (chunks._FP.empty())
         return;
     serialize(chunks, sendBody._data);
-    serialize(sendBody, msg1._data);
+    serialize(sendBody, epollMessage._data);
 
-    //this->insertMQ(msg1);
-    tmpsock.Send(msg1._data);
+    //this->insertMQ(epollMessage);
+    tmpsock.Send(epollMessage._data);
 }
 
-bool storageCore::writeContainer(keyValueForChunkHash& key, std::string& data)
+bool StorageCore::writeContainer(keyValueForChunkHash_t& key, char* data)
 {
-    key._length = data.length();
-    if (key._length + currentContainer_.used_ < (4 << 20)) {
-        memcpy(&currentContainer_.body_[currentContainer_.used_], &data[0], key._length);
-        key._containerName = lastContainerFileName_;
+    if (key.length + currentContainer_.used_ < (4 << 20)) {
+        memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
+        key.containerName = lastContainerFileName_;
     } else {
         string writeContainerName = containerNamePrefix_ + lastContainerFileName_ + containerNameTail_;
         currentContainer_.saveTOFile(writeContainerName);
         next_permutation(lastContainerFileName_.begin(), lastContainerFileName_.end());
         currentContainer_.used_ = 0;
-        memcpy(&currentContainer_.body_[currentContainer_.used_], &data[0], key._length);
-        key._containerName = lastContainerFileName_;
+        memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
+        key.containerName = lastContainerFileName_;
     }
-    key._offset = currentContainer_.used_;
+    key.offset = currentContainer_.used_;
     return true;
 }
 
-bool storageCore::readContainer(keyValueForChunkHash key, std::string& data)
+bool StorageCore::readContainer(keyValueForChunkHash_t key, char* data)
 {
     ifstream containerIn;
-    string readName = containerNamePrefix_ + key._containerName + containerNameTail_;
+    string readName = containerNamePrefix_ + key.containerName + containerNameTail_;
     containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
 
     if (!containerIn.is_open()) {
@@ -371,34 +385,27 @@ bool storageCore::readContainer(keyValueForChunkHash key, std::string& data)
         return false;
     }
 
-    data.clear();
-    data.resize(key._length);
-    containerIn.seekg(key._offset);
-    containerIn.read(&data[0], key._length);
-    int sz = containerIn.gcount();
-    return true;
+    containerIn.seekg(key.offset);
+    containerIn.read(data, key.length);
+    if (containerIn.gcount() == key.length) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
-bool storageCore::createContainer() {}
+bool StorageCore::createContainer() {}
 
-_Container::_Container()
+bool Container::saveTOFile(string fileName)
 {
-    this->used_ = 0;
-}
-
-_Container::~_Container() {}
-
-void _Container::saveTOFile(string fileName)
-{
-    std::ofstream containerOut;
+    ofstream containerOut;
     containerOut.open(fileName, std::ofstream::out | std::ofstream::binary);
     if (!containerOut.is_open()) {
-        std::cerr << "Can not open Container file : " << fileName << endl;
-        return;
-        ;
+        cerr << "Can not open Container file : " << fileName << endl;
+        return false;
     }
     containerOut.write(this->body_, this->used_);
-    cerr << "Container : "
-         << "save " << setbase(10) << this->used_ << " bytes to file system" << endl;
+    cerr << "Container : save " << setbase(10) << this->used_ << " bytes to file system" << endl;
     containerOut.close();
+    return true;
 }
