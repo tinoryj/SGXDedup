@@ -123,11 +123,15 @@ bool powClient::do_attestation()
     uint32_t msg3Size;
 
     string enclaveName = config.getPOWEnclaveName();
+    cerr << "PowClient start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    cerr << "PowClient create enclave done" << endl;
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;
         printf("%08x", status);
         return false;
+    } else {
+        cerr << "POWClient : create pow enclave success" << endl;
     }
 
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
@@ -135,10 +139,14 @@ bool powClient::do_attestation()
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : pow_enclave ra init failed : " << status << endl;
         return false;
+    } else {
+        cerr << "POWClient : pow_enclave ra init success : " << status << endl;
     }
     if (sgxrv != SGX_SUCCESS) {
         cerr << "POWClient : sgx ra init failed : " << sgxrv << endl;
         return false;
+    } else {
+        cerr << "POWClient : sgx ra init success : " << sgxrv << endl;
     }
 
     /* Generate msg0 */

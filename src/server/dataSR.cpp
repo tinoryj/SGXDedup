@@ -71,7 +71,7 @@ void DataSR::run()
     netBody.clientID = 0;
     netBody.messageType = 0;
     netBody.dataSize = 0;
-
+    cerr << "DataSR : main thread start" << endl;
     while (true) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {

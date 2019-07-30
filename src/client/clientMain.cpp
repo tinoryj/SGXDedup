@@ -71,23 +71,23 @@ int main(int argv, char* argc[])
         th = new boost::thread(boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
 
-        // //start key client thread
-        // for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
-        //     th = new boost::thread(boost::bind(&keyClient::run, keyClientObj));
-        //     thList.push_back(th);
-        // }
+        //start key client thread
+        for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
+            th = new boost::thread(boost::bind(&keyClient::run, keyClientObj));
+            thList.push_back(th);
+        }
 
-        // //start encode thread
-        // for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-        //     th = new boost::thread(boost::bind(&Encoder::run, encoderObj));
-        //     thList.push_back(th);
-        // }
+        //start encode thread
+        for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
+            th = new boost::thread(boost::bind(&Encoder::run, encoderObj));
+            thList.push_back(th);
+        }
 
-        // //start sender thread
-        // for (int i = 0; i < config.getSenderThreadLimit(); i++) {
-        //     th = new boost::thread(boost::bind(&Sender::run, senderObj));
-        //     thList.push_back(th);
-        // }
+        //start sender thread
+        for (int i = 0; i < config.getSenderThreadLimit(); i++) {
+            th = new boost::thread(boost::bind(&Sender::run, senderObj));
+            thList.push_back(th);
+        }
     } else {
         usage();
         return 0;
