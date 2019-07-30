@@ -20,7 +20,6 @@ private:
     RSA* rsa_;
     BIO* key_;
     const BIGNUM *keyN_, *keyD_;
-    bool enclaveTrusted_;
 
 public:
     keyServer();

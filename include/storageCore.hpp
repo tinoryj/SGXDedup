@@ -26,42 +26,29 @@ class StorageCore {
 private:
     DataSR* dataSRObj_;
     std::string lastContainerFileName_;
-    std::string lastFileRecipeFileName_;
-    std::string lastkeyRecipeFileName_;
-
     std::string containerNamePrefix_;
     std::string containerNameTail_;
-
-    std::string fileRecipeNamePrefix_;
-    std::string fileRecipeNameTail_;
-
-    std::string keyRecipeNamePrefix_;
-    std::string keyRecipeNameTail_;
-
+    std::string RecipeNamePrefix_;
+    std::string RecipeNameTail_;
     CryptoPrimitive* cryptoObj_;
-
     Container currentContainer_;
-
-    bool writeContainer(keyValueForChunkHash_t& key, char* data);
-    bool readContainer(keyValueForChunkHash_t key, char* data);
+    Timer* timerObj_;
+    bool writeContainer(keyForChunkHashDB_t& key, char* data);
+    bool readContainer(keyForChunkHashDB_t key, char* data);
 
 public:
-    StorageCore(DataSR* dataSRObjTemp);
+    StorageCore(DataSR* dataSRObjTemp, Timer* timerObjTemp);
     ~StorageCore();
 
-    void run();
-    void chunkStoreThread();
+    void storageThreadForDataSR();
+    void storageThreadForTimer();
 
-    bool saveRecipe(std::string& recipeName, Recipe_t& fileRecipe, std::string& keyRecipe);
-    bool restoreRecipe(std::string recipeName, Recipe_t& fileRecipe, std::string& keyRecipe);
+    bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);
+    bool restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
     bool saveChunk(std::string chunkHash, char* chunkData, int chunkSize);
     bool restoreChunk(std::string chunkHash, std::string& chunkData);
-
-    bool verifyRecipe(Recipe_t recipe, int version);
-    void sendRecipe(std::string recipeName, int version, int fd, int epfd);
-
-    bool createContainer();
-
+    bool checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList);
+    bool restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe);
     bool extractMQFromDataSR(EpollMessage_t& newMessage);
     bool insertMQToDataSR_CallBack(EpollMessage_t& newMessage);
     bool extractMQFromTimer(StorageCoreData_t& newData);

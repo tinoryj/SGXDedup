@@ -3,11 +3,12 @@
 extern Database fp2ChunkDB;
 extern Configure config;
 
-DedupCore::DedupCore(DataSR* dataSRTemp)
+DedupCore::DedupCore(DataSR* dataSRTemp, Timer* timerObjTemp)
 {
     dataSRObj_ = dataSRTemp;
     cryptoObj_ = new CryptoPrimitive();
-    dataSRObj_->timerObj_->startTimer();
+    timerObj_ = timerObjTemp;
+    timerObj_->startTimer();
 }
 
 DedupCore::~DedupCore()
@@ -115,7 +116,7 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
     sig.startTime = std::chrono::high_resolution_clock::now();
     sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
     cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl;
-    dataSRObj_->timerObj_->registerHashList(sig);
+    timerObj_->registerHashList(sig);
 
     return status;
 }
@@ -131,7 +132,7 @@ bool DedupCore::dedupStage2(StorageChunkList_t& in)
             return false;
         }
     }
-    dataSRObj_->timerObj_->cache_->setChunk(in.chunkHash, in.logicData);
+    timerObj_->cache_->setChunk(in.chunkHash, in.logicData);
     cerr << "DedupCore : recv " << setbase(10) << in.chunkHash.size() << " chunk from client" << endl;
     return true;
 }

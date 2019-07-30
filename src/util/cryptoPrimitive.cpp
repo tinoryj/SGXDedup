@@ -93,6 +93,7 @@ CryptoPrimitive::CryptoPrimitive()
 
 #if defined(OPENSSL_THREADS)
     /*check if opensslLockSetup() has been called to set up OpenSSL locks*/
+    opensslLockSetup();
     if (opensslLock_ == NULL) {
         fprintf(stderr, "Error: opensslLockSetup() was not called before initializing CryptoPrimitive instances\n");
         exit(1);

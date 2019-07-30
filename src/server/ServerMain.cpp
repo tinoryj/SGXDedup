@@ -7,6 +7,7 @@
 #include "dedupCore.hpp"
 #include "messageQueue.hpp"
 #include "storageCore.hpp"
+#include "timer.hpp"
 #include <signal.h>
 Configure config("config.json");
 
@@ -14,27 +15,28 @@ Database fp2ChunkDB;
 Database fileName2metaDB;
 ChunkCache* cache;
 
-StorageCore* storage;
-DataSR* SR;
-DedupCore* dedup;
-powServer* Pow;
+StorageCore* storageObj;
+DataSR* dataSRObj;
+Timer* timerObj;
+DedupCore* dedupCoreObj;
+powServer* powServerObj;
 //Timer* timerObj;
 
 void CTRLC(int s)
 {
     cerr << "server close" << endl;
 
-    // if (storage != nullptr)
-    //     delete storage;
+    if (storageObj != nullptr)
+        delete storageObj;
 
-    // if (SR != nullptr)
-    //     delete SR;
+    if (dataSRObj != nullptr)
+        delete dataSRObj;
 
-    // if (dedup != nullptr)
-    //     delete dedup;
+    if (dedupCoreObj != nullptr)
+        delete dedupCoreObj;
 
-    // if (Pow != nullptr)
-    //     delete Pow;
+    if (powServerObj != nullptr)
+        delete powServerObj;
 
     exit(0);
 }
@@ -56,36 +58,41 @@ int main()
     vector<boost::thread*> thList;
     boost::thread* th;
     cache = new ChunkCache();
-    //timerObj = new Timer(cache);
-    // SR = new DataSR();
-    // dedup = new DedupCore();
-    // storage = new StorageCore();
-    // Pow = new powServer();
+    timerObj = new Timer();
+    dataSRObj = new DataSR();
+    dedupCoreObj = new DedupCore(dataSRObj, timerObj);
+    storageObj = new StorageCore(dataSRObj, timerObj);
+    powServerObj = new powServer(dataSRObj);
 
-    // int i, maxThread;
+    boost::thread::attributes attrs;
+    //cerr << attrs.get_stack_size() << endl;
+    attrs.set_stack_size(100 * 1024 * 1024);
+    //cerr << attrs.get_stack_size() << endl;
 
-    // //start DataSR
-    // th = new boost::thread(boost::bind(&DataSR::run, SR));
-    // thList.push_back(th);
+    //start DataSR
+    th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj));
+    thList.push_back(th);
+    th = new boost::thread(attrs, boost::bind(&DataSR::extractMQ, dataSRObj));
+    thList.push_back(th);
 
-    // //start pow
-    // th = new boost::thread(boost::bind(&powServer::run, Pow));
-    // thList.push_back(th);
+    //start pow
+    th = new boost::thread(attrs, boost::bind(&powServer::run, powServerObj));
+    thList.push_back(th);
 
-    // //start DedupCore
-    // maxThread = config.getDedupCoreThreadLimit();
-    // for (i = 0; i < maxThread; i++) {
-    //     th = new boost::thread(boost::bind(&DedupCore::run, dedup));
-    //     thList.push_back(th);
-    // }
+    //start DedupCore
+    for (int i = 0; i < config.getDedupCoreThreadLimit(); i++) {
+        th = new boost::thread(attrs, boost::bind(&DedupCore::run, dedupCoreObj));
+        thList.push_back(th);
+    }
 
-    // //start StorageCore
+    //start StorageCore
 
-    // maxThread = config.getStorageCoreThreadLimit();
-    // for (i = 0; i < maxThread; i++) {
-    //     th = new boost::thread(boost::bind(&StorageCore::run, storage));
-    //     thList.push_back(th);
-    // }
+    for (int i = 0; i < config.getStorageCoreThreadLimit(); i++) {
+        th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForDataSR, storageObj));
+        thList.push_back(th);
+        th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForTimer, storageObj));
+        thList.push_back(th);
+    }
 
     for (auto it : thList) {
         it->join();

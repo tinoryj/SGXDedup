@@ -5,9 +5,7 @@
 
 DataSR::DataSR()
 {
-    config_ = new Configure("config.json");
-    socket_.init(SERVER_TCP, "", config_->getStorageServerPort());
-    timerObj_ = new Timer();
+    socket_.init(SERVER_TCP, "", config.getStorageServerPort());
 }
 
 DataSR::~DataSR()
@@ -15,12 +13,12 @@ DataSR::~DataSR()
     socket_.finish();
 }
 
-bool DataSR::extractMQ()
+void DataSR::extractMQ()
 {
-    EpollMessage_t msg;
-    epoll_event ev;
-    ev.events = EPOLLOUT | EPOLLET;
     while (true) {
+        EpollMessage_t msg;
+        epoll_event ev;
+        ev.events = EPOLLOUT | EPOLLET;
         if (!extractMQ2DataSR_CallBack(msg)) {
             continue;
         }
@@ -28,10 +26,9 @@ bool DataSR::extractMQ()
         if (epollSession_.find(msg.fd) == epollSession_.end()) {
             continue;
         }
-        ev.data.ptr = (void*)epollSession_.at(msg.fd);
-        memcpy(epollSession_.at(msg.fd)->data, msg.data, msg.dataSize);
-        epollSession_.at(msg.fd)->type = msg.type;
-        //        ev.data.ptr=(void*)msg;
+        ev.data.ptr = (void*)&epollSession_.at(msg.fd);
+        memcpy(epollSession_.at(msg.fd).data, msg.data, msg.dataSize);
+        epollSession_.at(msg.fd).type = msg.type;
         epoll_ctl(msg.epfd, EPOLL_CTL_MOD, msg.fd, &ev);
     }
 }
@@ -55,7 +52,7 @@ bool DataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
     }
 }
 
-bool DataSR::workloadProgress()
+void DataSR::run()
 {
     int epfd;
     map<int, Socket> socketConnection;
@@ -75,22 +72,31 @@ bool DataSR::workloadProgress()
     netBody.messageType = 0;
     netBody.dataSize = 0;
 
-    while (1) {
+    while (true) {
         int nfd = epoll_wait(epfd, event, 20, -1);
         for (int i = 0; i < nfd; i++) {
+
+            // if (event[i].data.fd == socket_.fd_) {
+            //     Socket tempSock = socket_.Listen();
+            //     ev.data.fd = tempSock.fd_;
+            //     ev.events = EPOLLET | EPOLLIN;
+            //     epoll_ctl(epfd, EPOLL_CTL_ADD, tempSock.fd_, &ev);
+            // } else if (event[i].events & EPOLLIN) {
+            // }
             memcpy(&msg, event[i].data.ptr, sizeof(EpollMessage_t));
 
             //Listen fd
             if (msg.fd == socket_.fd_) {
-                EpollMessage_t* msg1 = new EpollMessage_t;
+                EpollMessage_t msg1;
                 tmpSock = socket_.Listen();
+                cerr << "DataSR : recv connection at " << tmpSock.fd_ << endl;
                 socketConnection[tmpSock.fd_] = tmpSock;
-                msg1->fd = tmpSock.fd_;
-                msg1->epfd = epfd;
-                ev.data.ptr = (void*)msg1;
+                msg1.fd = tmpSock.fd_;
+                msg1.epfd = epfd;
+                ev.data.ptr = (void*)&msg1;
                 epollSession_.insert(make_pair(tmpSock.fd_, msg1));
-                //ev.events = EPOLLET | EPOLLIN;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, msg1->fd, &ev);
+                ev.events = EPOLLET | EPOLLIN;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, msg1.fd, &ev);
                 continue;
             }
             if (event[i].events & EPOLLOUT) {
@@ -108,6 +114,7 @@ bool DataSR::workloadProgress()
                     this->insertMQ(MESSAGE2RASERVER, msg);
                     continue;
                 }
+                cerr << "DataSR : send message type " << msg.type << endl;
                 ev.data.ptr = (void*)&msg;
                 epoll_ctl(epfd, EPOLL_CTL_MOD, msg.fd, &ev);
                 continue;
@@ -129,6 +136,7 @@ bool DataSR::workloadProgress()
                 msg.dataSize = netBody.dataSize;
                 msg.cid = netBody.clientID;
                 msg.type = netBody.messageType;
+                cerr << "DataSR : recv message type " << msg.type << endl;
                 switch (netBody.messageType) {
                 case SGX_RA_MSG01: {
                     this->insertMQ(MESSAGE2RASERVER, msg);
@@ -150,26 +158,20 @@ bool DataSR::workloadProgress()
                     this->insertMQ(MESSAGE2STORAGE, msg);
                     break;
                 }
-                case CLIENT_DOWNLOAD_RECIPE: {
+                case CLIENT_DOWNLOAD_FILEHEAD: {
                     this->insertMQ(MESSAGE2STORAGE, msg);
                     break;
-                } /*
-                    case CLIENT_DOWNLOAD_CHUNK:{
-
-                    }*/
+                }
+                case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
+                    this->insertMQ(MESSAGE2STORAGE, msg);
+                    break;
+                }
                 default:
                     continue;
                 }
             }
         }
     }
-}
-
-void DataSR::run()
-{
-    //boost::thread th(boost::bind(&DataSR::extractMQ, this));
-    this->workloadProgress();
-    //th.detach();
 }
 
 bool DataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
@@ -212,11 +214,11 @@ bool DataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
     return MQ2DataSR_CallBack_.pop(newMessage);
 }
 
-bool DataSR::extractTimerMQToStorageCore(StorageCoreData_t& newData)
-{
-    return timerObj_->extractMQToStorageCore(newData);
-}
-bool DataSR::insertTimerMQToStorageCore(StorageCoreData_t& newData)
-{
-    return timerObj_->insertMQToStorageCore(newData);
-}
+// bool DataSR::extractTimerMQToStorageCore(StorageCoreData_t& newData)
+// {
+//     return timerObj_->extractMQToStorageCore(newData);
+// }
+// bool DataSR::insertTimerMQToStorageCore(StorageCoreData_t& newData)
+// {
+//     return timerObj_->insertMQToStorageCore(newData);
+// }

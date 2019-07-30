@@ -1,5 +1,7 @@
 #include "encoder.hpp"
 
+extern Configure config;
+
 Encoder::Encoder(powClient* powObjTemp)
 {
     cryptoObj_ = new CryptoPrimitive();

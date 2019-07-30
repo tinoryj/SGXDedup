@@ -10,7 +10,7 @@ Retriever::Retriever(string fileName, RecvDecode*& recvDecodeObjTemp)
     totalChunkNumber_ = tempRecipe.fileRecipeHead.totalChunkNumber;
 }
 
-bool Retriever::Retrieve()
+void Retriever::retrieveFileThread()
 {
     while (currentID_ < totalChunkNumber_) {
         multiThreadWriteMutex.lock();
@@ -24,10 +24,9 @@ bool Retriever::Retrieve()
         }
         multiThreadWriteMutex.unlock();
     }
-    return true;
 }
 
-void Retriever::run()
+void Retriever::recvThread()
 {
     while (totalRecvNumber_ < totalChunkNumber_) {
         RetrieverData_t newData;

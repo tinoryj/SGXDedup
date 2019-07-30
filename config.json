@@ -6,7 +6,8 @@
 		"_avgChunkSize": 4096,
 		"_maxChunkSize": 16384,
 		"_slidingWinSize": 256,
-		"_ReadSize": 128
+		"_ReadSize": 128,
+		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
 		"_keyBatchSizeMin": 10000,
@@ -40,7 +41,8 @@
 		"_dataSRThreadLimit": 1,
 		"_retriverThreadLimit": 1,
 		"_dedupCoreThreadLimit": 1,
-		"_storageCoreThreadLimit": 1
+		"_storageCoreThreadLimit": 1,
+		"_recvDecodeThreadLimit": 1
 	},
 	"pow": {
 		"_quoteType": 0,

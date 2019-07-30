@@ -26,8 +26,8 @@ private:
 public:
     Retriever(string fileName, RecvDecode*& recvDecodeObjTemp);
     ~Retriever();
-    void run();
-    bool Retrieve();
+    void recvThread();
+    void retrieveFileThread();
     bool extractMQFromRecvDecode(RetrieverData_t& data);
 };
 

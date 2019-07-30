@@ -19,11 +19,12 @@ private:
     CryptoPrimitive* cryptoObj_;
     bool dedupStage1(powSignedHash_t in, RequiredChunk_t& out);
     bool dedupStage2(StorageChunkList_t& in);
+    Timer* timerObj_;
+    DataSR* dataSRObj_;
 
 public:
-    DataSR* dataSRObj_;
     void run();
-    DedupCore(DataSR* dataSRTemp);
+    DedupCore(DataSR* dataSRTemp, Timer* timerObjTemp);
     ~DedupCore();
     bool extractMQFromDataSR(EpollMessage_t& newMessage);
     bool insertMQToDataSR_CallBack(EpollMessage_t& newMessage);

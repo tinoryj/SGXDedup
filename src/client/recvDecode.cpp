@@ -5,8 +5,7 @@ extern Configure config;
 RecvDecode::RecvDecode(string fileName)
 {
     cryptoObj_ = new CryptoPrimitive();
-    configObj_ = new Configure("config.json");
-    socket_.init(CLIENT_TCP, configObj_->getStorageServerIP(), configObj_->getStorageServerPort());
+    socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
     recvFileHead(fileRecipe_, fileNameHash_);
 }
@@ -17,17 +16,14 @@ RecvDecode::~RecvDecode()
     if (cryptoObj_ != nullptr) {
         delete cryptoObj_;
     }
-    if (configObj_ != nullptr) {
-        delete configObj_;
-    }
 }
 
 bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
 {
     NetworkHeadStruct_t request, respond;
-    request.messageType = CLIENT_DOWNLOAD_RECIPE;
+    request.messageType = CLIENT_DOWNLOAD_FILEHEAD;
     request.dataSize = FILE_NAME_HASH_SIZE;
-    request.clientID = configObj_->getClientID();
+    request.clientID = config.getClientID();
 
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
     u_char requestBuffer[sendSize];
@@ -47,10 +43,16 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
             return false;
         }
         memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
-        if (respond.messageType == ERROR_RESEND)
+        if (respond.messageType == ERROR_RESEND) {
+            std::cerr << "Server send resend flag!" << endl;
             continue;
+        }
         if (respond.messageType == ERROR_CLOSE) {
             std::cerr << "Server reject download request!" << endl;
+            exit(1);
+        }
+        if (respond.messageType == ERROR_FILE_NOT_EXIST) {
+            std::cerr << "Server reject download request, file not exist in server!" << endl;
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
@@ -66,19 +68,20 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
     return true;
 }
 
-bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber)
+bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t startID, uint32_t endID)
 {
     NetworkHeadStruct_t request, respond;
-    request.messageType = CLIENT_DOWNLOAD_CHUNK;
+    request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
     request.dataSize = FILE_NAME_HASH_SIZE;
-    request.clientID = configObj_->getClientID();
+    request.clientID = config.getClientID();
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     u_char requestBuffer[sendSize];
     u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize;
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
-
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, &startID, sizeof(uint32_t));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), &endID, sizeof(uint32_t));
     while (true) {
         if (!socket_.Send(requestBuffer, sendSize)) {
             cerr << "storage server closed" << endl;
@@ -132,7 +135,9 @@ void RecvDecode::run()
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
         ChunkList_t newChunkList;
         int chunkNumber = 0;
-        recvChunks(newChunkList, chunkNumber);
+        uint32_t startID = totalRecvChunks;
+        uint32_t endID = config.getSendChunkBatchSize();
+        recvChunks(newChunkList, chunkNumber, startID, endID);
         for (int i = 0; i < chunkNumber; i++) {
             cryptoObj_->decryptChunk(newChunkList[i]);
             RetrieverData_t newData;

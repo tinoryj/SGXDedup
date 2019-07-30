@@ -1,5 +1,7 @@
 #include "keyServer.hpp"
 
+extern Configure config;
+
 keyServer::keyServer()
 {
     rsa_ = RSA_new();

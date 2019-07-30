@@ -18,6 +18,8 @@ void powClient::run()
 
     if (!this->do_attestation()) {
         exit(1);
+    } else {
+        cerr << "Client : powClient remote attestation passed" << endl;
     }
 
     while (true) {

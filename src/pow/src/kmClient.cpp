@@ -48,12 +48,6 @@ kmClient::kmClient(string keyn, string keyd)
 bool kmClient::init(Socket socket)
 {
     _ctx = 0xdeadbeef;
-    /*
-    if(!createEnclave(_eid,_ctx,"kmenclave.so")){
-        printf("kmenclave:create enclave failed"<<endl);
-        return false;
-    }
-    */
     _socket = socket;
     enclave_trusted = doAttestation();
     return enclave_trusted;
@@ -172,7 +166,7 @@ bool kmClient::doAttestation()
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : Can not launch km_enclave : " << enclaveName << endl;
-        printf("%08x", status);
+        printf("%08x\n", status);
         return false;
     }
 

@@ -99,20 +99,15 @@ typedef struct {
 // database data structures
 
 typedef struct {
-    //key: string _chunkHash;
-    //value: containerName, offset in container, chunk size;
     string containerName;
     uint32_t offset;
     uint32_t length;
-} keyValueForChunkHash_t;
+} keyForChunkHashDB_t;
 
 typedef struct {
-    //key: string _filename;
-    //value: file recipe name, key recipe name, version;
-    string fileRecipeName;
-    string keyRecipeName;
+    char RecipeFileName[FILE_NAME_HASH_SIZE];
     uint32_t version;
-} keyValueForFilename_t;
+} keyForFilenameDB_t;
 
 //dedup core data structures
 

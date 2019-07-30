@@ -4,21 +4,17 @@ extern Configure config;
 extern Database fp2ChunkDB;
 extern Database fileName2metaDB;
 
-StorageCore::StorageCore(DataSR* dataSRObjTemp)
+StorageCore::StorageCore(DataSR* dataSRObjTemp, Timer* timerObjTemp)
 {
     dataSRObj_ = dataSRObjTemp;
-    //timerObj_ = dataSRObj_->timer_;
-    fileRecipeNamePrefix_ = config.getFileRecipeRootPath();
-    keyRecipeNamePrefix_ = config.getKeyRecipeRootPath();
+    timerObj_ = timerObjTemp;
+    RecipeNamePrefix_ = config.getFileRecipeRootPath();
     containerNamePrefix_ = config.getContainerRootPath();
-    fileRecipeNameTail_ = ".fileRecipe";
-    keyRecipeNameTail_ = ".keyRecipe";
+    RecipeNameTail_ = ".recipe";
     containerNameTail_ = ".container";
     ifstream fin;
     fin.open(".StorageConfig", ifstream::in);
     if (fin.is_open()) {
-        fin >> lastFileRecipeFileName_;
-        fin >> lastkeyRecipeFileName_;
         fin >> lastContainerFileName_;
         fin >> currentContainer_.used_;
         fin.close();
@@ -29,7 +25,7 @@ StorageCore::StorageCore(DataSR* dataSRObjTemp)
         fin.close();
 
     } else {
-        lastkeyRecipeFileName_ = lastContainerFileName_ = lastFileRecipeFileName_ = "abcdefghijklmno";
+        lastContainerFileName_ = "abcdefghijklmno";
         currentContainer_.used_ = 0;
     }
     cryptoObj_ = new CryptoPrimitive();
@@ -39,8 +35,6 @@ StorageCore::~StorageCore()
 {
     ofstream fout;
     fout.open(".StorageConfig", ofstream::out);
-    fout << lastFileRecipeFileName_ << endl;
-    fout << lastkeyRecipeFileName_ << endl;
     fout << lastContainerFileName_ << endl;
     fout << currentContainer_.used_ << endl;
     fout.close();
@@ -63,81 +57,83 @@ bool StorageCore::insertMQToDataSR_CallBack(EpollMessage_t& newMessage)
 
 bool StorageCore::extractMQFromTimer(StorageCoreData_t& newData)
 {
-    return dataSRObj_->extractTimerMQToStorageCore(newData);
+    return timerObj_->extractMQToStorageCore(newData);
 }
 
-/* StorageCore thread handle
- * support four type of operation
- *      upload chunk
- *      download chunk
- *      upload recipe
- *      download recipe
- */
-void StorageCore::run()
+void StorageCore::storageThreadForDataSR()
 {
     EpollMessage_t epollMessage;
-    NetworkHeadStruct_t networkHead;
     ChunkList_t chunks;
-    Recipe_t recipe;
-    StorageCoreData_t tmpChunk;
-    while (1) {
-        bool status = extractMQFromDataSR(epollMessage);
-        if (status) {
-            memcpy(&networkHead, epollMessage.data, sizeof(NetworkHeadStruct_t));
+    while (true) {
+        if (extractMQFromDataSR(epollMessage)) {
             switch (epollMessage.type) {
-            case CLIENT_DOWNLOAD_RECIPE: {
-                int version = 1, len = networkHead.dataSize;
-                //memcpy(&version, &networkHead._data[len - sizeof(int)], sizeof(int));
-                //networkHead._data.resize(len - sizeof(int));
-                boost::thread th(boost::bind(&StorageCore::sendRecipe,
-                    this,
-                    networkHead.data,
-                    version,
-                    epollMessage.fd,
-                    epollMessage.epfd));
-                th.detach();
+            case CLIENT_DOWNLOAD_FILEHEAD: {
+                Recipe_t restoredFileRecipe;
+                if (restoreRecipeHead((char*)epollMessage.data, restoredFileRecipe)) {
+                    epollMessage.type = SUCCESS;
+                    epollMessage.dataSize = sizeof(Recipe_t);
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    memcpy(epollMessage.data, &restoredFileRecipe, sizeof(Recipe_t));
+                    insertMQToDataSR_CallBack(epollMessage);
+                } else {
+                    epollMessage.type = ERROR_FILE_NOT_EXIST;
+                    epollMessage.dataSize = 0;
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    insertMQToDataSR_CallBack(epollMessage);
+                }
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
-                int version = 1, len = networkHead.dataSize;
-
-                deserialize(networkHead.data, recipe);
+                Recipe_t tempRecipeHead;
+                memcpy(&tempRecipeHead, epollMessage.data, sizeof(Recipe_t));
+                int currentRecipeEntryNumber = (epollMessage.dataSize - sizeof(Recipe_t)) / sizeof(RecipeEntry_t);
+                RecipeList_t tempRecipeEntryList;
+                for (int i = 0; i < currentRecipeEntryNumber; i++) {
+                    RecipeEntry_t tempRecipeEntry;
+                    memcpy(&tempRecipeEntry, epollMessage.data + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
+                    tempRecipeEntryList.push_back(tempRecipeEntry);
+                }
                 cerr << "StorageCore : recv Recipe from client" << endl;
                 cerr << "StorageCore : verify Recipe" << endl;
-                if (!this->verifyRecipe(recipe, version)) {
-                    networkHead.messageType = ERROR_RESEND;
+                if (!this->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList)) {
+                    epollMessage.type = ERROR_RESEND;
                 } else {
-                    networkHead.messageType = SUCCESS;
+                    epollMessage.type = SUCCESS;
                 }
-                networkHead.data.clear();
-                serialize(*networkHead, epollMessage.data);
+                epollMessage.dataSize = 0;
                 insertMQToDataSR_CallBack(epollMessage);
                 break;
             }
-
-                /* omit this part
-                     * chunk will send to client after server receive client's
-                     * download recipe request
-                     */
-            case CLIENT_DOWNLOAD_CHUNK: {
-
+            case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
+                uint32_t startID, endID;
+                ChunkList_t restoredChunkList;
+                memcpy(&startID, epollMessage.data + FILE_NAME_HASH_SIZE, sizeof(uint32_t));
+                memcpy(&endID, epollMessage.data + FILE_NAME_HASH_SIZE + sizeof(uint32_t), sizeof(uint32_t));
+                if (restoreRecipeAndChunk((char*)epollMessage.data, startID, endID, restoredChunkList)) {
+                    epollMessage.dataSize = restoredChunkList.size() * sizeof(Chunk_t);
+                    epollMessage.type = SUCCESS;
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    for (int i = 0; i < restoredChunkList.size(); i++) {
+                        memcpy(epollMessage.data + i * sizeof(Chunk_t), &restoredChunkList[i], sizeof(Chunk_t));
+                    }
+                    insertMQToDataSR_CallBack(epollMessage);
+                } else {
+                    epollMessage.dataSize = 0;
+                    epollMessage.type = ERROR_CHUNK_NOT_EXIST;
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    insertMQToDataSR_CallBack(epollMessage);
+                }
                 break;
             }
             default: {
+                cerr << "StorageCore : recved message type error" << endl;
             }
             }
         }
     }
 }
 
-/* StorageCore thread handle
- * support four type of operation
- *      upload chunk
- *      download chunk
- *      upload recipe
- *      download recipe
- */
-void StorageCore::chunkStoreThread()
+void StorageCore::storageThreadForTimer()
 {
     StorageCoreData_t tempChunk;
     while (true) {
@@ -150,77 +146,113 @@ void StorageCore::chunkStoreThread()
     }
 }
 
-bool StorageCore::saveRecipe(std::string& recipeName, Recipe_t& fileRecipe, std::string& keyRecipe)
+bool StorageCore::restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe)
 {
-    ofstream fileRecipeOut, keyRecipeOut;
-    string writeRecipeName, buffer;
-
-    writeRecipeName = fileRecipeNamePrefix_ + lastFileRecipeFileName_ + fileRecipeNameTail_;
-    fileRecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
-
-    writeRecipeName = keyRecipeNamePrefix_ + lastkeyRecipeFileName_ + keyRecipeNameTail_;
-    keyRecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
-
-    if (!(fileRecipeOut.is_open() && keyRecipeOut.is_open())) {
-        std::cerr << "Can not open Recipe file: " << writeRecipeName << endl;
+    string recipeName;
+    string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        ifstream RecipeIn;
+        string readRecipeName;
+        readRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+        RecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
+        if (!RecipeIn.is_open()) {
+            std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
+            return false;
+        }
+        char recipeHeadBuffer[sizeof(Recipe_t)];
+        RecipeIn.read(recipeHeadBuffer, sizeof(Recipe_t));
+        RecipeIn.close();
+        memcpy(&restoreRecipe, recipeHeadBuffer, sizeof(Recipe_t));
+        return true;
+    } else {
         return false;
     }
-
-    serialize(fileRecipe, buffer);
-    fileRecipeOut.write(&buffer[0], buffer.length());
-
-    keyRecipeOut.write(&keyRecipe[0], keyRecipe.length());
-    fileRecipeOut.close();
-    keyRecipeOut.close();
-
-    recipeName = lastkeyRecipeFileName_ = lastFileRecipeFileName_;
-    next_permutation(lastFileRecipeFileName_.begin(), lastFileRecipeFileName_.end());
-    //next_permutation(lastkeyRecipeFileName_.begin(),lastkeyRecipeFileName_.end());
-
     return true;
 }
 
-bool StorageCore::restoreRecipe(std::string recipeName, Recipe_t& fileRecipe, string& keyRecipe)
+bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status)
 {
-    ifstream fileRecipeIn, keyRecipeIn;
-    string readRecipeName;
+    ofstream RecipeOut;
+    string writeRecipeName, buffer;
 
-    readRecipeName = fileRecipeNamePrefix_ + lastkeyRecipeFileName_ + fileRecipeNameTail_;
-    fileRecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
-
-    readRecipeName = keyRecipeNamePrefix_ + lastkeyRecipeFileName_ + keyRecipeNameTail_;
-    keyRecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
-
-    if (!(fileRecipeIn.is_open() && keyRecipeIn.is_open())) {
-        std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
+    writeRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+    RecipeOut.open(writeRecipeName, std::ofstream::out | std::ofstream::binary);
+    if (!RecipeOut.is_open()) {
+        std::cerr << "Can not open Recipe file: " << writeRecipeName << endl;
         return false;
     }
+    if (status == true) {
+        RecipeOut.seekp(ios::end);
+        char tempBuffer[sizeof(RecipeEntry_t)];
+        for (int i = 0; i < recipeList.size(); i++) {
+            memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
+            RecipeOut.write(tempBuffer, sizeof(RecipeEntry_t));
+        }
+    } else {
+        char tempHeadBuffer[sizeof(Recipe_t)];
+        memcpy(tempHeadBuffer, &recipeHead, sizeof(Recipe_t));
+        RecipeOut.write(tempHeadBuffer, sizeof(Recipe_t));
+        char tempBuffer[sizeof(RecipeEntry_t)];
+        for (int i = 0; i < recipeList.size(); i++) {
+            memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
+            RecipeOut.write(tempBuffer, sizeof(RecipeEntry_t));
+        }
+    }
+    RecipeOut.close();
+    return true;
+}
 
-    string buffer;
-    int len;
+bool StorageCore::restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList)
+{
+    ifstream RecipeIn;
+    string readRecipeName;
+    string recipeName;
+    string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        ifstream RecipeIn;
+        string readRecipeName;
+        readRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+        RecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
+        if (!RecipeIn.is_open()) {
+            std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
+            return false;
+        }
 
-    fileRecipeIn.seekg(0, fileRecipeIn.end);
-    len = fileRecipeIn.tellg();
-    fileRecipeIn.seekg(0, fileRecipeIn.beg);
-    cerr << "StorageCore : fileRecipe have " << setbase(10) << len << " bytes " << endl;
-    buffer.resize(len);
-    fileRecipeIn.read(&buffer[0], len);
-    deserialize(buffer, fileRecipe);
-
-    keyRecipeIn.seekg(0, keyRecipeIn.end);
-    len = keyRecipeIn.tellg();
-    keyRecipeIn.seekg(0, keyRecipeIn.beg);
-    cerr << "StorageCore : keyRecipe have " << setbase(10) << len << " bytes " << endl;
-    keyRecipe.resize(len);
-    keyRecipeIn.read(&keyRecipe[0], len);
-
-    fileRecipeIn.close();
-    keyRecipeIn.close();
+        char readBuffer[sizeof(RecipeEntry_t) * (endID - startID)];
+        RecipeIn.seekg(sizeof(Recipe_t) + startID * sizeof(RecipeEntry_t));
+        RecipeIn.read(readBuffer, sizeof(RecipeEntry_t) * (endID - startID));
+        RecipeIn.close();
+        for (int i = 0; i < (endID - startID); i++) {
+            RecipeEntry_t newRecipeEntry;
+            memcpy(&newRecipeEntry, readBuffer + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
+            string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+            string chunkData;
+            if (restoreChunk(chunkHash, chunkData)) {
+                if (chunkData.length() != newRecipeEntry.chunkSize) {
+                    cerr << "StorageCore : restore chunk logic data size error" << endl;
+                    return false;
+                }
+                Chunk_t newChunk;
+                newChunk.ID = newRecipeEntry.chunkID;
+                newChunk.logicDataSize = newRecipeEntry.chunkSize;
+                memcpy(newChunk.chunkHash, newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+                memcpy(newChunk.encryptKey, newRecipeEntry.chunkKey, CHUNK_ENCRYPT_KEY_SIZE);
+                memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
+                restoredChunkList.push_back(newChunk);
+            } else {
+                cerr << "StorageCore : not found chunk in database" << endl;
+                return false;
+            }
+        }
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSize)
 {
-    keyValueForChunkHash_t key;
+    keyForChunkHashDB_t key;
     key.length = chunkSize;
     bool status = writeContainer(key, chunkData);
     if (!status) {
@@ -229,7 +261,7 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
     }
 
     string dbValue;
-    memcpy(&dbValue[0], &key, sizeof(keyValueForChunkHash_t));
+    memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
     status = fp2ChunkDB.insert(chunkHash, dbValue);
     if (!status) {
         std::cerr << "Can't insert chunk to database" << endl;
@@ -242,11 +274,11 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
 
 bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
 {
-    keyValueForChunkHash_t key;
+    keyForChunkHashDB_t key;
     string ans;
     bool status = fp2ChunkDB.query(chunkHash, ans);
     if (status) {
-        memcpy(&key, &ans[0], sizeof(keyValueForChunkHash_t));
+        memcpy(&key, &ans[0], sizeof(keyForChunkHashDB_t));
         char chunkData[key.length];
         if (readContainer(key, chunkData)) {
             memcpy(&chunkDataStr[0], chunkData, key.length);
@@ -259,105 +291,31 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
     }
 }
 
-//maybe should check all chunk in recipe had been storage in container
-//reason: make sure no fake recipe
-
-bool StorageCore::verifyRecipe(Recipe_t recipe, int version)
+bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList)
 {
-    Recipe_t f = recipe._f;
-    string k = recipe._kencrypted;
-    string recipeName, fileRecipeBuffer, keyBuffer;
-    keyValueForFilename key;
-    if (!this->saveRecipe(recipeName, f, k)) {
-        std::cerr << "StorageCore : save recipe failed " << endl;
-        return false;
+    string recipeName;
+    string DBKey((char*)recipeHead.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        if (!this->saveRecipe(recipeName, recipeHead, recipeList, true)) {
+            std::cerr << "StorageCore : save recipe failed " << endl;
+            return false;
+        }
+    } else {
+        char recipeNameBuffer[FILE_NAME_HASH_SIZE * 2];
+        for (int i = 0; i < FILE_NAME_HASH_SIZE; i++) {
+            sprintf(recipeNameBuffer + 2 * i, "%02X", recipeHead.fileRecipeHead.fileNameHash[i]);
+        }
+        string recipeNameNew(recipeNameBuffer, FILE_NAME_HASH_SIZE * 2);
+        fileName2metaDB.insert(DBKey, recipeNameNew);
+        if (!this->saveRecipe(recipeNameNew, recipeHead, recipeList, false)) {
+            std::cerr << "StorageCore : save recipe failed " << endl;
+            return false;
+        }
     }
-    std::cerr << "StorageCore : save recipe success" << endl;
-    key.set(f._fileName, f._fileName, version);
-    serialize(key, keyBuffer);
-    fileName2metaDB.insert(keyBuffer, recipeName);
     return true;
 }
 
-// send recipe and all chunk in recipe in this function
-void StorageCore::sendRecipe(std::string fileName, int version, int fd, int epfd)
-{
-
-    NetworkHeadStruct_t sendBody(0, 0);
-    cerr << "start to send recipe to client" << endl;
-
-    EpollMessage_t epollMessage;
-    epollMessage.fd = fd;
-    epollMessage.epfd = epfd;
-
-    keyValueForFilename key;
-    string recipeName, keyBuffer;
-    key.set(fileName, fileName, version);
-    serialize(key, keyBuffer);
-
-    //error msg should be sent to client
-    if (fileName2metaDB.query(keyBuffer, recipeName) == false) {
-        std::cerr << "Can not file recipe" << endl;
-        sendBody._type = ERROR_CLOSE;
-        serialize(sendBody, epollMessage._data);
-        this->insertMQ(epollMessage);
-        return;
-    }
-
-    //send recipe
-    Recipe_t f;
-    string k;
-    this->restoreRecipe(recipeName, f, k);
-
-    Recipe_t r;
-    r._kencrypted = k;
-    r._f = f;
-
-    serialize(r, sendBody._data);
-    sendBody._type = SUCCESS;
-
-    serialize(sendBody, epollMessage._data);
-    this->insertMQ(epollMessage);
-
-    //send chunks
-    ChunkList_t chunks;
-    string chunkData;
-    struct sockaddr_in tmpaddr;
-    Socket tmpsock(fd, tmpaddr);
-    int cnt = config.getSendChunkBatchSize();
-    sendBody._type = CLIENT_DOWNLOAD_CHUNK;
-    for (auto it : f.body_) {
-        cnt--;
-        string hash(it._chunkHash, 32);
-        if (!this->restoreChunk(hash, chunkData)) {
-            cerr << "StorageCore : can not locate chunk " << endl;
-            return;
-        }
-        chunks._chunks.push_back(chunkData);
-        chunks._FP.push_back(it._chunkHash);
-        if (cnt == 0) {
-            cnt = config.getSendChunkBatchSize();
-            serialize(chunks, sendBody._data);
-            serialize(sendBody, epollMessage._data);
-
-            //this->insertMQ(epollMessage);
-            tmpsock.Send(epollMessage._data);
-
-            chunks.clear();
-        }
-    }
-
-    //send tail chunks
-    if (chunks._FP.empty())
-        return;
-    serialize(chunks, sendBody._data);
-    serialize(sendBody, epollMessage._data);
-
-    //this->insertMQ(epollMessage);
-    tmpsock.Send(epollMessage._data);
-}
-
-bool StorageCore::writeContainer(keyValueForChunkHash_t& key, char* data)
+bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
     if (key.length + currentContainer_.used_ < (4 << 20)) {
         memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
@@ -374,7 +332,7 @@ bool StorageCore::writeContainer(keyValueForChunkHash_t& key, char* data)
     return true;
 }
 
-bool StorageCore::readContainer(keyValueForChunkHash_t key, char* data)
+bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
 {
     ifstream containerIn;
     string readName = containerNamePrefix_ + key.containerName + containerNameTail_;
@@ -393,8 +351,6 @@ bool StorageCore::readContainer(keyValueForChunkHash_t key, char* data)
         return false;
     }
 }
-
-bool StorageCore::createContainer() {}
 
 bool Container::saveTOFile(string fileName)
 {

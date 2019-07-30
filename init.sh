@@ -1,3 +1,4 @@
+./clean.sh
 cd ./build
 rm -rf ./*
 cmake ..
