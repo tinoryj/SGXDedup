@@ -37,6 +37,10 @@ int main(int argv, char* argc[])
         return 0;
     }
 
+    boost::thread::attributes attrs;
+    //cerr << attrs.get_stack_size() << endl;
+    attrs.set_stack_size(100 * 1024 * 1024);
+
     if (strcmp("-r", argc[1]) == 0) {
         //run receive
         string fileName(argc[2]);
@@ -47,12 +51,12 @@ int main(int argv, char* argc[])
         retrieverObj = new Retriever(fileName, recvDecodeObj);
 
         for (int i = 0; i < config.getRecvDecodeThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&RecvDecode::run, recvDecodeObj));
+            th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
             thList.push_back(th);
         };
-        th = new boost::thread(boost::bind(&Retriever::retrieveFileThread, retrieverObj));
+        th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
         thList.push_back(th);
-        th = new boost::thread(boost::bind(&Retriever::recvThread, retrieverObj));
+        th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
     } else if (strcmp("-s", argc[1]) == 0) {
@@ -64,28 +68,28 @@ int main(int argv, char* argc[])
         chunkerObj = new Chunker(argc[2], keyClientObj);
 
         //start pow thread
-        th = new boost::thread(boost::bind(&powClient::run, PowClientObj));
+        th = new boost::thread(attrs, boost::bind(&powClient::run, PowClientObj));
         thList.push_back(th);
 
         //start chunking thread
-        th = new boost::thread(boost::bind(&Chunker::chunking, chunkerObj));
+        th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
 
         //start key client thread
         for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&keyClient::run, keyClientObj));
+            th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
             thList.push_back(th);
         }
 
         //start encode thread
         for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&Encoder::run, encoderObj));
+            th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
             thList.push_back(th);
         }
 
         //start sender thread
         for (int i = 0; i < config.getSenderThreadLimit(); i++) {
-            th = new boost::thread(boost::bind(&Sender::run, senderObj));
+            th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
             thList.push_back(th);
         }
     } else {

@@ -126,6 +126,8 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed" << endl;
         return false;
+    } else {
+        cerr << "Sender: send sgx msg 01 over, total send size = " << sendSize << " recv size = " << recvSize << endl;
     }
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
@@ -161,6 +163,8 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, i
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed" << endl;
         return false;
+    } else {
+        cerr << "Sender: send sgx msg 3over, total send size = " << sendSize << " recv size = " << recvSize << endl;
     }
 
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));

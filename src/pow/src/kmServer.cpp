@@ -75,7 +75,7 @@ bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg
     msg2.quote_type = _quote_type;
     msg2.kdf_id = 1;
 
-    if (!get_sigrl(msg01.msg1.gid, (char**)&msg2.sig_rl, &msg2.sig_rl_size)) {
+    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
         cerr << "can not retrieve sigrl form ias server" << endl;
         return false;
     }
@@ -118,7 +118,7 @@ bool kmServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t g
     return true;
 }
 
-bool kmServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
+bool kmServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 {
     IAS_Request* req = nullptr;
 
@@ -132,8 +132,9 @@ bool kmServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
         cerr << "ias get sigrl error" << endl;
         return false;
     }
-    *sig_rl = strdup(sigrlstr.c_str());
-    if (*sig_rl == nullptr) {
+
+    memcpy(sig_rl, &sigrlstr[0], sigrlstr.length());
+    if (sig_rl == nullptr) {
         return false;
     }
     *sig_rl_size = (uint32_t)sigrlstr.length();
@@ -219,7 +220,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          * secret between us and the client.
          */
 
-        if (msg4.status_) {
+        if (msg4.status) {
 
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
@@ -275,13 +276,13 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else {
-            msg4->status_ = false;
+            msg4->status = false;
         }
     }
     return true;
@@ -321,8 +322,8 @@ powSession* kmServer::authkm()
         return nullptr;
     }
     uint32_t quote_size = msg3RecvSize - sizeof(sgx_ra_msg3_t);
-    memcpy(&msg3, msg3Buffer, sizeof(sgx_ra_msg3_t));
-    if (!this->process_msg3(ans, &msg3, msg4, quote_size)) {
+    string msg3Str((char*)msg3Buffer, msg3RecvSize);
+    if (!this->process_msg3(ans, (sgx_ra_msg3_t*)msg3Str.c_str(), msg4, quote_size)) {
         cerr << "kmServer: error msg3" << endl;
         return nullptr;
     }

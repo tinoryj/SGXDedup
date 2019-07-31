@@ -16,12 +16,6 @@ void powClient::run()
     Data_t tempChunk;
     int netstatus;
 
-    if (!this->do_attestation()) {
-        exit(1);
-    } else {
-        cerr << "Client : powClient remote attestation passed" << endl;
-    }
-
     while (true) {
         batchChunk.clear();
         batchHash.clear();
@@ -110,6 +104,11 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
+    if (!this->do_attestation()) {
+        exit(1);
+    } else {
+        cerr << "Client : powClient remote attestation passed" << endl;
+    }
 }
 
 bool powClient::do_attestation()
@@ -156,6 +155,8 @@ bool powClient::do_attestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx get epid failed : " << status << endl;
         return false;
+    } else {
+        cerr << "POWClient : sgx get epid success, epid =  " << msg0_extended_epid_group_id << endl;
     }
 
     /* Generate msg1 */
@@ -187,45 +188,45 @@ bool powClient::do_attestation()
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx_ra_proc_msg2 : " << status << endl;
-        if (msg2 != nullptr) {
-            delete msg2;
-        }
+        // if (msg2 != nullptr) {
+        //     free(msg2);
+        // }
         return false;
     } else {
         cerr << "POWClient : process msg2 success" << endl;
     }
 
-    if (msg2 != nullptr) {
-        delete msg2;
-    }
-
+    // if (msg2 != nullptr) {
+    //     free(msg2);
+    // }
+    cerr << "msg3Size = " << msg3Size << endl;
     if (!senderObj->sendSGXmsg3(*msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : error send_msg3 : " << netstatus << endl;
-        if (msg3 != nullptr) {
-            delete msg3;
-        }
+        // if (msg3 != nullptr) {
+        //     free(msg3);
+        // }
         return false;
     } else {
         cerr << "POWClient : send msg3 and Recv msg4 success" << endl;
     }
 
-    if (msg3 != nullptr) {
-        delete msg3;
-    }
+    // if (msg3 != nullptr) {
+    //     free(msg3);
+    // }
 
-    if (msg4->status_) {
+    if (msg4->status) {
         cerr << "POWClient : Enclave TRUSTED" << endl;
-    } else if (!msg4->status_) {
+    } else if (!msg4->status) {
         cerr << "POWClient : Enclave NOT TRUSTED" << endl;
-        delete msg4;
+        //free(msg4);
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    enclave_trusted = msg4->status_;
+    enclave_trusted = msg4->status;
 
-    delete msg4;
+    //free(msg4);
     return true;
 }
 

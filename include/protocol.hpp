@@ -21,6 +21,7 @@
 #define SGX_SIGNED_HASH_TO_DEDUPCORE 0x0f
 #define ERROR_FILE_NOT_EXIST 0x10
 #define ERROR_CHUNK_NOT_EXIST 0x11
+#define ERROR_CLIENT_CLOSE_CONNECT 0x12
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK
@@ -28,7 +29,7 @@
 using namespace std;
 
 typedef struct _ra_msg4_struct {
-    bool status_;
+    bool status;
     //sgx_platform_info_t platformInfoBlob;
 } ra_msg4_t;
 

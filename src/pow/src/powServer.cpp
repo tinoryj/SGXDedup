@@ -17,19 +17,19 @@ powServer::powServer(DataSR* dataSRObjTemp)
     OpenSSL_add_all_algorithms();
 
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
-        cerr << "can not load IAS Signing Cert CA\n";
+        cerr << "PowServer : can not load IAS Signing Cert CA" << endl;
         exit(1);
     }
 
     _store = cert_init_ca(_signing_ca);
     if (_store == nullptr) {
-        cerr << "can not init cert file\n";
+        cerr << "PowServer : can not init cert file" << endl;
         exit(1);
     }
 
     string spid = config.getPOWSPID();
     if (spid.length() != 32) {
-        cerr << "SPID must be 32-byte hex string\n";
+        cerr << "PowServer : SPID must be 32-byte hex string" << endl;
         exit(1);
     }
 
@@ -55,7 +55,7 @@ void powServer::run()
     sgx_ra_msg3_t* msg3;
     ra_msg4_t msg4;
 
-    while (1) {
+    while (true) {
         if (!extractMQFromDataSR(msg)) {
             continue;
         }
@@ -64,7 +64,7 @@ void powServer::run()
             memcpy(&msg01, msg.data, sizeof(sgx_msg01_t));
             memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             if (!process_msg01(msg.fd, msg01, msg2)) {
-                cerr << "error process msg01\n";
+                cerr << "PowServer : error process msg01" << endl;
                 msg.type = ERROR_RESEND;
                 msg.dataSize = 0;
             } else {
@@ -77,9 +77,9 @@ void powServer::run()
         }
         case SGX_RA_MSG3: {
             msg3 = (sgx_ra_msg3_t*)new char[msg.dataSize];
-            memcpy(&msg3, msg.data, msg.dataSize);
+            memcpy(msg3, msg.data, msg.dataSize);
             if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "client had not send msg01 before\n";
+                cerr << "PowServer : client had not send msg01 before" << endl;
                 msg.type = ERROR_CLOSE;
                 msg.dataSize = 0;
                 memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
@@ -90,8 +90,9 @@ void powServer::run()
                     msg.dataSize = sizeof(ra_msg4_t);
                     memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                     memcpy(msg.data, &msg4, sizeof(ra_msg4_t));
+                    cerr << "PowServer : process msg3 success" << endl;
                 } else {
-                    cerr << "sgx msg3 error\n";
+                    cerr << "PowServer : sgx msg3 error" << endl;
                     msg.type = ERROR_CLOSE;
                     msg.dataSize = 0;
                     memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
@@ -113,12 +114,12 @@ void powServer::run()
             }
 
             if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "client not trusted yet\n";
+                cerr << "PowServer : client not trusted yet" << endl;
                 msg.type = ERROR_CLOSE;
                 msg.dataSize = 0;
             } else {
-                if (!sessions.at(msg.fd)->enclaveTrusted) {
-                    cerr << "client not trusted yet\n";
+                if (!sessions.at(msg.fd).enclaveTrusted) {
+                    cerr << "PowServer : client not trusted yet" << endl;
                     msg.type = ERROR_CLOSE;
                     msg.dataSize = 0;
                 } else {
@@ -147,32 +148,34 @@ void powServer::run()
 
 bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
-    powSession* current = new powSession();
+    powSession current;
     sessions.insert(make_pair(fd, current));
 
     EVP_PKEY* Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
 
     if (msg01.msg0_extended_epid_group_id != 0) {
-        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting.\n";
+        cerr << "PowServer : msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
         return false;
     }
 
-    memcpy(&current->msg1, &msg01.msg1, sizeof(sgx_ra_msg1_t));
+    memcpy(&current.msg1, &msg01.msg1, sizeof(sgx_ra_msg1_t));
 
     Gb = key_generate();
     if (Gb == nullptr) {
-        cerr << "can not create session key\n";
+        cerr << "PowServer : can not create session key" << endl;
+        return false;
+    } else {
+        cerr << "PowServer : Create session key over" << endl;
+    }
+
+    if (!derive_kdk(Gb, current.kdk, msg01.msg1.g_a)) {
+        cerr << "PowServer : can not derive KDK" << endl;
         return false;
     }
 
-    if (!derive_kdk(Gb, current->kdk, msg01.msg1.g_a)) {
-        cerr << "can not derive KDK\n";
-        return false;
-    }
-
-    cmac128(current->kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7,
-        current->smk);
+    cmac128(current.kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7,
+        current.smk);
 
     //build msg2
     memset(&msg2, 0, sizeof(sgx_ra_msg2_t));
@@ -182,22 +185,22 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     msg2.quote_type = _quote_type;
     msg2.kdf_id = 1;
 
-    if (!get_sigrl(msg01.msg1.gid, (char**)&msg2.sig_rl, &msg2.sig_rl_size)) {
-        cerr << "can not retrieve sigrl form ias server\n";
+    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
+        cerr << "PowServer : can not retrieve sigrl form ias server" << endl;
         return false;
     }
 
     memcpy(gb_ga, &msg2.g_b, 64);
-    memcpy(current->g_b, &msg2.g_b, 64);
+    memcpy(current.g_b, &msg2.g_b, 64);
 
-    memcpy(&gb_ga[64], &current->msg1.g_a, 64);
-    memcpy(current->g_a, &current->msg1.g_a, 64);
+    memcpy(&gb_ga[sizeof(sgx_ec256_public_t)], &current.msg1.g_a, sizeof(sgx_ec256_public_t));
+    memcpy(current.g_a, &current.msg1.g_a, sizeof(sgx_ec256_public_t));
 
     ecdsa_sign(gb_ga, 128, _service_private_key, r, s, digest);
     reverse_bytes(&msg2.sign_gb_ga.x, r, 32);
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
-    cmac128(current->smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
+    cmac128(current.smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
 
     return true;
 }
@@ -210,12 +213,12 @@ bool powServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t 
     EVP_PKEY* Ga;
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
-        cerr << "can not get ga from msg1\n";
+        cerr << "PowServer : can not get ga from msg1" << endl;
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
-        cerr << "can not get shared secret\n";
+        cerr << "PowServer : can not get shared secret" << endl;
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
@@ -225,49 +228,49 @@ bool powServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t 
     return true;
 }
 
-bool powServer::get_sigrl(uint8_t* gid, char** sig_rl, uint32_t* sig_rl_size)
+bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 {
     IAS_Request* req = nullptr;
 
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
-        cerr << "can not make ias request\n";
+        cerr << "PowServer : can not make ias request" << endl;
         return false;
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
-        cerr << "ias get sigrl error\n";
+        cerr << "PowServer : ias get sigrl error" << endl;
         return false;
     }
-    *sig_rl = strdup(sigrlstr.c_str());
-    if (*sig_rl == nullptr) {
+    memcpy(sig_rl, &sigrlstr[0], sigrlstr.length());
+    if (sig_rl == nullptr) {
         return false;
     }
     *sig_rl_size = (uint32_t)sigrlstr.length();
     return true;
 }
 
-bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
-    if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
+    if (CRYPTO_memcmp(&msg3->g_a, &current.g_a,
             sizeof(sgx_ec256_public_t))) {
-        cerr << "msg1.ga != msg3.ga\n";
+        cerr << "PowServer : msg1.ga != msg3.ga" << endl;
         return false;
     }
     sgx_mac_t msgMAC;
-    cmac128(current->smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
+    cmac128(current.smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
     if (CRYPTO_memcmp(msg3->mac, msgMAC, sizeof(sgx_mac_t))) {
-        cerr << "broken msg3 from client\n";
+        cerr << "PowServer : broken msg3 from client" << endl;
         return false;
     }
     char* b64quote;
     b64quote = base64_encode((char*)&msg3->quote, quote_sz);
     sgx_quote_t* q;
     q = (sgx_quote_t*)msg3->quote;
-    if (memcmp(current->msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
-        cerr << "Attestation failed. Differ gid\n";
+    if (memcmp(current.msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
+        cerr << "PowServer : Attestation failed. Differ gid" << endl;
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
@@ -289,21 +292,21 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
 
         /* Derive VK */
 
-        cmac128(current->kdk, (unsigned char*)("\x01VK\x00\x80\x00"),
-            6, current->vk);
+        cmac128(current.kdk, (unsigned char*)("\x01VK\x00\x80\x00"),
+            6, current.vk);
 
         /* Build our plaintext */
 
-        memcpy(msg_rdata, current->g_a, 64);
-        memcpy(&msg_rdata[64], current->g_b, 64);
-        memcpy(&msg_rdata[128], current->vk, 16);
+        memcpy(msg_rdata, current.g_a, 64);
+        memcpy(&msg_rdata[64], current.g_b, 64);
+        memcpy(&msg_rdata[128], current.vk, 16);
 
         /* SHA-256 hash */
 
         sha256_digest(msg_rdata, 144, vfy_rdata);
 
         if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data, 64)) {
-            cerr << "Report verification failed.\n";
+            cerr << "PowServer : Report verification failed." << endl;
             return false;
         }
 
@@ -324,17 +327,17 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          * secret between us and the client.
          */
 
-        if (msg4.status_) {
+        if (msg4.status) {
 
-            cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
-                6, current->mk);
-            cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
-                6, current->sk);
+            cmac128(current.kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
+                6, current.mk);
+            cmac128(current.kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
+                6, current.sk);
 
-            current->enclaveTrusted = true;
+            current.enclaveTrusted = true;
         }
     } else {
-        cerr << "Attestation failed\n";
+        cerr << "PowServer : Attestation failed" << endl;
         return false;
     }
 
@@ -351,7 +354,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
     req = new IAS_Request(_ias, (uint16_t)_iasVersion);
     if (req == nullptr) {
-        cerr << "Exception while creating IAS request object\n";
+        cerr << "PowServer : Exception while creating IAS request object" << endl;
         return false;
     }
 
@@ -372,7 +375,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         if (reportObj.hasKey("version")) {
             unsigned int rversion = (unsigned int)reportObj["version"].ToInt();
             if (_iasVersion != rversion) {
-                cerr << "Report version " << rversion << " does not match API version " << _iasVersion << endl;
+                cerr << "PowServer : Report version " << rversion << " does not match API version " << _iasVersion << endl;
                 return false;
             }
         }
@@ -380,24 +383,24 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         memset(msg4, 0, sizeof(ra_msg4_t));
 
         if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("OK"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("CONFIGURATION_NEEDED"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else if (!(reportObj["isvEnclaveQuoteStatus"].ToString().compare("GROUP_OUT_OF_DATE"))) {
-            msg4->status_ = true;
+            msg4->status = true;
         } else {
-            msg4->status_ = false;
+            msg4->status = false;
         }
     }
     return true;
 }
 
-bool powServer::process_signedHash(powSession* session, powSignedHash_t req)
+bool powServer::process_signedHash(powSession session, powSignedHash_t req)
 {
     string Mac, signature((char*)req.signature_, 16);
-    cryptoObj_.cmac128(req.hash_, Mac, (u_char*)((const char*)session->sk), 16);
+    cryptoObj_.cmac128(req.hash_, Mac, (u_char*)((const char*)session.sk), 16);
     if (Mac.compare(signature)) {
-        cerr << "client signature unvalid" << endl;
+        cerr << "PowServer : client signature unvalid" << endl;
         return false;
     }
     return true;

@@ -18,10 +18,8 @@ using namespace std;
 #define UDP 2
 
 class Socket {
-private:
-    sockaddr_in addr_;
-
 public:
+    sockaddr_in addr_;
     int fd_;
 
     Socket(const int type, string ip, int port);

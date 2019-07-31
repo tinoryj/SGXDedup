@@ -230,15 +230,11 @@ bool kmClient::doAttestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "kmClient : sgx_ra_proc_msg2 : " << status << endl;
         if (msg2 != nullptr) {
-            delete msg2;
+            //delete msg2;
         }
         return false;
     }
     cerr << "kmClient : process msg2 success" << endl;
-
-    if (msg2 != nullptr) {
-        delete msg2;
-    }
 
     u_char msg3Buffer[msg3_sz];
     memcpy(msg3Buffer, msg3, msg3_sz);
@@ -259,21 +255,16 @@ bool kmClient::doAttestation()
     memcpy(msg4, msg4Buffer, msg4RecvSize);
     cerr << "kmClient : send msg3 and Recv msg4 success" << endl;
 
-    if (msg3 != nullptr) {
-        delete msg3;
-    }
-
-    if (msg4->status_) {
+    if (msg4->status) {
         cerr << "kmClient : Enclave TRUSTED" << endl;
-    } else if (!msg4->status_) {
+    } else if (!msg4->status) {
         cerr << "kmClient : Enclave NOT TRUSTED" << endl;
-        delete msg4;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    enclave_trusted = msg4->status_;
+    enclave_trusted = msg4->status;
 
-    delete msg4;
+    //delete msg4;
     return true;
 }
