@@ -137,7 +137,11 @@ CryptoPrimitive::~CryptoPrimitive()
 bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int& dataSize, u_char* hash)
 {
     int hashSize;
-    EVP_DigestInit_ex(mdctx_, md_, NULL);
+    ;
+    if (EVP_DigestInit_ex(mdctx_, md_, nullptr) != 1) {
+        cerr << "hash error\n";
+        return false;
+    }
     EVP_DigestUpdate(mdctx_, dataBuffer, dataSize);
     EVP_DigestFinal_ex(mdctx_, hash, (unsigned int*)&hashSize);
     if (hashSize != hashSize_) {

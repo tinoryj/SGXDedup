@@ -84,10 +84,10 @@ void powServer::run()
                 msg.dataSize = 0;
                 memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             } else {
-                cout << "Current msg.fd = " << msg.fd << endl;
-                for (auto it : sessions) {
-                    cerr << "session hold fd =  " << it.first << endl;
-                }
+                // cout << "Current msg.fd = " << msg.fd << endl;
+                // for (auto it : sessions) {
+                //     cerr << "session hold fd =  " << it.first << endl;
+                // }
                 if (this->process_msg3(sessions[msg.fd], msg3, msg4,
                         msg.dataSize - sizeof(sgx_ra_msg3_t))) {
                     msg.type = SUCCESS;
@@ -153,7 +153,6 @@ void powServer::run()
 bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
     powSession current;
-    sessions.insert(make_pair(fd, current));
 
     EVP_PKEY* Gb;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
@@ -215,6 +214,8 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 
     cmac128(current.smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
 
+    sessions.insert(make_pair(fd, current));
+
     return true;
 }
 
@@ -266,19 +267,22 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
-    char outPutBuffer[32 * 2];
-    for (int i = 0; i < 32; i++) {
-        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
-    }
-    for (int i = 32; i < 32; i++) {
-        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
-    }
-    cout << "msg3.ga = " << outPutBuffer << endl;
+    // char outPutBuffer[32 * 2];
+    // for (int i = 0; i < 32; i++) {
+    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
+    // }
+    // for (int i = 32; i < 32; i++) {
+    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
+    // }
+    // cout << "msg3.ga = " << outPutBuffer << endl;
 
-    for (int i = 0; i < 64; i++) {
-        sprintf(outPutBuffer + i, "%02X", current.g_a[i]);
-    }
-    cout << "current.msg1.ga = " << outPutBuffer << endl;
+    // for (int i = 0; i < 32; i++) {
+    //     sprintf(outPutBuffer + i, "%02X", current.msg1.g_a.gx[i]);
+    // }
+    // for (int i = 0; i < 32; i++) {
+    //     sprintf(outPutBuffer + i, "%02X", current.msg1.g_a.gy[i]);
+    // }
+    // cout << "current.msg1.ga = " << outPutBuffer << endl;
 
     if (CRYPTO_memcmp(&msg3->g_a, &current.g_a,
             sizeof(sgx_ec256_public_t))) {
@@ -300,6 +304,8 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
+
+        cerr << "PowServer : Attestation get report success, msg4.status = " << msg4.status << endl;
         unsigned char vfy_rdata[64];
         unsigned char msg_rdata[144]; /* for Ga || Gb || VK */
 
@@ -361,8 +367,10 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
                 6, current.sk);
 
             current.enclaveTrusted = true;
+            cerr << "PowServer : enclave trusted" << endl;
         }
     } else {
+
         cerr << "PowServer : Attestation failed" << endl;
         return false;
     }
@@ -417,6 +425,10 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         } else {
             msg4->status = false;
         }
+    } else {
+        msg4->status = false;
+        cerr << "IAS status not OK, status = " << status << endl;
+        return false;
     }
     return true;
 }
