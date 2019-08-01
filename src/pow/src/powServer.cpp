@@ -84,6 +84,10 @@ void powServer::run()
                 msg.dataSize = 0;
                 memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             } else {
+                cout << "Current msg.fd = " << msg.fd << endl;
+                for (auto it : sessions) {
+                    cerr << "session hold fd =  " << it.first << endl;
+                }
                 if (this->process_msg3(sessions[msg.fd], msg3, msg4,
                         msg.dataSize - sizeof(sgx_ra_msg3_t))) {
                     msg.type = SUCCESS;
@@ -174,6 +178,15 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
         return false;
     }
 
+    char outPutBuffer[32 * 2];
+    for (int i = 0; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg01.msg1.g_a.gx[i]);
+    }
+    for (int i = 32; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg01.msg1.g_a.gy[i]);
+    }
+    cout << "msg1.ga = " << outPutBuffer << endl;
+
     cmac128(current.kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7,
         current.smk);
 
@@ -253,6 +266,19 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
+    char outPutBuffer[32 * 2];
+    for (int i = 0; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
+    }
+    for (int i = 32; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
+    }
+    cout << "msg3.ga = " << outPutBuffer << endl;
+
+    for (int i = 0; i < 64; i++) {
+        sprintf(outPutBuffer + i, "%02X", current.g_a[i]);
+    }
+    cout << "current.msg1.ga = " << outPutBuffer << endl;
 
     if (CRYPTO_memcmp(&msg3->g_a, &current.g_a,
             sizeof(sgx_ec256_public_t))) {

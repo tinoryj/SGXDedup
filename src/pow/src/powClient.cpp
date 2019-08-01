@@ -167,6 +167,14 @@ bool powClient::do_attestation()
         cerr << "POWClient : sgx error get msg1" << status << endl;
         return false;
     }
+    char outPutBuffer[32 * 2];
+    for (int i = 0; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg1.g_a.gx[i]);
+    }
+    for (int i = 32; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg1.g_a.gy[i]);
+    }
+    cout << "msg1.ga = " << outPutBuffer << endl;
 
     int netstatus;
     if (!senderObj->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
@@ -195,6 +203,14 @@ bool powClient::do_attestation()
     } else {
         cerr << "POWClient : process msg2 success" << endl;
     }
+
+    for (int i = 0; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
+    }
+    for (int i = 32; i < 32; i++) {
+        sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
+    }
+    cout << "msg3.ga = " << outPutBuffer << endl;
 
     // if (msg2 != nullptr) {
     //     free(msg2);
