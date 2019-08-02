@@ -101,28 +101,6 @@ void powServer::run()
                 memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
             }
 
-            cerr << "PowServer : generate msg 2 success, data: " << endl;
-            fprintf(stderr, "MSG2 gb - ");
-            PRINT_BYTE_ARRAY(stderr, &(msg2.g_b), sizeof(msg2.g_b));
-
-            fprintf(stderr, "MSG2 spid - ");
-            PRINT_BYTE_ARRAY(stderr, &(msg2.spid), sizeof(msg2.spid));
-
-            fprintf(stderr, "MSG2 quote_type : %hx\n", msg2.quote_type);
-
-            fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2.kdf_id);
-
-            fprintf(stderr, "MSG2 sign_gb_ga - ");
-            PRINT_BYTE_ARRAY(stderr, &(msg2.sign_gb_ga),
-                sizeof(msg2.sign_gb_ga));
-
-            fprintf(stderr, "MSG2 mac - ");
-            PRINT_BYTE_ARRAY(stderr, &(msg2.mac), sizeof(msg2.mac));
-
-            fprintf(stderr, "MSG2 sig_rl - ");
-            PRINT_BYTE_ARRAY(stderr, &(msg2.sig_rl),
-                msg2.sig_rl_size);
-
             insertMQToDataSR(msg);
             break;
         }
@@ -232,18 +210,9 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
         cerr << "PowServer : can not derive KDK" << endl;
         return false;
     }
-
-    char outPutBuffer[32 * 2];
-    for (int i = 0; i < 32; i++) {
-        sprintf(outPutBuffer + i, "%02X", msg01.msg1.g_a.gx[i]);
-    }
-    for (int i = 32; i < 32; i++) {
-        sprintf(outPutBuffer + i, "%02X", msg01.msg1.g_a.gy[i]);
-    }
-    cout << "msg1.ga = " << outPutBuffer << endl;
-
-    cmac128(current.kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7,
-        current.smk);
+    // const char* smkCharStr = "\x01SMK\x00\x80\x00";
+    // cerr << "PowServer : smk string size = " << strlen(smkCharStr) << " data = " << smkCharStr << endl;
+    cmac128(current.kdk, (unsigned char*)("\x01SMK\x00\x80\x00"), 7, current.smk);
 
     //build msg2
     memset(&msg2, 0, sizeof(sgx_ra_msg2_t));
@@ -253,13 +222,8 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     msg2.quote_type = _quote_type;
     msg2.kdf_id = 1;
 
-    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, msg2.sig_rl_size)) {
-        cerr << "PowServer : can not retrieve sigrl form ias server" << endl;
-        return false;
-    }
-
-    memcpy(gb_ga, &msg2.g_b, 64);
-    memcpy(current.g_b, &msg2.g_b, 64);
+    memcpy(gb_ga, &msg2.g_b, 2 * sizeof(sgx_ec256_public_t));
+    memcpy(current.g_b, &msg2.g_b, sizeof(sgx_ec256_public_t));
 
     memcpy(&gb_ga[sizeof(sgx_ec256_public_t)], &current.msg1.g_a, sizeof(sgx_ec256_public_t));
     memcpy(current.g_a, &current.msg1.g_a, sizeof(sgx_ec256_public_t));
@@ -268,8 +232,20 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     reverse_bytes(&msg2.sign_gb_ga.x, r, 32);
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
-    cmac128(current.smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
+    unsigned char cmacBuffer[sizeof(msg2.g_b) + sizeof(msg2.spid) + sizeof(msg2.quote_type) + sizeof(msg2.kdf_id) + sizeof(msg2.sign_gb_ga)];
+    memcpy(cmacBuffer, &msg2.g_b, sizeof(msg2.g_b));
+    memcpy(cmacBuffer + sizeof(msg2.g_b), &msg2.spid, sizeof(msg2.spid));
+    memcpy(cmacBuffer + sizeof(msg2.g_b) + sizeof(msg2.spid), &msg2.quote_type, sizeof(msg2.quote_type));
+    memcpy(cmacBuffer + sizeof(msg2.g_b) + sizeof(msg2.spid) + sizeof(msg2.quote_type), &msg2.kdf_id, sizeof(msg2.kdf_id));
+    memcpy(cmacBuffer + sizeof(msg2.g_b) + sizeof(msg2.spid) + sizeof(msg2.quote_type) + sizeof(msg2.kdf_id), &msg2.sign_gb_ga, sizeof(msg2.sign_gb_ga));
 
+    // cmac128(current.smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
+    cmac128(current.smk, cmacBuffer, sizeof(msg2.g_b) + sizeof(msg2.spid) + sizeof(msg2.quote_type) + sizeof(msg2.kdf_id) + sizeof(msg2.sign_gb_ga), (unsigned char*)&msg2.mac);
+
+    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, msg2.sig_rl_size)) {
+        cerr << "PowServer : can not retrieve sigrl form ias server" << endl;
+        return false;
+    }
     sessions.insert(make_pair(fd, current));
 
     return true;
@@ -325,8 +301,7 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
-    if (CRYPTO_memcmp(&msg3->g_a, &current.g_a,
-            sizeof(sgx_ec256_public_t))) {
+    if (CRYPTO_memcmp(&msg3->g_a, &current.g_a, sizeof(sgx_ec256_public_t))) {
         cerr << "PowServer : msg1.ga != msg3.ga" << endl;
         return false;
     }
@@ -367,8 +342,7 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
 
         /* Derive VK */
 
-        cmac128(current.kdk, (unsigned char*)("\x01VK\x00\x80\x00"),
-            6, current.vk);
+        cmac128(current.kdk, (unsigned char*)("\x01VK\x00\x80\x00"), 6, current.vk);
 
         /* Build our plaintext */
 

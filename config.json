@@ -45,12 +45,12 @@
 		"_recvDecodeThreadLimit": 1
 	},
 	"pow": {
-		"_quoteType": 0,
+		"_quoteType": 1,
 		"_iasVersion": 3,
 		"_ServerIp": "127.0.0.1",
 		"_ServerPort": 6698,
 		"_enclave_name": "pow_enclave.signed.so",
-		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_SPID": "BF0C56B2E29A4674756A8EA62DAA8762",
 		"_iasServerType": 0,
 		"_batchSize": 5000
 	},
@@ -60,7 +60,7 @@
 		"_ServerIp": "127.0.0.1",
 		"_ServerPort": 6676,
 		"_enclave_name": "km_enclave.signed.so",
-		"_SPID": "BF0C56B2E29A4674756A8EA62DAA8762",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType": 0
 	},
 	"server": {

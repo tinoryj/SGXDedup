@@ -152,8 +152,7 @@ bool powClient::do_attestation()
         cerr << "POWClient : create pow enclave success" << endl;
     }
 
-    status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
-        &_ctx, &pse_status);
+    status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false, &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : pow_enclave ra init failed : " << status << endl;
         return false;
@@ -175,8 +174,8 @@ bool powClient::do_attestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx get epid failed : " << status << endl;
         return false;
-    } else {
-        cerr << "POWClient : sgx get epid success, epid =  " << msg0_extended_epid_group_id << endl;
+    } else if (msg0_extended_epid_group_id != 0) {
+        cerr << "POWClient : sgx get epid error, epid =  " << msg0_extended_epid_group_id << endl;
     }
 
     /* Generate msg1 */
@@ -218,16 +217,12 @@ bool powClient::do_attestation()
     fprintf(stderr, "MSG2 mac - ");
     PRINT_BYTE_ARRAY(stderr, &(msg2->mac), sizeof(msg2->mac));
 
-    fprintf(stderr, "MSG2 sig_rl - ");
-    PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl),
-        msg2->sig_rl_size);
+    fprintf(stderr, "MSG2 sig_rl - %d\n", msg2->sig_rl_size);
+    PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl), msg2->sig_rl_size);
 
     /* Process Msg2, Get Msg3  */
 
-    status = sgx_ra_proc_msg2(_ctx, _eid,
-        sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2,
-        sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size,
-        &msg3, &msg3Size);
+    status = sgx_ra_proc_msg2(_ctx, _eid, sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2, sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size, &msg3, &msg3Size);
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
