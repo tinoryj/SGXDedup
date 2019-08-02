@@ -1,8 +1,29 @@
 #include "powServer.hpp"
+#include "sgx_uae_service.h"
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
 // -A AttestationReportSigningCACert.pem -C client.crt
 // -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
+
+void PRINT_BYTE_ARRAY(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 void powServer::closeSession(int fd)
 {
     sessions.erase(fd);
@@ -61,8 +82,15 @@ void powServer::run()
         }
         switch (msg.type) {
         case SGX_RA_MSG01: {
-            memcpy(&msg01, msg.data, sizeof(sgx_msg01_t));
+            memcpy(&msg01.msg0_extended_epid_group_id, msg.data, sizeof(msg01.msg0_extended_epid_group_id));
+            memcpy(&msg01.msg1, msg.data + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
             memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+
+            cerr << "PowServer : recv msg 01 success, data: \n msg0 = " << endl;
+            PRINT_BYTE_ARRAY(stderr, &msg01.msg0_extended_epid_group_id, sizeof(msg01.msg0_extended_epid_group_id));
+            cerr << "msg 1 = " << endl;
+            PRINT_BYTE_ARRAY(stderr, &msg01.msg1, sizeof(msg01.msg1));
+
             if (!process_msg01(msg.fd, msg01, msg2)) {
                 cerr << "PowServer : error process msg01" << endl;
                 msg.type = ERROR_RESEND;
@@ -72,12 +100,39 @@ void powServer::run()
                 msg.dataSize = sizeof(sgx_ra_msg2_t);
                 memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
             }
+
+            cerr << "PowServer : generate msg 2 success, data: " << endl;
+            fprintf(stderr, "MSG2 gb - ");
+            PRINT_BYTE_ARRAY(stderr, &(msg2.g_b), sizeof(msg2.g_b));
+
+            fprintf(stderr, "MSG2 spid - ");
+            PRINT_BYTE_ARRAY(stderr, &(msg2.spid), sizeof(msg2.spid));
+
+            fprintf(stderr, "MSG2 quote_type : %hx\n", msg2.quote_type);
+
+            fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2.kdf_id);
+
+            fprintf(stderr, "MSG2 sign_gb_ga - ");
+            PRINT_BYTE_ARRAY(stderr, &(msg2.sign_gb_ga),
+                sizeof(msg2.sign_gb_ga));
+
+            fprintf(stderr, "MSG2 mac - ");
+            PRINT_BYTE_ARRAY(stderr, &(msg2.mac), sizeof(msg2.mac));
+
+            fprintf(stderr, "MSG2 sig_rl - ");
+            PRINT_BYTE_ARRAY(stderr, &(msg2.sig_rl),
+                msg2.sig_rl_size);
+
             insertMQToDataSR(msg);
             break;
         }
         case SGX_RA_MSG3: {
             msg3 = (sgx_ra_msg3_t*)new char[msg.dataSize];
             memcpy(msg3, msg.data, msg.dataSize);
+
+            cerr << "PowServer : recv msg 3 success, data: " << endl;
+            PRINT_BYTE_ARRAY(stderr, msg3, msg.dataSize);
+
             if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "PowServer : client had not send msg01 before" << endl;
                 msg.type = ERROR_CLOSE;
@@ -269,22 +324,6 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t& sig_rl_size)
 bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
-    // char outPutBuffer[32 * 2];
-    // for (int i = 0; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
-    // }
-    // for (int i = 32; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
-    // }
-    // cout << "msg3.ga = " << outPutBuffer << endl;
-
-    // for (int i = 0; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", current.msg1.g_a.gx[i]);
-    // }
-    // for (int i = 0; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", current.msg1.g_a.gy[i]);
-    // }
-    // cout << "current.msg1.ga = " << outPutBuffer << endl;
 
     if (CRYPTO_memcmp(&msg3->g_a, &current.g_a,
             sizeof(sgx_ec256_public_t))) {
@@ -297,6 +336,7 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
         cerr << "PowServer : broken msg3 from client" << endl;
         return false;
     }
+
     char* b64quote;
     b64quote = base64_encode((char*)&msg3->quote, quote_sz);
     sgx_quote_t* q;
@@ -305,6 +345,7 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
         cerr << "PowServer : Attestation failed. Differ gid" << endl;
         return false;
     }
+
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
 
         cerr << "PowServer : Attestation get report success, msg4.status = " << msg4.status << endl;
@@ -372,10 +413,8 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
             cerr << "PowServer : enclave trusted" << endl;
         }
     } else {
-        msg4.status = true;
-        current.enclaveTrusted = true;
         cerr << "PowServer : Attestation failed" << endl;
-        //return false;
+        return false;
     }
 
     return true;
@@ -431,6 +470,13 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
     } else {
         msg4->status = false;
         cerr << "IAS status not OK, status = " << status << endl;
+        //sgx_report_attestation_status(status);
+        // const sgx_platform_info_t* p_platform_info;
+        // sgx_update_info_bit_t update_info = {};
+        // sgx_status_t newStatus = sgx_report_attestation_status(p_platform_info, 1, &update_info);
+        // printf("sgx_report_attestation_status returned 0x%x, update required:\n\tuCode: %d\n\tCSME FW: %d\n\tPSW: %d\n",
+        //     status, update_info.ucodeUpdate, update_info.csmeFwUpdate, update_info.pswUpdate);
+
         return false;
     }
     return true;

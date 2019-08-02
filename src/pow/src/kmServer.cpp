@@ -231,9 +231,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
         }
     } else {
         cerr << "Attestation failed" << endl;
-        //return false;
-        msg4.status = true;
-        return true;
+        return false;
     }
 
     return true;

@@ -4,6 +4,25 @@ using namespace std;
 
 extern Configure config;
 
+void PRINT_BYTE_ARRAY(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 void powClient::run()
 {
     vector<Data_t> batchChunk;
@@ -141,6 +160,7 @@ bool powClient::do_attestation()
     } else {
         cerr << "POWClient : pow_enclave ra init success : " << status << endl;
     }
+
     if (sgxrv != SGX_SUCCESS) {
         cerr << "POWClient : sgx ra init failed : " << sgxrv << endl;
         return false;
@@ -167,14 +187,9 @@ bool powClient::do_attestation()
         cerr << "POWClient : sgx error get msg1" << status << endl;
         return false;
     }
-    // char outPutBuffer[32 * 2];
-    // for (int i = 0; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg1.g_a.gx[i]);
-    // }
-    // for (int i = 32; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg1.g_a.gy[i]);
-    // }
-    // cout << "msg1.ga = " << outPutBuffer << endl;
+
+    cerr << "PowClient : generate msg 1 success, data: " << endl;
+    PRINT_BYTE_ARRAY(stderr, &msg1, sizeof(msg1));
 
     int netstatus;
     if (!senderObj->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
@@ -185,8 +200,29 @@ bool powClient::do_attestation()
         cerr << "POWClient : Send msg01 and Recv msg2 success" << endl;
     }
 
+    cerr << "PowClient : recv msg 2 success, data: " << endl;
+    fprintf(stderr, "MSG2 gb - ");
+    PRINT_BYTE_ARRAY(stderr, &(msg2->g_b), sizeof(msg2->g_b));
+
+    fprintf(stderr, "MSG2 spid - ");
+    PRINT_BYTE_ARRAY(stderr, &(msg2->spid), sizeof(msg2->spid));
+
+    fprintf(stderr, "MSG2 quote_type : %hx\n", msg2->quote_type);
+
+    fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2->kdf_id);
+
+    fprintf(stderr, "MSG2 sign_gb_ga - ");
+    PRINT_BYTE_ARRAY(stderr, &(msg2->sign_gb_ga),
+        sizeof(msg2->sign_gb_ga));
+
+    fprintf(stderr, "MSG2 mac - ");
+    PRINT_BYTE_ARRAY(stderr, &(msg2->mac), sizeof(msg2->mac));
+
+    fprintf(stderr, "MSG2 sig_rl - ");
+    PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl),
+        msg2->sig_rl_size);
+
     /* Process Msg2, Get Msg3  */
-    /* object msg3 is malloc'd by SGX SDK, so remember to free when finished */
 
     status = sgx_ra_proc_msg2(_ctx, _eid,
         sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2,
@@ -196,53 +232,34 @@ bool powClient::do_attestation()
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx_ra_proc_msg2 : " << status << endl;
-        // if (msg2 != nullptr) {
-        //     free(msg2);
-        // }
         return false;
     } else {
         cerr << "POWClient : process msg2 success" << endl;
     }
 
-    // for (int i = 0; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gx[i]);
-    // }
-    // for (int i = 32; i < 32; i++) {
-    //     sprintf(outPutBuffer + i, "%02X", msg3->g_a.gy[i]);
-    // }
-    // cout << "msg3.ga = " << outPutBuffer << endl;
+    cerr << "PowClient : generate msg 3 success, data: " << endl;
+    PRINT_BYTE_ARRAY(stderr, msg3, msg3Size);
 
-    // if (msg2 != nullptr) {
-    //     free(msg2);
-    // }
     cerr << "msg3Size = " << msg3Size << endl;
     if (!senderObj->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "POWClient : error send_msg3 : " << netstatus << endl;
-        // if (msg3 != nullptr) {
-        //     free(msg3);
-        // }
+        cerr << "POWClient : error send msg3 & get back msg4: " << netstatus << endl;
         return false;
     } else {
         cerr << "POWClient : send msg3 and Recv msg4 success" << endl;
     }
 
-    // if (msg3 != nullptr) {
-    //     free(msg3);
-    // }
-
     if (msg4->status) {
         cerr << "POWClient : Enclave TRUSTED" << endl;
     } else if (!msg4->status) {
         cerr << "POWClient : Enclave NOT TRUSTED" << endl;
-        //free(msg4);
+
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
     enclave_trusted = msg4->status;
 
-    //free(msg4);
     return true;
 }
 
