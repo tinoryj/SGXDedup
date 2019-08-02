@@ -216,7 +216,7 @@ bool powClient::do_attestation()
     //     free(msg2);
     // }
     cerr << "msg3Size = " << msg3Size << endl;
-    if (!senderObj->sendSGXmsg3(*msg3, msg3Size, msg4, netstatus)) {
+    if (!senderObj->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : error send_msg3 : " << netstatus << endl;
         // if (msg3 != nullptr) {

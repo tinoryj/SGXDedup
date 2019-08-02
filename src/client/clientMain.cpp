@@ -65,7 +65,8 @@ int main(int argv, char* argc[])
         PowClientObj = new powClient(senderObj);
         encoderObj = new Encoder(PowClientObj);
         keyClientObj = new keyClient(encoderObj);
-        chunkerObj = new Chunker(argc[2], keyClientObj);
+        string inputFile(argc[2]);
+        chunkerObj = new Chunker(inputFile, keyClientObj);
 
         //start pow thread
         th = new boost::thread(attrs, boost::bind(&powClient::run, PowClientObj));

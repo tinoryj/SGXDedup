@@ -35,6 +35,7 @@ void keyClient::run()
     while (true) {
         string chunkKey, chunkHash;
         chunkHash.resize(CHUNK_HASH_SIZE);
+        chunkKey.resize(CHUNK_ENCRYPT_KEY_SIZE);
         Data_t tempchunk;
         if (inputMQ_.done_ && !extractMQFromChunker(tempchunk)) {
             break;

@@ -18,6 +18,7 @@ in the License.
 #include "agent.h"
 #include "common.h"
 #include "crypto.h"
+#include <iostream>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <stdio.h>
@@ -332,6 +333,7 @@ ias_error_t IAS_Request::sigrl(uint32_t gid, string& sigrl)
 */
         if (response.statusCode == IAS_OK) {
             sigrl = response.content_string();
+            //std::cerr << "sigrl size = " << response.content_string().length() << " content = " << response.content_string();
         }
     } else {
         //		eprintf("Could not query IAS\n");

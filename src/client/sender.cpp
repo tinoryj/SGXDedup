@@ -140,7 +140,7 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     return false;
 }
 
-bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, int& status)
+bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, int& status)
 {
 
     NetworkHeadStruct_t requestBody, respondBody;
@@ -155,7 +155,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t& msg3, uint32_t size, ra_msg4_t*& msg4, i
     requestBody.dataSize = size;
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg3, size);
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), msg3, size);
 
     u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize = 0;

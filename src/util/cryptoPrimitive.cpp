@@ -99,7 +99,12 @@ CryptoPrimitive::CryptoPrimitive()
         exit(1);
     }
 
+    hashSize_ = CHUNK_HASH_SIZE;
+    //int keySize_ = CHUNK_ENCRYPT_KEY_SIZE;
+    blockSize_ = CRYPTO_BLOCK_SZIE;
     md_ = EVP_sha256();
+    cipherctx_ = EVP_CIPHER_CTX_new();
+    mdctx_ = EVP_MD_CTX_new();
     EVP_MD_CTX_init(mdctx_);
     EVP_CIPHER_CTX_init(cipherctx_);
     cipher_ = EVP_aes_256_cfb();
@@ -136,20 +141,32 @@ CryptoPrimitive::~CryptoPrimitive()
  */
 bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int& dataSize, u_char* hash)
 {
-    int hashSize;
-    ;
-    if (EVP_DigestInit_ex(mdctx_, md_, nullptr) != 1) {
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+
+    if (ctx == nullptr) {
+        cerr << "error initial MD ctx\n";
+        return false;
+    }
+
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
         cerr << "hash error\n";
+        EVP_MD_CTX_free(ctx);
         return false;
     }
-    EVP_DigestUpdate(mdctx_, dataBuffer, dataSize);
-    EVP_DigestFinal_ex(mdctx_, hash, (unsigned int*)&hashSize);
-    if (hashSize != hashSize_) {
-        cerr << "CryptoPrimitive Error: the size of the generated hash (" << hashSize << " bytes) does not match with the expected one (" << hashSize_ << " bytes)!" << endl;
+
+    if (EVP_DigestUpdate(ctx, dataBuffer, dataSize) != 1) {
+        cerr << "hash error\n";
+        EVP_MD_CTX_free(ctx);
         return false;
-    } else {
-        return true;
     }
+    int hashSize;
+    if (EVP_DigestFinal_ex(ctx, hash, (unsigned int*)&hashSize) != 1) {
+        cerr << "hash error\n";
+        EVP_MD_CTX_free(ctx);
+        return false;
+    }
+    EVP_MD_CTX_free(ctx);
+    return true;
 }
 
 /*

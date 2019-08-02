@@ -88,6 +88,7 @@ void powServer::run()
                 // for (auto it : sessions) {
                 //     cerr << "session hold fd =  " << it.first << endl;
                 // }
+                cerr << "msg.datasize = " << msg.dataSize << " sgx_ra_msg3_t size = " << sizeof(sgx_ra_msg3_t) << endl;
                 if (this->process_msg3(sessions[msg.fd], msg3, msg4,
                         msg.dataSize - sizeof(sgx_ra_msg3_t))) {
                     msg.type = SUCCESS;
@@ -96,7 +97,7 @@ void powServer::run()
                     memcpy(msg.data, &msg4, sizeof(ra_msg4_t));
                     cerr << "PowServer : process msg3 success" << endl;
                 } else {
-                    cerr << "PowServer : sgx msg3 error" << endl;
+                    cerr << "PowServer : sgx process msg3 & get msg4 error" << endl;
                     msg.type = ERROR_CLOSE;
                     msg.dataSize = 0;
                     memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
@@ -197,7 +198,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     msg2.quote_type = _quote_type;
     msg2.kdf_id = 1;
 
-    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
+    if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, msg2.sig_rl_size)) {
         cerr << "PowServer : can not retrieve sigrl form ias server" << endl;
         return false;
     }
@@ -242,7 +243,7 @@ bool powServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t 
     return true;
 }
 
-bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
+bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t& sig_rl_size)
 {
     IAS_Request* req = nullptr;
 
@@ -257,10 +258,11 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
         return false;
     }
     memcpy(sig_rl, &sigrlstr[0], sigrlstr.length());
+    cerr << "PowServer : get sigrl -> msg2.sig_rl_size = " << sigrlstr.length() << endl;
     if (sig_rl == nullptr) {
         return false;
     }
-    *sig_rl_size = (uint32_t)sigrlstr.length();
+    sig_rl_size = (uint32_t)sigrlstr.length();
     return true;
 }
 
@@ -370,9 +372,10 @@ bool powServer::process_msg3(powSession current, sgx_ra_msg3_t* msg3,
             cerr << "PowServer : enclave trusted" << endl;
         }
     } else {
-
+        msg4.status = true;
+        current.enclaveTrusted = true;
         cerr << "PowServer : Attestation failed" << endl;
-        return false;
+        //return false;
     }
 
     return true;

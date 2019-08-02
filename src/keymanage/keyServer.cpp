@@ -5,7 +5,6 @@ extern Configure config;
 keyServer::keyServer()
 {
     rsa_ = RSA_new();
-    key_ = NULL;
     key_ = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
     char passwd[5] = "1111";
     passwd[4] = '\0';

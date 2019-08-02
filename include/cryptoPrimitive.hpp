@@ -23,15 +23,15 @@ typedef struct {
 } opensslLock_t;
 
 class CryptoPrimitive {
-private:
+public:
     const EVP_MD* md_;
 
-    int hashSize_ = CHUNK_HASH_SIZE;
+    int hashSize_;
     //int keySize_ = CHUNK_ENCRYPT_KEY_SIZE;
-    int blockSize_ = CRYPTO_BLOCK_SZIE;
+    int blockSize_;
 
-    EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
-    EVP_MD_CTX* mdctx_ = EVP_MD_CTX_new();
+    EVP_CIPHER_CTX* cipherctx_;
+    EVP_MD_CTX* mdctx_;
     const EVP_CIPHER* cipher_;
     u_char* iv_;
     u_char* chunkKeyEncryptionKey_;
@@ -40,7 +40,6 @@ private:
     static void opensslLockingCallback_(int mode, int type, const char* file, int line);
     static void opensslThreadID_(CRYPTO_THREADID* id);
 
-public:
     CryptoPrimitive();
     ~CryptoPrimitive();
     static bool opensslLockSetup();
