@@ -187,8 +187,8 @@ bool powClient::do_attestation()
         return false;
     }
 
-    cerr << "PowClient : generate msg 1 success, data: " << endl;
-    PRINT_BYTE_ARRAY(stderr, &msg1, sizeof(msg1));
+    // cerr << "PowClient : generate msg 1 success, data: " << endl;
+    // PRINT_BYTE_ARRAY(stderr, &msg1, sizeof(msg1));
 
     int netstatus;
     if (!senderObj->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
@@ -199,26 +199,26 @@ bool powClient::do_attestation()
         cerr << "POWClient : Send msg01 and Recv msg2 success" << endl;
     }
 
-    cerr << "PowClient : recv msg 2 success, data: " << endl;
-    fprintf(stderr, "MSG2 gb - ");
-    PRINT_BYTE_ARRAY(stderr, &(msg2->g_b), sizeof(msg2->g_b));
+    // cerr << "PowClient : recv msg 2 success, data: " << endl;
+    // fprintf(stderr, "MSG2 gb - ");
+    // PRINT_BYTE_ARRAY(stderr, &(msg2->g_b), sizeof(msg2->g_b));
 
-    fprintf(stderr, "MSG2 spid - ");
-    PRINT_BYTE_ARRAY(stderr, &(msg2->spid), sizeof(msg2->spid));
+    // fprintf(stderr, "MSG2 spid - ");
+    // PRINT_BYTE_ARRAY(stderr, &(msg2->spid), sizeof(msg2->spid));
 
-    fprintf(stderr, "MSG2 quote_type : %hx\n", msg2->quote_type);
+    // fprintf(stderr, "MSG2 quote_type : %hx\n", msg2->quote_type);
 
-    fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2->kdf_id);
+    // fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2->kdf_id);
 
-    fprintf(stderr, "MSG2 sign_gb_ga - ");
-    PRINT_BYTE_ARRAY(stderr, &(msg2->sign_gb_ga),
-        sizeof(msg2->sign_gb_ga));
+    // fprintf(stderr, "MSG2 sign_gb_ga - ");
+    // PRINT_BYTE_ARRAY(stderr, &(msg2->sign_gb_ga),
+    //     sizeof(msg2->sign_gb_ga));
 
-    fprintf(stderr, "MSG2 mac - ");
-    PRINT_BYTE_ARRAY(stderr, &(msg2->mac), sizeof(msg2->mac));
+    // fprintf(stderr, "MSG2 mac - ");
+    // PRINT_BYTE_ARRAY(stderr, &(msg2->mac), sizeof(msg2->mac));
 
-    fprintf(stderr, "MSG2 sig_rl - %d\n", msg2->sig_rl_size);
-    PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl), msg2->sig_rl_size);
+    // fprintf(stderr, "MSG2 sig_rl - %d\n", msg2->sig_rl_size);
+    // PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl), msg2->sig_rl_size);
 
     /* Process Msg2, Get Msg3  */
 
@@ -232,8 +232,8 @@ bool powClient::do_attestation()
         cerr << "POWClient : process msg2 success" << endl;
     }
 
-    cerr << "PowClient : generate msg 3 success, data: " << endl;
-    PRINT_BYTE_ARRAY(stderr, msg3, msg3Size);
+    // cerr << "PowClient : generate msg 3 success, data: " << endl;
+    // PRINT_BYTE_ARRAY(stderr, msg3, msg3Size);
 
     cerr << "msg3Size = " << msg3Size << endl;
     if (!senderObj->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {

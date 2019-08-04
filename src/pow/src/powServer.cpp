@@ -86,10 +86,10 @@ void powServer::run()
             memcpy(&msg01.msg1, msg.data + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
             memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
 
-            cerr << "PowServer : recv msg 01 success, data: \n msg0 = " << endl;
-            PRINT_BYTE_ARRAY(stderr, &msg01.msg0_extended_epid_group_id, sizeof(msg01.msg0_extended_epid_group_id));
-            cerr << "msg 1 = " << endl;
-            PRINT_BYTE_ARRAY(stderr, &msg01.msg1, sizeof(msg01.msg1));
+            // cerr << "PowServer : recv msg 01 success, data: \n msg0 = " << endl;
+            // PRINT_BYTE_ARRAY(stderr, &msg01.msg0_extended_epid_group_id, sizeof(msg01.msg0_extended_epid_group_id));
+            // cerr << "msg 1 = " << endl;
+            // PRINT_BYTE_ARRAY(stderr, &msg01.msg1, sizeof(msg01.msg1));
 
             if (!process_msg01(msg.fd, msg01, msg2)) {
                 cerr << "PowServer : error process msg01" << endl;
@@ -108,8 +108,8 @@ void powServer::run()
             msg3 = (sgx_ra_msg3_t*)new char[msg.dataSize];
             memcpy(msg3, msg.data, msg.dataSize);
 
-            cerr << "PowServer : recv msg 3 success, data: " << endl;
-            PRINT_BYTE_ARRAY(stderr, msg3, msg.dataSize);
+            // cerr << "PowServer : recv msg 3 success, data: " << endl;
+            // PRINT_BYTE_ARRAY(stderr, msg3, msg.dataSize);
 
             if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "PowServer : client had not send msg01 before" << endl;

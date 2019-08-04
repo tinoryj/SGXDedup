@@ -18,7 +18,7 @@ in the License.
 #ifndef __AGENT_H
 #define __AGENT_H
 
-# define DEFAULT_CA_BUNDLE DEFAULT_CA_BUNDLE_LINUX
+#define DEFAULT_CA_BUNDLE DEFAULT_CA_BUNDLE_LINUX
 #include "httpparser/response.h"
 #include "iasrequest.h"
 
@@ -28,21 +28,21 @@ using namespace std;
 
 #include <string>
 
+#define REQUEST_MSG3 0
+#define REQUEST_MSG1 1
 class IAS_Connection;
 
 class Agent {
 protected:
-	IAS_Connection *conn;
+    IAS_Connection* conn;
 
 public:
-	Agent(IAS_Connection *conn_in) { conn= conn_in; }
-	~Agent() { };
+    Agent(IAS_Connection* conn_in) { conn = conn_in; }
+    ~Agent(){};
 
-	virtual int initialize() { return 1; };
-	virtual int request(string const &url, string const &postdata,
-		Response &response) { return 0; };
+    virtual int initialize() { return 1; };
+    virtual int request(string const& url, string const& postdata,
+        Response& response, int type) { return 0; };
 };
 
-
 #endif
-

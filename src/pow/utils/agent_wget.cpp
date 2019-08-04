@@ -1,20 +1,3 @@
-/*
-
-Copyright 2018 Intel Corporation
-
-This software and the related documents are Intel copyrighted materials,
-and your use of them is governed by the express license under which they
-were provided to you (License). Unless the License provides otherwise,
-you may not use, modify, copy, publish, distribute, disclose or transmit
-this software or the related documents without Intel's prior written
-permission.
-
-This software and the related documents are provided as is, with no
-express or implied warranties, other than those that are expressly stated
-in the License.
-
-*/
-
 #include "agent_wget.h"
 #include "common.h"
 #include "httpparser/httpresponseparser.h"
@@ -32,22 +15,19 @@ using namespace httpparser;
 #include <string>
 #include <vector>
 
-static vector<string> wget_args;
-
 #define CHUNK_SZ 8192
 #define WGET_NO_ERROR 0
 #define WGET_SERVER_ERROR 8
 
 string AgentWget::name = "wget";
 
-int AgentWget::request(string const& url, string const& post,
-    Response& response)
+int AgentWget::request(string const& url, string const& post, Response& response, int type)
 {
-    cerr << "Agent wget url = " << url << "\npost = " << post << endl;
     HttpResponseParser parser;
     int pipefd[2];
     pid_t pid;
     string arg;
+    static vector<string> wget_args;
     string sresponse;
     int status;
     char buffer[CHUNK_SZ];
@@ -92,58 +72,60 @@ int AgentWget::request(string const& url, string const& post,
         close(fd);
     }
 
-    // Only need to initialize these once
-    if (wget_args.size() == 0) {
-        wget_args.push_back("wget");
+    wget_args.clear();
+    wget_args.push_back("wget");
 
-        // Output options
+    // Output options
 
-        //		if ( ! verbose ) wget_args.push_back("--quiet");
-        wget_args.push_back("--output-document=-");
-        wget_args.push_back("--save-headers");
-        wget_args.push_back("--content-on-error");
-        wget_args.push_back("--no-http-keep-alive");
-        //TODO:debug mode
-        wget_args.push_back("--no-check-certificate");
+    if (type == REQUEST_MSG3) {
+        cerr << "Agent request type = msg3" << endl;
+        wget_args.push_back("--header=\"content-type:application/json \"");
+    }
 
-        arg = "--certificate=";
-        arg += conn->client_cert_file();
+    wget_args.push_back("--output-document=-");
+    wget_args.push_back("--save-headers");
+    wget_args.push_back("--content-on-error");
+    wget_args.push_back("--no-http-keep-alive");
+    //TODO:debug mode
+    wget_args.push_back("--no-check-certificate");
+
+    arg = "--certificate=";
+    arg += conn->client_cert_file();
+    wget_args.push_back(arg);
+
+    arg = "--certificate-type=";
+    arg += conn->client_cert_type();
+    wget_args.push_back(arg);
+
+    arg = conn->client_key_file();
+    if (arg != "") {
+        arg = "--private-key=" + arg;
         wget_args.push_back(arg);
 
-        arg = "--certificate-type=";
+        // Sanity assumption: the same type for both cert and key
+        arg = "--private-key-type=";
         arg += conn->client_cert_type();
         wget_args.push_back(arg);
+    }
 
-        arg = conn->client_key_file();
-        if (arg != "") {
-            arg = "--private-key=" + arg;
-            wget_args.push_back(arg);
-
-            // Sanity assumption: the same type for both cert and key
-            arg = "--private-key-type=";
-            arg += conn->client_cert_type();
-            wget_args.push_back(arg);
+    arg = conn->proxy_server();
+    // Override environment
+    if (arg != "") {
+        string proxy_url = "http://";
+        proxy_url += arg;
+        if (conn->proxy_port() != 80) {
+            proxy_url += ":";
+            proxy_url += to_string(conn->proxy_port());
         }
+        proxy_url += "/";
 
-        arg = conn->proxy_server();
-        // Override environment
-        if (arg != "") {
-            string proxy_url = "http://";
-            proxy_url += arg;
-            if (conn->proxy_port() != 80) {
-                proxy_url += ":";
-                proxy_url += to_string(conn->proxy_port());
-            }
-            proxy_url += "/";
+        setenv("https_proxy", proxy_url.c_str(), 1);
+    }
 
-            setenv("https_proxy", proxy_url.c_str(), 1);
-        }
-
-        if (conn->proxy_mode() == IAS_PROXY_NONE) {
-            wget_args.push_back("--no-proxy");
-        } else if (conn->proxy_mode() == IAS_PROXY_FORCE) {
-            unsetenv("no_proxy");
-        }
+    if (conn->proxy_mode() == IAS_PROXY_NONE) {
+        wget_args.push_back("--no-proxy");
+    } else if (conn->proxy_mode() == IAS_PROXY_FORCE) {
+        unsetenv("no_proxy");
     }
 
     /* Set up two pipes for reading from the child */
@@ -175,22 +157,25 @@ int AgentWget::request(string const& url, string const& post,
 
         wget_args.push_back(url.c_str());
 
+        cerr << "POST Data Args = " << endl;
+        for (int index = 0; index < wget_args.size(); index++) {
+            cerr << wget_args[index] << endl;
+        }
+
         sz = wget_args.size();
 
         // Create the argument list
 
-        //		if ( debug ) eprintf("+++ Exec:");
         argv = (char**)malloc(sizeof(char*) * (sz + 1));
         for (i = 0; i < sz; ++i) {
             argv[i] = strdup(wget_args[i].c_str());
-            //			if ( debug ) eprintf(" %s", argv[i]);
+
             if (argv[i] == NULL) {
                 perror("strdup");
                 exit(1);
             }
         }
         argv[sz] = 0;
-        //		if ( debug ) eprintf("\n");
 
     retry_dup:
         /* Dup stdout onto our pipe */

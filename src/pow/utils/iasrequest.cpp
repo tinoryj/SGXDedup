@@ -318,19 +318,8 @@ ias_error_t IAS_Request::sigrl(uint32_t gid, string& sigrl)
     url += "/sigrl/";
     url += sgid;
 
-    /*	if ( verbose ) {
-		edividerWithText("IAS sigrl HTTP Request");
-		eprintf("HTTP GET %s\n", url.c_str());
-		edivider();
-	}
-*/
-    if (agent->request(url, "", response)) {
-        /*		if ( verbose ) {
-			edividerWithText("IAS sigrl HTTP Response");
-			eputs(response.inspect().c_str());
-			edivider();
-		}
-*/
+    if (agent->request(url, "", response, REQUEST_MSG1)) {
+        cerr << "IAS request msg1 type" << endl;
         if (response.statusCode == IAS_OK) {
             sigrl = response.content_string();
             //std::cerr << "sigrl size = " << response.content_string().length() << " content = " << response.content_string();
@@ -382,18 +371,9 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
     } catch (...) {
         return IAS_QUERY_FAILED;
     }
-    /*	if ( verbose ) {
-		edividerWithText("IAS report HTTP Request");
-		eprintf("HTTP POST %s\n", url.c_str());
-		edivider();
-	}
-*/
-    if (agent->request(url, body, response)) {
-        /*		if ( verbose ) {
-			edividerWithText("IAS report HTTP Response");
-			eputs(response.inspect().c_str());
-			edivider();
-		}*/
+
+    if (agent->request(url, body, response, REQUEST_MSG3)) {
+        cerr << "IAS request msg3 type" << endl;
     } else {
         //eprintf("Could not query IAS\n");
         return IAS_QUERY_FAILED;
