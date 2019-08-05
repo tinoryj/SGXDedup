@@ -299,7 +299,6 @@ powSession* kmServer::authkm()
     powSession* ans = new powSession();
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
-    sgx_ra_msg3_t msg3;
     ra_msg4_t msg4;
 
     u_char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
@@ -342,5 +341,6 @@ powSession* kmServer::authkm()
         cerr << "kmServer: error socket reading" << endl;
         return nullptr;
     }
+
     return ans;
 }

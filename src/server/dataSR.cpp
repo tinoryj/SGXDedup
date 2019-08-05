@@ -16,7 +16,6 @@ DataSR::~DataSR()
 
 void DataSR::extractMQ()
 {
-    u_char buffer[EPOLL_MESSAGE_DATA_SIZE];
     while (true) {
         EpollMessage_t msgTemp;
         epoll_event ev;
@@ -67,19 +66,14 @@ bool DataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
 
 void DataSR::run()
 {
-
-    // cerr << "map size " << socketConnection.size() << endl;
     epoll_event event[100];
     epoll_event ev;
-    int sockFd;
     ev.data.ptr = nullptr;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = socket_.fd_;
     epoll_ctl(epfd, EPOLL_CTL_ADD, socket_.fd_, &ev);
     u_char buffer[EPOLL_MESSAGE_DATA_SIZE];
-    // cerr << "DataSR : Listen fd = " << socket_.fd_ << endl;
     for (int i = 0; i < 100; i++) {
-        // cerr << i << " : " << event[i].data.fd << "\t" << event[i].events << "\t";
         event[i].data.ptr = nullptr;
     }
     cerr << endl;

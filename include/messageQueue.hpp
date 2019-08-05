@@ -10,11 +10,8 @@
 
 template <class T>
 class messageQueue {
-private:
-    //boost::lockfree::queue<T, boost::lockfree::capacity<8192>> lockFreeQueue_;
-    boost::lockfree::queue<T, boost::lockfree::capacity<512>> lockFreeQueue_;
-
 public:
+    boost::lockfree::queue<T, boost::lockfree::capacity<512>> lockFreeQueue_;
     boost::atomic<bool> done_;
     messageQueue()
     {

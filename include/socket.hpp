@@ -19,9 +19,8 @@ using namespace std;
 
 class Socket {
 public:
-    sockaddr_in addr_;
     int fd_;
-
+    sockaddr_in addr_;
     Socket(const int type, string ip, int port);
 
     Socket(int fd, sockaddr_in addr);

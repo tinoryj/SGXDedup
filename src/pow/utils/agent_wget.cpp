@@ -24,15 +24,9 @@ string AgentWget::name = "wget";
 int AgentWget::request(string const& url, string const& post, Response& response, int type)
 {
     HttpResponseParser parser;
-    int pipefd[2];
-    pid_t pid;
     string arg;
     static vector<string> wget_args;
     string sresponse;
-    int status;
-    char buffer[CHUNK_SZ];
-    size_t bread;
-    int repeat;
     int rv = 1;
     char tmpfile[] = "/tmp/wgetpostXXXXXX";
     int postdata = 0;
@@ -127,7 +121,6 @@ int AgentWget::request(string const& url, string const& post, Response& response
         unsetenv("no_proxy");
     }
 
-    char argv[4 * 1024];
     size_t sz;
 
     // Add instance-specific options

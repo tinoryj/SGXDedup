@@ -101,9 +101,6 @@ string keyClient::keyExchange(Chunk_t newChunk)
     if (!socket_.Recv(recvBuffer, recvSize)) {
         cerr << "keyClient: recv socket error" << endl;
         exit(0);
-    } else if (recvSize != CHUNK_ENCRYPT_KEY_SIZE) {
-        cerr << "keyClient: recv socket error - recv size not equal to CHUNK_ENCRYPT_KEY_SIZE" << endl;
-        exit(0);
     }
     u_char key[CHUNK_ENCRYPT_KEY_SIZE];
     cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, key);
