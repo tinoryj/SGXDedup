@@ -296,6 +296,7 @@ void Chunker::varSizeChunking()
                 if (!cryptoObj->generateHash(chunkBuffer, chunkBufferCnt, hash)) {
                     cerr << "average size chunking: compute hash error" << endl;
                 }
+
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
@@ -303,8 +304,11 @@ void Chunker::varSizeChunking()
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
-                insertMQToKeyClient(tempChunk);
-
+                if (!insertMQToKeyClient(tempChunk)) {
+                    cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+                }
+                // cerr << "Chunker : new chunk hash = " << endl;
+                // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
                 totalSize += tempChunk.chunk.logicDataSize;
@@ -317,6 +321,7 @@ void Chunker::varSizeChunking()
                 if (!cryptoObj->generateHash(chunkBuffer, chunkBufferCnt, hash)) {
                     cerr << "average size chunking: compute hash error" << endl;
                 }
+
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
@@ -324,8 +329,11 @@ void Chunker::varSizeChunking()
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
-                insertMQToKeyClient(tempChunk);
-
+                if (!insertMQToKeyClient(tempChunk)) {
+                    cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+                }
+                // cerr << "Chunker : new chunk hash = " << endl;
+                // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
                 totalSize += tempChunk.chunk.logicDataSize;
@@ -349,7 +357,9 @@ void Chunker::varSizeChunking()
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.chunk.type = CHUNK_TYPE_INIT;
         tempChunk.dataType = DATA_TYPE_CHUNK;
-        insertMQToKeyClient(tempChunk);
+        if (!insertMQToKeyClient(tempChunk)) {
+            cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+        }
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
         totalSize += tempChunk.chunk.logicDataSize;
@@ -357,7 +367,9 @@ void Chunker::varSizeChunking()
     recipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
     recipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
     recipe.dataType = DATA_TYPE_RECIPE;
-    insertMQToKeyClient(recipe);
+    if (!insertMQToKeyClient(recipe)) {
+        cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+    }
     if (setJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
     }

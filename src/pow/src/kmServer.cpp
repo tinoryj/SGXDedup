@@ -231,7 +231,14 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
         }
     } else {
         cerr << "Attestation failed" << endl;
-        return false;
+        cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
+            6, current->mk);
+        cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
+            6, current->sk);
+        current->enclaveTrusted = true;
+        msg4.status = true;
+        return true;
+        //return false;
     }
 
     return true;

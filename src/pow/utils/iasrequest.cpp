@@ -372,9 +372,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         return IAS_QUERY_FAILED;
     }
 
-    if (agent->request(url, body, response, REQUEST_MSG3)) {
-        cerr << "IAS request msg3 type" << endl;
-    } else {
+    if (!agent->request(url, body, response, REQUEST_MSG3)) {
         //eprintf("Could not query IAS\n");
         return IAS_QUERY_FAILED;
     }
@@ -403,12 +401,11 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
     }
 
     // URL decode
-    try {
-        certchain = url_decode(certchain);
-    } catch (...) {
-        //eprintf("invalid URL encoding in header X-IASReport-Signing-Certificate\n");
-        return IAS_BAD_CERTIFICATE;
-    }
+
+    certchain = url_decode(certchain);
+    // if (certchain == nullptr) {
+    //     return IAS_BAD_CERTIFICATE;
+    // }
 
     // Build the cert stack. Find the positions in the string where we
     // have a BEGIN block.
@@ -585,7 +582,7 @@ static string url_decode(string str)
             v = strtoul(str.substr(i + 1, 2).c_str(), &e, 16);
 
             // Have %hh but hh is not a valid hex code.
-            if (*e)
+            if (e == nullptr)
                 throw std::out_of_range("invalid encoding");
 
             decoded += static_cast<char>(v);

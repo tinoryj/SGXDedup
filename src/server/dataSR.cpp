@@ -88,7 +88,7 @@ void DataSR::run()
         int nfd = epoll_wait(epfd, event, 20, 500);
 
         for (int i = 0; i < nfd; i++) {
-            cerr << "Scan for " << nfd << "connections" << endl;
+            //cerr << "Scan for " << nfd << " connections" << endl;
             if (event[i].data.fd == socket_.fd_) {
                 Socket tempSock = socket_.Listen();
                 socketConnection.insert(map<int, Socket>::value_type(tempSock.fd_, tempSock));
@@ -134,10 +134,7 @@ void DataSR::run()
                 if (msg1.fd != event[i].data.fd) {
                     cerr << "epoll event fd not equal to msg-fd " << msg1.fd << endl;
                     continue;
-                } else {
-                    cerr << "DataSR : run() get callback data success" << endl;
                 }
-
                 NetworkHeadStruct_t netBody;
                 netBody.clientID = msg1.cid;
                 netBody.messageType = msg1.type;

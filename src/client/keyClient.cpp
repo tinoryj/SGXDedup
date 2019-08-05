@@ -20,6 +20,8 @@ keyClient::keyClient(Encoder* encoderObjTemp)
     } else {
         trustdKM_ = false;
         delete session;
+        cerr << "KeyClient : keyServer enclave not trusted, client exit now" << endl;
+        exit(0);
     }
 }
 
@@ -29,7 +31,24 @@ keyClient::~keyClient()
         delete cryptoObj_;
     }
 }
-
+void PRINT_BYTE_ARRAY(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
 void keyClient::run()
 {
     while (true) {
@@ -42,12 +61,21 @@ void keyClient::run()
         };
         if (tempchunk.dataType == DATA_TYPE_RECIPE) {
             continue;
+        } else if (tempchunk.dataType == DATA_TYPE_CHUNK) {
+            cerr << "KeyClient : new chunk ID = " << tempchunk.chunk.ID << endl;
+            PRINT_BYTE_ARRAY(stderr, tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+        } else {
+            cerr << "KeyClient : extract data type = " << tempchunk.dataType << endl;
         }
         memcpy(&chunkKey[0], tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+
         if (kCache.existsKeyinCache(chunkHash)) {
+            exit(0);
+            //cerr << "KeyClient : chunkHash hit kCache" << endl;
             chunkKey = kCache.getKeyFromCache(chunkHash);
             memcpy(tempchunk.chunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
         } else {
+            //cerr << "KeyClient : chunkHash not hit kCache, start key exchange" << endl;
             chunkKey = keyExchange(tempchunk.chunk);
             kCache.insertKeyToCache(chunkHash, chunkKey);
             memcpy(tempchunk.chunk.encryptKey, &chunkKey[0], CHUNK_ENCRYPT_KEY_SIZE);
@@ -60,20 +88,21 @@ void keyClient::run()
 
 string keyClient::keyExchange(Chunk_t newChunk)
 {
-    while (!trustdKM_)
-        ;
     u_char chunkHash[CHUNK_HASH_SIZE];
     memcpy(chunkHash, newChunk.chunkHash, CHUNK_HASH_SIZE);
     u_char sendHash[CHUNK_HASH_SIZE];
     cryptoObj_->keyExchangeEncrypt(chunkHash, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
     if (!socket_.Send(sendHash, CHUNK_HASH_SIZE)) {
-        cerr << "keyClient: socket error" << endl;
+        cerr << "keyClient: send socket error" << endl;
         exit(0);
     }
     u_char recvBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize;
-    if (!socket_.Recv(recvBuffer, recvSize) || recvSize != CHUNK_ENCRYPT_KEY_SIZE) {
-        cerr << "keyClient: socket error" << endl;
+    if (!socket_.Recv(recvBuffer, recvSize)) {
+        cerr << "keyClient: recv socket error" << endl;
+        exit(0);
+    } else if (recvSize != CHUNK_ENCRYPT_KEY_SIZE) {
+        cerr << "keyClient: recv socket error - recv size not equal to CHUNK_ENCRYPT_KEY_SIZE" << endl;
         exit(0);
     }
     u_char key[CHUNK_ENCRYPT_KEY_SIZE];
