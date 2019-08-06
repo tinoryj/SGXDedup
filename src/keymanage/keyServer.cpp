@@ -1,6 +1,9 @@
 #include "keyServer.hpp"
-
+#include <sys/time.h>
 extern Configure config;
+
+struct timeval timestart;
+struct timeval timeend;
 
 keyServer::keyServer()
 {
@@ -29,30 +32,40 @@ void keyServer::run(Socket socket)
     kmClient* client = new kmClient(keyn, keyd);
     if (!client->init(socket)) {
         cerr << "keyServer: enclave not truster" << endl;
-        pthread_exit(NULL);
+        pthread_exit(0);
     }
     while (true) {
-        u_char hash[CHUNK_HASH_SIZE];
+        u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
         if (!socket.Recv(hash, recvSize)) {
             socket.finish();
-            pthread_exit(NULL);
+            pthread_exit(0);
         }
-        if (recvSize != CHUNK_HASH_SIZE) {
+
+        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
             cerr << "key manager recv chunk hash error : hash size wrong" << endl;
-        } else {
-            cerr << "KeyServer : correct recv chunk hash" << endl;
+            socket.finish();
+            pthread_exit(0);
         }
-        u_char key[CHUNK_ENCRYPT_KEY_SIZE];
-        cerr << "KeyServer : start enclave request" << endl;
-        client->request(hash, CHUNK_HASH_SIZE, key, CHUNK_ENCRYPT_KEY_SIZE);
-        cerr << "KeyServer : enclave request done" << endl;
-        if (!socket.Send(key, CHUNK_ENCRYPT_KEY_SIZE)) {
+        int recvNumber = recvSize / CHUNK_HASH_SIZE;
+        cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+
+        u_char key[recvNumber * CHUNK_ENCRYPT_KEY_SIZE];
+
+        gettimeofday(&timestart, 0);
+        for (int i = 0; i < recvNumber; i++) {
+            client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+        }
+
+        gettimeofday(&timeend, 0);
+        long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        double second = diff / 1000000.0;
+        printf("Compute time is %ld us = %lf s\n", diff, second);
+
+        if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             socket.finish();
-            pthread_exit(NULL);
-        } else {
-            cerr << "KeyServer : send back chunk key over" << endl;
+            pthread_exit(0);
         }
     }
 }

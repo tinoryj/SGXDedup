@@ -128,6 +128,7 @@ CryptoPrimitive::~CryptoPrimitive()
     EVP_MD_CTX_destroy(mdctx_);
     EVP_CIPHER_CTX_cleanup(cipherctx_);
     free(iv_);
+    free(chunkKeyEncryptionKey_);
 }
 
 /*

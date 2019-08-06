@@ -18,10 +18,10 @@ extern Configure config;
 
 class DataSR {
 private:
-    messageQueue<EpollMessage_t> MQ2DataSR_CallBack_;
-    messageQueue<EpollMessage_t> MQ2DedupCore_;
-    messageQueue<EpollMessage_t> MQ2StorageCore_;
-    messageQueue<EpollMessage_t> MQ2RAServer_;
+    messageQueue<EpollMessage_t>* MQ2DataSR_CallBack_;
+    messageQueue<EpollMessage_t>* MQ2DedupCore_;
+    messageQueue<EpollMessage_t>* MQ2StorageCore_;
+    messageQueue<EpollMessage_t>* MQ2RAServer_;
     Socket socket_;
     map<int, EpollMessage_t> epollSession_;
     map<int, Socket> socketConnection;

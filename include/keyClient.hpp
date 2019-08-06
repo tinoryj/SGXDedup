@@ -15,10 +15,10 @@
 
 class keyClient {
 private:
-    messageQueue<Data_t> inputMQ_;
+    messageQueue<Data_t>* inputMQ_;
     Encoder* encoderObj_;
     CryptoPrimitive* cryptoObj_;
-    int keyBatchSizeMin_, keyBatchSizeMax_;
+    int keyBatchSize_;
     Socket socket_;
     bool trustdKM_;
     u_char keyExchangeKey_[16];
@@ -31,7 +31,7 @@ public:
     bool extractMQFromChunker(Data_t& newChunk);
     bool insertMQtoEncoder(Data_t& newChunk);
     bool editJobDoneFlag();
-    string keyExchange(Chunk_t champion);
+    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP

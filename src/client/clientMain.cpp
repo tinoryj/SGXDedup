@@ -6,6 +6,7 @@
 #include "recvDecode.hpp"
 #include "retriever.hpp"
 #include "sender.hpp"
+#include "sys/time.h"
 #include <bits/stdc++.h>
 #include <boost/thread/thread.hpp>
 
@@ -20,6 +21,9 @@ Sender* senderObj;
 RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
 powClient* PowClientObj;
+
+struct timeval timestart;
+struct timeval timeend;
 
 void usage()
 {
@@ -68,10 +72,7 @@ int main(int argv, char* argc[])
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
 
-        //start pow thread
-        th = new boost::thread(attrs, boost::bind(&powClient::run, PowClientObj));
-        thList.push_back(th);
-
+        gettimeofday(&timestart, NULL);
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
@@ -82,25 +83,35 @@ int main(int argv, char* argc[])
             thList.push_back(th);
         }
 
-        //start encode thread
-        for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
-            thList.push_back(th);
-        }
+        // //start encode thread
+        // for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
+        //     th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
+        //     thList.push_back(th);
+        // }
 
-        //start sender thread
-        for (int i = 0; i < config.getSenderThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
-            thList.push_back(th);
-        }
+        // //start pow thread
+        // th = new boost::thread(attrs, boost::bind(&powClient::run, PowClientObj));
+        // thList.push_back(th);
+
+        // //start sender thread
+        // for (int i = 0; i < config.getSenderThreadLimit(); i++) {
+        //     th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
+        //     thList.push_back(th);
+        // }
     } else {
         usage();
         return 0;
     }
 
     for (auto it : thList) {
-        it->join();
+        if (it->joinable()) {
+            cerr << "Client : thread " << it->get_id() << " joinable now" << endl;
+            it->join();
+        }
     }
-
+    gettimeofday(&timeend, NULL);
+    long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+    double second = diff / 1000000.0;
+    printf("the total work time is %ld us = %lf s\n", diff, second);
     return 0;
 }

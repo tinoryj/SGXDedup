@@ -30,8 +30,7 @@ void Configure::readConf(std::string path)
 
     //Key Server Congigure
     _keyServerNumber = root.get<uint64_t>("KeyServerConfig._keyServerNumber");
-    _keyBatchSizeMin = root.get<uint64_t>("KeyServerConfig._keyBatchSizeMin");
-    _keyBatchSizeMax = root.get<uint64_t>("KeyServerConfig._keyBatchSizeMax");
+    _keyBatchSize = root.get<uint64_t>("KeyServerConfig._keyBatchSize");
     _keyCacheSize = root.get<uint64_t>("KeyServerConfig._keyCacheSize");
     _keyServerIP.clear();
     for (ptree::value_type& it : root.get_child("KeyServerConfig._keyServerIP")) {
@@ -54,6 +53,11 @@ void Configure::readConf(std::string path)
     for (ptree::value_type& it : root.get_child("SPConfig._storageServerPort")) {
         _storageServerPort.push_back(it.second.get_value<int>());
     }
+
+    _Data_t_MQSize = root.get<int>("messageQueue._Data_t_MQSize");
+    _EpollMessage_t_MQSize = root.get<int>("messageQueue._EpollMessage_t_MQSize");
+    _RetrieverData_t_MQSize = root.get<int>("messageQueue._RetrieverData_t_MQSize");
+    _StorageData_t_MQSize = root.get<int>("messageQueue._StorageData_t_MQSize");
 
     //muti thread settings;
     _encodeThreadLimit = root.get<int>("mutiThread._encodeThreadLimit");
@@ -156,16 +160,10 @@ uint64_t Configure::getKeyServerNumber()
     return _keyServerNumber;
 }
 
-uint64_t Configure::getKeyBatchSizeMin()
+int Configure::getKeyBatchSize()
 {
 
-    return _keyBatchSizeMin;
-}
-
-uint64_t Configure::getKeyBatchSizeMax()
-{
-
-    return _keyBatchSizeMax;
+    return _keyBatchSize;
 }
 
 uint64_t Configure::getKeyCacheSize()
@@ -194,6 +192,24 @@ std::string Configure::getKeyServerIP()
 int Configure::getKeyServerPort()
 {
     return _keyServerPort[0];
+}
+
+// message queue size setting
+int Configure::get_Data_t_MQSize()
+{
+    return _Data_t_MQSize;
+}
+int Configure::get_EpollMessage_t_MQSize()
+{
+    return _EpollMessage_t_MQSize;
+}
+int Configure::get_RetrieverData_t_MQSize()
+{
+    return _RetrieverData_t_MQSize;
+}
+int Configure::get_StorageData_t_MQSize()
+{
+    return _StorageData_t_MQSize;
 }
 
 //muti thread settings

@@ -24,7 +24,7 @@ void powClient::run()
         uint64_t currentBatchSize = 0;
         memset(batchChunkLogicData_charBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
         for (uint64_t i = 0; i < powBatchSize; i++) {
-            if (inputMQ.done_ && !extractMQFromEncoder(tempChunk)) {
+            if (inputMQ_->done_ && !extractMQFromEncoder(tempChunk)) {
                 senderObj->editJobDoneFlag();
                 break;
             } else {
@@ -99,6 +99,7 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
 
 powClient::powClient(Sender* senderObjTemp)
 {
+    inputMQ_ = new messageQueue<Data_t>(3000);
     updated = 0;
     enclave_trusted = false;
     _ctx = 0xdeadbeef;
@@ -106,8 +107,6 @@ powClient::powClient(Sender* senderObjTemp)
     cryptoObj = new CryptoPrimitive();
     if (!this->do_attestation()) {
         exit(1);
-    } else {
-        cerr << "Client : powClient remote attestation passed" << endl;
     }
 }
 
@@ -122,30 +121,23 @@ bool powClient::do_attestation()
     uint32_t msg3Size;
 
     string enclaveName = config.getPOWEnclaveName();
-    cerr << "PowClient start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
-    cerr << "PowClient create enclave done" << endl;
+    cerr << "PowClient : create pow enclave done" << endl;
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : Can not launch pow_enclave : " << enclaveName << endl;
         printf("%08x", status);
         return false;
-    } else {
-        cerr << "POWClient : create pow enclave success" << endl;
     }
 
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false, &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
         cerr << "POWClient : pow_enclave ra init failed : " << status << endl;
         return false;
-    } else {
-        cerr << "POWClient : pow_enclave ra init success : " << status << endl;
     }
 
     if (sgxrv != SGX_SUCCESS) {
         cerr << "POWClient : sgx ra init failed : " << sgxrv << endl;
         return false;
-    } else {
-        cerr << "POWClient : sgx ra init success : " << sgxrv << endl;
     }
 
     /* Generate msg0 */
@@ -155,10 +147,7 @@ bool powClient::do_attestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx get epid failed : " << status << endl;
         return false;
-    } else if (msg0_extended_epid_group_id != 0) {
-        cerr << "POWClient : sgx get epid error, epid =  " << msg0_extended_epid_group_id << endl;
     }
-
     /* Generate msg1 */
 
     status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg1);
@@ -168,40 +157,12 @@ bool powClient::do_attestation()
         return false;
     }
 
-    // cerr << "PowClient : generate msg 1 success, data: " << endl;
-    // PRINT_BYTE_ARRAY(stderr, &msg1, sizeof(msg1));
-
     int netstatus;
     if (!senderObj->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
         cerr << "POWClient : send msg01 error : " << netstatus << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
-    } else {
-        cerr << "POWClient : Send msg01 and Recv msg2 success" << endl;
     }
-
-    // cerr << "PowClient : recv msg 2 success, data: " << endl;
-    // fprintf(stderr, "MSG2 gb - ");
-    // PRINT_BYTE_ARRAY(stderr, &(msg2->g_b), sizeof(msg2->g_b));
-
-    // fprintf(stderr, "MSG2 spid - ");
-    // PRINT_BYTE_ARRAY(stderr, &(msg2->spid), sizeof(msg2->spid));
-
-    // fprintf(stderr, "MSG2 quote_type : %hx\n", msg2->quote_type);
-
-    // fprintf(stderr, "MSG2 kdf_id : %hx\n", msg2->kdf_id);
-
-    // fprintf(stderr, "MSG2 sign_gb_ga - ");
-    // PRINT_BYTE_ARRAY(stderr, &(msg2->sign_gb_ga),
-    //     sizeof(msg2->sign_gb_ga));
-
-    // fprintf(stderr, "MSG2 mac - ");
-    // PRINT_BYTE_ARRAY(stderr, &(msg2->mac), sizeof(msg2->mac));
-
-    // fprintf(stderr, "MSG2 sig_rl - %d\n", msg2->sig_rl_size);
-    // PRINT_BYTE_ARRAY(stderr, &(msg2->sig_rl), msg2->sig_rl_size);
-
-    /* Process Msg2, Get Msg3  */
 
     status = sgx_ra_proc_msg2(_ctx, _eid, sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2, sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size, &msg3, &msg3Size);
 
@@ -209,27 +170,17 @@ bool powClient::do_attestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : sgx_ra_proc_msg2 : " << status << endl;
         return false;
-    } else {
-        cerr << "POWClient : process msg2 success" << endl;
     }
 
-    // cerr << "PowClient : generate msg 3 success, data: " << endl;
-    // PRINT_BYTE_ARRAY(stderr, msg3, msg3Size);
-
-    cerr << "msg3Size = " << msg3Size << endl;
     if (!senderObj->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
         cerr << "POWClient : error send msg3 & get back msg4: " << netstatus << endl;
         return false;
-    } else {
-        cerr << "POWClient : send msg3 and Recv msg4 success" << endl;
     }
-
     if (msg4->status) {
         cerr << "POWClient : Enclave TRUSTED" << endl;
     } else if (!msg4->status) {
         cerr << "POWClient : Enclave NOT TRUSTED" << endl;
-
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
@@ -241,8 +192,8 @@ bool powClient::do_attestation()
 
 bool powClient::editJobDoneFlag()
 {
-    inputMQ.done_ = true;
-    if (inputMQ.done_) {
+    inputMQ_->done_ = true;
+    if (inputMQ_->done_) {
         return true;
     } else {
         return false;
@@ -251,12 +202,12 @@ bool powClient::editJobDoneFlag()
 
 bool powClient::insertMQFromEncoder(Data_t& newChunk)
 {
-    return inputMQ.push(newChunk);
+    return inputMQ_->push(newChunk);
 }
 
 bool powClient::extractMQFromEncoder(Data_t& newChunk)
 {
-    return inputMQ.pop(newChunk);
+    return inputMQ_->pop(newChunk);
 }
 
 bool powClient::insertMQToSender(Data_t& newChunk)

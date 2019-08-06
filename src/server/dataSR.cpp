@@ -5,6 +5,10 @@
 
 DataSR::DataSR()
 {
+    MQ2DataSR_CallBack_ = new messageQueue<EpollMessage_t>(50);
+    MQ2DedupCore_ = new messageQueue<EpollMessage_t>(50);
+    MQ2StorageCore_ = new messageQueue<EpollMessage_t>(50);
+    MQ2RAServer_ = new messageQueue<EpollMessage_t>(50);
     socket_.init(SERVER_TCP, "", config.getStorageServerPort());
     epfd = epoll_create(20);
 }
@@ -23,10 +27,6 @@ void DataSR::extractMQ()
         if (!extractMQ2DataSR_CallBack(msgTemp)) {
             continue;
         } else {
-            // cerr << "DataSR : get data back from call back messageQueue" << endl;
-            // cerr << "msg.fd = " << msgTemp.fd << endl;
-            // cerr << "msg.type = " << msgTemp.type << endl;
-            // cerr << "msg.datasize = " << msgTemp.dataSize << endl;
             epollSessionMutex_.lock();
             if (epollSession_.find(msgTemp.fd) == epollSession_.end()) {
                 cerr << "find data in epoll session failed" << endl;
@@ -35,12 +35,10 @@ void DataSR::extractMQ()
                 epollSession_.at(msgTemp.fd).dataSize = msgTemp.dataSize;
                 epollSession_.at(msgTemp.fd).type = msgTemp.type;
                 memcpy(epollSession_.at(msgTemp.fd).data, msgTemp.data, msgTemp.dataSize);
-                // ev.data.ptr = (void*)&epollSession_.at(msgTemp.fd);
                 ev.data.fd = msgTemp.fd;
                 epoll_ctl(epfd, EPOLL_CTL_MOD, msgTemp.fd, &ev);
             }
             epollSessionMutex_.unlock();
-            // cerr << "DataSR : extractMQ() edit epollsession map over" << endl;
         }
     }
 }
@@ -102,26 +100,9 @@ void DataSR::run()
                 epollSessionMutex_.unlock();
             } else if (event[i].events & EPOLLOUT) {
                 cerr << "Current send event fd = " << event[i].data.fd << endl;
-                // auto iter = socketConnection.find(event[i].data.fd);
-                // Socket currentSock;
-                // if (iter != socketConnection.end()) {
-                //     currentSock = iter->second;
-                //     cerr << "current send socket for fd find, inside fd = " << currentSock.fd_ << endl;
-                // } else {
-                //     cerr << "current send socket for fd = " << event[i].data.fd << " not found" << endl;
-                //     continue;
-                // }
-                //cerr << "Current send fd = " << socketConnection[event[i].data.fd].fd_ << endl;
-                //memcpy(&msg, (EpollMessage_t*)event[i].data.ptr, sizeof(EpollMessage_t));
+
                 EpollMessage_t msg1;
-                // if (event[i].data.ptr != nullptr) {
-                //     msg1 = (EpollMessage_t*)event[i].data.ptr;
-                //     cerr << "get data poniter success" << endl;
-                //     cerr << msg1->fd << endl;
-                // } else {
-                //     cerr << "event[" << i << "].data.ptr == nullptr" << endl;
-                //     continue;
-                // }
+
                 epollSessionMutex_.lock();
                 msg1 = epollSession_.at(event[i].data.fd);
                 epollSessionMutex_.unlock();
@@ -229,49 +210,40 @@ void DataSR::run()
 
 bool DataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
 {
-    return MQ2DataSR_CallBack_.push(newMessage);
+    return MQ2DataSR_CallBack_->push(newMessage);
 }
 
 bool DataSR::insertMQ2DedupCore(EpollMessage_t& newMessage)
 {
-    return MQ2DedupCore_.push(newMessage);
+    return MQ2DedupCore_->push(newMessage);
 }
 
 bool DataSR::insertMQ2RAServer(EpollMessage_t& newMessage)
 {
-    return MQ2RAServer_.push(newMessage);
+    return MQ2RAServer_->push(newMessage);
 }
 
 bool DataSR::insertMQ2StorageCore(EpollMessage_t& newMessage)
 {
-    return MQ2StorageCore_.push(newMessage);
+    return MQ2StorageCore_->push(newMessage);
 }
 
 bool DataSR::extractMQ2DedupCore(EpollMessage_t& newMessage)
 {
-    return MQ2DedupCore_.pop(newMessage);
+    return MQ2DedupCore_->pop(newMessage);
 }
 
 bool DataSR::extractMQ2RAServer(EpollMessage_t& newMessage)
 {
-    return MQ2RAServer_.pop(newMessage);
+    return MQ2RAServer_->pop(newMessage);
 }
 
 bool DataSR::extractMQ2StorageCore(EpollMessage_t& newMessage)
 {
-    return MQ2StorageCore_.pop(newMessage);
+    return MQ2StorageCore_->pop(newMessage);
 }
 
 bool DataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
 {
-    return MQ2DataSR_CallBack_.pop(newMessage);
+    return MQ2DataSR_CallBack_->pop(newMessage);
 }
-
-// bool DataSR::extractTimerMQToStorageCore(StorageCoreData_t& newData)
-// {
-//     return timerObj_->extractMQToStorageCore(newData);
-// }
-// bool DataSR::insertTimerMQToStorageCore(StorageCoreData_t& newData)
-// {
-//     return timerObj_->insertMQToStorageCore(newData);
-// }

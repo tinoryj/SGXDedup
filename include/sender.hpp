@@ -14,7 +14,7 @@ class Sender {
 private:
     std::mutex mutexSocket_;
     Socket socket_;
-    messageQueue<Data_t> inputMQ_;
+    messageQueue<Data_t>* inputMQ_;
     CryptoPrimitive* cryptoObj_;
 
 public:

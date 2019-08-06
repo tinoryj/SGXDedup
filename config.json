@@ -10,8 +10,7 @@
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSizeMin": 10000,
-		"_keyBatchSizeMax": 2000000,
+		"_keyBatchSize": 5000,
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
@@ -30,6 +29,12 @@
 			6668
 		],
 		"_maxContainerSize": 4096
+	},
+	"messageQueue": {
+		"_Data_t_MQSize": 5000,
+		"_EpollMessage_t_MQSize": 30,
+		"_RetrieverData_t_MQSize": 5000,
+		"_StorageData_t_MQSize": 5000
 	},
 	"mutiThread": {
 		"_encodeThreadLimit": 1,

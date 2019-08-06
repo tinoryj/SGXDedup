@@ -12,7 +12,7 @@ class Encoder {
 private:
     CryptoPrimitive* cryptoObj_;
     powClient* powObj_;
-    messageQueue<Data_t> inputMQ_;
+    messageQueue<Data_t>* inputMQ_;
 
 public:
     bool encodeChunk(Data_t& newChunk);

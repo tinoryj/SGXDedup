@@ -4,6 +4,7 @@ extern Configure config;
 
 Sender::Sender()
 {
+    inputMQ_ = new messageQueue<Data_t>(3000);
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_ = new CryptoPrimitive();
 }
@@ -124,10 +125,8 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        cerr << "Sender : peer closed" << endl;
+        cerr << "Sender : peer closed, send sgx msg 01 error" << endl;
         return false;
-    } else {
-        cerr << "Sender: send sgx msg 01 over, total send size = " << sendSize << " recv size = " << recvSize << endl;
     }
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
@@ -161,10 +160,8 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        cerr << "Sender : peer closed" << endl;
+        cerr << "Sender : peer closed, send sgx msg 3 error" << endl;
         return false;
-    } else {
-        cerr << "Sender: send sgx msg 3over, total send size = " << sendSize << " recv size = " << recvSize << endl;
     }
 
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
@@ -247,7 +244,7 @@ void Sender::run()
 
     while (true) {
         for (int i = 0; i < config.getSendChunkBatchSize(); i++) {
-            if (inputMQ_.done_ && !extractMQFromPow(tempChunk)) {
+            if (inputMQ_->done_ && !extractMQFromPow(tempChunk)) {
                 jobDoneFlag = true;
                 break;
             }
@@ -304,23 +301,23 @@ void Sender::run()
             break;
         }
     }
-    pthread_exit(NULL);
+    pthread_exit(0);
 }
 
 bool Sender::insertMQFromPow(Data_t& newChunk)
 {
-    return inputMQ_.push(newChunk);
+    return inputMQ_->push(newChunk);
 }
 
 bool Sender::extractMQFromPow(Data_t& newChunk)
 {
-    return inputMQ_.pop(newChunk);
+    return inputMQ_->pop(newChunk);
 }
 
 bool Sender::editJobDoneFlag()
 {
-    inputMQ_.done_ = true;
-    if (inputMQ_.done_) {
+    inputMQ_->done_ = true;
+    if (inputMQ_->done_) {
         return true;
     } else {
         return false;

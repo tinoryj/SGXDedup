@@ -180,7 +180,9 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
          *
          * where || denotes concatenation.
          */
-
+        // ifstream fin(path, ifstream::binary);
+        // recipe.recipe.fileRecipeHead.fileSize = fin.tellg();
+        // fin.close();
         /* Derive VK */
 
         cmac128(current->kdk, (unsigned char*)("\x01VK\x00\x80\x00"),

@@ -32,7 +32,7 @@ static const sgx_ec256_public_t def_service_public_key = {
 class powClient {
 private:
     bool enclave_trusted;
-    messageQueue<Data_t> inputMQ;
+    messageQueue<Data_t>* inputMQ_;
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;

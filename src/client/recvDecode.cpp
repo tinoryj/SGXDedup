@@ -4,6 +4,7 @@ extern Configure config;
 
 RecvDecode::RecvDecode(string fileName)
 {
+    outPutMQ = new messageQueue<RetrieverData_t>(3000);
     cryptoObj_ = new CryptoPrimitive();
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
@@ -123,11 +124,11 @@ Recipe_t RecvDecode::getFileRecipeHead()
 
 bool RecvDecode::insertMQToRetriever(RetrieverData_t& newData)
 {
-    return outPutMQ.push(newData);
+    return outPutMQ->push(newData);
 }
 bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
 {
-    return outPutMQ.pop(newData);
+    return outPutMQ->pop(newData);
 }
 
 void RecvDecode::run()
@@ -153,5 +154,5 @@ void RecvDecode::run()
         totalRecvChunks += chunkNumber;
         multiThreadDownloadMutex.unlock();
     }
-    pthread_exit(NULL);
+    pthread_exit(0);
 }

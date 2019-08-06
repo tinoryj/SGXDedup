@@ -1,6 +1,9 @@
 #include "chunker.hpp"
-
+#include "sys/time.h"
 extern Configure config;
+
+struct timeval timestartChunker;
+struct timeval timeendChunker;
 
 Chunker::Chunker(std::string path, keyClient* keyClientObjTemp)
 {
@@ -59,10 +62,9 @@ void Chunker::ChunkerInit(string path)
     cryptoObj->generateHash((u_char*)&path[0], path.length(), filePathHash);
     memcpy(recipe.recipe.fileRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
     memcpy(recipe.recipe.keyRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
-    ifstream fin(path, ifstream::binary);
-    recipe.recipe.fileRecipeHead.fileSize = fin.tellg();
-    recipe.recipe.fileRecipeHead.fileSize = recipe.recipe.fileRecipeHead.fileSize;
-    fin.close();
+    // ifstream fin(path, ifstream::binary);
+    // recipe.recipe.fileRecipeHead.fileSize = fin.tellg();
+    // fin.close();
 
     ChunkerType = (int)config.getChunkingType();
 
@@ -184,11 +186,12 @@ void Chunker::fixSizeChunking()
     uint64_t chunkIDCounter = 0;
 
     memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
-
+    uint64_t fileSize = 0;
     /*start chunking*/
     while (true) {
         fin.read((char*)waitingForChunkingBuffer, sizeof(char) * ReadSize);
         uint64_t totalReadSize = fin.gcount();
+        fileSize += totalReadSize;
         uint64_t chunkedSize = 0;
         if (totalReadSize == ReadSize) {
             while (chunkedSize < totalReadSize) {
@@ -206,7 +209,6 @@ void Chunker::fixSizeChunking()
                 tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
                 insertMQToKeyClient(tempChunk);
-
                 chunkIDCounter++;
                 chunkedSize += avgChunkSize;
             }
@@ -236,6 +238,7 @@ void Chunker::fixSizeChunking()
                     memcpy(tempChunk.chunk.logicData, chunkBuffer, retSize);
                     memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                     tempChunk.chunk.type = CHUNK_TYPE_INIT;
+                    cerr << "Chunker : insert last chunk into message queue done" << endl;
                 }
                 retSize = totalReadSize - chunkedSize;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
@@ -250,24 +253,28 @@ void Chunker::fixSizeChunking()
     }
     recipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
     recipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    recipe.recipe.fileRecipeHead.fileSize = fileSize;
+    recipe.recipe.keyRecipeHead.fileSize = recipe.recipe.fileRecipeHead.fileSize;
     recipe.dataType = DATA_TYPE_RECIPE;
     insertMQToKeyClient(recipe);
     if (setJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
     }
-    cout << "Fixed chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCounter << endl;
+    cout << "Fixed chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << recipe.recipe.fileRecipeHead.totalChunkNumber << endl;
 }
 
 void Chunker::varSizeChunking()
 {
+    gettimeofday(&timestartChunker, NULL);
     uint16_t winFp;
     uint64_t chunkBufferCnt = 0, chunkIDCnt = 0;
     ifstream& fin = getChunkingFile();
-
+    uint64_t fileSize = 0;
     /*start chunking*/
     while (true) {
         fin.read((char*)waitingForChunkingBuffer, sizeof(unsigned char) * ReadSize);
         int len = fin.gcount();
+        fileSize += len;
         for (int i = 0; i < len; i++) {
 
             chunkBuffer[chunkBufferCnt] = waitingForChunkingBuffer[i];
@@ -305,13 +312,13 @@ void Chunker::varSizeChunking()
                 tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
                 if (!insertMQToKeyClient(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+                    cerr << "Chunker : error insert chunk to keyClient MQ for chunk ID = " << tempChunk.chunk.ID << endl;
+                    exit(0);
                 }
                 // cerr << "Chunker : new chunk hash = " << endl;
                 // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                totalSize += tempChunk.chunk.logicDataSize;
             }
 
             /*chunk's size exceed maxChunkSize*/
@@ -330,13 +337,13 @@ void Chunker::varSizeChunking()
                 tempChunk.chunk.type = CHUNK_TYPE_INIT;
                 tempChunk.dataType = DATA_TYPE_CHUNK;
                 if (!insertMQToKeyClient(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+                    cerr << "Chunker : error insert chunk to keyClient MQ for chunk ID = " << tempChunk.chunk.ID << endl;
+                    exit(0);
                 }
                 // cerr << "Chunker : new chunk hash = " << endl;
                 // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
-                totalSize += tempChunk.chunk.logicDataSize;
             }
         }
         if (fin.eof())
@@ -358,22 +365,32 @@ void Chunker::varSizeChunking()
         tempChunk.chunk.type = CHUNK_TYPE_INIT;
         tempChunk.dataType = DATA_TYPE_CHUNK;
         if (!insertMQToKeyClient(tempChunk)) {
-            cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+            cerr << "Chunker : error insert chunk to keyClient MQ for chunk ID = " << tempChunk.chunk.ID << endl;
+            exit(0);
+        } else {
+            cerr << "Chunker : insert last chunk into message queue done" << endl;
         }
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
-        totalSize += tempChunk.chunk.logicDataSize;
     }
     recipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
     recipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
+    recipe.recipe.fileRecipeHead.fileSize = fileSize;
+    recipe.recipe.keyRecipeHead.fileSize = recipe.recipe.fileRecipeHead.fileSize;
     recipe.dataType = DATA_TYPE_RECIPE;
     if (!insertMQToKeyClient(recipe)) {
-        cerr << "Chunker : error insert chunk to keyClient MQ" << endl;
+        cerr << "Chunker : error insert recipe head to keyClient MQ" << endl;
+        exit(0);
     }
     if (setJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
     }
-    cout << "Fixed chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << chunkIDCnt << endl;
+    cout << "variable size chunking over: Total file size = " << recipe.recipe.fileRecipeHead.fileSize << " ; Total chunk number = " << recipe.recipe.fileRecipeHead.totalChunkNumber << endl;
+    gettimeofday(&timeendChunker, NULL);
+    long diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
+    double second = diff / 1000000.0;
+    printf("Chunker : total work time is %ld us = %lf s\n", diff, second);
+    pthread_exit(0);
 }
 
 bool Chunker::insertMQToKeyClient(Data_t& newData)

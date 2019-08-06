@@ -268,8 +268,5 @@ bool kmClient::doAttestation()
 
     enclave_trusted = msg4->status;
 
-    if (msg4 != nullptr) {
-        delete msg4;
-    }
     return true;
 }

@@ -73,9 +73,14 @@ private:
     uint64_t _keyServerNumber;
     std::vector<std::string> _keyServerIP;
     std::vector<int> _keyServerPort;
-    uint64_t _keyBatchSizeMax;
-    uint64_t _keyBatchSizeMin;
+    int _keyBatchSize;
     uint64_t _keyCacheSize;
+
+    //message queue size settings
+    int _Data_t_MQSize;
+    int _EpollMessage_t_MQSize;
+    int _RetrieverData_t_MQSize;
+    int _StorageData_t_MQSize;
 
     //muti thread settings
     int _encodeThreadLimit;
@@ -159,18 +164,18 @@ public:
 
     // key management settings
     uint64_t getKeyServerNumber();
-
     std::string getKeyServerIP();
     //std::vector<std::string> getkeyServerIP();
-
     int getKeyServerPort();
     //std::vector<int> getKeyServerPort();
-
-    uint64_t getKeyBatchSizeMin();
-
-    uint64_t getKeyBatchSizeMax();
-
+    int getKeyBatchSize();
     uint64_t getKeyCacheSize();
+
+    //message queue size setting
+    int get_Data_t_MQSize();
+    int get_EpollMessage_t_MQSize();
+    int get_RetrieverData_t_MQSize();
+    int get_StorageData_t_MQSize();
 
     //muti thread settings
     int getEncoderThreadLimit();

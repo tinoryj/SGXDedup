@@ -22,12 +22,13 @@ private:
     };
     priority_queue<signedHashList_t, vector<signedHashList_t>, cmp> jobQueue_;
     std::mutex timerMutex_;
-    messageQueue<StorageCoreData_t> outPutMQ;
+    messageQueue<StorageCoreData_t>* outPutMQ_;
 
 public:
     ChunkCache* cache_;
     Timer()
     {
+        outPutMQ_ = new messageQueue<StorageCoreData_t>(3000);
         cache_ = new ChunkCache;
     }
     ~Timer() {}
@@ -111,11 +112,11 @@ public:
     }
     bool insertMQToStorageCore(StorageCoreData_t& newData)
     {
-        return outPutMQ.push(newData);
+        return outPutMQ_->push(newData);
     }
     bool extractMQToStorageCore(StorageCoreData_t& newData)
     {
-        return outPutMQ.pop(newData);
+        return outPutMQ_->pop(newData);
     }
 };
 

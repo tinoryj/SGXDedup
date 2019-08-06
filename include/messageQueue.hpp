@@ -10,17 +10,27 @@
 
 template <class T>
 class messageQueue {
+    int capacity;
+    boost::lockfree::queue<T> lockFreeQueue_;
+    int getCapacity(int size)
+    {
+        capacity = size;
+        return capacity;
+    }
+
 public:
-    boost::lockfree::queue<T, boost::lockfree::capacity<512>> lockFreeQueue_;
     boost::atomic<bool> done_;
-    messageQueue()
+    explicit messageQueue(int size)
+        : lockFreeQueue_(getCapacity(size))
     {
         done_ = false;
     }
     ~messageQueue() {}
     bool push(T& data)
     {
-        return lockFreeQueue_.push(data);
+        while (!lockFreeQueue_.push(data))
+            ;
+        return true;
     }
     bool pop(T& data)
     {
@@ -29,6 +39,10 @@ public:
     bool setJobDoneFlag()
     {
         done_ = true;
+    }
+    bool isEmpty()
+    {
+        return lockFreeQueue_.empty();
     }
 };
 
