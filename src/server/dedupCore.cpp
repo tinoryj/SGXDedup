@@ -51,6 +51,7 @@ void DedupCore::run()
                         memcpy(epollMessageTemp.data + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
                     }
                 } else {
+                    cerr << "DedupCore : recv sgx signed hash success, dedup stage report error" << endl;
                     epollMessageTemp.type = ERROR_RESEND;
                     memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                     epollMessageTemp.dataSize = 0;
@@ -77,6 +78,7 @@ void DedupCore::run()
                 if (this->dedupStage2(chunkListTemp)) {
                     epollMessageTemp.type = SUCCESS;
                 } else {
+                    cerr << "DedupCore : dedup stage 2 report error" << endl;
                     epollMessageTemp.type = ERROR_RESEND;
                 }
                 epollMessageTemp.dataSize = 0;
@@ -131,8 +133,14 @@ bool DedupCore::dedupStage2(StorageChunkList_t& in)
             cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
             return false;
         }
+        TimerMapNode newNode;
+        newNode.data = in.logicData[i];
+        newNode.done = true;
+        timerObj_->mapMutex_.lock();
+        timerObj_->chunkTable.erase(in.chunkHash[i]);
+        timerObj_->chunkTable.insert(make_pair(in.chunkHash[i], newNode));
+        timerObj_->mapMutex_.unlock();
     }
-    timerObj_->cache_->setChunk(in.chunkHash, in.logicData);
     cerr << "DedupCore : recv " << setbase(10) << in.chunkHash.size() << " chunk from client" << endl;
     return true;
 }

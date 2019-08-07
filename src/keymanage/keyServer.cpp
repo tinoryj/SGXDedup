@@ -53,14 +53,14 @@ void keyServer::run(Socket socket)
         u_char key[recvNumber * CHUNK_ENCRYPT_KEY_SIZE];
 
         gettimeofday(&timestart, 0);
+
         for (int i = 0; i < recvNumber; i++) {
             client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
         }
 
         gettimeofday(&timeend, 0);
         long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-        double second = diff / 1000000.0;
-        printf("Compute time is %ld us = %lf s\n", diff, second);
+        printf("KeyServer : Compute time is %ld us\n", diff);
 
         if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;

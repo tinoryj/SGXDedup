@@ -25,21 +25,11 @@ public:
     string getKeyFromCache(string& hash);
 };
 
-class ChunkCache_t {
-private:
+typedef struct {
     int cnt_;
     bool avaiable_;
     string chunkLogicData_;
-    std::mutex cntMutex_, avaiMutex_;
-
-public:
-    ChunkCache_t();
-    void refer();
-    void derefer();
-    int readCnt();
-    void setChunk(string& chunkLogicData);
-    bool readChunk(string& chunkLogicData);
-};
+} ChunkCache_t;
 
 class ChunkCache {
 private:

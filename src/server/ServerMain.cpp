@@ -53,7 +53,7 @@ int main()
     sigaction(SIGINT, &sa, 0);
 
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
-    fileName2metaDB.openDB(config.getFn2MetaDBame());
+    fileName2metaDB.openDB(config.getFp2MetaDBame());
 
     vector<boost::thread*> thList;
     boost::thread* th;

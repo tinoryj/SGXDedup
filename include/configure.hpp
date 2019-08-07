@@ -33,21 +33,6 @@ using namespace std;
 #define EPOLL_MESSAGE_DATA_SIZE 4 * 1000 * 1000
 #define NETWORK_STRUCT_DATA_SIZE 4 * 1000 * 1000
 
-#define MQ_TOTAL_NUMBER 13
-#define MQ_CHUNKER_TO_KEYCLIENT 0
-#define MQ_KEYCLIENT_TO_ENCODER 1
-#define MQ_ENCODER_TO_POW 2
-#define MQ_SENDER_IN 3
-#define MQ_DATASR_IN 4
-#define MQ_DATASR_TO_POWSERVER 5
-#define MQ_DATASR_TO_DEDUPCORE 6
-#define MQ_DATASR_TO_STORAGECORE 7
-#define MQ_DEDUPCORE_TO_STORAGECORE 8
-#define MQ_RECEIVER_TO_DECODER 9
-#define MQ_DECODER_TO_RETRIEVER 10
-#define MQ_KEYMANGER_SR_TO_KEYGEN 11
-#define MQ_POWSERVER_TO_DEDUPCORE 12
-
 #define JOB_DONE_FLAG_CHUNKER 0
 
 #define CRYPTO_BLOCK_SZIE 16
@@ -119,11 +104,10 @@ private:
     uint64_t _maxContainerSize;
 
     //server setting
-    std::string _fileRecipeRootPath;
-    std::string _keyRecipeRootPath;
+    std::string _RecipeRootPath;
     std::string _containerRootPath;
     std::string _fp2ChunkDBName;
-    std::string _fn2MetaDBame;
+    std::string _fp2MetaDBame;
 
     //client settings
     int _clientID;
@@ -220,11 +204,10 @@ public:
     uint64_t getMaxContainerSize();
 
     //server settings
-    std::string getFileRecipeRootPath();
-    std::string getKeyRecipeRootPath();
+    std::string getRecipeRootPath();
     std::string getContainerRootPath();
     std::string getFp2ChunkDBName();
-    std::string getFn2MetaDBame();
+    std::string getFp2MetaDBame();
 
     //client settings
     int getClientID();

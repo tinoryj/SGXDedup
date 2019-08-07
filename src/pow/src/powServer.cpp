@@ -5,6 +5,25 @@
 // -A AttestationReportSigningCACert.pem -C client.crt
 // -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
 
+void PRINT_BYTE_ARRAY_POW_SERVER(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 void powServer::closeSession(int fd)
 {
     sessions.erase(fd);
@@ -121,14 +140,13 @@ void powServer::run()
             powSignedHash_t clientReq;
             int signedHashNumber = (msg.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
             memcpy(clientReq.signature_, msg.data, sizeof(uint8_t) * 16);
-            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             for (int i = 0; i < signedHashNumber; i++) {
                 string hash;
                 hash.resize(CHUNK_HASH_SIZE);
                 memcpy(&hash[0], msg.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                 clientReq.hash_.push_back(hash);
             }
-
+            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "PowServer : client not trusted yet" << endl;
                 msg.type = ERROR_CLOSE;
@@ -329,7 +347,6 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
         // temp ---- msg4 maul setting
         msg4.status = true;
         if (msg4.status) {
-            cerr << "Attestation success\n";
             cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
                 6, current->mk);
             cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
@@ -337,10 +354,11 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
 
             current->enclaveTrusted = true;
             return true;
+        } else {
+            return false;
         }
-
     } else {
-        cerr << "Attestation failed\n";
+        cerr << "PowServer : Remote Attestation Failed\n";
         return false;
     }
 }
@@ -401,7 +419,7 @@ bool powServer::process_signedHash(powSession* session, powSignedHash_t req)
     string Mac, signature((char*)req.signature_, 16);
     cryptoObj_->cmac128(req.hash_, Mac, session->sk, 16);
     if (Mac.compare(signature)) {
-        cerr << "client signature unvalid\n";
+        cerr << "PowServer : client signature unvalid\n";
         return false;
     }
     return true;

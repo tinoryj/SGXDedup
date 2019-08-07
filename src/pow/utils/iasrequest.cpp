@@ -319,7 +319,6 @@ ias_error_t IAS_Request::sigrl(uint32_t gid, string& sigrl)
     url += sgid;
 
     if (agent->request(url, "", response, REQUEST_MSG1)) {
-        cerr << "IAS request msg1 type" << endl;
         if (response.statusCode == IAS_OK) {
             sigrl = response.content_string();
             //std::cerr << "sigrl size = " << response.content_string().length() << " content = " << response.content_string();

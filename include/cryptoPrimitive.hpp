@@ -44,11 +44,11 @@ public:
     ~CryptoPrimitive();
     static bool opensslLockSetup();
     static bool opensslLockCleanup();
-    bool generateHash(u_char* dataBuffer, const int& dataSize, u_char* hash);
-    bool encryptWithKey(u_char* dataBuffer, const int& dataSize, u_char* key, u_char* ciphertext);
-    bool decryptWithKey(u_char* ciphertext, const int& dataSize, u_char* key, u_char* dataBuffer);
-    bool keyExchangeEncrypt(u_char* dataBuffer, const int& dataSize, u_char* key, u_char* iv, u_char* ciphertext);
-    bool keyExchangeDecrypt(u_char* ciphertext, const int& dataSize, u_char* key, u_char* iv, u_char* dataBuffer);
+    bool generateHash(u_char* dataBuffer, const int dataSize, u_char* hash);
+    bool encryptWithKey(u_char* dataBuffer, const int dataSize, u_char* key, u_char* ciphertext);
+    bool decryptWithKey(u_char* ciphertext, const int dataSize, u_char* key, u_char* dataBuffer);
+    bool keyExchangeEncrypt(u_char* dataBuffer, const int dataSize, u_char* key, u_char* iv, u_char* ciphertext);
+    bool keyExchangeDecrypt(u_char* ciphertext, const int dataSize, u_char* key, u_char* iv, u_char* dataBuffer);
     bool encryptChunk(Chunk_t& chunk);
     bool decryptChunk(Chunk_t& chunk);
     bool cmac128(vector<string>& message, string& mac, u_char* key, int keyLen);

@@ -140,7 +140,7 @@ CryptoPrimitive::~CryptoPrimitive()
  *
  * @return - a boolean value that indicates if the hash generation succeeds
  */
-bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int& dataSize, u_char* hash)
+bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_char* hash)
 {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
@@ -170,70 +170,124 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int& dataSize, u_ch
     return true;
 }
 
-/*
- * encrypt the data stored in a buffer with a key
- *
- * @param dataBuffer - the buffer that stores the data
- * @param dataSize - the size of the data
- * @param key - the key used to encrypt the data
- * @param ciphertext - the generated ciphertext <return>
- *
- * @return - a boolean value that indicates if the encryption succeeds
- */
-bool CryptoPrimitive::encryptWithKey(u_char* dataBuffer, const int& dataSize, u_char* key, u_char* ciphertext)
+bool CryptoPrimitive::encryptWithKey(u_char* dataBuffer, const int dataSize, u_char* key, u_char* ciphertext)
 {
-    int ciphertextSize, ciphertextTailSize;
 
-    EVP_EncryptInit_ex(cipherctx_, cipher_, NULL, key, iv_);
-    /*disable padding to ensure that the generated ciphertext has the same size as the input data*/
-    EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
-    EVP_EncryptUpdate(cipherctx_, ciphertext, &ciphertextSize, dataBuffer, dataSize);
-    EVP_EncryptFinal_ex(cipherctx_, ciphertext + ciphertextSize, &ciphertextTailSize);
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    int cipherlen, len;
 
-    ciphertextSize += ciphertextTailSize;
-
-    if (ciphertextSize != dataSize) {
-        cerr << "CryptoPrimitive Error: the size of the cipher output (" << ciphertextSize << " bytes) does not match with that of the input (" << dataSize << " bytes)!" << endl;
+    if (ctx == nullptr) {
+        cerr << "can not initial cipher ctx\n";
         return false;
     }
-    return true;
-}
-
-/*
- * decrypt the data stored in a buffer with a key
- *
- * @param dataBuffer - the buffer that stores the data
- * @param dataSize - the size of the data
- * @param key - the key used to encrypt the data
- * @param ciphertext - the generated ciphertext <return>
- *
- * @return - a boolean value that indicates if the encryption succeeds
- */
-
-bool CryptoPrimitive::decryptWithKey(u_char* ciphertext, const int& dataSize, u_char* key, u_char* dataBuffer)
-{
-    int plaintextSize, plaintextTailSize;
-
-    EVP_DecryptInit_ex(cipherctx_, cipher_, NULL, key, iv_);
-    EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
-    EVP_DecryptUpdate(cipherctx_, dataBuffer, &plaintextSize, ciphertext, dataSize);
-    EVP_DecryptFinal_ex(cipherctx_, dataBuffer + plaintextSize, &plaintextTailSize);
-
-    plaintextSize += plaintextTailSize;
-
-    if (plaintextSize != dataSize) {
-        cerr << "CryptoPrimitive Error: the size of the plaintext output (" << plaintextSize << "bytes) does not match with that of the original data (" << dataSize << " bytes)!" << endl;
-
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cfb(), nullptr, key, iv_) != 1) {
+        cerr << "encrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
         return false;
     }
 
+    if (EVP_EncryptUpdate(ctx, ciphertext, &cipherlen, dataBuffer, dataSize) != 1) {
+        cerr << "encrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
+        return false;
+    }
+
+    if (EVP_EncryptFinal_ex(ctx, ciphertext + cipherlen, &len) != 1) {
+        cerr << "encrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
+        return false;
+    }
+    cipherlen += len;
+    if (cipherlen != dataSize) {
+        cerr << "CryptoPrimitive : encrypt output size not equal to origin size" << endl;
+        return false;
+    }
+    EVP_CIPHER_CTX_cleanup(ctx);
     return true;
 }
+
+bool CryptoPrimitive::decryptWithKey(u_char* ciphertext, const int dataSize, u_char* key, u_char* dataBuffer)
+{
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    int plaintlen, len;
+
+    if (ctx == nullptr) {
+        cerr << "can not initial cipher ctx\n";
+        return false;
+    }
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cfb(), nullptr, key, iv_) != 1) {
+        cerr << "decrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
+        return false;
+    }
+
+    if (EVP_DecryptUpdate(ctx, dataBuffer, &plaintlen, ciphertext, dataSize) != 1) {
+        cerr << "decrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
+        return false;
+    }
+
+    if (EVP_DecryptFinal_ex(ctx, dataBuffer + plaintlen, &len) != 1) {
+        cerr << "decrypt error\n";
+        EVP_CIPHER_CTX_cleanup(ctx);
+        return false;
+    }
+
+    plaintlen += len;
+    if (plaintlen != dataSize) {
+        cerr << "CryptoPrimitive : decrypt output size not equal to origin size" << endl;
+        return false;
+    }
+    EVP_CIPHER_CTX_cleanup(ctx);
+    return true;
+}
+
+// bool CryptoPrimitive::encryptWithKey(u_char* dataBuffer, const int& dataSize, u_char* key, u_char* ciphertext)
+// {
+//     int ciphertextSize, ciphertextTailSize;
+
+//     EVP_EncryptInit_ex(cipherctx_, cipher_, NULL, key, iv_);
+//     /*disable padding to ensure that the generated ciphertext has the same size as the input data*/
+//     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
+//     EVP_EncryptUpdate(cipherctx_, ciphertext, &ciphertextSize, dataBuffer, dataSize);
+//     EVP_EncryptFinal_ex(cipherctx_, ciphertext + ciphertextSize, &ciphertextTailSize);
+
+//     ciphertextSize += ciphertextTailSize;
+
+//     if (ciphertextSize != dataSize) {
+//         cerr << "CryptoPrimitive Error: the size of the cipher output (" << ciphertextSize << " bytes) does not match with that of the input (" << dataSize << " bytes)!" << endl;
+//         return false;
+//     }
+//     return true;
+// }
+
+// bool CryptoPrimitive::decryptWithKey(u_char* ciphertext, const int& dataSize, u_char* key, u_char* dataBuffer)
+// {
+//     int plaintextSize, plaintextTailSize;
+
+//     EVP_DecryptInit_ex(cipherctx_, cipher_, NULL, key, iv_);
+//     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
+//     EVP_DecryptUpdate(cipherctx_, dataBuffer, &plaintextSize, ciphertext, dataSize);
+//     EVP_DecryptFinal_ex(cipherctx_, dataBuffer + plaintextSize, &plaintextTailSize);
+
+//     plaintextSize += plaintextTailSize;
+
+//     if (plaintextSize != dataSize) {
+//         cerr << "CryptoPrimitive Error: the size of the plaintext output (" << plaintextSize << "bytes) does not match with that of the original data (" << dataSize << " bytes)!" << endl;
+
+//         return false;
+//     }
+
+//     return true;
+// }
 
 bool CryptoPrimitive::encryptChunk(Chunk_t& chunk)
 {
-    u_char* ciphertext = nullptr;
-    u_char* cipherKey = nullptr;
+    u_char ciphertext[chunk.logicDataSize];
+    u_char cipherKey[CHUNK_ENCRYPT_KEY_SIZE];
     if (!encryptWithKey(chunk.logicData, chunk.logicDataSize, chunk.encryptKey, ciphertext)) {
         cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
         return false;
@@ -252,8 +306,8 @@ bool CryptoPrimitive::encryptChunk(Chunk_t& chunk)
 
 bool CryptoPrimitive::decryptChunk(Chunk_t& chunk)
 {
-    u_char* plaintData = nullptr;
-    u_char* plaintKey = nullptr;
+    u_char plaintData[chunk.logicDataSize];
+    u_char plaintKey[CHUNK_ENCRYPT_KEY_SIZE];
     if (!decryptWithKey(chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, chunkKeyEncryptionKey_, plaintKey)) {
         cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
         return false;
@@ -268,7 +322,7 @@ bool CryptoPrimitive::decryptChunk(Chunk_t& chunk)
     }
 }
 
-bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int& dataSize, u_char* key, u_char* iv, u_char* dataBuffer)
+bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize, u_char* key, u_char* iv, u_char* dataBuffer)
 {
     int plaintextSize, plaintextTailSize;
 
@@ -288,7 +342,7 @@ bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int& dataSize
     return true;
 }
 
-bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int& dataSize, u_char* key, u_char* iv, u_char* ciphertext)
+bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize, u_char* key, u_char* iv, u_char* ciphertext)
 {
     int ciphertextSize, ciphertextTailSize;
 

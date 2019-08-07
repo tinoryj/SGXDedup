@@ -2,15 +2,15 @@
 	"ChunkerConfig": {
 		"_runningType": 0,
 		"_chunkingType": 1,
-		"_minChunkSize": 2048,
-		"_avgChunkSize": 4096,
+		"_minChunkSize": 4096,
+		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
 		"_slidingWinSize": 256,
-		"_ReadSize": 128,
+		"_ReadSize": 256,
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 5000,
+		"_keyBatchSize": 3000,
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
@@ -32,7 +32,7 @@
 	},
 	"messageQueue": {
 		"_Data_t_MQSize": 5000,
-		"_EpollMessage_t_MQSize": 30,
+		"_EpollMessage_t_MQSize": 10,
 		"_RetrieverData_t_MQSize": 5000,
 		"_StorageData_t_MQSize": 5000
 	},
@@ -69,16 +69,15 @@
 		"_iasServerType": 0
 	},
 	"server": {
-		"_fileRecipeRootPath": "fr/",
-		"_keyRecipeRootPath": "kr/",
-		"_containerRootPath": "cr/",
+		"_RecipeRootPath": "Recipes/",
+		"_containerRootPath": "Containers/",
 		"_fp2ChunkDBName": "db1",
-		"_fn2MetaDBame": "db2"
+		"_fp2MetaDBame": "db2"
 	},
 	"client": {
 		"_clientID": 1,
-		"_sendChunkBatchSize": 250,
-		"_sendRecipeBatchSize": 2500
+		"_sendChunkBatchSize": 300,
+		"_sendRecipeBatchSize": 50000
 	},
 	"timer": {
 		"_timeScale": 1

@@ -12,6 +12,11 @@
 
 using namespace std;
 
+typedef struct {
+    bool done = false;
+    string data;
+} TimerMapNode;
+
 class Timer {
 private:
     struct cmp {
@@ -22,22 +27,29 @@ private:
     };
     priority_queue<signedHashList_t, vector<signedHashList_t>, cmp> jobQueue_;
     std::mutex timerMutex_;
+
     messageQueue<StorageCoreData_t>* outPutMQ_;
 
 public:
-    ChunkCache* cache_;
+    unordered_map<string, TimerMapNode> chunkTable;
+    std::mutex mapMutex_;
     Timer()
     {
         outPutMQ_ = new messageQueue<StorageCoreData_t>(3000);
-        cache_ = new ChunkCache;
     }
-    ~Timer() {}
+    ~Timer()
+    {
+        delete outPutMQ_;
+    }
     void registerHashList(signedHashList_t& job)
     {
         for (auto it : job.hashList) {
-            cache_->refer(it);
+            TimerMapNode tempNode;
+            tempNode.done = false;
+            mapMutex_.lock();
+            chunkTable.insert(make_pair(it, tempNode));
+            mapMutex_.unlock();
         }
-
         timerMutex_.lock();
         jobQueue_.push(job);
         timerMutex_.unlock();
@@ -59,23 +71,18 @@ public:
             }
             timerMutex_.unlock();
 
-            if (emptyFlag) {
-                this_thread::sleep_for(chrono::milliseconds(500));
-                continue;
+            if (!emptyFlag) {
+                cerr << "Timer : current job queue size = " << jobQueue_.size() << endl;
+                now = std::chrono::high_resolution_clock::now();
+                dtn = duration_cast<milliseconds>(now - nowJob.startTime);
+                if (dtn.count() - nowJob.outDataTime < 0) {
+                    this_thread::sleep_for(milliseconds(nowJob.outDataTime - dtn.count()));
+                }
+                cerr << "Timer : check time for " << setbase(10) << nowJob.hashList.size() << " chunks" << endl;
+                if (!checkDone(nowJob)) {
+                    cerr << "Timer : server wait chunks timeout" << endl;
+                }
             }
-            now = std::chrono::high_resolution_clock::now();
-            dtn = duration_cast<milliseconds>(now - nowJob.startTime);
-            if (dtn.count() - nowJob.outDataTime < 0) {
-                this_thread::sleep_for(milliseconds(nowJob.outDataTime - dtn.count()));
-            }
-            cerr << "Timer : check time for " << setbase(10) << nowJob.hashList.size() << " chunks" << endl;
-            StorageChunkList_t chunkList;
-            if (!checkDone(nowJob, chunkList)) {
-                timeOut(nowJob);
-                cerr << " server wait chunks timeout" << endl;
-                return;
-            }
-            cerr << "success" << endl;
         }
     }
     void startTimer()
@@ -84,36 +91,34 @@ public:
         th.detach();
     }
 
-    bool timeOut(signedHashList_t nowJob)
-    {
-        int size = nowJob.chunks.size();
-        for (int i = 0; i < size; i++) {
-            cache_->derefer(nowJob.hashList[i]);
-        }
-        return true;
-    }
-    bool checkDone(signedHashList_t nowJob, StorageChunkList_t& chunkList)
+    bool checkDone(signedHashList_t nowJob)
     {
         string chunkLogicData;
-        bool success;
+        mapMutex_.lock();
         for (auto it : nowJob.hashList) {
-            success = cache_->readChunk(it, chunkLogicData);
-            if (!success) {
+            auto temp = chunkTable.find(it);
+            if (temp == chunkTable.end()) {
+                cerr << "Timer : can not find chunk" << endl;
                 return false;
             } else {
                 StorageCoreData_t newData;
-                newData.logicDataSize = chunkLogicData.length();
+                newData.logicDataSize = temp->second.data.length();
                 memcpy(newData.chunkHash, &it[0], CHUNK_HASH_SIZE);
-                memcpy(newData.logicData, &chunkLogicData[0], newData.logicDataSize);
+                memcpy(newData.logicData, &temp->second.data[0], newData.logicDataSize);
                 insertMQToStorageCore(newData);
+                chunkTable.erase(it);
             }
         }
+        cerr << "Timer : check done" << endl;
+        mapMutex_.unlock();
         return true;
     }
+
     bool insertMQToStorageCore(StorageCoreData_t& newData)
     {
         return outPutMQ_->push(newData);
     }
+
     bool extractMQToStorageCore(StorageCoreData_t& newData)
     {
         return outPutMQ_->pop(newData);

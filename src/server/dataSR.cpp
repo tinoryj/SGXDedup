@@ -15,6 +15,10 @@ DataSR::DataSR()
 
 DataSR::~DataSR()
 {
+    delete MQ2DataSR_CallBack_;
+    delete MQ2DedupCore_;
+    delete MQ2StorageCore_;
+    delete MQ2RAServer_;
     socket_.finish();
 }
 
@@ -24,21 +28,20 @@ void DataSR::extractMQ()
         EpollMessage_t msgTemp;
         epoll_event ev;
         ev.events = EPOLLOUT | EPOLLET;
-        if (!extractMQ2DataSR_CallBack(msgTemp)) {
-            continue;
-        } else {
-            epollSessionMutex_.lock();
+        if (extractMQ2DataSR_CallBack(msgTemp)) {
             if (epollSession_.find(msgTemp.fd) == epollSession_.end()) {
                 cerr << "find data in epoll session failed" << endl;
                 continue;
             } else {
+                epollSessionMutex_.lock();
                 epollSession_.at(msgTemp.fd).dataSize = msgTemp.dataSize;
                 epollSession_.at(msgTemp.fd).type = msgTemp.type;
+                // cerr << "DataSR : call back message queue current msg data type = " << msgTemp.type << endl;
                 memcpy(epollSession_.at(msgTemp.fd).data, msgTemp.data, msgTemp.dataSize);
                 ev.data.fd = msgTemp.fd;
                 epoll_ctl(epfd, EPOLL_CTL_MOD, msgTemp.fd, &ev);
+                epollSessionMutex_.unlock();
             }
-            epollSessionMutex_.unlock();
         }
     }
 }
@@ -99,7 +102,7 @@ void DataSR::run()
                 epollSession_.insert(make_pair(tempSock.fd_, msgTemp));
                 epollSessionMutex_.unlock();
             } else if (event[i].events & EPOLLOUT) {
-                cerr << "Current send event fd = " << event[i].data.fd << endl;
+                // cerr << "Current send event fd = " << event[i].data.fd << endl;
 
                 EpollMessage_t msg1;
 
@@ -118,7 +121,7 @@ void DataSR::run()
                 memcpy(buffer + sizeof(NetworkHeadStruct_t), msg1.data, msg1.dataSize);
 
                 if (!socketConnection[event[i].data.fd].Send(buffer, sizeof(NetworkHeadStruct_t) + msg1.dataSize)) {
-                    cerr << "client closed socket connect, fd = " << event[i].data.fd << endl;
+                    cerr << "DataSR : client closed socket connect, fd = " << event[i].data.fd << endl;
                     ev.data.ptr = nullptr;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLHUP;
@@ -133,7 +136,7 @@ void DataSR::run()
                 }
 
             } else if (event[i].events & EPOLLIN) {
-                cerr << "Current recv event fd = " << event[i].data.fd << endl;
+                // cerr << "Current recv event fd = " << event[i].data.fd << endl;
                 // auto iter = socketConnection.find(event[i].data.fd);
                 // Socket currentSock;
                 // if (iter != socketConnection.end()) {
@@ -146,7 +149,7 @@ void DataSR::run()
                 //memcpy(&msg, (EpollMessage_t*)event[i].data.ptr, sizeof(EpollMessage_t));
                 int recvSize = 0;
                 if (!socketConnection[event[i].data.fd].Recv(buffer, recvSize)) {
-                    cerr << "client closed socket connect, fd = " << event[i].data.fd << endl;
+                    cerr << "DataSR : client closed socket connect, fd = " << event[i].data.fd << endl;
                     ev.data.ptr = nullptr;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLHUP;
@@ -161,7 +164,7 @@ void DataSR::run()
                     ev.events = EPOLLET | EPOLLIN;
                     epoll_ctl(epfd, EPOLL_CTL_MOD, event[i].data.fd, &ev);
                     NetworkHeadStruct_t netBody;
-                    cerr << "DataSR : recv connection, fd = " << event[i].data.fd << " recvSize = " << recvSize << endl;
+                    // cerr << "DataSR : recv connection, fd = " << event[i].data.fd << " recvSize = " << recvSize << endl;
 
                     memcpy(&netBody, buffer, sizeof(NetworkHeadStruct_t));
                     memcpy(msg.data, buffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);

@@ -31,6 +31,7 @@ public:
     bool extractMQFromChunker(Data_t& newChunk);
     bool insertMQtoEncoder(Data_t& newChunk);
     bool editJobDoneFlag();
+    bool setJobDoneFlag();
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
 };
 

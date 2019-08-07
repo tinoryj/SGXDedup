@@ -90,11 +90,10 @@ void Configure::readConf(std::string path)
     _KMIasServerType = root.get<int>("km._iasServerType");
 
     //server Configure
-    _fileRecipeRootPath = root.get<std::string>("server._fileRecipeRootPath");
-    _keyRecipeRootPath = root.get<std::string>("server._keyRecipeRootPath");
+    _RecipeRootPath = root.get<std::string>("server._RecipeRootPath");
     _containerRootPath = root.get<std::string>("server._containerRootPath");
     _fp2ChunkDBName = root.get<std::string>("server._fp2ChunkDBName");
-    _fn2MetaDBame = root.get<std::string>("server._fn2MetaDBame");
+    _fp2MetaDBame = root.get<std::string>("server._fp2MetaDBame");
 
     //client Configure
     _clientID = root.get<int>("client._clientID");
@@ -357,14 +356,9 @@ double Configure::getTimeOutScale()
     return _timeOutScale;
 }
 
-std::string Configure::getFileRecipeRootPath()
+std::string Configure::getRecipeRootPath()
 {
-    return _fileRecipeRootPath;
-}
-
-std::string Configure::getKeyRecipeRootPath()
-{
-    return _keyRecipeRootPath;
+    return _RecipeRootPath;
 }
 
 std::string Configure::getContainerRootPath()
@@ -377,9 +371,9 @@ std::string Configure::getFp2ChunkDBName()
     return _fp2ChunkDBName;
 }
 
-std::string Configure::getFn2MetaDBame()
+std::string Configure::getFp2MetaDBame()
 {
-    return _fn2MetaDBame;
+    return _fp2MetaDBame;
 }
 
 int Configure::getSenderThreadLimit()

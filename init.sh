@@ -5,7 +5,7 @@ cmake ..
 make -j6
 cd ..
 cd ./bin
-mkdir cr fr kr tmp
+mkdir Containers Recipes
 cd ..
 cp config.json ./bin
 cp -r ./key ./bin/

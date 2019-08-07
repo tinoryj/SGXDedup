@@ -8,19 +8,19 @@ extern Configure config;
 kmServer::kmServer(Socket socket)
 {
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
-        cerr << "can not load IAS Signing Cert CA" << endl;
+        cerr << "KmServer : can not load IAS Signing Cert CA" << endl;
         exit(1);
     }
 
     _store = cert_init_ca(_signing_ca);
     if (_store == nullptr) {
-        cerr << "can not init cert file" << endl;
+        cerr << "KmServer : can not init cert file" << endl;
         exit(1);
     }
 
     string spid = config.getKMSPID();
     if (spid.length() != 32) {
-        cerr << "SPID must be 32-byte hex string" << endl;
+        cerr << "KmServer : SPID must be 32-byte hex string" << endl;
         exit(1);
     }
 
@@ -47,7 +47,7 @@ bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg
 
     msg01.msg0_extended_epid_group_id = 0;
     if (msg01.msg0_extended_epid_group_id != 0) {
-        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
+        cerr << "KmServer : msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
         return false;
     }
 
@@ -55,12 +55,12 @@ bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg
 
     Gb = key_generate();
     if (Gb == nullptr) {
-        cerr << "can not create session key" << endl;
+        cerr << "KmServer : can not create session key" << endl;
         return false;
     }
 
     if (!derive_kdk(Gb, session->kdk, msg01.msg1.g_a)) {
-        cerr << "can not derive KDK" << endl;
+        cerr << "KmServer : can not derive KDK" << endl;
         return false;
     }
 
@@ -76,7 +76,7 @@ bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg
     msg2.kdf_id = 1;
 
     if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
-        cerr << "can not retrieve sigrl form ias server" << endl;
+        cerr << "KmServer : can not retrieve sigrl form ias server" << endl;
         return false;
     }
 
@@ -103,12 +103,12 @@ bool kmServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t g
     EVP_PKEY* Ga;
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
-        cerr << "can not get ga from msg1" << endl;
+        cerr << "KmServer : can not get ga from msg1" << endl;
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
-        cerr << "can not get shared secret" << endl;
+        cerr << "KmServer : can not get shared secret" << endl;
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
@@ -124,12 +124,12 @@ bool kmServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
-        cerr << "can not make ias request" << endl;
+        cerr << "KmServer : can not make ias request" << endl;
         return false;
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
-        cerr << "ias get sigrl error" << endl;
+        cerr << "KmServer : ias get sigrl error" << endl;
         return false;
     }
 
@@ -147,13 +147,13 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
 
     if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
             sizeof(sgx_ec256_public_t))) {
-        cerr << "msg1.ga != msg3.ga" << endl;
+        cerr << "KmServer : msg1.ga != msg3.ga" << endl;
         return false;
     }
     sgx_mac_t msgMAC;
     cmac128(current->smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
     if (CRYPTO_memcmp(msg3->mac, msgMAC, sizeof(sgx_mac_t))) {
-        cerr << "broken msg3 from client" << endl;
+        cerr << "KmServer : broken msg3 from client" << endl;
         return false;
     }
     char* b64quote;
@@ -161,7 +161,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
     sgx_quote_t* q;
     q = (sgx_quote_t*)msg3->quote;
     if (memcmp(current->msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
-        cerr << "Attestation failed. Differ gid" << endl;
+        cerr << "KmServer : Attestation failed. Differ gid" << endl;
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
@@ -201,7 +201,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
         if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data,
                 64)) {
 
-            cerr << "Report verification failed." << endl;
+            cerr << "KmServer : Report verification failed." << endl;
             return false;
         }
 
@@ -230,19 +230,14 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->sk);
 
             current->enclaveTrusted = true;
+            return true;
+        } else {
+            return false;
         }
     } else {
-        cerr << "Attestation failed" << endl;
-        cmac128(current->kdk, (unsigned char*)("\x01MK\x00\x80\x00"),
-            6, current->mk);
-        cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
-            6, current->sk);
-        current->enclaveTrusted = true;
-        msg4.status = true;
-        return true;
-        //return false;
+        cerr << "KmServer : Attestation failed" << endl;
+        return false;
     }
-
     return true;
 }
 
@@ -256,7 +251,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
 
     req = new IAS_Request(_ias, (uint16_t)_iasVersion);
     if (req == nullptr) {
-        cerr << "Exception while creating IAS request object" << endl;
+        cerr << "KmServer : Exception while creating IAS request object" << endl;
         return false;
     }
 
@@ -277,7 +272,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
         if (reportObj.hasKey("version")) {
             unsigned int rversion = (unsigned int)reportObj["version"].ToInt();
             if (_iasVersion != rversion) {
-                cerr << "Report version " << rversion << " does not match API version " << _iasVersion << endl;
+                cerr << "KmServer : Report version " << rversion << " does not match API version " << _iasVersion << endl;
                 return false;
             }
         }
@@ -306,12 +301,12 @@ powSession* kmServer::authkm()
     u_char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg01RecvSize;
     if (!_socket.Recv(msg01Buffer, msg01RecvSize)) {
-        cerr << "kmServer: error socket reading" << endl;
+        cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }
     memcpy(&msg01, msg01Buffer, sizeof(msg01));
     if (!this->process_msg01(ans, msg01, msg2)) {
-        cerr << "kmServer: error msg01" << endl;
+        cerr << "KmServer : error msg01" << endl;
         return nullptr;
     }
 
@@ -319,20 +314,20 @@ powSession* kmServer::authkm()
     u_char msg2Buffer[msg2SendSize];
     memcpy(msg2Buffer, &msg2, sizeof(msg2) + msg2.sig_rl_size);
     if (!_socket.Send(msg2Buffer, msg2SendSize)) {
-        cerr << "kmServer: error socket reading" << endl;
+        cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }
 
     int msg3RecvSize;
     u_char msg3Buffer[SGX_MESSAGE_MAX_SIZE];
     if (!_socket.Recv(msg3Buffer, msg3RecvSize)) {
-        cerr << "kmServer: error msg01" << endl;
+        cerr << "KmServer : error msg01" << endl;
         return nullptr;
     }
     uint32_t quote_size = msg3RecvSize - sizeof(sgx_ra_msg3_t);
     string msg3Str((char*)msg3Buffer, msg3RecvSize);
     if (!this->process_msg3(ans, (sgx_ra_msg3_t*)msg3Str.c_str(), msg4, quote_size)) {
-        cerr << "kmServer: error msg3" << endl;
+        cerr << "KmServer : error msg3" << endl;
         return nullptr;
     }
 
@@ -340,7 +335,7 @@ powSession* kmServer::authkm()
     u_char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     memcpy(msg4Buffer, &msg4, sizeof(msg4));
     if (!_socket.Send(msg4Buffer, msg4SendSize)) {
-        cerr << "kmServer: error socket reading" << endl;
+        cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }
 

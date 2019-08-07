@@ -109,22 +109,21 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
     }
 
     if (!decrypt(src, srcLen, k, 16, hash, &len)) {
-        goto error;
+        free(hash);
+        BN_CTX_free(bnCtx);
+        return SGX_ERROR_UNEXPECTED;
     }
     BN_bin2bn(hash, srcLen, result);
     BN_mod_exp(result, result, d, n, bnCtx);
     BN_bn2bin(result, src + srcLen - BN_num_bits(result));
     if (!encrypt(src, 16, k, 16, key, &len)) {
-        goto error;
+        free(hash);
+        BN_CTX_free(bnCtx);
+        return SGX_ERROR_UNEXPECTED;
     }
     BN_CTX_free(bnCtx);
     free(hash);
     return SGX_SUCCESS;
-
-error:
-    free(hash);
-    BN_CTX_free(bnCtx);
-    return SGX_ERROR_UNEXPECTED;
 }
 
 int encrypt(uint8_t* plaint, uint32_t plaintLen,

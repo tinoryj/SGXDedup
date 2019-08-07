@@ -4,7 +4,7 @@ extern Configure config;
 
 RecvDecode::RecvDecode(string fileName)
 {
-    outPutMQ = new messageQueue<RetrieverData_t>(3000);
+    outPutMQ_ = new messageQueue<RetrieverData_t>(3000);
     cryptoObj_ = new CryptoPrimitive();
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
@@ -17,6 +17,7 @@ RecvDecode::~RecvDecode()
     if (cryptoObj_ != nullptr) {
         delete cryptoObj_;
     }
+    delete outPutMQ_;
 }
 
 bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
@@ -124,11 +125,11 @@ Recipe_t RecvDecode::getFileRecipeHead()
 
 bool RecvDecode::insertMQToRetriever(RetrieverData_t& newData)
 {
-    return outPutMQ->push(newData);
+    return outPutMQ_->push(newData);
 }
 bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
 {
-    return outPutMQ->pop(newData);
+    return outPutMQ_->pop(newData);
 }
 
 void RecvDecode::run()

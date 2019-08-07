@@ -34,8 +34,10 @@ keyClient::~keyClient()
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
+    delete inputMQ_;
 }
-void PRINT_BYTE_ARRAY(
+
+void PRINT_BYTE_ARRAY_KEY_CLIENT(
     FILE* file, void* mem, uint32_t len)
 {
     if (!mem || !len) {
@@ -53,46 +55,53 @@ void PRINT_BYTE_ARRAY(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
+
 void keyClient::run()
 {
     gettimeofday(&timestartKey, NULL);
     vector<Data_t> batchList;
-    batchList.resize(keyBatchSize_);
+    //batchList.resize(keyBatchSize_);
     int batchNumber = 0;
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
     while (true) {
 
-        Data_t tempchunk;
+        Data_t tempChunk;
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
             cerr << "KeyClient : Chunker jobs done, queue is empty" << endl;
             JobDoneFlag = true;
         }
-        if (extractMQFromChunker(tempchunk)) {
-            if (tempchunk.dataType == DATA_TYPE_RECIPE) {
-                cerr << "KeyClient : get file recipe head frome message queue" << endl;
+        if (extractMQFromChunker(tempChunk)) {
+            if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+                cerr << "KeyClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                insertMQtoEncoder(tempChunk);
                 continue;
             }
+            // cerr << "KeyClient : current extract  chunk ID = " << tempChunk.chunk.ID << " chunk data size = " << tempChunk.chunk.logicDataSize << endl;
+            // cerr << setw(6) << "chunk hash = " << endl;
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+            // cerr << setw(6) << "chunk key = " << endl;
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+
             string tempHashForCache;
             tempHashForCache.resize(CHUNK_HASH_SIZE);
-            memcpy(&tempHashForCache[0], tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+            memcpy(&tempHashForCache[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             if (kCache.existsKeyinCache(tempHashForCache)) {
-                cerr << "KeyClient : chunkHash hit kCache, hash = " << endl;
-                PRINT_BYTE_ARRAY(stderr, tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 string hitCacheTemp = kCache.getKeyFromCache(tempHashForCache);
-                memcpy(tempchunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
-                //insertMQtoEncoder(tempchunk);
+                memcpy(tempChunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
+                insertMQtoEncoder(tempChunk);
             } else {
-                batchList.push_back(tempchunk);
-                memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempchunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                batchList.push_back(tempChunk);
+                memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                 batchNumber++;
             }
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
-            int batchKeySize = 0;
+            int batchedKeySize = 0;
 
-            if (!keyExchange(chunkHash, batchNumber, chunkKey, batchKeySize)) {
+            if (!keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize)) {
                 cerr << "KeyClient : error get key for " << setbase(10) << batchNumber << " chunks" << endl;
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -100,12 +109,30 @@ void keyClient::run()
                 batchNumber = 0;
             } else {
                 cerr << "KeyClient : key exchange for " << setbase(10) << batchNumber << " chunks over" << endl;
+                // cerr << "KeyClient : batchlist size = " << batchList.size() << " , batch number = " << batchNumber << endl;
+                // cerr << setw(6) << "key exchange chunk hash = " << endl;
+                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkHash, CHUNK_HASH_SIZE * batchNumber);
+                // cerr << setw(6) << "key exchange chunk key = " << endl;
+                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkKey, CHUNK_ENCRYPT_KEY_SIZE * batchNumber);
+
                 for (int i = 0; i < batchNumber; i++) {
+                    // cerr << "KeyClient : current chunk ID = " << batchList[i].chunk.ID << " chunk data size = " << batchList[i].chunk.logicDataSize << endl;
+                    // cerr << setw(6) << "chunk hash = " << endl;
+                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
+                    // cerr << setw(6) << "chunk key = " << endl;
+                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
                     string tempHash((char*)batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
                     string tempKey((char*)batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     kCache.insertKeyToCache(tempHash, tempKey);
-                    //insertMQtoEncoder(batchList[i]);
+                    // cerr << "KeyClient : new current chunk ID = " << batchList[i].chunk.ID << " chunk data size = " << batchList[i].chunk.logicDataSize << endl;
+                    // cerr << setw(6) << "chunk hash = " << endl;
+                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
+                    // cerr << setw(6) << "chunk key = " << endl;
+                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                    Data_t newDataToInsert;
+                    memcpy(&newDataToInsert, &batchList[i], sizeof(Data_t));
+                    insertMQtoEncoder(newDataToInsert);
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -114,19 +141,19 @@ void keyClient::run()
             }
         }
         if (JobDoneFlag) {
+            if (!setJobDoneFlag()) {
+                cerr << "KeyClient : error to set job done flag for encoder" << endl;
+            } else {
+                cerr << "KeyClient : key exchange thread job done, set job done flag for encoder done, exit now" << endl;
+            }
             break;
-        } else {
-            continue;
         }
     }
-    cerr << "KeyClient : key exchange thread job done, exit now" << endl;
 
     gettimeofday(&timeendKey, NULL);
     long diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
     double second = diff / 1000000.0;
     printf("Key client thread work time is %ld us = %lf s\n", diff, second);
-
-    exit(0);
     pthread_exit(0);
     //close ssl connection
 }
@@ -181,4 +208,9 @@ bool keyClient::editJobDoneFlag()
     } else {
         return false;
     }
+}
+
+bool keyClient::setJobDoneFlag()
+{
+    return encoderObj_->editJobDoneFlag();
 }

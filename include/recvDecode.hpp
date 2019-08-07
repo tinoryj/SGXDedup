@@ -17,7 +17,7 @@ private:
     void receiveChunk();
     u_char fileNameHash_[FILE_NAME_HASH_SIZE];
     CryptoPrimitive* cryptoObj_;
-    messageQueue<RetrieverData_t>* outPutMQ;
+    messageQueue<RetrieverData_t>* outPutMQ_;
     std::mutex multiThreadDownloadMutex;
     uint64_t totalRecvChunks = 0;
 

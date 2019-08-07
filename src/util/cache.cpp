@@ -39,60 +39,6 @@ string KeyCache::getKeyFromCache(string& hash)
     }
 }
 
-ChunkCache_t::ChunkCache_t()
-{
-    this->cnt_ = 1;
-    this->avaiable_ = false;
-    this->chunkLogicData_.clear();
-}
-
-void ChunkCache_t::refer()
-{
-
-    std::lock_guard<std::mutex> locker(this->cntMutex_);
-    this->cnt_++;
-}
-
-void ChunkCache_t::derefer()
-{
-
-    std::lock_guard<std::mutex> locker(this->cntMutex_);
-    this->cnt_--;
-}
-
-int ChunkCache_t::readCnt()
-{
-    int ans;
-    {
-        std::lock_guard<std::mutex> locker(this->cntMutex_);
-        ans = this->cnt_;
-    }
-    return ans;
-}
-
-void ChunkCache_t::setChunk(string& chunkLogicData)
-{
-    {
-        this->chunkLogicData_ = chunkLogicData;
-        std::lock_guard<std::mutex> locker(this->avaiMutex_);
-        this->avaiable_ = true;
-    }
-}
-
-bool ChunkCache_t::readChunk(string& chunkLogicData)
-{
-    bool status;
-    {
-        std::lock_guard<std::mutex> locker(this->avaiMutex_);
-        status = this->avaiable_;
-    }
-
-    if (status) {
-        chunkLogicData = this->chunkLogicData_;
-    }
-    return status;
-}
-
 ChunkCache::ChunkCache()
 {
     this->cryptoObj_ = new CryptoPrimitive();
@@ -120,10 +66,7 @@ void ChunkCache::derefer(string& chunkHash)
         if (it == memBuffer_.end()) {
             return;
         }
-        it->second->derefer();
-        if (it->second->readCnt() == 0) {
-            memBuffer_.erase(it);
-        }
+        memBuffer_.erase(it);
     }
 }
 
@@ -136,7 +79,8 @@ void ChunkCache::setChunk(vector<string>& fp, vector<string>& chunks)
             std::lock_guard<std::mutex> locker(this->chunkCacheMutex_);
             it1 = memBuffer_.find(fp[i]);
             if (it1 != memBuffer_.end()) {
-                it1->second->setChunk(chunks[i]);
+                it1->second->chunkLogicData_.resize(chunks[i].length());
+                memcpy(&it1->second->chunkLogicData_[0], &chunks[i][0], chunks[i].length());
             }
         }
     }
@@ -145,14 +89,15 @@ void ChunkCache::setChunk(vector<string>& fp, vector<string>& chunks)
 bool ChunkCache::readChunk(string& chunkHash, string& chunkLogicData)
 {
     map<string, ChunkCache_t*>::iterator it;
-    bool status;
+    bool status = true;
     {
         std::lock_guard<std::mutex> locker(this->chunkCacheMutex_);
         it = memBuffer_.find(chunkHash);
         if (it == memBuffer_.end()) {
             return false;
         }
-        status = it->second->readChunk(chunkLogicData);
+        chunkLogicData.resize(it->second->chunkLogicData_.length());
+        memcpy(&chunkLogicData[0], &it->second->chunkLogicData_[0], it->second->chunkLogicData_.length());
     }
     return status;
 }
