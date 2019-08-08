@@ -1,3 +1,13 @@
+## Aug 8 2019:
+
+> Tinoryj
+
+* system rewrite done (two enclave & lockfree queue version).
+* basic test for 1G file upload & download passed :
+    * single machine, 6C6T i5 9600K.
+    * no optimization with clang compiler (-O0), with gdb / AddressSanitizer flag.
+    * upload avg 27s, download avg 17s (3 times run). 
+
 ## Jul 21 2019:
 
 > Tinoryj
