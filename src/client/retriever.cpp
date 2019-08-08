@@ -17,17 +17,22 @@ Retriever::~Retriever()
 void Retriever::retrieveFileThread()
 {
     while (currentID_ < totalChunkNumber_) {
-        //multiThreadWriteMutex.lock();
-        auto current = chunkTempList_.find(currentID_);
-        if (current == chunkTempList_.end()) {
-            continue;
-        } else {
-            // cerr << "Retriever : write chunk ID = " << currentID_ << " out" << endl;
-            retrieveFile_.write(current->second.c_str(), current->second.length());
-            chunkTempList_.erase(current);
-            currentID_++;
+        if (!chunkTempList_.empty()) {
+            multiThreadWriteMutex.lock();
+            auto current = chunkTempList_.find(currentID_);
+            if (current == chunkTempList_.end()) {
+                multiThreadWriteMutex.unlock();
+                // cerr << "current ID = " << currentID_ << " not exist" << endl;
+                continue;
+            } else {
+
+                retrieveFile_.write(current->second.c_str(), current->second.length());
+                chunkTempList_.erase(current);
+                // cerr << "Retriever : write chunk ID = " << currentID_ << " out, current chunk list size = " << chunkTempList_.size() << endl;
+                currentID_++;
+                multiThreadWriteMutex.unlock();
+            }
         }
-        //multiThreadWriteMutex.unlock();
     }
     cerr << "Retriever : write file done, retrieve file thread exit now" << endl;
     return;
@@ -38,13 +43,12 @@ void Retriever::recvThread()
     while (totalRecvNumber_ < totalChunkNumber_) {
         RetrieverData_t newData;
         if (extractMQFromRecvDecode(newData)) {
-            // cerr << "Retriever : extract new chunk frome message queue, ID = " << newData.ID << endl;
             string data;
             data.resize(newData.logicDataSize);
             memcpy(&data[0], newData.logicData, newData.logicDataSize);
-            //multiThreadWriteMutex.lock();
+            multiThreadWriteMutex.lock();
             chunkTempList_.insert(make_pair(newData.ID, data));
-            //multiThreadWriteMutex.unlock();
+            multiThreadWriteMutex.unlock();
             totalRecvNumber_++;
         }
     }

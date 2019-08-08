@@ -76,7 +76,7 @@
 	},
 	"client": {
 		"_clientID": 1,
-		"_sendChunkBatchSize": 300,
+		"_sendChunkBatchSize": 600,
 		"_sendRecipeBatchSize": 50000
 	},
 	"timer": {

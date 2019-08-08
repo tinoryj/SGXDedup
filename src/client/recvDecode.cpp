@@ -106,18 +106,22 @@ bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& 
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
-            if ((respond.dataSize / sizeof(Chunk_t)) * sizeof(Chunk_t) != respond.dataSize) {
-                std::cerr << "RecvDecode : Server send chunks faild!" << endl;
-                exit(1);
-            } else {
-                chunkNumber = respond.dataSize / sizeof(Chunk_t);
-                for (int i = 0; i < chunkNumber; i++) {
-                    Chunk_t tempChunk;
-                    memcpy(&tempChunk, respondBuffer + sizeof(NetworkHeadStruct_t) + i * sizeof(Chunk_t), sizeof(Chunk_t));
-                    recvChunk.push_back(tempChunk);
-                }
-                break;
+            chunkNumber = endID - startID;
+            int totalRecvSize = 0;
+            for (int i = 0; i < chunkNumber; i++) {
+                Chunk_t tempChunk;
+                memcpy(&tempChunk.ID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
+                totalRecvSize += sizeof(uint32_t);
+                memcpy(&tempChunk.logicDataSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
+                totalRecvSize += sizeof(int);
+                memcpy(&tempChunk.logicData, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, tempChunk.logicDataSize);
+                totalRecvSize += tempChunk.logicDataSize;
+                memcpy(&tempChunk.encryptKey, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, CHUNK_ENCRYPT_KEY_SIZE);
+                totalRecvSize += CHUNK_ENCRYPT_KEY_SIZE;
+                recvChunk.push_back(tempChunk);
+                //cerr << "RecvDecode : recv chunk id = " << tempChunk.ID << endl;
             }
+            break;
         }
     }
     return true;
@@ -147,7 +151,7 @@ void RecvDecode::run()
         if ((fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks) > config.getSendChunkBatchSize()) {
             endID = startID + config.getSendChunkBatchSize();
         } else {
-            endID = fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks;
+            endID = startID + fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks;
         }
         cerr << "RecvDecode : current request chunks from " << startID << " to " << endID << endl;
         if (recvChunks(newChunkList, chunkNumber, startID, endID)) {
@@ -162,13 +166,14 @@ void RecvDecode::run()
                 }
             }
             newChunkList.clear();
-            multiThreadDownloadMutex.lock();
+            // multiThreadDownloadMutex.lock();
             totalRecvChunks += chunkNumber;
-            multiThreadDownloadMutex.unlock();
-            cerr << "RecvDecode : recv " << chunkNumber << " chunks done" << endl;
+            // multiThreadDownloadMutex.unlock();
+            // cerr << "RecvDecode : recv " << chunkNumber << " chunks done" << endl;
         } else {
             break;
         }
     }
+    cerr << "RecvDecode : download job done, exit now" << endl;
     return;
 }
