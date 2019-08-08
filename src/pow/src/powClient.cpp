@@ -120,7 +120,7 @@ void powClient::run()
     long diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
     double second = diff / 1000000.0;
     printf("PowClient : thread work time is %ld us = %lf s\n", diff, second);
-    pthread_exit(0);
+    return;
 }
 
 bool powClient::request(string& logicDataBatch, uint8_t cmac[16])

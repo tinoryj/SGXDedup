@@ -390,7 +390,7 @@ void Chunker::varSizeChunking()
     long diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
     double second = diff / 1000000.0;
     printf("Chunker : total work time is %ld us = %lf s\n", diff, second);
-    pthread_exit(0);
+    return;
 }
 
 bool Chunker::insertMQToKeyClient(Data_t& newData)

@@ -6,21 +6,6 @@ extern Configure config;
 struct timeval timestartEncoder;
 struct timeval timeendEncoder;
 
-Encoder::Encoder(powClient* powObjTemp)
-{
-    inputMQ_ = new messageQueue<Data_t>(3000);
-    cryptoObj_ = new CryptoPrimitive();
-    powObj_ = powObjTemp;
-}
-
-Encoder::~Encoder()
-{
-    if (cryptoObj_ != NULL) {
-        delete cryptoObj_;
-    }
-    delete inputMQ_;
-}
-
 void PRINT_BYTE_ARRAY_ENCODER(
     FILE* file, void* mem, uint32_t len)
 {
@@ -38,6 +23,21 @@ void PRINT_BYTE_ARRAY_ENCODER(
     }
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
+}
+
+Encoder::Encoder(powClient* powObjTemp)
+{
+    inputMQ_ = new messageQueue<Data_t>(3000);
+    cryptoObj_ = new CryptoPrimitive();
+    powObj_ = powObjTemp;
+}
+
+Encoder::~Encoder()
+{
+    if (cryptoObj_ != NULL) {
+        delete cryptoObj_;
+    }
+    delete inputMQ_;
 }
 
 void Encoder::run()
@@ -73,7 +73,7 @@ void Encoder::run()
     long diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
     double second = diff / 1000000.0;
     printf("Encoder : thread work time is %ld us = %lf s\n", diff, second);
-    pthread_exit(0);
+    return;
 }
 
 bool Encoder::encodeChunk(Data_t& newChunk)

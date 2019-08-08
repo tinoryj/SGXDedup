@@ -8,6 +8,25 @@ extern KeyCache kCache;
 struct timeval timestartKey;
 struct timeval timeendKey;
 
+void PRINT_BYTE_ARRAY_KEY_CLIENT(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 keyClient::keyClient(Encoder* encoderObjTemp)
 {
     inputMQ_ = new messageQueue<Data_t>(3000);
@@ -35,25 +54,6 @@ keyClient::~keyClient()
         delete cryptoObj_;
     }
     delete inputMQ_;
-}
-
-void PRINT_BYTE_ARRAY_KEY_CLIENT(
-    FILE* file, void* mem, uint32_t len)
-{
-    if (!mem || !len) {
-        fprintf(file, "\n( null )\n");
-        return;
-    }
-    uint8_t* array = (uint8_t*)mem;
-    fprintf(file, "%u bytes:\n{\n", len);
-    uint32_t i = 0;
-    for (i = 0; i < len - 1; i++) {
-        fprintf(file, "0x%x, ", array[i]);
-        if (i % 8 == 7)
-            fprintf(file, "\n");
-    }
-    fprintf(file, "0x%x ", array[i]);
-    fprintf(file, "\n}\n");
 }
 
 void keyClient::run()
@@ -154,7 +154,7 @@ void keyClient::run()
     long diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
     double second = diff / 1000000.0;
     printf("Key client thread work time is %ld us = %lf s\n", diff, second);
-    pthread_exit(0);
+    return;
     //close ssl connection
 }
 

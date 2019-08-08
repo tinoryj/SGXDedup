@@ -43,13 +43,13 @@ public:
     }
     void registerHashList(signedHashList_t& job)
     {
+        mapMutex_.lock();
         for (auto it : job.hashList) {
             TimerMapNode tempNode;
             tempNode.done = false;
-            mapMutex_.lock();
             chunkTable.insert(make_pair(it, tempNode));
-            mapMutex_.unlock();
         }
+        mapMutex_.unlock();
         timerMutex_.lock();
         jobQueue_.push(job);
         timerMutex_.unlock();
@@ -91,15 +91,41 @@ public:
         th.detach();
     }
 
-    bool checkDone(signedHashList_t nowJob)
+    void PRINT_BYTE_ARRAY_TIMER(
+        FILE* file, void* mem, uint32_t len)
+    {
+        if (!mem || !len) {
+            fprintf(file, "\n( null )\n");
+            return;
+        }
+        uint8_t* array = (uint8_t*)mem;
+        fprintf(file, "%u bytes:\n{\n", len);
+        uint32_t i = 0;
+        for (i = 0; i < len - 1; i++) {
+            fprintf(file, "0x%x, ", array[i]);
+            if (i % 8 == 7)
+                fprintf(file, "\n");
+        }
+        fprintf(file, "0x%x ", array[i]);
+        fprintf(file, "\n}\n");
+    }
+
+    bool checkDone(signedHashList_t& nowJob)
     {
         string chunkLogicData;
         mapMutex_.lock();
+        // cerr << "Timer : current chunk table size = " << chunkTable.size() << endl;
+        // for (auto it = chunkTable.begin(); it != chunkTable.end(); it++) {
+        //     cerr << "chunk hash in map = " << endl;
+        //     PRINT_BYTE_ARRAY_TIMER(stderr, (char*)it->first.c_str(), CHUNK_HASH_SIZE);
+        // }
         for (auto it : nowJob.hashList) {
+            cerr << "chunk hash in job list = " << endl;
+            PRINT_BYTE_ARRAY_TIMER(stderr, (char*)it.c_str(), CHUNK_HASH_SIZE);
             auto temp = chunkTable.find(it);
             if (temp == chunkTable.end()) {
                 cerr << "Timer : can not find chunk" << endl;
-                return false;
+                // return false;
             } else {
                 StorageCoreData_t newData;
                 newData.logicDataSize = temp->second.data.length();

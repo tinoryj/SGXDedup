@@ -155,5 +155,5 @@ void RecvDecode::run()
         totalRecvChunks += chunkNumber;
         multiThreadDownloadMutex.unlock();
     }
-    pthread_exit(0);
+    return;
 }

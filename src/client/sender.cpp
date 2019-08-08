@@ -356,7 +356,7 @@ void Sender::run()
     long diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
     double second = diff / 1000000.0;
     printf("Sender thread work time is %ld us = %lf s\n", diff, second);
-    pthread_exit(0);
+    return;
 }
 
 bool Sender::insertMQFromPow(Data_t& newChunk)

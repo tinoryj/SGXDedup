@@ -3,6 +3,25 @@
 extern Database fp2ChunkDB;
 extern Configure config;
 
+void PRINT_BYTE_ARRAY_DEDUP_CORE(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 DedupCore::DedupCore(DataSR* dataSRTemp, Timer* timerObjTemp)
 {
     dataSRObj_ = dataSRTemp;
@@ -17,13 +36,6 @@ DedupCore::~DedupCore()
         delete cryptoObj_;
 }
 
-/*
- * DedupCore thread handle
- * process two type message:
- *      sgx_signed_hash     : for dedup stage one, regist to timer
- *      client_upload_chunk : for dedup stage two, save chunk to cache
- *
- */
 void DedupCore::run()
 {
     while (true) {
@@ -35,6 +47,8 @@ void DedupCore::run()
                 RequiredChunk_t requiredChunkTemp;
                 int hashNumber = (epollMessageTemp.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
                 memcpy(powSignedHashTemp.signature_, epollMessageTemp.data, sizeof(uint8_t) * 16);
+                // cerr << "SGX_SIGNED_HASH_TO_DEDUPCORE data size = " << epollMessageTemp.dataSize << endl;
+                // PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, epollMessageTemp.data, epollMessageTemp.dataSize);
                 for (int i = 0; i < hashNumber; i++) {
                     string hashTemp((char*)epollMessageTemp.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                     powSignedHashTemp.hash_.push_back(hashTemp);
@@ -97,18 +111,28 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
     bool status = true;
     signedHashList_t sig;
 
-    if (status) {
-        string tmpdata;
-        int size = in.hash_.size();
-        for (int i = 0; i < size; i++) {
-            if (fp2ChunkDB.query(in.hash_[i], tmpdata)) {
-                continue;
-            }
-            out.push_back(i);
-            sig.hashList.push_back(in.hash_[i]);
+    string tmpdata;
+    int size = in.hash_.size();
+    for (int i = 0; i < size; i++) {
+        if (fp2ChunkDB.query(in.hash_[i], tmpdata)) {
+            continue;
         }
+        out.push_back(i);
+        sig.hashList.push_back(in.hash_[i]);
     }
 
+    // for (int i = 0; i < in.hash_.size(); i++) {
+    //     cerr << "DedupCore : stage 1 -> pow hash list has chunk hash = " << endl;
+    //     PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &in.hash_[i][0], CHUNK_HASH_SIZE);
+    // }
+
+    // for (int i = 0; i < sig.hashList.size(); i++) {
+    //     cerr << "DedupCore : stage 1 -> sig job has chunk hash = " << endl;
+    //     PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &sig.hashList[i][0], CHUNK_HASH_SIZE);
+    // }
+    // for (int i = 0; i < out.size(); i++) {
+    //     cerr << "DedupCore : stage 1 -> required current id  = " << out[i] << endl;
+    // }
     /* register unique chunk list to timer
      * when time out,timer will check all chunk received or nor
      * if yes, then push all chunk to storage
@@ -133,6 +157,8 @@ bool DedupCore::dedupStage2(StorageChunkList_t& in)
             cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
             return false;
         }
+        // cerr << "DedupCore : stage 2 -> chunk data size = " << in.logicData[i].length() << " chunk hash = " << endl;
+        // PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &in.chunkHash[i][0], CHUNK_HASH_SIZE);
         TimerMapNode newNode;
         newNode.data = in.logicData[i];
         newNode.done = true;

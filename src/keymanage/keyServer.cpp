@@ -32,20 +32,20 @@ void keyServer::run(Socket socket)
     kmClient* client = new kmClient(keyn, keyd);
     if (!client->init(socket)) {
         cerr << "keyServer: enclave not truster" << endl;
-        pthread_exit(0);
+        return;
     }
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
         if (!socket.Recv(hash, recvSize)) {
             socket.finish();
-            pthread_exit(0);
+            return;
         }
 
         if ((recvSize % CHUNK_HASH_SIZE) != 0) {
             cerr << "key manager recv chunk hash error : hash size wrong" << endl;
             socket.finish();
-            pthread_exit(0);
+            return;
         }
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
         cerr << "KeyServer : recv hash number = " << recvNumber << endl;
@@ -65,7 +65,7 @@ void keyServer::run(Socket socket)
         if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             socket.finish();
-            pthread_exit(0);
+            return;
         }
     }
 }

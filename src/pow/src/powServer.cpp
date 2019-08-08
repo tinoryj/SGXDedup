@@ -146,16 +146,17 @@ void powServer::run()
                 memcpy(&hash[0], msg.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                 clientReq.hash_.push_back(hash);
             }
-            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             if (sessions.find(msg.fd) == sessions.end()) {
                 cerr << "PowServer : client not trusted yet" << endl;
                 msg.type = ERROR_CLOSE;
                 msg.dataSize = 0;
+                memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
             } else {
                 if (!sessions.at(msg.fd)->enclaveTrusted) {
                     cerr << "PowServer : client not trusted yet" << endl;
                     msg.type = ERROR_CLOSE;
                     msg.dataSize = 0;
+                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                 } else {
                     if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
                         msg.type = SGX_SIGNED_HASH_TO_DEDUPCORE;
