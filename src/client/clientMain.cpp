@@ -54,6 +54,8 @@ int main(int argv, char* argc[])
         //memcpy(&fileRecipe, &recvDecodeObj->getFileRecipeHead(), sizeof(Recipe_t));
         retrieverObj = new Retriever(fileName, recvDecodeObj);
 
+        gettimeofday(&timestart, NULL);
+
         for (int i = 0; i < config.getRecvDecodeThreadLimit(); i++) {
             th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
             thList.push_back(th);

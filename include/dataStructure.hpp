@@ -99,7 +99,7 @@ typedef struct {
 // database data structures
 
 typedef struct {
-    string containerName;
+    u_char containerName[16];
     uint32_t offset;
     uint32_t length;
 } keyForChunkHashDB_t;

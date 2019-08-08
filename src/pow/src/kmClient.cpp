@@ -163,7 +163,7 @@ bool kmClient::doAttestation()
     uint32_t msg3_sz;
 
     string enclaveName = config.getKMEnclaveName();
-    cerr << "KeyManagement start to create enclave" << endl;
+    cerr << "kmClient : start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : Can not launch km_enclave : " << enclaveName << endl;

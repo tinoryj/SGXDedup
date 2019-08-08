@@ -141,7 +141,6 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
         cerr << "PowClient : ecall failed" << endl;
         return false;
     }
-
     return true;
 }
 

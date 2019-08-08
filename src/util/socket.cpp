@@ -25,7 +25,7 @@ void Socket::init(const int type, string ip, int port)
         this->fd_ = socket(AF_INET, SOCK_STREAM, 0);
         this->addr_.sin_addr.s_addr = htons(INADDR_ANY);
         if (bind(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) != 0) {
-            cerr << "Error at bind fd to Socket" << endl;
+            cerr << "Socket : Error at bind fd to Socket" << endl;
             exit(1);
         }
         listen(this->fd_, 10);
@@ -35,8 +35,7 @@ void Socket::init(const int type, string ip, int port)
         this->fd_ = socket(AF_INET, SOCK_STREAM, 0);
         inet_pton(AF_INET, ip.c_str(), &this->addr_.sin_addr);
         if (connect(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) < 0) {
-            cerr << "Can not connect server when init for Client Socket" << endl;
-            cerr << "Socket.cpp::Socket::init" << endl;
+            cerr << "Socket : Can not connect server when init for Client Socket" << endl;
             exit(1);
         }
         return;
@@ -45,16 +44,16 @@ void Socket::init(const int type, string ip, int port)
         this->fd_ = socket(AF_INET, SOCK_DGRAM, 0);
         inet_pton(AF_INET, ip.c_str(), &addr_.sin_addr);
         if (bind(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) == -1) {
-            std::cerr << "Can not bind to sockfd" << endl;
-            std::cerr << "May cause by shutdown server before client" << endl;
-            std::cerr << "Wait for 30 sec and try again" << endl;
+            std::cerr << "Socket : Can not bind to sockfd" << endl
+                      << " May cause by shutdown server before client " << endl
+                      << " Wait for 30 sec and try again" << endl;
             exit(1);
         }
         return;
     }
     default: {
-        cerr << "Type Error at Socket(const int type, string ip, int port)" << endl;
-        cerr << "Type supported SERVER_TCP-0 CLIENT_TCP-1 UDP-2" << endl;
+        cerr << "Socket : Type Error at Socket(const int type, string ip, int port)" << endl
+             << "Type supported SERVER_TCP-0 CLIENT_TCP-1 UDP-2" << endl;
         exit(1);
     }
     }
@@ -72,11 +71,12 @@ Socket Socket::Listen()
     uint addrSize = sizeof(clientAddr);
     clientFd = accept(this->fd_, (struct sockaddr*)&clientAddr, &addrSize);
     if (clientFd > 0) {
-        cerr << "Clinet connect fd : " << clientFd << endl;
+        cerr << "Socket : Clinet connect fd : " << clientFd << endl;
         return Socket(clientFd, clientAddr);
+    } else {
+        cerr << "Socket : Error occur when Server accept connection from Client at Socket listen" << endl;
+        exit(1);
     }
-    cerr << "Error occur when Server accept connection from Client at Socket listen" << endl;
-    exit(1);
 }
 
 bool Socket::Send(u_char* buffer, int sendSize)
@@ -85,7 +85,7 @@ bool Socket::Send(u_char* buffer, int sendSize)
     int len;
     size_t s = write(this->fd_, (char*)&sendSize, sizeof(int));
     if (s < 0) {
-        cerr << "send errno: " << errno << endl;
+        cerr << "Socket : send errno: " << errno << endl;
         this->finish();
         return false;
     }
@@ -93,7 +93,7 @@ bool Socket::Send(u_char* buffer, int sendSize)
         len = write(this->fd_, buffer + sentSize, sendSize - sentSize);
         //should check errno here
         if (len <= 0) {
-            cerr << "send errno: " << errno << endl;
+            cerr << "Socket : recv errno: " << errno << endl;
         }
         sentSize += len;
     }
@@ -122,7 +122,7 @@ bool Socket::Recv(u_char* buffer, int& recvSize)
         readByteCount = read(this->fd_, buffer + recvedSize, recvSize - recvedSize);
         //should check errno here
         if (readByteCount <= 0) {
-            cerr << "recv errno: " << errno << endl;
+            cerr << "Socket : recv errno: " << errno << endl;
             this->finish();
             return false;
         }

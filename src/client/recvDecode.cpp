@@ -9,6 +9,7 @@ RecvDecode::RecvDecode(string fileName)
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
     recvFileHead(fileRecipe_, fileNameHash_);
+    cerr << "RecvDecode : recv file recipe head, file size = " << fileRecipe_.fileRecipeHead.fileSize << ", total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
 }
 
 RecvDecode::~RecvDecode()
@@ -37,29 +38,29 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
 
     while (true) {
         if (!socket_.Send(requestBuffer, sendSize)) {
-            cerr << "storage server closed" << endl;
+            cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
         if (!socket_.Recv(respondBuffer, recvSize)) {
-            cerr << "storage server closed" << endl;
+            cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
         memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
         if (respond.messageType == ERROR_RESEND) {
-            std::cerr << "Server send resend flag!" << endl;
+            std::cerr << "RecvDecode : Server send resend flag!" << endl;
             continue;
         }
         if (respond.messageType == ERROR_CLOSE) {
-            std::cerr << "Server reject download request!" << endl;
+            std::cerr << "RecvDecode : Server reject download request!" << endl;
             exit(1);
         }
         if (respond.messageType == ERROR_FILE_NOT_EXIST) {
-            std::cerr << "Server reject download request, file not exist in server!" << endl;
+            std::cerr << "RecvDecode : Server reject download request, file not exist in server!" << endl;
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
             if (respond.dataSize != sizeof(Recipe_t)) {
-                std::cerr << "Server send file recipe head faild!" << endl;
+                std::cerr << "RecvDecode : Server send file recipe head faild!" << endl;
                 exit(1);
             } else {
                 memcpy(&fileRecipe, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
@@ -70,11 +71,11 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
     return true;
 }
 
-bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t startID, uint32_t endID)
+bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& startID, uint32_t& endID)
 {
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
-    request.dataSize = FILE_NAME_HASH_SIZE;
+    request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     request.clientID = config.getClientID();
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     u_char requestBuffer[sendSize];
@@ -86,23 +87,23 @@ bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t s
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), &endID, sizeof(uint32_t));
     while (true) {
         if (!socket_.Send(requestBuffer, sendSize)) {
-            cerr << "storage server closed" << endl;
+            cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
         if (!socket_.Recv(respondBuffer, recvSize)) {
-            cerr << "storage server closed" << endl;
+            cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
         memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
         if (respond.messageType == ERROR_RESEND)
             continue;
         if (respond.messageType == ERROR_CLOSE) {
-            std::cerr << "Server reject download request!" << endl;
+            std::cerr << "RecvDecode : Server reject download request!" << endl;
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
             if ((respond.dataSize / sizeof(Chunk_t)) * sizeof(Chunk_t) != respond.dataSize) {
-                std::cerr << "Server send chunks faild!" << endl;
+                std::cerr << "RecvDecode : Server send chunks faild!" << endl;
                 exit(1);
             } else {
                 chunkNumber = respond.dataSize / sizeof(Chunk_t);
@@ -138,22 +139,32 @@ void RecvDecode::run()
         ChunkList_t newChunkList;
         int chunkNumber = 0;
         uint32_t startID = totalRecvChunks;
-        uint32_t endID = config.getSendChunkBatchSize();
-        recvChunks(newChunkList, chunkNumber, startID, endID);
-        for (int i = 0; i < chunkNumber; i++) {
-            cryptoObj_->decryptChunk(newChunkList[i]);
-            RetrieverData_t newData;
-            newData.ID = newChunkList[i].ID;
-            newData.logicDataSize = newChunkList[i].logicDataSize;
-            memcpy(newData.logicData, newChunkList[i].logicData, newChunkList[i].logicDataSize);
-            if (!insertMQToRetriever(newData)) {
-                cerr << "Error insert chunk data into retriever" << endl;
-            }
+        uint32_t endID;
+        if ((fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks) > config.getSendChunkBatchSize()) {
+            endID = startID + config.getSendChunkBatchSize();
+        } else {
+            endID = fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks;
         }
-        newChunkList.clear();
-        multiThreadDownloadMutex.lock();
-        totalRecvChunks += chunkNumber;
-        multiThreadDownloadMutex.unlock();
+        cerr << "RecvDecode : current request chunks from " << startID << " to " << endID << endl;
+        if (recvChunks(newChunkList, chunkNumber, startID, endID)) {
+            for (int i = 0; i < chunkNumber; i++) {
+                cryptoObj_->decryptChunk(newChunkList[i]);
+                RetrieverData_t newData;
+                newData.ID = newChunkList[i].ID;
+                newData.logicDataSize = newChunkList[i].logicDataSize;
+                memcpy(newData.logicData, newChunkList[i].logicData, newChunkList[i].logicDataSize);
+                if (!insertMQToRetriever(newData)) {
+                    cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
+                }
+            }
+            newChunkList.clear();
+            multiThreadDownloadMutex.lock();
+            totalRecvChunks += chunkNumber;
+            multiThreadDownloadMutex.unlock();
+            cerr << "RecvDecode : recv " << chunkNumber << " chunks done" << endl;
+        } else {
+            break;
+        }
     }
     return;
 }

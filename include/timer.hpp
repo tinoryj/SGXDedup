@@ -114,18 +114,11 @@ public:
     {
         string chunkLogicData;
         mapMutex_.lock();
-        // cerr << "Timer : current chunk table size = " << chunkTable.size() << endl;
-        // for (auto it = chunkTable.begin(); it != chunkTable.end(); it++) {
-        //     cerr << "chunk hash in map = " << endl;
-        //     PRINT_BYTE_ARRAY_TIMER(stderr, (char*)it->first.c_str(), CHUNK_HASH_SIZE);
-        // }
         for (auto it : nowJob.hashList) {
-            cerr << "chunk hash in job list = " << endl;
-            PRINT_BYTE_ARRAY_TIMER(stderr, (char*)it.c_str(), CHUNK_HASH_SIZE);
             auto temp = chunkTable.find(it);
             if (temp == chunkTable.end()) {
                 cerr << "Timer : can not find chunk" << endl;
-                // return false;
+                return false;
             } else {
                 StorageCoreData_t newData;
                 newData.logicDataSize = temp->second.data.length();

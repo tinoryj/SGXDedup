@@ -108,18 +108,16 @@ bool Sender::sendChunkList(ChunkList_t request, int& status)
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &chunkNumber, sizeof(int));
     for (int i = 0; i < chunkNumber; i++) {
-        // if (sendSize >= EPOLL_MESSAGE_DATA_SIZE) {
-        //     cerr << "Sender : error insert chunk into send list, space limit" << endl;
-        // }
         memcpy(requestBuffer + sendSize, request[i].chunkHash, CHUNK_HASH_SIZE);
         sendSize += CHUNK_HASH_SIZE;
         memcpy(requestBuffer + sendSize, &request[i].logicDataSize, sizeof(int));
         sendSize += sizeof(int);
-        // if (request[i].logicDataSize > MAX_CHUNK_SIZE) {
-        //     cerr << "Sender : error insert chunk into send list, chunk size error -> larger than max chunk size" << endl;
-        // }
         memcpy(requestBuffer + sendSize, request[i].logicData, request[i].logicDataSize);
         sendSize += request[i].logicDataSize;
+
+        cout << "Send Chunk ID = " << request[i].ID << " size = " << request[i].logicDataSize << endl;
+        PRINT_BYTE_ARRAY_SENDER(stdout, request[i].chunkHash, CHUNK_HASH_SIZE);
+        PRINT_BYTE_ARRAY_SENDER(stdout, request[i].logicData, request[i].logicDataSize);
     }
     requestBody.dataSize = sendSize - sizeof(NetworkHeadStruct_t);
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
@@ -293,8 +291,8 @@ void Sender::run()
         }
         if (extractMQFromPow(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                cerr << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                // cerr << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                // PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 memcpy(&fileRecipe, &tempChunk.recipe, sizeof(Recipe_t));
                 continue;
             } else if (tempChunk.dataType == DATA_TYPE_CHUNK) {

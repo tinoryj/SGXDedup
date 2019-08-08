@@ -136,17 +136,6 @@ void DataSR::run()
                 }
 
             } else if (event[i].events & EPOLLIN) {
-                // cerr << "Current recv event fd = " << event[i].data.fd << endl;
-                // auto iter = socketConnection.find(event[i].data.fd);
-                // Socket currentSock;
-                // if (iter != socketConnection.end()) {
-                //     currentSock = iter->second;
-                //     cerr << "current recv socket for fd find, inside fd = " << currentSock.fd_ << endl;
-                // } else {
-                //     cerr << "current recv socket for fd = " << event[i].data.fd << " not found" << endl;
-                //     continue;
-                // }
-                //memcpy(&msg, (EpollMessage_t*)event[i].data.ptr, sizeof(EpollMessage_t));
                 int recvSize = 0;
                 if (!socketConnection[event[i].data.fd].Recv(buffer, recvSize)) {
                     cerr << "DataSR : client closed socket connect, fd = " << event[i].data.fd << endl;
@@ -157,6 +146,10 @@ void DataSR::run()
                     epollSessionMutex_.lock();
                     epollSession_.erase(event[i].data.fd);
                     epollSessionMutex_.unlock();
+                    // EpollMessage_t msg;
+                    // msg.type = ERROR_CLIENT_CLOSE_CONNECT;
+                    // msg.dataSize = 0;
+                    // insertMQ2StorageCore(msg);
                 } else {
                     EpollMessage_t msg;
                     ev.data.ptr = (void*)&msg;

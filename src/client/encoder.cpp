@@ -51,8 +51,8 @@ void Encoder::run()
         }
         if (extractMQFromKeyClient(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                cerr << "Encoder : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                PRINT_BYTE_ARRAY_ENCODER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                // cerr << "Encoder : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                // PRINT_BYTE_ARRAY_ENCODER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 insertMQToPOW(tempChunk);
                 continue;
             } else if (tempChunk.dataType == DATA_TYPE_CHUNK) {

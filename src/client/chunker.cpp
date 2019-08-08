@@ -5,6 +5,25 @@ extern Configure config;
 struct timeval timestartChunker;
 struct timeval timeendChunker;
 
+void PRINT_BYTE_ARRAY_CHUNKER(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 Chunker::Chunker(std::string path, keyClient* keyClientObjTemp)
 {
     loadChunkFile(path);
@@ -315,8 +334,11 @@ void Chunker::varSizeChunking()
                     cerr << "Chunker : error insert chunk to keyClient MQ for chunk ID = " << tempChunk.chunk.ID << endl;
                     exit(0);
                 }
-                // cerr << "Chunker : new chunk hash = " << endl;
-                // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+
+                cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
             }
@@ -340,8 +362,11 @@ void Chunker::varSizeChunking()
                     cerr << "Chunker : error insert chunk to keyClient MQ for chunk ID = " << tempChunk.chunk.ID << endl;
                     exit(0);
                 }
-                // cerr << "Chunker : new chunk hash = " << endl;
-                // PRINT_BYTE_ARRAY(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+
+                cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
             }
@@ -370,6 +395,11 @@ void Chunker::varSizeChunking()
         } else {
             cerr << "Chunker : insert last chunk into message queue done" << endl;
         }
+
+        cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+        PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+        PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
     }

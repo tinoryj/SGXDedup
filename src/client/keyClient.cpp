@@ -74,8 +74,8 @@ void keyClient::run()
         }
         if (extractMQFromChunker(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                cerr << "KeyClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                // cerr << "KeyClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 insertMQtoEncoder(tempChunk);
                 continue;
             }
