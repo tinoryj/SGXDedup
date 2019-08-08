@@ -115,9 +115,10 @@ bool Sender::sendChunkList(ChunkList_t request, int& status)
         memcpy(requestBuffer + sendSize, request[i].logicData, request[i].logicDataSize);
         sendSize += request[i].logicDataSize;
 
-        cout << "Send Chunk ID = " << request[i].ID << " size = " << request[i].logicDataSize << endl;
-        PRINT_BYTE_ARRAY_SENDER(stdout, request[i].chunkHash, CHUNK_HASH_SIZE);
-        PRINT_BYTE_ARRAY_SENDER(stdout, request[i].logicData, request[i].logicDataSize);
+        // cout << "Send Chunk ID = " << request[i].ID << " size = " << request[i].logicDataSize << endl;
+        // PRINT_BYTE_ARRAY_SENDER(stdout, request[i].chunkHash, CHUNK_HASH_SIZE);
+        // PRINT_BYTE_ARRAY_SENDER(stdout, request[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+        //PRINT_BYTE_ARRAY_SENDER(stdout, request[i].logicData, request[i].logicDataSize);
     }
     requestBody.dataSize = sendSize - sizeof(NetworkHeadStruct_t);
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));

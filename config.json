@@ -80,6 +80,6 @@
 		"_sendRecipeBatchSize": 50000
 	},
 	"timer": {
-		"_timeScale": 1
+		"_timeScale": 3
 	}
 }

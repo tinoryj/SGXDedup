@@ -58,6 +58,10 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
             std::cerr << "RecvDecode : Server reject download request, file not exist in server!" << endl;
             exit(1);
         }
+        if (respond.messageType == ERROR_CHUNK_NOT_EXIST) {
+            std::cerr << "RecvDecode : Server reject download request, chunk not exist in server!" << endl;
+            exit(1);
+        }
         if (respond.messageType == SUCCESS) {
             if (respond.dataSize != sizeof(Recipe_t)) {
                 std::cerr << "RecvDecode : Server send file recipe head faild!" << endl;

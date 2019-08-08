@@ -43,13 +43,13 @@ public:
     }
     void registerHashList(signedHashList_t& job)
     {
-        mapMutex_.lock();
-        for (auto it : job.hashList) {
-            TimerMapNode tempNode;
-            tempNode.done = false;
-            chunkTable.insert(make_pair(it, tempNode));
-        }
-        mapMutex_.unlock();
+        // mapMutex_.lock();
+        // for (auto it : job.hashList) {
+        //     TimerMapNode tempNode;
+        //     tempNode.done = false;
+        //     chunkTable.insert(make_pair(it, tempNode));
+        // }
+        // mapMutex_.unlock();
         timerMutex_.lock();
         jobQueue_.push(job);
         timerMutex_.unlock();
@@ -72,7 +72,7 @@ public:
             timerMutex_.unlock();
 
             if (!emptyFlag) {
-                cerr << "Timer : current job queue size = " << jobQueue_.size() << endl;
+                // cerr << "Timer : current job queue size = " << jobQueue_.size() << endl;
                 now = std::chrono::high_resolution_clock::now();
                 dtn = duration_cast<milliseconds>(now - nowJob.startTime);
                 if (dtn.count() - nowJob.outDataTime < 0) {
@@ -120,6 +120,8 @@ public:
                 cerr << "Timer : can not find chunk" << endl;
                 return false;
             } else {
+                // cerr << "Timer : find data size = " << temp->second.data.length() << " hash = " << endl;
+                // PRINT_BYTE_ARRAY_TIMER(stderr, &it[0], CHUNK_HASH_SIZE);
                 StorageCoreData_t newData;
                 newData.logicDataSize = temp->second.data.length();
                 memcpy(newData.chunkHash, &it[0], CHUNK_HASH_SIZE);

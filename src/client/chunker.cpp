@@ -335,9 +335,9 @@ void Chunker::varSizeChunking()
                     exit(0);
                 }
 
-                cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
-                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+                // cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+                // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
 
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
@@ -363,9 +363,9 @@ void Chunker::varSizeChunking()
                     exit(0);
                 }
 
-                cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
-                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+                // cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+                // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
 
                 chunkIDCnt++;
                 chunkBufferCnt = winFp = 0;
@@ -396,9 +396,9 @@ void Chunker::varSizeChunking()
             cerr << "Chunker : insert last chunk into message queue done" << endl;
         }
 
-        cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
-        PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-        PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+        // cout << "Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+        // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+        // PRINT_BYTE_ARRAY_CHUNKER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
 
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;

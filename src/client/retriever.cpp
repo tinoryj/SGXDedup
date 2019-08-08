@@ -22,7 +22,7 @@ void Retriever::retrieveFileThread()
         if (current == chunkTempList_.end()) {
             continue;
         } else {
-            cerr << "Retriever : write chunk ID = " << currentID_ << " out" << endl;
+            // cerr << "Retriever : write chunk ID = " << currentID_ << " out" << endl;
             retrieveFile_.write(current->second.c_str(), current->second.length());
             chunkTempList_.erase(current);
             currentID_++;
@@ -38,7 +38,7 @@ void Retriever::recvThread()
     while (totalRecvNumber_ < totalChunkNumber_) {
         RetrieverData_t newData;
         if (extractMQFromRecvDecode(newData)) {
-            cerr << "Retriever : extract new chunk frome message queue, ID = " << newData.ID << endl;
+            // cerr << "Retriever : extract new chunk frome message queue, ID = " << newData.ID << endl;
             string data;
             data.resize(newData.logicDataSize);
             memcpy(&data[0], newData.logicData, newData.logicDataSize);

@@ -141,7 +141,8 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
 
     sig.startTime = std::chrono::high_resolution_clock::now();
     sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
-    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl;
+    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl
+         << "outdate time = " << setbase(10) << sig.outDataTime << endl;
     timerObj_->registerHashList(sig);
 
     return status;
@@ -163,7 +164,6 @@ bool DedupCore::dedupStage2(StorageChunkList_t& in)
         newNode.data = in.logicData[i];
         newNode.done = true;
         timerObj_->mapMutex_.lock();
-        timerObj_->chunkTable.erase(in.chunkHash[i]);
         timerObj_->chunkTable.insert(make_pair(in.chunkHash[i], newNode));
         timerObj_->mapMutex_.unlock();
     }
