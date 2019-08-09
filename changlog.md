@@ -4,15 +4,15 @@
 
 * basic test for 1G file upload & download passed (Aug 8 version):
     * single machine, 6C6T i5 9600K.
-    * -O3 optimization with clang compiler (-O0), without gdb flag.
+    * -O3 optimization with clang compiler, without gdb flag.
     * upload avg 30s, download avg 17s (3 times run). 
 
 * merge keyClient & encoder to decrease thread number & message queue overhead
 
 * basic test for 1G file upload & download passed :
     * single machine, 6C6T i5 9600K.
-    * -O3 optimization with clang compiler (-O0), with gdb flag.
-    * upload avg 17s, download avg 13s (3 times run). 
+    * -O3 optimization with clang compiler, with gdb flag.
+    * upload avg 17s, download avg 11s (3 times run). 
 
 
 
