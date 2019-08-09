@@ -19,6 +19,7 @@ typedef struct {
 
 class Timer {
 private:
+    Configure* configObj_;
     struct cmp {
         bool operator()(signedHashList_t x, signedHashList_t y)
         {
@@ -35,7 +36,8 @@ public:
     std::mutex mapMutex_;
     Timer()
     {
-        outPutMQ_ = new messageQueue<StorageCoreData_t>(3000);
+        configObj_ = new Configure("config.json");
+        outPutMQ_ = new messageQueue<StorageCoreData_t>(configObj_->get_StorageData_t_MQSize());
     }
     ~Timer()
     {

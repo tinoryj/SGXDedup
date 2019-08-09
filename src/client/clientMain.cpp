@@ -1,7 +1,6 @@
 #include "../pow/include/powClient.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
-#include "encoder.hpp"
 #include "keyClient.hpp"
 #include "recvDecode.hpp"
 #include "retriever.hpp"
@@ -16,7 +15,6 @@ Configure config("config.json");
 KeyCache kCache;
 Chunker* chunkerObj;
 keyClient* keyClientObj;
-Encoder* encoderObj;
 Sender* senderObj;
 RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
@@ -63,15 +61,14 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
-        th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
-        thList.push_back(th);
+        // th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
+        // thList.push_back(th);
 
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
-        encoderObj = new Encoder(PowClientObj);
-        keyClientObj = new keyClient(encoderObj);
+        keyClientObj = new keyClient(PowClientObj);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
 
@@ -83,12 +80,6 @@ int main(int argv, char* argc[])
         //start key client thread
         for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
             th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
-            thList.push_back(th);
-        }
-
-        // //start encode thread
-        for (int i = 0; i < config.getEncoderThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
             thList.push_back(th);
         }
 

@@ -4,7 +4,7 @@ extern Configure config;
 
 RecvDecode::RecvDecode(string fileName)
 {
-    outPutMQ_ = new messageQueue<RetrieverData_t>(3000);
+    outPutMQ_ = new messageQueue<RetrieverData_t>(config.get_RetrieverData_t_MQSize());
     cryptoObj_ = new CryptoPrimitive();
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);

@@ -10,7 +10,7 @@
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 3000,
+		"_keyBatchSize": 2500,
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
@@ -31,10 +31,10 @@
 		"_maxContainerSize": 4096
 	},
 	"messageQueue": {
-		"_Data_t_MQSize": 5000,
-		"_EpollMessage_t_MQSize": 10,
-		"_RetrieverData_t_MQSize": 5000,
-		"_StorageData_t_MQSize": 5000
+		"_Data_t_MQSize": 8000,
+		"_EpollMessage_t_MQSize": 50,
+		"_RetrieverData_t_MQSize": 50000,
+		"_StorageData_t_MQSize": 50000
 	},
 	"mutiThread": {
 		"_encodeThreadLimit": 1,
@@ -76,8 +76,8 @@
 	},
 	"client": {
 		"_clientID": 1,
-		"_sendChunkBatchSize": 600,
-		"_sendRecipeBatchSize": 50000
+		"_sendChunkBatchSize": 700,
+		"_sendRecipeBatchSize": 90000
 	},
 	"timer": {
 		"_timeScale": 3

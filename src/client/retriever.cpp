@@ -14,6 +14,7 @@ Retriever::~Retriever()
 {
     retrieveFile_.close();
 }
+
 void Retriever::retrieveFileThread()
 {
     while (currentID_ < totalChunkNumber_) {

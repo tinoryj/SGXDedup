@@ -5,9 +5,9 @@
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
-#include "encoder.hpp"
 #include "kmServer.hpp"
 #include "messageQueue.hpp"
+#include "powClient.hpp"
 #include "powSession.hpp"
 #include "socket.hpp"
 
@@ -16,7 +16,7 @@
 class keyClient {
 private:
     messageQueue<Data_t>* inputMQ_;
-    Encoder* encoderObj_;
+    powClient* powObj_;
     CryptoPrimitive* cryptoObj_;
     int keyBatchSize_;
     Socket socket_;
@@ -24,12 +24,13 @@ private:
     u_char keyExchangeKey_[16];
 
 public:
-    keyClient(Encoder* encoderObjTemp);
+    keyClient(powClient* powObjTemp);
     ~keyClient();
     void run();
+    bool encodeChunk(Data_t& newChunk);
     bool insertMQFromChunker(Data_t& newChunk);
     bool extractMQFromChunker(Data_t& newChunk);
-    bool insertMQtoEncoder(Data_t& newChunk);
+    bool insertMQToPOW(Data_t& newChunk);
     bool editJobDoneFlag();
     bool setJobDoneFlag();
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);

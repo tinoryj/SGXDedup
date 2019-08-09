@@ -3,12 +3,14 @@
 #define MESSAGE2STORAGE 2
 #define MESSAGE2DEDUPCORE 3
 
+extern Configure config;
+
 DataSR::DataSR()
 {
-    MQ2DataSR_CallBack_ = new messageQueue<EpollMessage_t>(50);
-    MQ2DedupCore_ = new messageQueue<EpollMessage_t>(50);
-    MQ2StorageCore_ = new messageQueue<EpollMessage_t>(50);
-    MQ2RAServer_ = new messageQueue<EpollMessage_t>(50);
+    MQ2DataSR_CallBack_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
+    MQ2DedupCore_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
+    MQ2StorageCore_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
+    MQ2RAServer_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
     socket_.init(SERVER_TCP, "", config.getStorageServerPort());
     epfd = epoll_create(20);
 }
@@ -77,7 +79,6 @@ void DataSR::run()
     for (int i = 0; i < 100; i++) {
         event[i].data.ptr = nullptr;
     }
-    cerr << endl;
 
     while (true) {
         int nfd = epoll_wait(epfd, event, 20, 500);

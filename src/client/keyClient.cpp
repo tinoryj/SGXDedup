@@ -27,10 +27,10 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "\n}\n");
 }
 
-keyClient::keyClient(Encoder* encoderObjTemp)
+keyClient::keyClient(powClient* powObjTemp)
 {
-    inputMQ_ = new messageQueue<Data_t>(3000);
-    encoderObj_ = encoderObjTemp;
+    inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
+    powObj_ = powObjTemp;
     cryptoObj_ = new CryptoPrimitive();
     keyBatchSize_ = (int)config.getKeyBatchSize();
     socket_.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
@@ -76,7 +76,7 @@ void keyClient::run()
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
                 // cerr << "KeyClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
                 // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
-                insertMQtoEncoder(tempChunk);
+                insertMQToPOW(tempChunk);
                 continue;
             }
             // cerr << "KeyClient : current extract  chunk ID = " << tempChunk.chunk.ID << " chunk data size = " << tempChunk.chunk.logicDataSize << endl;
@@ -91,7 +91,7 @@ void keyClient::run()
             if (kCache.existsKeyinCache(tempHashForCache)) {
                 string hitCacheTemp = kCache.getKeyFromCache(tempHashForCache);
                 memcpy(tempChunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
-                insertMQtoEncoder(tempChunk);
+                insertMQToPOW(tempChunk);
             } else {
                 batchList.push_back(tempChunk);
                 memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
@@ -132,7 +132,12 @@ void keyClient::run()
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     Data_t newDataToInsert;
                     memcpy(&newDataToInsert, &batchList[i], sizeof(Data_t));
-                    insertMQtoEncoder(newDataToInsert);
+                    if (encodeChunk(newDataToInsert)) {
+                        insertMQToPOW(newDataToInsert);
+                    } else {
+                        cerr << "KeyClient : encode chunk error, exiting" << endl;
+                        exit(0);
+                    }
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -141,7 +146,7 @@ void keyClient::run()
             }
         }
         if (JobDoneFlag) {
-            if (!setJobDoneFlag()) {
+            if (!powObj_->editJobDoneFlag()) {
                 cerr << "KeyClient : error to set job done flag for encoder" << endl;
             } else {
                 cerr << "KeyClient : key exchange thread job done, set job done flag for encoder done, exit now" << endl;
@@ -185,6 +190,21 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
+bool keyClient::encodeChunk(Data_t& newChunk)
+{
+    bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);
+    bool statusHash = cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
+    if (!statusChunk) {
+        cerr << "Encoder : error encrypt chunk" << endl;
+        return false;
+    } else if (!statusHash) {
+        cerr << "Encoder : error compute hash" << endl;
+        return false;
+    } else {
+        return true;
+    }
+}
+
 bool keyClient::insertMQFromChunker(Data_t& newChunk)
 {
     return inputMQ_->push(newChunk);
@@ -195,9 +215,9 @@ bool keyClient::extractMQFromChunker(Data_t& newChunk)
     return inputMQ_->pop(newChunk);
 }
 
-bool keyClient::insertMQtoEncoder(Data_t& newChunk)
+bool keyClient::insertMQToPOW(Data_t& newChunk)
 {
-    return encoderObj_->insertMQFromKeyClient(newChunk);
+    return powObj_->insertMQFromEncoder(newChunk);
 }
 
 bool keyClient::editJobDoneFlag()
@@ -208,9 +228,4 @@ bool keyClient::editJobDoneFlag()
     } else {
         return false;
     }
-}
-
-bool keyClient::setJobDoneFlag()
-{
-    return encoderObj_->editJobDoneFlag();
 }

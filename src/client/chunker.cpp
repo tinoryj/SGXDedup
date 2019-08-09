@@ -156,7 +156,6 @@ void Chunker::ChunkerInit(string path)
         cerr << setw(6) << "polyMOD: 0x" << hex << polyMOD << endl;
         cerr << setw(6) << "_anchoranchorMask: 0x" << hex << anchorMask << endl;
         cerr << setw(6) << "anchorValue: 0x" << hex << anchorValue << endl;
-        cerr << endl;
     } else if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
 
         avgChunkSize = (int)config.getAverageChunkSize();
@@ -181,7 +180,6 @@ void Chunker::ChunkerInit(string path)
         cerr << "A fixed size Chunker has been constructed!" << endl;
         cerr << "Parameters: " << endl;
         cerr << setw(6) << "ChunkSize: " << avgChunkSize << endl;
-        cerr << endl;
     }
 }
 

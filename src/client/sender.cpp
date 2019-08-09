@@ -27,7 +27,7 @@ void PRINT_BYTE_ARRAY_SENDER(
 
 Sender::Sender()
 {
-    inputMQ_ = new messageQueue<Data_t>(3000);
+    inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     cryptoObj_ = new CryptoPrimitive();
 }

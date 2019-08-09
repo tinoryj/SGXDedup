@@ -54,8 +54,8 @@ void powClient::run()
         }
         if (extractMQFromEncoder(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                cerr << "PowClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                PRINT_BYTE_ARRAY_POW_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                // cerr << "PowClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                // PRINT_BYTE_ARRAY_POW_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 insertMQToSender(tempChunk);
                 continue;
             } else {
@@ -146,7 +146,7 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
 
 powClient::powClient(Sender* senderObjTemp)
 {
-    inputMQ_ = new messageQueue<Data_t>(3000);
+    inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
     updated = 0;
     enclave_trusted = false;
     _ctx = 0xdeadbeef;
