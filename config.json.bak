@@ -1,0 +1,172 @@
+{
+	"ChunkerConfig": {
+		"_runningType": 0,
+		"_chunkingType": 1,
+		"_minChunkSize": 4096,
+		"_avgChunkSize": 8192,
+		"_maxChunkSize": 16384,
+		"_slidingWinSize": 256,
+		"_ReadSize": 256,
+		"_segmentSize": 0
+	},
+	"KeyServerConfig": {
+		"_keyBatchSize": 2500,
+		"_keyServerNumber": 1,
+		"_keyCacheSize": 10000,
+		"_keyServerIP": [
+			"127.0.0.1"
+		],
+		"_keyServerPort": [
+			6666
+		]
+	},
+	"SPConfig": {
+		"_storageServerNumber": 1,
+		"_storageServerIP": [
+			"127.0.0.1"
+		],
+		"_storageServerPort": [
+			6668
+		],
+		"_maxContainerSize": 4096
+	},
+	"messageQueue": {
+		"_Data_t_MQSize": 8000,
+		"_EpollMessage_t_MQSize": 50,
+		"_RetrieverData_t_MQSize": 50000,
+		"_StorageData_t_MQSize": 50000
+	},
+	"mutiThread": {
+		"_encodeThreadLimit": 1,
+		"_keyClientThreadLimit": 1,
+		"_keyServerThreadLimit": 1,
+		"_senderThreadLimit": 1,
+		"_receiverThreadLimit": 1,
+		"_decoderThreadLimit": 1,
+		"_dataSRThreadLimit": 1,
+		"_retriverThreadLimit": 1,
+		"_dedupCoreThreadLimit": 1,
+		"_storageCoreThreadLimit": 1,
+		"_recvDecodeThreadLimit": 1
+	},
+	"pow": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "127.0.0.1",
+		"_ServerPort": 6698,
+		"_enclave_name": "pow_enclave.signed.so",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType": 0,
+		"_batchSize": 5000
+	},
+	"km": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "127.0.0.1",
+		"_ServerPort": 6676,
+		"_enclave_name": "km_enclave.signed.so",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType": 0
+	},
+	"server": {
+		"_RecipeRootPath": "Recipes/",
+		"_containerRootPath": "Containers/",
+		"_fp2ChunkDBName": "db1",
+		"_fp2MetaDBame": "db2"
+	},
+	"client": {
+		"_clientID": 1,
+		"_sendChunkBatchSize": 700,
+		"_sendRecipeBatchSize": 90000
+	},
+	"timer": {
+		"_timeScale": 3
+	}
+}
+
+
+{
+	"ChunkerConfig": {
+		"_runningType": 0,
+		"_chunkingType": 1,
+		"_minChunkSize": 4096,
+		"_avgChunkSize": 8192,
+		"_maxChunkSize": 16384,
+		"_slidingWinSize": 256,
+		"_ReadSize": 256,
+		"_segmentSize": 0
+	},
+	"KeyServerConfig": {
+		"_keyBatchSize": 2500,
+		"_keyServerNumber": 1,
+		"_keyCacheSize": 10000,
+		"_keyServerIP": [
+			"10.59.13.222"
+		],
+		"_keyServerPort": [
+			6666
+		]
+	},
+	"SPConfig": {
+		"_storageServerNumber": 1,
+		"_storageServerIP": [
+			"10.59.13.222"
+		],
+		"_storageServerPort": [
+			6668
+		],
+		"_maxContainerSize": 4096
+	},
+	"messageQueue": {
+		"_Data_t_MQSize": 8000,
+		"_EpollMessage_t_MQSize": 50,
+		"_RetrieverData_t_MQSize": 50000,
+		"_StorageData_t_MQSize": 50000
+	},
+	"mutiThread": {
+		"_encodeThreadLimit": 1,
+		"_keyClientThreadLimit": 1,
+		"_keyServerThreadLimit": 1,
+		"_senderThreadLimit": 1,
+		"_receiverThreadLimit": 1,
+		"_decoderThreadLimit": 1,
+		"_dataSRThreadLimit": 1,
+		"_retriverThreadLimit": 1,
+		"_dedupCoreThreadLimit": 1,
+		"_storageCoreThreadLimit": 1,
+		"_recvDecodeThreadLimit": 1
+	},
+	"pow": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "10.59.13.222",
+		"_ServerPort": 6698,
+		"_enclave_name": "pow_enclave.signed.so",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType": 0,
+		"_batchSize": 5000
+	},
+	"km": {
+		"_quoteType": 0,
+		"_iasVersion": 3,
+		"_ServerIp": "10.59.13.222",
+		"_ServerPort": 6676,
+		"_enclave_name": "km_enclave.signed.so",
+		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_iasServerType": 0
+	},
+	"server": {
+		"_RecipeRootPath": "Recipes/",
+		"_containerRootPath": "Containers/",
+		"_fp2ChunkDBName": "db1",
+		"_fp2MetaDBame": "db2"
+	},
+	"client": {
+		"_clientID": 1,
+		"_sendChunkBatchSize": 700,
+		"_sendRecipeBatchSize": 90000
+	},
+	"timer": {
+		"_timeScale": 4
+	}
+}

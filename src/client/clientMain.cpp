@@ -41,7 +41,7 @@ int main(int argv, char* argc[])
 
     boost::thread::attributes attrs;
     //cerr << attrs.get_stack_size() << endl;
-    attrs.set_stack_size(100 * 1024 * 1024);
+    attrs.set_stack_size(200 * 1024 * 1024);
 
     if (strcmp("-r", argc[1]) == 0) {
         //run receive
@@ -61,8 +61,8 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
-        // th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
-        // thList.push_back(th);
+        th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
+        thList.push_back(th);
 
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send

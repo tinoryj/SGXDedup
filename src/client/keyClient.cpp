@@ -85,18 +85,18 @@ void keyClient::run()
             // cerr << setw(6) << "chunk key = " << endl;
             // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
 
-            string tempHashForCache;
-            tempHashForCache.resize(CHUNK_HASH_SIZE);
-            memcpy(&tempHashForCache[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-            if (kCache.existsKeyinCache(tempHashForCache)) {
-                string hitCacheTemp = kCache.getKeyFromCache(tempHashForCache);
-                memcpy(tempChunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
-                insertMQToPOW(tempChunk);
-            } else {
-                batchList.push_back(tempChunk);
-                memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                batchNumber++;
-            }
+            // string tempHashForCache;
+            // tempHashForCache.resize(CHUNK_HASH_SIZE);
+            // memcpy(&tempHashForCache[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+            // if (kCache.existsKeyinCache(tempHashForCache)) {
+            //     string hitCacheTemp = kCache.getKeyFromCache(tempHashForCache);
+            //     memcpy(tempChunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
+            //     insertMQToPOW(tempChunk);
+            // } else {
+            batchList.push_back(tempChunk);
+            memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+            batchNumber++;
+            // }
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             int batchedKeySize = 0;
@@ -122,9 +122,10 @@ void keyClient::run()
                     // cerr << setw(6) << "chunk key = " << endl;
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    string tempHash((char*)batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
-                    string tempKey((char*)batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    kCache.insertKeyToCache(tempHash, tempKey);
+                    // string tempHash((char*)batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
+                    // string tempKey((char*)batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                    // kCache.insertKeyToCache(tempHash, tempKey);
+
                     // cerr << "KeyClient : new current chunk ID = " << batchList[i].chunk.ID << " chunk data size = " << batchList[i].chunk.logicDataSize << endl;
                     // cerr << setw(6) << "chunk hash = " << endl;
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);

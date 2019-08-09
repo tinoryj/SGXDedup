@@ -279,7 +279,7 @@ void Sender::run()
     Data_t tempChunk;
     RecipeList_t recipeList;
     Recipe_t fileRecipe;
-
+    int sendBatchSize = config.getSendChunkBatchSize();
     int status;
 
     bool jobDoneFlag = false;
@@ -310,7 +310,7 @@ void Sender::run()
                 currentSendRecipeNumber++;
             }
         }
-        if (currentChunkNumber == config.getSendChunkBatchSize() || jobDoneFlag) {
+        if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
             //cerr << "Sender : run -> start send " << currentChunkNumber << " chunks to server" << endl;
             while (true) {
                 this->sendChunkList(chunkList, status);

@@ -66,7 +66,7 @@ int main()
 
     boost::thread::attributes attrs;
     //cerr << attrs.get_stack_size() << endl;
-    attrs.set_stack_size(100 * 1024 * 1024);
+    attrs.set_stack_size(200 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
 
     //start DataSR
