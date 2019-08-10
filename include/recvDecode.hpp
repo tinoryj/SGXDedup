@@ -26,7 +26,6 @@ public:
     RecvDecode(string fileName);
     ~RecvDecode();
     void run();
-    bool receiveData(string& data, int status);
     bool recvFileHead(Recipe_t& FileRecipe, u_char* fileNameHash);
     bool recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& startID, uint32_t& endID);
     Recipe_t getFileRecipeHead();

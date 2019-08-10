@@ -3,7 +3,6 @@
 #include <sys/time.h>
 
 extern Configure config;
-extern KeyCache kCache;
 
 struct timeval timestartKey;
 struct timeval timeendKey;

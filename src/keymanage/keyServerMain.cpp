@@ -2,7 +2,6 @@
 #include "socket.hpp"
 
 Configure config("config.json");
-KeyCache kCache;
 
 int main()
 {

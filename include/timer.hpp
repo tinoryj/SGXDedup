@@ -1,7 +1,6 @@
 #ifndef GENERALDEDUPSYSTEM_TIMER_HPP
 #define GENERALDEDUPSYSTEM_TIMER_HPP
 
-#include "cache.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -14,7 +13,8 @@ using namespace std;
 
 typedef struct {
     bool done = false;
-    string data;
+    u_char data[MAX_CHUNK_SIZE];
+    int dataSize;
 } TimerMapNode;
 
 class Timer {
@@ -45,13 +45,6 @@ public:
     }
     void registerHashList(signedHashList_t& job)
     {
-        // mapMutex_.lock();
-        // for (auto it : job.hashList) {
-        //     TimerMapNode tempNode;
-        //     tempNode.done = false;
-        //     chunkTable.insert(make_pair(it, tempNode));
-        // }
-        // mapMutex_.unlock();
         timerMutex_.lock();
         jobQueue_.push(job);
         timerMutex_.unlock();
@@ -122,12 +115,10 @@ public:
                 cerr << "Timer : can not find chunk" << endl;
                 return false;
             } else {
-                // cerr << "Timer : find data size = " << temp->second.data.length() << " hash = " << endl;
-                // PRINT_BYTE_ARRAY_TIMER(stderr, &it[0], CHUNK_HASH_SIZE);
                 StorageCoreData_t newData;
-                newData.logicDataSize = temp->second.data.length();
+                newData.logicDataSize = temp->second.dataSize;
                 memcpy(newData.chunkHash, &it[0], CHUNK_HASH_SIZE);
-                memcpy(newData.logicData, &temp->second.data[0], newData.logicDataSize);
+                memcpy(newData.logicData, temp->second.data, newData.logicDataSize);
                 insertMQToStorageCore(newData);
                 chunkTable.erase(it);
             }

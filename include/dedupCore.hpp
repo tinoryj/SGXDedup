@@ -1,7 +1,6 @@
 #ifndef GENERALDEDUPSYSTEM_DEDUPCORE_HPP
 #define GENERALDEDUPSYSTEM_DEDUPCORE_HPP
 
-#include "cache.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataSR.hpp"
@@ -18,7 +17,7 @@ class DedupCore {
 private:
     CryptoPrimitive* cryptoObj_;
     bool dedupStage1(powSignedHash_t in, RequiredChunk_t& out);
-    bool dedupStage2(StorageChunkList_t& in);
+    bool dedupStage2(EpollMessage_t& epollMessageTemp);
     Timer* timerObj_;
     DataSR* dataSRObj_;
 

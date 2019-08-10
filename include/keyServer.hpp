@@ -1,7 +1,6 @@
 #ifndef GENERALDEDUPSYSTEM_KEYSERVER_HPP
 #define GENERALDEDUPSYSTEM_KEYSERVER_HPP
 
-#include "cache.hpp"
 #include "configure.hpp"
 #include "dataStructure.hpp"
 #include "kmClient.hpp"

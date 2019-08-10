@@ -1,6 +1,5 @@
 #include "../pow/include/powServer.hpp"
 #include "boost/thread.hpp"
-#include "cache.hpp"
 #include "configure.hpp"
 #include "dataSR.hpp"
 #include "database.hpp"
@@ -13,7 +12,6 @@ Configure config("config.json");
 
 Database fp2ChunkDB;
 Database fileName2metaDB;
-ChunkCache* cache;
 
 StorageCore* storageObj;
 DataSR* dataSRObj;
@@ -57,7 +55,6 @@ int main()
 
     vector<boost::thread*> thList;
     boost::thread* th;
-    cache = new ChunkCache();
     timerObj = new Timer();
     dataSRObj = new DataSR();
     dedupCoreObj = new DedupCore(dataSRObj, timerObj);

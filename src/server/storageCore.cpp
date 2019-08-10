@@ -85,24 +85,7 @@ void StorageCore::storageThreadForDataSR()
         EpollMessage_t epollMessage;
         if (extractMQFromDataSR(epollMessage)) {
             switch (epollMessage.type) {
-            case CLIENT_DOWNLOAD_FILEHEAD: {
-                Recipe_t restoredFileRecipe;
-                if (restoreRecipeHead((char*)epollMessage.data, restoredFileRecipe)) {
-                    epollMessage.type = SUCCESS;
-                    epollMessage.dataSize = sizeof(Recipe_t);
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    memcpy(epollMessage.data, &restoredFileRecipe, sizeof(Recipe_t));
-                    // cerr << "StorageCore : restored file recipe head for " << endl;
-                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, restoredFileRecipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                } else {
-                    epollMessage.type = ERROR_FILE_NOT_EXIST;
-                    epollMessage.dataSize = 0;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                }
-                break;
-            }
+
             case CLIENT_UPLOAD_RECIPE: {
                 Recipe_t tempRecipeHead;
                 memcpy(&tempRecipeHead, epollMessage.data, sizeof(Recipe_t));
@@ -130,6 +113,26 @@ void StorageCore::storageThreadForDataSR()
                 }
                 break;
             }
+
+            case CLIENT_DOWNLOAD_FILEHEAD: {
+                Recipe_t restoredFileRecipe;
+                if (restoreRecipeHead((char*)epollMessage.data, restoredFileRecipe)) {
+                    epollMessage.type = SUCCESS;
+                    epollMessage.dataSize = sizeof(Recipe_t);
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    memcpy(epollMessage.data, &restoredFileRecipe, sizeof(Recipe_t));
+                    // cerr << "StorageCore : restored file recipe head for " << endl;
+                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, restoredFileRecipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+                    insertMQToDataSR_CallBack(epollMessage);
+                } else {
+                    epollMessage.type = ERROR_FILE_NOT_EXIST;
+                    epollMessage.dataSize = 0;
+                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
+                    insertMQToDataSR_CallBack(epollMessage);
+                }
+                break;
+            }
+
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
                 uint32_t startID, endID;
                 ChunkList_t restoredChunkList;
@@ -176,15 +179,13 @@ void StorageCore::storageThreadForTimer()
     StorageCoreData_t tempChunk;
     while (true) {
         if (extractMQFromTimer(tempChunk)) {
-            string hashStr((char*)tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            if (!saveChunk(hashStr, (char*)tempChunk.logicData, tempChunk.logicDataSize)) {
+            string hashStr(tempChunk.chunkHash, CHUNK_HASH_SIZE);
+            if (!saveChunk(hashStr, tempChunk.logicData, tempChunk.logicDataSize)) {
                 cerr << "StorageCore : save chunk error, current chunk hash = " << endl;
                 PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempChunk.chunkHash, CHUNK_HASH_SIZE);
+            } else {
+                cerr << "StorageCore : save chunk success, current chunk size = " << tempChunk.logicDataSize << endl;
             }
-            // else {
-            //     cerr << "StorageCore : save chunk success, current chunk size = " << tempChunk.logicDataSize << " hash = " << endl;
-            //     PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            // }
         }
     }
 }

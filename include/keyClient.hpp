@@ -1,7 +1,6 @@
 #ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 #define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
 
-#include "cache.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"

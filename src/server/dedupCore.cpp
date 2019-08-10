@@ -59,7 +59,6 @@ void DedupCore::run()
                     epollMessageTemp.type = SUCCESS;
                     epollMessageTemp.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
                     int requiredChunkNumber = requiredChunkTemp.size();
-                    memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                     memcpy(epollMessageTemp.data, &requiredChunkNumber, sizeof(int));
                     for (int i = 0; i < requiredChunkNumber; i++) {
                         memcpy(epollMessageTemp.data + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
@@ -67,36 +66,19 @@ void DedupCore::run()
                 } else {
                     cerr << "DedupCore : recv sgx signed hash success, dedup stage report error" << endl;
                     epollMessageTemp.type = ERROR_RESEND;
-                    memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                     epollMessageTemp.dataSize = 0;
                 }
                 insertMQToDataSR_CallBack(epollMessageTemp);
                 break;
             }
             case CLIENT_UPLOAD_CHUNK: {
-                StorageChunkList_t chunkListTemp;
-                int chunkNumber;
-                memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
-                int readSize = sizeof(int);
-                for (int i = 0; i < chunkNumber; i++) {
-                    int currentChunkSize;
-                    string chunkHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
-                    readSize += CHUNK_HASH_SIZE;
-                    memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
-                    readSize += sizeof(int);
-                    string chunkData((char*)epollMessageTemp.data + readSize, currentChunkSize);
-                    readSize += currentChunkSize;
-                    chunkListTemp.chunkHash.push_back(chunkHash);
-                    chunkListTemp.logicData.push_back(chunkData);
-                }
-                if (this->dedupStage2(chunkListTemp)) {
+                if (this->dedupStage2(epollMessageTemp)) {
                     epollMessageTemp.type = SUCCESS;
                 } else {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
                     epollMessageTemp.type = ERROR_RESEND;
                 }
                 epollMessageTemp.dataSize = 0;
-                memset(epollMessageTemp.data, 0, EPOLL_MESSAGE_DATA_SIZE);
                 insertMQToDataSR_CallBack(epollMessageTemp);
                 break;
             }
@@ -121,24 +103,6 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
         sig.hashList.push_back(in.hash_[i]);
     }
 
-    // for (int i = 0; i < in.hash_.size(); i++) {
-    //     cerr << "DedupCore : stage 1 -> pow hash list has chunk hash = " << endl;
-    //     PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &in.hash_[i][0], CHUNK_HASH_SIZE);
-    // }
-
-    // for (int i = 0; i < sig.hashList.size(); i++) {
-    //     cerr << "DedupCore : stage 1 -> sig job has chunk hash = " << endl;
-    //     PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &sig.hashList[i][0], CHUNK_HASH_SIZE);
-    // }
-    // for (int i = 0; i < out.size(); i++) {
-    //     cerr << "DedupCore : stage 1 -> required current id  = " << out[i] << endl;
-    // }
-    /* register unique chunk list to timer
-     * when time out,timer will check all chunk received or nor
-     * if yes, then push all chunk to storage
-     * or not, then delete(de-refer) all chunk in cache
-     */
-
     sig.startTime = std::chrono::high_resolution_clock::now();
     sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
     cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl
@@ -148,26 +112,35 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
     return status;
 }
 
-bool DedupCore::dedupStage2(StorageChunkList_t& in)
+bool DedupCore::dedupStage2(EpollMessage_t& epollMessageTemp)
 {
+    int chunkNumber;
+    memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
+    int readSize = sizeof(int);
     u_char hash[CHUNK_HASH_SIZE];
-    for (int i = 0; i < in.chunkHash.size(); i++) {
-        //check chunk hash correct or not
-        cryptoObj_->generateHash((u_char*)&in.logicData[i][0], in.logicData[i].length(), hash);
-        if (memcmp(&in.chunkHash[i][0], hash, CHUNK_HASH_SIZE) != 0 && i != in.chunkHash.size() - 1) {
+    timerObj_->mapMutex_.lock();
+    for (int i = 0; i < chunkNumber; i++) {
+        int currentChunkSize;
+        string originHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
+        readSize += CHUNK_HASH_SIZE;
+        memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
+        readSize += sizeof(int);
+        cryptoObj_->generateHash(epollMessageTemp.data + readSize, currentChunkSize, hash);
+        if (memcmp(&originHash[0], hash, CHUNK_HASH_SIZE) != 0) {
             cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
             return false;
         }
-        // cerr << "DedupCore : stage 2 -> chunk data size = " << in.logicData[i].length() << " chunk hash = " << endl;
-        // PRINT_BYTE_ARRAY_DEDUP_CORE(stderr, &in.chunkHash[i][0], CHUNK_HASH_SIZE);
         TimerMapNode newNode;
-        newNode.data = in.logicData[i];
+        memcpy(newNode.data, epollMessageTemp.data + readSize, currentChunkSize);
         newNode.done = true;
-        timerObj_->mapMutex_.lock();
-        timerObj_->chunkTable.insert(make_pair(in.chunkHash[i], newNode));
-        timerObj_->mapMutex_.unlock();
+        newNode.dataSize = currentChunkSize;
+        timerObj_->chunkTable.insert(make_pair(originHash, newNode));
+
+        readSize += currentChunkSize;
     }
-    cerr << "DedupCore : recv " << setbase(10) << in.chunkHash.size() << " chunk from client" << endl;
+    timerObj_->mapMutex_.unlock();
+
+    cerr << "DedupCore : recv " << setbase(10) << chunkNumber << " chunk from client" << endl;
     return true;
 }
 

@@ -6,6 +6,9 @@
 
 using namespace std;
 
+typedef struct {
+    u_char hash[CHUNK_HASH_SIZE];
+} Hash_t;
 // system basic data structures
 typedef struct {
     uint32_t ID;
@@ -17,20 +20,15 @@ typedef struct {
 } Chunk_t;
 
 typedef struct {
-    vector<string> chunkHash;
-    vector<string> logicData;
-} StorageChunkList_t;
-
-typedef struct {
     int logicDataSize;
-    u_char logicData[MAX_CHUNK_SIZE];
-    u_char chunkHash[CHUNK_HASH_SIZE];
+    char logicData[MAX_CHUNK_SIZE];
+    char chunkHash[CHUNK_HASH_SIZE];
 } StorageCoreData_t;
 
 typedef struct {
     uint32_t ID;
     int logicDataSize;
-    u_char logicData[MAX_CHUNK_SIZE];
+    char logicData[MAX_CHUNK_SIZE];
 } RetrieverData_t;
 
 typedef struct {
@@ -113,7 +111,6 @@ typedef struct {
 
 typedef struct {
     vector<string> hashList;
-    vector<string> chunks;
     std::chrono::system_clock::time_point startTime;
     int outDataTime;
 } signedHashList_t;

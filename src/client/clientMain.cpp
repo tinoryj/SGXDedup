@@ -12,7 +12,6 @@
 using namespace std;
 
 Configure config("config.json");
-KeyCache kCache;
 Chunker* chunkerObj;
 keyClient* keyClientObj;
 Sender* senderObj;
@@ -61,8 +60,8 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
-        th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
-        thList.push_back(th);
+        // th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
+        // thList.push_back(th);
 
     } else if (strcmp("-s", argc[1]) == 0) {
         //run send
