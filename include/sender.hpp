@@ -14,6 +14,7 @@ class Sender {
 private:
     std::mutex mutexSocket_;
     Socket socket_;
+    int clientID_;
     messageQueue<Data_t>* inputMQ_;
     CryptoPrimitive* cryptoObj_;
 
@@ -25,6 +26,7 @@ public:
     //status define in protocol.hpp
     bool sendRecipe(Recipe_t request, RecipeList_t requestList, int& status);
     bool sendChunkList(ChunkList_t request, int& status);
+    bool sendChunkList(char* requestBufferIn, int sendBufferSize, int sendChunkNumber, int& status);
 
     //for pow
     bool sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status);

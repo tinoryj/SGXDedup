@@ -4,6 +4,7 @@ extern Configure config;
 
 RecvDecode::RecvDecode(string fileName)
 {
+    clientID_ = config.getClientID();
     outPutMQ_ = new messageQueue<RetrieverData_t>(config.get_RetrieverData_t_MQSize());
     cryptoObj_ = new CryptoPrimitive();
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
@@ -26,7 +27,7 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_FILEHEAD;
     request.dataSize = FILE_NAME_HASH_SIZE;
-    request.clientID = config.getClientID();
+    request.clientID = clientID_;
 
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
     u_char requestBuffer[sendSize];
@@ -80,7 +81,7 @@ bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& 
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
     request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
-    request.clientID = config.getClientID();
+    request.clientID = clientID_;
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     u_char requestBuffer[sendSize];
     u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
@@ -143,35 +144,72 @@ bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
 
 void RecvDecode::run()
 {
+    int recvChunkBatchSize = config.getSendChunkBatchSize();
+    NetworkHeadStruct_t request, respond;
+    request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
+    request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
+    request.clientID = clientID_;
+    int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
+    u_char requestBuffer[sendSize];
+    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    int recvSize;
+    uint32_t startID;
+    uint32_t endID;
+    int chunkNumber;
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
-        ChunkList_t newChunkList;
-        int chunkNumber = 0;
-        uint32_t startID = totalRecvChunks;
-        uint32_t endID;
-        if ((fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks) > config.getSendChunkBatchSize()) {
-            endID = startID + config.getSendChunkBatchSize();
+        startID = totalRecvChunks;
+        if ((fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks) > recvChunkBatchSize) {
+            endID = startID + recvChunkBatchSize;
         } else {
             endID = startID + fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks;
         }
-        cerr << "RecvDecode : current request chunks from " << startID << " to " << endID << endl;
-        if (recvChunks(newChunkList, chunkNumber, startID, endID)) {
-            for (int i = 0; i < chunkNumber; i++) {
-                cryptoObj_->decryptChunk(newChunkList[i]);
-                RetrieverData_t newData;
-                newData.ID = newChunkList[i].ID;
-                newData.logicDataSize = newChunkList[i].logicDataSize;
-                memcpy(newData.logicData, newChunkList[i].logicData, newChunkList[i].logicDataSize);
-                if (!insertMQToRetriever(newData)) {
-                    cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
-                }
+        // cerr << "RecvDecode : current request chunks from " << startID << " to " << endID << endl;
+        chunkNumber = endID - startID;
+        memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, &startID, sizeof(uint32_t));
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), &endID, sizeof(uint32_t));
+        while (true) {
+            if (!socket_.Send(requestBuffer, sendSize)) {
+                cerr << "RecvDecode : storage server closed" << endl;
+                return;
             }
-            newChunkList.clear();
-            // multiThreadDownloadMutex.lock();
-            totalRecvChunks += chunkNumber;
-            // multiThreadDownloadMutex.unlock();
-            // cerr << "RecvDecode : recv " << chunkNumber << " chunks done" << endl;
-        } else {
-            break;
+            if (!socket_.Recv(respondBuffer, recvSize)) {
+                cerr << "RecvDecode : storage server closed" << endl;
+                return;
+            }
+            memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
+            if (respond.messageType == ERROR_RESEND)
+                continue;
+            if (respond.messageType == ERROR_CLOSE) {
+                std::cerr << "RecvDecode : Server reject download request!" << endl;
+                return;
+            }
+            if (respond.messageType == SUCCESS) {
+                cerr << "RecvDecode : recv chunks from " << startID << " to " << endID << endl;
+                int totalRecvSize = 0;
+                int chunkSize;
+                uint32_t chunkID;
+                u_char chunkPlaintData[MAX_CHUNK_SIZE];
+                for (int i = 0; i < chunkNumber; i++) {
+                    memcpy(&chunkID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
+                    totalRecvSize += sizeof(uint32_t);
+                    memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
+                    totalRecvSize += sizeof(int);
+                    cryptoObj_->decryptChunk(respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
+                    totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
+                    //cerr << "RecvDecode : recv chunk id = " << tempChunk.ID << endl;
+                    RetrieverData_t newData;
+                    newData.ID = chunkID;
+                    newData.logicDataSize = chunkSize;
+                    memcpy(newData.logicData, chunkPlaintData, chunkSize);
+                    if (!insertMQToRetriever(newData)) {
+                        cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
+                    }
+                }
+                totalRecvChunks += chunkNumber;
+                break;
+            }
         }
     }
     cerr << "RecvDecode : download job done, exit now" << endl;

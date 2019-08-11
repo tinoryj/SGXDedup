@@ -78,36 +78,18 @@ void keyClient::run()
                 insertMQToPOW(tempChunk);
                 continue;
             }
-            // cerr << "KeyClient : current extract  chunk ID = " << tempChunk.chunk.ID << " chunk data size = " << tempChunk.chunk.logicDataSize << endl;
-            // cerr << setw(6) << "chunk hash = " << endl;
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-            // cerr << setw(6) << "chunk key = " << endl;
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-
-            // string tempHashForCache;
-            // tempHashForCache.resize(CHUNK_HASH_SIZE);
-            // memcpy(&tempHashForCache[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-            // if (kCache.existsKeyinCache(tempHashForCache)) {
-            //     string hitCacheTemp = kCache.getKeyFromCache(tempHashForCache);
-            //     memcpy(tempChunk.chunk.encryptKey, &hitCacheTemp[0], CHUNK_ENCRYPT_KEY_SIZE);
-            //     insertMQToPOW(tempChunk);
-            // } else {
             batchList.push_back(tempChunk);
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             batchNumber++;
-            // }
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             int batchedKeySize = 0;
 
             if (!keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize)) {
                 cerr << "KeyClient : error get key for " << setbase(10) << batchNumber << " chunks" << endl;
-                batchList.clear();
-                memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
-                memset(chunkKey, 0, CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_);
-                batchNumber = 0;
+                return;
             } else {
-                cerr << "KeyClient : key exchange for " << setbase(10) << batchNumber << " chunks over" << endl;
+                // cerr << "KeyClient : key exchange for " << setbase(10) << batchNumber << " chunks over" << endl;
                 // cerr << "KeyClient : batchlist size = " << batchList.size() << " , batch number = " << batchNumber << endl;
                 // cerr << setw(6) << "key exchange chunk hash = " << endl;
                 // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkHash, CHUNK_HASH_SIZE * batchNumber);
@@ -130,13 +112,13 @@ void keyClient::run()
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
                     // cerr << setw(6) << "chunk key = " << endl;
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    Data_t newDataToInsert;
-                    memcpy(&newDataToInsert, &batchList[i], sizeof(Data_t));
-                    if (encodeChunk(newDataToInsert)) {
-                        insertMQToPOW(newDataToInsert);
+                    // Data_t newDataToInsert;
+                    // memcpy(&newDataToInsert, &batchList[i], sizeof(Data_t));
+                    if (encodeChunk(batchList[i])) {
+                        insertMQToPOW(batchList[i]);
                     } else {
                         cerr << "KeyClient : encode chunk error, exiting" << endl;
-                        exit(0);
+                        return;
                     }
                 }
                 batchList.clear();
@@ -160,7 +142,6 @@ void keyClient::run()
     double second = diff / 1000000.0;
     printf("Key client thread work time is %ld us = %lf s\n", diff, second);
     return;
-    //close ssl connection
 }
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)

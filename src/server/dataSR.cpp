@@ -88,10 +88,7 @@ void DataSR::run()
             if (event[i].data.fd == socket_.fd_) {
                 Socket tempSock = socket_.Listen();
                 socketConnection.insert(map<int, Socket>::value_type(tempSock.fd_, tempSock));
-                // cerr << "map size " << socketConnection.size() << endl;
-                // for (auto it : socketConnection) {
-                //     cerr << "insert new socket fd " << it.first << endl;
-                // }
+
                 EpollMessage_t msgTemp;
                 msgTemp.fd = tempSock.fd_;
                 msgTemp.cid = 0;
@@ -158,8 +155,6 @@ void DataSR::run()
                     ev.events = EPOLLET | EPOLLIN;
                     epoll_ctl(epfd, EPOLL_CTL_MOD, event[i].data.fd, &ev);
                     NetworkHeadStruct_t netBody;
-                    // cerr << "DataSR : recv connection, fd = " << event[i].data.fd << " recvSize = " << recvSize << endl;
-
                     memcpy(&netBody, buffer, sizeof(NetworkHeadStruct_t));
                     memcpy(msg.data, buffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
                     msg.dataSize = netBody.dataSize;

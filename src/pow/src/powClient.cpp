@@ -92,12 +92,14 @@ void powClient::run()
                 exit(1);
             } else {
                 cerr << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
+                int totalNeedChunkNumber = lists.size();
                 cout << "PowClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
-                for (auto it : lists) {
-                    batchChunk[it].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
+                for (int i = 0; i < totalNeedChunkNumber; i++) {
+                    batchChunk[lists[i]].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
                 }
                 lists.clear();
-                for (int i = 0; i < batchChunk.size(); i++) {
+                int batchChunkSize = batchChunk.size();
+                for (int i = 0; i < batchChunkSize; i++) {
                     insertMQToSender(batchChunk[i]);
                 }
             }

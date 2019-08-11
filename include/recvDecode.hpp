@@ -20,6 +20,7 @@ private:
     messageQueue<RetrieverData_t>* outPutMQ_;
     std::mutex multiThreadDownloadMutex;
     uint32_t totalRecvChunks = 0;
+    int clientID_;
 
 public:
     Recipe_t fileRecipe_;

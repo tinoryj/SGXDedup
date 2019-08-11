@@ -109,18 +109,19 @@ public:
     {
         string chunkLogicData;
         mapMutex_.lock();
-        for (auto it : nowJob.hashList) {
-            auto temp = chunkTable.find(it);
+        int hashListSize = nowJob.hashList.size();
+        for (int i = 0; i < hashListSize; i++) {
+            auto temp = chunkTable.find(nowJob.hashList[i]);
             if (temp == chunkTable.end()) {
                 cerr << "Timer : can not find chunk" << endl;
                 return false;
             } else {
                 StorageCoreData_t newData;
                 newData.logicDataSize = temp->second.dataSize;
-                memcpy(newData.chunkHash, &it[0], CHUNK_HASH_SIZE);
+                memcpy(newData.chunkHash, &nowJob.hashList[i][0], CHUNK_HASH_SIZE);
                 memcpy(newData.logicData, temp->second.data, newData.logicDataSize);
                 insertMQToStorageCore(newData);
-                chunkTable.erase(it);
+                chunkTable.erase(nowJob.hashList[i]);
             }
         }
         cerr << "Timer : check done" << endl;

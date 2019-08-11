@@ -321,6 +321,22 @@ bool CryptoPrimitive::decryptChunk(Chunk_t& chunk)
     }
 }
 
+bool CryptoPrimitive::decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData)
+{
+    u_char plaintKey[CHUNK_ENCRYPT_KEY_SIZE];
+    if (!decryptWithKey(key, CHUNK_ENCRYPT_KEY_SIZE, chunkKeyEncryptionKey_, plaintKey)) {
+        cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
+        return false;
+    } else {
+        if (!decryptWithKey(chunkData, chunkSize, plaintKey, plaintData)) {
+            cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+
 bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize, u_char* key, u_char* iv, u_char* dataBuffer)
 {
     int plaintextSize, plaintextTailSize;

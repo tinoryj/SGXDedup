@@ -183,9 +183,10 @@ void StorageCore::storageThreadForTimer()
             if (!saveChunk(hashStr, tempChunk.logicData, tempChunk.logicDataSize)) {
                 cerr << "StorageCore : save chunk error, current chunk hash = " << endl;
                 PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            } else {
-                cerr << "StorageCore : save chunk success, current chunk size = " << tempChunk.logicDataSize << endl;
             }
+            // else {
+            //     cerr << "StorageCore : save chunk success, current chunk size = " << tempChunk.logicDataSize << endl;
+            // }
         }
     }
 }
@@ -234,22 +235,23 @@ bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, Recipe
         std::cerr << "Can not open Recipe file: " << writeRecipeName << endl;
         return false;
     }
+    int recipeListSize = recipeList.size();
     if (status) {
-        char tempBuffer[sizeof(RecipeEntry_t)];
-        for (int i = 0; i < recipeList.size(); i++) {
-            memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
-            RecipeOut.write(tempBuffer, sizeof(RecipeEntry_t));
+        // char tempBuffer[sizeof(RecipeEntry_t)];
+        for (int i = 0; i < recipeListSize; i++) {
+            // memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
+            RecipeOut.write((char*)&recipeList[i], sizeof(RecipeEntry_t));
         }
     } else {
         char tempHeadBuffer[sizeof(Recipe_t)];
         memcpy(tempHeadBuffer, &recipeHead, sizeof(Recipe_t));
         RecipeOut.write(tempHeadBuffer, sizeof(Recipe_t));
         cerr << "StorageCore : save recipe head over, total chunk number = " << recipeHead.fileRecipeHead.totalChunkNumber << " file size = " << recipeHead.fileRecipeHead.fileSize << endl;
-        PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempHeadBuffer, sizeof(Recipe_t));
+        // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempHeadBuffer, sizeof(Recipe_t));
         char tempBuffer[sizeof(RecipeEntry_t)];
-        for (int i = 0; i < recipeList.size(); i++) {
-            memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
-            RecipeOut.write(tempBuffer, sizeof(RecipeEntry_t));
+        for (int i = 0; i < recipeListSize; i++) {
+            // memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
+            RecipeOut.write((char*)&recipeList[i], sizeof(RecipeEntry_t));
         }
     }
     RecipeOut.close();

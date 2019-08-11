@@ -1,3 +1,12 @@
+## Aug 11 2019:
+
+> Tinoryj
+
+* basic test for 1G file upload & download:
+    * single machine, 6C6T i5 9600K.
+    * -O3 optimization with clang compiler, with gdb / AddressSanitizer flag.
+    * upload avg 15s, download avg 11s (3 times run). 
+
 ## Aug 9 2019:
 
 > Tinoryj

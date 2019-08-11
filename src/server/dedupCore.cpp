@@ -105,8 +105,7 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
 
     sig.startTime = std::chrono::high_resolution_clock::now();
     sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
-    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl
-         << "outdate time = " << setbase(10) << sig.outDataTime << endl;
+    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl;
     timerObj_->registerHashList(sig);
 
     return status;
@@ -118,6 +117,7 @@ bool DedupCore::dedupStage2(EpollMessage_t& epollMessageTemp)
     memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
     int readSize = sizeof(int);
     u_char hash[CHUNK_HASH_SIZE];
+
     timerObj_->mapMutex_.lock();
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
@@ -125,11 +125,11 @@ bool DedupCore::dedupStage2(EpollMessage_t& epollMessageTemp)
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
         readSize += sizeof(int);
-        cryptoObj_->generateHash(epollMessageTemp.data + readSize, currentChunkSize, hash);
-        if (memcmp(&originHash[0], hash, CHUNK_HASH_SIZE) != 0) {
-            cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
-            return false;
-        }
+        // cryptoObj_->generateHash(epollMessageTemp.data + readSize, currentChunkSize, hash);
+        // if (memcmp(&originHash[0], hash, CHUNK_HASH_SIZE) != 0) {
+        //     cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
+        //     return false;
+        // }
         TimerMapNode newNode;
         memcpy(newNode.data, epollMessageTemp.data + readSize, currentChunkSize);
         newNode.done = true;
