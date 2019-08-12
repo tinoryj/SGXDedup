@@ -25,7 +25,10 @@ public:
     {
         done_ = false;
     }
-    ~messageQueue() {}
+    ~messageQueue()
+    {
+        lockFreeQueue_.~queue<T>();
+    }
     bool push(T& data)
     {
         while (!lockFreeQueue_.push(data))

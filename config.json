@@ -31,10 +31,10 @@
 		"_maxContainerSize": 16384
 	},
 	"messageQueue": {
-		"_Data_t_MQSize": 5000,
+		"_Data_t_MQSize": 10000,
 		"_EpollMessage_t_MQSize": 50,
-		"_RetrieverData_t_MQSize": 5000,
-		"_StorageData_t_MQSize": 5000
+		"_RetrieverData_t_MQSize": 10000,
+		"_StorageData_t_MQSize": 10000
 	},
 	"mutiThread": {
 		"_encodeThreadLimit": 1,

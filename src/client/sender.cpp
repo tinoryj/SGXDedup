@@ -39,6 +39,7 @@ Sender::~Sender()
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
+    inputMQ_->~messageQueue();
     delete inputMQ_;
 }
 
@@ -152,7 +153,7 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     u_char requestBuffer[EPOLL_MESSAGE_DATA_SIZE];
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + sendBufferSize;
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
-    requestBody.dataSize = sendBufferSize;
+    requestBody.dataSize = sendBufferSize + sizeof(int);
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), requestBufferIn, sendBufferSize);
     u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
@@ -288,11 +289,11 @@ bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& re
     std::lock_guard<std::mutex> locker(mutexSocket_);
     if (!socket_.Send(request, requestSize)) {
         cerr << "Sender : send data error peer closed" << endl;
-        exit(0);
+        return false;
     }
     if (!socket_.Recv(respond, respondSize)) {
         cerr << "Sender : recv data error peer closed" << endl;
-        exit(0);
+        return false;
     }
     return true;
 }
@@ -329,6 +330,10 @@ void Sender::run()
                     memcpy(sendChunkBatchBuffer + currentSendChunkBatchBufferSize, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
                     currentSendChunkBatchBufferSize += tempChunk.chunk.logicDataSize;
                     currentChunkNumber++;
+                    // cout << "Sender : Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
                 }
                 RecipeEntry_t newRecipeEntry;
                 newRecipeEntry.chunkID = tempChunk.chunk.ID;

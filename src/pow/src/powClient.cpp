@@ -139,6 +139,7 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
     memcpy(src, &logicDataBatch[0], logicDataBatch.length());
 
     status = ecall_calcmac(_eid, &retval, &_ctx, SGX_RA_KEY_SK, src, srcLen, cmac);
+    delete[] src;
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : ecall failed" << endl;
         return false;
@@ -161,6 +162,7 @@ powClient::powClient(Sender* senderObjTemp)
 
 powClient::~powClient()
 {
+    inputMQ_->~messageQueue();
     delete inputMQ_;
     delete cryptoObj;
 }

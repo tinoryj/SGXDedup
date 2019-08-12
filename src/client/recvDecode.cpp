@@ -2,6 +2,25 @@
 
 extern Configure config;
 
+void PRINT_BYTE_ARRAY_RECV(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 RecvDecode::RecvDecode(string fileName)
 {
     clientID_ = config.getClientID();
@@ -19,6 +38,7 @@ RecvDecode::~RecvDecode()
     if (cryptoObj_ != nullptr) {
         delete cryptoObj_;
     }
+    outPutMQ_->~messageQueue();
     delete outPutMQ_;
 }
 
@@ -197,8 +217,11 @@ void RecvDecode::run()
                     memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
                     totalRecvSize += sizeof(int);
                     cryptoObj_->decryptChunk(respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
-                    totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
+
                     //cerr << "RecvDecode : recv chunk id = " << tempChunk.ID << endl;
+                    // cout << "Recv : Chunk ID = " << chunkID << " size = " << chunkSize << endl;
+                    // PRINT_BYTE_ARRAY_RECV(stdout, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, CHUNK_ENCRYPT_KEY_SIZE);
+                    // PRINT_BYTE_ARRAY_RECV(stdout, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize);
                     RetrieverData_t newData;
                     newData.ID = chunkID;
                     newData.logicDataSize = chunkSize;
@@ -206,6 +229,7 @@ void RecvDecode::run()
                     if (!insertMQToRetriever(newData)) {
                         cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
                     }
+                    totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
                 }
                 totalRecvChunks += chunkNumber;
                 break;

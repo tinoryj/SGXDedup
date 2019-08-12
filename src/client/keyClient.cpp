@@ -52,6 +52,7 @@ keyClient::~keyClient()
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
+    inputMQ_->~messageQueue();
     delete inputMQ_;
 }
 
@@ -73,8 +74,6 @@ void keyClient::run()
         }
         if (extractMQFromChunker(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                // cerr << "KeyClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 insertMQToPOW(tempChunk);
                 continue;
             }
@@ -89,31 +88,8 @@ void keyClient::run()
                 cerr << "KeyClient : error get key for " << setbase(10) << batchNumber << " chunks" << endl;
                 return;
             } else {
-                // cerr << "KeyClient : key exchange for " << setbase(10) << batchNumber << " chunks over" << endl;
-                // cerr << "KeyClient : batchlist size = " << batchList.size() << " , batch number = " << batchNumber << endl;
-                // cerr << setw(6) << "key exchange chunk hash = " << endl;
-                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkHash, CHUNK_HASH_SIZE * batchNumber);
-                // cerr << setw(6) << "key exchange chunk key = " << endl;
-                // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkKey, CHUNK_ENCRYPT_KEY_SIZE * batchNumber);
-
                 for (int i = 0; i < batchNumber; i++) {
-                    // cerr << "KeyClient : current chunk ID = " << batchList[i].chunk.ID << " chunk data size = " << batchList[i].chunk.logicDataSize << endl;
-                    // cerr << setw(6) << "chunk hash = " << endl;
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
-                    // cerr << setw(6) << "chunk key = " << endl;
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    // string tempHash((char*)batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
-                    // string tempKey((char*)batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    // kCache.insertKeyToCache(tempHash, tempKey);
-
-                    // cerr << "KeyClient : new current chunk ID = " << batchList[i].chunk.ID << " chunk data size = " << batchList[i].chunk.logicDataSize << endl;
-                    // cerr << setw(6) << "chunk hash = " << endl;
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.chunkHash, CHUNK_HASH_SIZE);
-                    // cerr << setw(6) << "chunk key = " << endl;
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchList[i].chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    // Data_t newDataToInsert;
-                    // memcpy(&newDataToInsert, &batchList[i], sizeof(Data_t));
                     if (encodeChunk(batchList[i])) {
                         insertMQToPOW(batchList[i]);
                     } else {
@@ -150,17 +126,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     cryptoObj_->keyExchangeEncrypt(batchHashList, CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, keyExchangeKey_, sendHash);
     if (!socket_.Send(sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
-        exit(0);
+        return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!socket_.Recv(recvBuffer, recvSize)) {
         cerr << "keyClient: recv socket error" << endl;
-        exit(0);
+        return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
         cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
-        exit(0);
+        return false;
     }
     cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, batchKeyList);
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;

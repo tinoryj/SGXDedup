@@ -17,6 +17,11 @@ DataSR::DataSR()
 
 DataSR::~DataSR()
 {
+    MQ2DataSR_CallBack_->~messageQueue();
+    MQ2DedupCore_->~messageQueue();
+    MQ2StorageCore_->~messageQueue();
+    MQ2RAServer_->~messageQueue();
+
     delete MQ2DataSR_CallBack_;
     delete MQ2DedupCore_;
     delete MQ2StorageCore_;

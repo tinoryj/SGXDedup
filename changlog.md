@@ -23,7 +23,7 @@ branch : SGX_final_debug
 > Tinoryj
 
 * basic test for 1G file upload & download passed (Aug 8 version):
-    * single machine, 6C6T i5 9600K.
+    * double machines.
     * -O3 optimization with clang compiler, without gdb flag.
     * upload avg 30s, download avg 17s (3 times run). 
 
