@@ -14,7 +14,7 @@
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
-			"127.0.0.1"
+			"10.59.13.222"
 		],
 		"_keyServerPort": [
 			6666
@@ -62,7 +62,7 @@
 	"km": {
 		"_quoteType": 0,
 		"_iasVersion": 3,
-		"_ServerIp": "127.0.0.1",
+		"_ServerIp": "10.59.13.222",
 		"_ServerPort": 6676,
 		"_enclave_name": "km_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
