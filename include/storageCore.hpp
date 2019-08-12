@@ -16,7 +16,7 @@ using namespace std;
 class Container {
 public:
     uint32_t used_ = 0;
-    char body_[4 << 20]; //4 M container size
+    char body_[2 << 24]; //4 M container size
     Container() {}
     ~Container() {}
     bool saveTOFile(string fileName);
@@ -32,17 +32,15 @@ private:
     std::string RecipeNameTail_;
     CryptoPrimitive* cryptoObj_;
     Container currentContainer_;
-    Timer* timerObj_;
     bool writeContainer(keyForChunkHashDB_t& key, char* data);
     bool readContainer(keyForChunkHashDB_t key, char* data);
 
 public:
-    StorageCore(DataSR* dataSRObjTemp, Timer* timerObjTemp);
+    StorageCore(DataSR* dataSRObjTemp);
     ~StorageCore();
 
     void storageThreadForDataSR();
-    void storageThreadForTimer();
-
+    bool saveChunks(EpollMessage_t& epollMessageTemp);
     bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);
     bool restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
     bool saveChunk(std::string chunkHash, char* chunkData, int chunkSize);
@@ -51,7 +49,6 @@ public:
     bool restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe);
     bool extractMQFromDataSR(EpollMessage_t& newMessage);
     bool insertMQToDataSR_CallBack(EpollMessage_t& newMessage);
-    bool extractMQFromTimer(StorageCoreData_t& newData);
 };
 
 #endif

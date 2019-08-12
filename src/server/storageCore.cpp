@@ -23,10 +23,9 @@ void PRINT_BYTE_ARRAY_STORAGE_CORE(
     fprintf(file, "\n}\n");
 }
 
-StorageCore::StorageCore(DataSR* dataSRObjTemp, Timer* timerObjTemp)
+StorageCore::StorageCore(DataSR* dataSRObjTemp)
 {
     dataSRObj_ = dataSRObjTemp;
-    timerObj_ = timerObjTemp;
     RecipeNamePrefix_ = config.getRecipeRootPath();
     containerNamePrefix_ = config.getContainerRootPath();
     RecipeNameTail_ = ".recipe";
@@ -74,11 +73,6 @@ bool StorageCore::insertMQToDataSR_CallBack(EpollMessage_t& newMessage)
     return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
 }
 
-bool StorageCore::extractMQFromTimer(StorageCoreData_t& newData)
-{
-    return timerObj_->extractMQToStorageCore(newData);
-}
-
 void StorageCore::storageThreadForDataSR()
 {
     while (true) {
@@ -113,7 +107,17 @@ void StorageCore::storageThreadForDataSR()
                 }
                 break;
             }
-
+            case CLIENT_UPLOAD_CHUNK: {
+                if (this->saveChunks(epollMessage)) {
+                    epollMessage.type = SUCCESS;
+                } else {
+                    cerr << "DedupCore : dedup stage 2 report error" << endl;
+                    epollMessage.type = ERROR_RESEND;
+                }
+                epollMessage.dataSize = 0;
+                insertMQToDataSR_CallBack(epollMessage);
+                break;
+            }
             case CLIENT_DOWNLOAD_FILEHEAD: {
                 Recipe_t restoredFileRecipe;
                 if (restoreRecipeHead((char*)epollMessage.data, restoredFileRecipe)) {
@@ -174,21 +178,25 @@ void StorageCore::storageThreadForDataSR()
     }
 }
 
-void StorageCore::storageThreadForTimer()
+bool StorageCore::saveChunks(EpollMessage_t& epollMessageTemp)
 {
-    StorageCoreData_t tempChunk;
-    while (true) {
-        if (extractMQFromTimer(tempChunk)) {
-            string hashStr(tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            if (!saveChunk(hashStr, tempChunk.logicData, tempChunk.logicDataSize)) {
-                cerr << "StorageCore : save chunk error, current chunk hash = " << endl;
-                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempChunk.chunkHash, CHUNK_HASH_SIZE);
-            }
-            // else {
-            //     cerr << "StorageCore : save chunk success, current chunk size = " << tempChunk.logicDataSize << endl;
-            // }
+    int chunkNumber;
+    memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
+    int readSize = sizeof(int);
+    u_char hash[CHUNK_HASH_SIZE];
+    for (int i = 0; i < chunkNumber; i++) {
+        int currentChunkSize;
+        string originHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
+        readSize += CHUNK_HASH_SIZE;
+        memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
+        readSize += sizeof(int);
+        if (!saveChunk(originHash, (char*)epollMessageTemp.data + readSize, currentChunkSize)) {
+            return false;
         }
+        readSize += currentChunkSize;
     }
+    cerr << "DedupCore : recv " << setbase(10) << chunkNumber << " chunk from client" << endl;
+    return true;
 }
 
 bool StorageCore::restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe)
@@ -392,7 +400,7 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
 
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
-    if (key.length + currentContainer_.used_ < (4 << 20)) {
+    if (key.length + currentContainer_.used_ < (2 << 24)) {
         memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
     } else {

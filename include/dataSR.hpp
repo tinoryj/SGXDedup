@@ -9,7 +9,6 @@
 #include "protocol.hpp"
 #include "socket.hpp"
 #include "sys/epoll.h"
-#include "timer.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;

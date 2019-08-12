@@ -16,14 +16,12 @@ using namespace std;
 class DedupCore {
 private:
     CryptoPrimitive* cryptoObj_;
-    bool dedupStage1(powSignedHash_t in, RequiredChunk_t& out);
-    bool dedupStage2(EpollMessage_t& epollMessageTemp);
-    Timer* timerObj_;
+    bool dedupByHash(powSignedHash_t in, RequiredChunk_t& out);
     DataSR* dataSRObj_;
 
 public:
     void run();
-    DedupCore(DataSR* dataSRTemp, Timer* timerObjTemp);
+    DedupCore(DataSR* dataSRTemp);
     ~DedupCore();
     bool extractMQFromDataSR(EpollMessage_t& newMessage);
     bool insertMQToDataSR_CallBack(EpollMessage_t& newMessage);

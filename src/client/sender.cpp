@@ -74,7 +74,7 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
             memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), &recipeList[sendRecipeNumber + i], sizeof(RecipeEntry_t));
         }
 
-        u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+        u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
         int recvSize = 0;
         if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
             cerr << "Sender : error sending file resipces, peer may close" << endl;
@@ -125,7 +125,7 @@ bool Sender::sendChunkList(ChunkList_t request, int& status)
     requestBody.dataSize = sendSize - sizeof(NetworkHeadStruct_t);
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
 
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -155,7 +155,7 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     requestBody.dataSize = sendBufferSize;
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), requestBufferIn, sendBufferSize);
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -187,7 +187,7 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg0, sizeof(msg0));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg0), &msg1, sizeof(msg1));
 
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -222,7 +222,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), msg3, size);
 
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -260,7 +260,7 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + 16 * sizeof(uint8_t) + i * CHUNK_HASH_SIZE, &request.hash_[i][0], CHUNK_HASH_SIZE);
     }
 
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : send enclave signed hash to server & get back required chunk list" << endl;

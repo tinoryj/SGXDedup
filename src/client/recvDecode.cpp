@@ -31,7 +31,7 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
 
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
     u_char requestBuffer[sendSize];
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    u_char respondBuffer[1024 * 1024];
     int recvSize;
 
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));

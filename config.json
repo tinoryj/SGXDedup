@@ -10,7 +10,7 @@
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 2100,
+		"_keyBatchSize": 2000,
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
@@ -28,7 +28,7 @@
 		"_storageServerPort": [
 			6668
 		],
-		"_maxContainerSize": 4096
+		"_maxContainerSize": 16384
 	},
 	"messageQueue": {
 		"_Data_t_MQSize": 5000,
@@ -57,7 +57,7 @@
 		"_enclave_name": "pow_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType": 0,
-		"_batchSize": 2100
+		"_batchSize": 5000
 	},
 	"km": {
 		"_quoteType": 0,
@@ -76,10 +76,10 @@
 	},
 	"client": {
 		"_clientID": 1,
-		"_sendChunkBatchSize": 700,
+		"_sendChunkBatchSize": 1000,
 		"_sendRecipeBatchSize": 100000
 	},
 	"timer": {
-		"_timeScale": 3
+		"_timeScale": 5
 	}
 }

@@ -6,7 +6,6 @@
 #include "dedupCore.hpp"
 #include "messageQueue.hpp"
 #include "storageCore.hpp"
-#include "timer.hpp"
 #include <signal.h>
 Configure config("config.json");
 
@@ -15,10 +14,8 @@ Database fileName2metaDB;
 
 StorageCore* storageObj;
 DataSR* dataSRObj;
-Timer* timerObj;
 DedupCore* dedupCoreObj;
 powServer* powServerObj;
-//Timer* timerObj;
 
 void CTRLC(int s)
 {
@@ -55,10 +52,9 @@ int main()
 
     vector<boost::thread*> thList;
     boost::thread* th;
-    timerObj = new Timer();
     dataSRObj = new DataSR();
-    dedupCoreObj = new DedupCore(dataSRObj, timerObj);
-    storageObj = new StorageCore(dataSRObj, timerObj);
+    dedupCoreObj = new DedupCore(dataSRObj);
+    storageObj = new StorageCore(dataSRObj);
     powServerObj = new powServer(dataSRObj);
 
     boost::thread::attributes attrs;
@@ -87,8 +83,8 @@ int main()
     for (int i = 0; i < config.getStorageCoreThreadLimit(); i++) {
         th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForDataSR, storageObj));
         thList.push_back(th);
-        th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForTimer, storageObj));
-        thList.push_back(th);
+        // th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForTimer, storageObj));
+        // thList.push_back(th);
     }
 
     for (auto it : thList) {

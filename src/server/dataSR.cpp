@@ -1,6 +1,6 @@
 #include <dataSR.hpp>
 #define MESSAGE2RASERVER 1
-#define MESSAGE2STORAGE 2
+#define MESSAGE2STOSTORAGE 2
 #define MESSAGE2DEDUPCORE 3
 
 extern Configure config;
@@ -54,7 +54,7 @@ bool DataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
     case MESSAGE2RASERVER: {
         return insertMQ2RAServer(msg);
     }
-    case MESSAGE2STORAGE: {
+    case MESSAGE2STOSTORAGE: {
         return insertMQ2StorageCore(msg);
     }
     case MESSAGE2DEDUPCORE: {
@@ -176,19 +176,19 @@ void DataSR::run()
                         break;
                     }
                     case CLIENT_UPLOAD_CHUNK: {
-                        this->insertMQ(MESSAGE2DEDUPCORE, msg);
+                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
                         break;
                     }
                     case CLIENT_UPLOAD_RECIPE: {
-                        this->insertMQ(MESSAGE2STORAGE, msg);
+                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
                         break;
                     }
                     case CLIENT_DOWNLOAD_FILEHEAD: {
-                        this->insertMQ(MESSAGE2STORAGE, msg);
+                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
                         break;
                     }
                     case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                        this->insertMQ(MESSAGE2STORAGE, msg);
+                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
                         break;
                     }
                     default:

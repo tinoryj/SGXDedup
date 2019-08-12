@@ -22,12 +22,10 @@ void PRINT_BYTE_ARRAY_DEDUP_CORE(
     fprintf(file, "\n}\n");
 }
 
-DedupCore::DedupCore(DataSR* dataSRTemp, Timer* timerObjTemp)
+DedupCore::DedupCore(DataSR* dataSRTemp)
 {
     dataSRObj_ = dataSRTemp;
     cryptoObj_ = new CryptoPrimitive();
-    timerObj_ = timerObjTemp;
-    timerObj_->startTimer();
 }
 
 DedupCore::~DedupCore()
@@ -38,8 +36,8 @@ DedupCore::~DedupCore()
 
 void DedupCore::run()
 {
+    EpollMessage_t epollMessageTemp;
     while (true) {
-        EpollMessage_t epollMessageTemp;
         if (extractMQFromDataSR(epollMessageTemp)) {
             switch (epollMessageTemp.type) {
             case SGX_SIGNED_HASH_TO_DEDUPCORE: {
@@ -52,10 +50,9 @@ void DedupCore::run()
                 for (int i = 0; i < hashNumber; i++) {
                     string hashTemp((char*)epollMessageTemp.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                     powSignedHashTemp.hash_.push_back(hashTemp);
-                    hashTemp.clear();
                 }
 
-                if (this->dedupStage1(powSignedHashTemp, requiredChunkTemp)) {
+                if (this->dedupByHash(powSignedHashTemp, requiredChunkTemp)) {
                     epollMessageTemp.type = SUCCESS;
                     epollMessageTemp.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
                     int requiredChunkNumber = requiredChunkTemp.size();
@@ -71,28 +68,14 @@ void DedupCore::run()
                 insertMQToDataSR_CallBack(epollMessageTemp);
                 break;
             }
-            case CLIENT_UPLOAD_CHUNK: {
-                if (this->dedupStage2(epollMessageTemp)) {
-                    epollMessageTemp.type = SUCCESS;
-                } else {
-                    cerr << "DedupCore : dedup stage 2 report error" << endl;
-                    epollMessageTemp.type = ERROR_RESEND;
-                }
-                epollMessageTemp.dataSize = 0;
-                insertMQToDataSR_CallBack(epollMessageTemp);
-                break;
-            }
             }
         }
     }
 }
 
-bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
+bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
 {
     out.clear();
-    bool status = true;
-    signedHashList_t sig;
-
     string tmpdata;
     int size = in.hash_.size();
     for (int i = 0; i < size; i++) {
@@ -100,47 +83,7 @@ bool DedupCore::dedupStage1(powSignedHash_t in, RequiredChunk_t& out)
             continue;
         }
         out.push_back(i);
-        sig.hashList.push_back(in.hash_[i]);
     }
-
-    sig.startTime = std::chrono::high_resolution_clock::now();
-    sig.outDataTime = (int)((double)sig.hashList.size() * config.getTimeOutScale());
-    cerr << "DedupCore : regist " << setbase(10) << sig.hashList.size() << " chunk to Timer" << endl;
-    timerObj_->registerHashList(sig);
-
-    return status;
-}
-
-bool DedupCore::dedupStage2(EpollMessage_t& epollMessageTemp)
-{
-    int chunkNumber;
-    memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
-    int readSize = sizeof(int);
-    u_char hash[CHUNK_HASH_SIZE];
-
-    timerObj_->mapMutex_.lock();
-    for (int i = 0; i < chunkNumber; i++) {
-        int currentChunkSize;
-        string originHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
-        readSize += CHUNK_HASH_SIZE;
-        memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
-        readSize += sizeof(int);
-        // cryptoObj_->generateHash(epollMessageTemp.data + readSize, currentChunkSize, hash);
-        // if (memcmp(&originHash[0], hash, CHUNK_HASH_SIZE) != 0) {
-        //     cerr << "DedupCore : client not honest, server recv fake chunk" << endl;
-        //     return false;
-        // }
-        TimerMapNode newNode;
-        memcpy(newNode.data, epollMessageTemp.data + readSize, currentChunkSize);
-        newNode.done = true;
-        newNode.dataSize = currentChunkSize;
-        timerObj_->chunkTable.insert(make_pair(originHash, newNode));
-
-        readSize += currentChunkSize;
-    }
-    timerObj_->mapMutex_.unlock();
-
-    cerr << "DedupCore : recv " << setbase(10) << chunkNumber << " chunk from client" << endl;
     return true;
 }
 
