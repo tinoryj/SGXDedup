@@ -27,7 +27,7 @@ public:
     }
     ~messageQueue()
     {
-        lockFreeQueue_.~queue<T>();
+        // lockFreeQueue_.~queue<T>();
     }
     bool push(T& data)
     {

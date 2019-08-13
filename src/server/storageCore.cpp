@@ -1,4 +1,8 @@
 #include "storageCore.hpp"
+#include <sys/time.h>
+
+struct timeval timestartStorage;
+struct timeval timeendStorage;
 
 extern Configure config;
 extern Database fp2ChunkDB;
@@ -180,6 +184,7 @@ void StorageCore::storageThreadForDataSR()
 
 bool StorageCore::saveChunks(EpollMessage_t& epollMessageTemp)
 {
+    gettimeofday(&timestartStorage, NULL);
     int chunkNumber;
     memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
     int readSize = sizeof(int);
@@ -196,6 +201,10 @@ bool StorageCore::saveChunks(EpollMessage_t& epollMessageTemp)
         readSize += currentChunkSize;
     }
     cerr << "DedupCore : recv " << setbase(10) << chunkNumber << " chunk from client" << endl;
+    gettimeofday(&timeendStorage, NULL);
+    long diff = 1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec;
+    double second = diff / 1000000.0;
+    printf("save chunk list time is %ld us = %lf s\n", diff, second);
     return true;
 }
 

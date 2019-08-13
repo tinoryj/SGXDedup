@@ -5,6 +5,8 @@ extern Configure config;
 
 struct timeval timestartSender;
 struct timeval timeendSender;
+struct timeval timestartSenderRecipe;
+struct timeval timeendSenderRecipe;
 
 void PRINT_BYTE_ARRAY_SENDER(
     FILE* file, void* mem, uint32_t len)
@@ -97,51 +99,6 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
     return true;
 }
 
-bool Sender::sendChunkList(ChunkList_t request, int& status)
-{
-    NetworkHeadStruct_t requestBody, respondBody;
-
-    requestBody.clientID = clientID_;
-    requestBody.messageType = CLIENT_UPLOAD_CHUNK;
-    respondBody.clientID = 0;
-    respondBody.messageType = 0;
-    respondBody.dataSize = 0;
-    int chunkNumber = request.size();
-    u_char requestBuffer[EPOLL_MESSAGE_DATA_SIZE];
-    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &chunkNumber, sizeof(int));
-    for (int i = 0; i < chunkNumber; i++) {
-        memcpy(requestBuffer + sendSize, request[i].chunkHash, CHUNK_HASH_SIZE);
-        sendSize += CHUNK_HASH_SIZE;
-        memcpy(requestBuffer + sendSize, &request[i].logicDataSize, sizeof(int));
-        sendSize += sizeof(int);
-        memcpy(requestBuffer + sendSize, request[i].logicData, request[i].logicDataSize);
-        sendSize += request[i].logicDataSize;
-
-        // cout << "Send Chunk ID = " << request[i].ID << " size = " << request[i].logicDataSize << endl;
-        // PRINT_BYTE_ARRAY_SENDER(stdout, request[i].chunkHash, CHUNK_HASH_SIZE);
-        // PRINT_BYTE_ARRAY_SENDER(stdout, request[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-        // PRINT_BYTE_ARRAY_SENDER(stdout, request[i].logicData, request[i].logicDataSize);
-    }
-    requestBody.dataSize = sendSize - sizeof(NetworkHeadStruct_t);
-    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-
-    u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
-    int recvSize = 0;
-
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        return false;
-    }
-
-    memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
-    status = respondBody.messageType;
-    if (status == SUCCESS) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendChunkNumber, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;
@@ -152,16 +109,20 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     respondBody.dataSize = 0;
     u_char requestBuffer[EPOLL_MESSAGE_DATA_SIZE];
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + sendBufferSize;
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
+    memcpy(requestBufferIn + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
     requestBody.dataSize = sendBufferSize + sizeof(int);
-    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), requestBufferIn, sendBufferSize);
+    memcpy(requestBufferIn, &requestBody, sizeof(NetworkHeadStruct_t));
     u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize = 0;
 
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+    // gettimeofday(&timestartSenderRecipe, NULL);
+    if (!this->sendData((u_char*)requestBufferIn, sendSize, respondBuffer, recvSize)) {
         return false;
     }
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // double second = diff / 1000000.0;
+    // printf("Sender send chunk list time is %ld us = %lf s\n", diff, second);
 
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
@@ -287,14 +248,26 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
 bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& respondSize)
 {
     std::lock_guard<std::mutex> locker(mutexSocket_);
+    // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socket_.Send(request, requestSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // double second = diff / 1000000.0;
+    // printf("Sender : send data time is %ld us = %lf s\n", diff, second);
+
+    // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socket_.Recv(respond, respondSize)) {
         cerr << "Sender : recv data error peer closed" << endl;
         return false;
     }
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // second = diff / 1000000.0;
+    // printf("Sender : recv data time is %ld us = %lf s\n", diff, second);
+
     return true;
 }
 
@@ -306,11 +279,11 @@ void Sender::run()
     Recipe_t fileRecipe;
     int sendBatchSize = config.getSendChunkBatchSize();
     int status;
-    char* sendChunkBatchBuffer = (char*)malloc(sizeof(char) * sendBatchSize * (CHUNK_HASH_SIZE + MAX_CHUNK_SIZE + sizeof(int)));
+    char* sendChunkBatchBuffer = (char*)malloc(sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(char) * sendBatchSize * (CHUNK_HASH_SIZE + MAX_CHUNK_SIZE + sizeof(int)));
     bool jobDoneFlag = false;
     int currentChunkNumber = 0;
     int currentSendRecipeNumber = 0;
-    int currentSendChunkBatchBufferSize = 0;
+    int currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
     while (!jobDoneFlag) {
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
             jobDoneFlag = true;
@@ -335,6 +308,7 @@ void Sender::run()
                     // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
                 }
+
                 RecipeEntry_t newRecipeEntry;
                 newRecipeEntry.chunkID = tempChunk.chunk.ID;
                 newRecipeEntry.chunkSize = tempChunk.chunk.logicDataSize;
@@ -347,10 +321,16 @@ void Sender::run()
         if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
             // cerr << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
             while (true) {
+                // gettimeofday(&timestartSenderRecipe, NULL);
                 this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status);
+                // gettimeofday(&timeendSenderRecipe, NULL);
+                // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+                // double second = diff / 1000000.0;
+                // printf("Sender send chunk list time is %ld us = %lf s\n", diff, second);
+
                 if (status == SUCCESS) {
                     cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
-                    currentSendChunkBatchBufferSize = 0;
+                    currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
                     currentChunkNumber = 0;
                     break;
                 }
@@ -367,7 +347,12 @@ void Sender::run()
     }
 
     while (true) {
+        gettimeofday(&timestartSenderRecipe, NULL);
         this->sendRecipe(fileRecipe, recipeList, status);
+        gettimeofday(&timeendSenderRecipe, NULL);
+        long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+        double second = diff / 1000000.0;
+        printf("Sender send recipe list time is %ld us = %lf s\n", diff, second);
         if (status == SUCCESS) {
             std::cerr << "Sender : send recipe success" << endl;
             break;
