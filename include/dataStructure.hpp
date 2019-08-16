@@ -97,14 +97,6 @@ typedef struct {
     uint32_t version;
 } keyForFilenameDB_t;
 
-//dedup core data structures
-
-typedef struct {
-    vector<string> hashList;
-    std::chrono::system_clock::time_point startTime;
-    int outDataTime;
-} signedHashList_t;
-
 typedef vector<uint32_t> RequiredChunk_t;
 
 #endif //GENERALDEDUPSYSTEM_CHUNK_HPP

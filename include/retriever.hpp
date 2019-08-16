@@ -18,7 +18,7 @@ private:
     int chunkCnt_;
     std::ofstream retrieveFile_;
     RecvDecode* recvDecodeObj_;
-    unordered_map<uint32_t, string> chunkTempList_;
+    // unordered_map<uint32_t, string> chunkTempList_;
     std::mutex multiThreadWriteMutex;
     uint32_t currentID_ = 0;
     uint32_t totalChunkNumber_;

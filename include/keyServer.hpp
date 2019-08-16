@@ -7,7 +7,6 @@
 #include "messageQueue.hpp"
 #include "openssl/bn.h"
 #include "socket.hpp"
-#include "ssl.hpp"
 #include <bits/stdc++.h>
 
 #define SERVERSIDE 0
