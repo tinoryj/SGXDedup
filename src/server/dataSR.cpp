@@ -20,10 +20,12 @@ void DataSR::run(Socket socket)
     int sendSize = 0;
     u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    double totalSaveChunkTime = 0;
     while (true) {
-        gettimeofday(&timestartDataSR, NULL);
+
         if (!socket.Recv(recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
+            printf("server save all chunk time is %lf s\n", totalSaveChunkTime);
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -31,20 +33,21 @@ void DataSR::run(Socket socket)
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_UPLOAD_CHUNK: {
+                gettimeofday(&timestartDataSR, NULL);
                 if (storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
                     netBody.messageType = SUCCESS;
                 } else {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
                     netBody.messageType = ERROR_RESEND;
                 }
+                gettimeofday(&timeendDataSR, NULL);
+                long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                double second = diff / 1000000.0;
+                totalSaveChunkTime += second;
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                 sendSize = sizeof(NetworkHeadStruct_t);
                 socket.Send(sendBuffer, sendSize);
-                gettimeofday(&timeendDataSR, NULL);
-                long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
-                double second = diff / 1000000.0;
-                printf("save chunk list time is %ld us = %lf s\n", diff, second);
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
