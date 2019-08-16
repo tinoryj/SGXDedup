@@ -278,7 +278,7 @@ bool Sender::sendDataPow(u_char* request, int requestSize, u_char* respond, int&
 
 void Sender::run()
 {
-    double totalSendTime = 0;
+    // double totalSendTime = 0;
     gettimeofday(&timestartSender, NULL);
     Data_t tempChunk;
     RecipeList_t recipeList;
@@ -326,7 +326,7 @@ void Sender::run()
         }
         if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
             // cerr << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
-            gettimeofday(&timestartSenderRecipe, NULL);
+            // gettimeofday(&timestartSenderRecipe, NULL);
             if (this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status)) {
                 cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
                 currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
@@ -335,28 +335,28 @@ void Sender::run()
                 cerr << "Sender : send " << setbase(10) << currentChunkNumber << " chunk error" << endl;
                 break;
             }
-            gettimeofday(&timeendSenderRecipe, NULL);
-            long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-            double second = diff / 1000000.0;
-            totalSendTime += second;
+            // gettimeofday(&timeendSenderRecipe, NULL);
+            // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+            // double second = diff / 1000000.0;
+            // totalSendTime += second;
         }
     }
     printf("Sender send chunk list time is %lf s\n", totalSendTime);
 
-    gettimeofday(&timestartSenderRecipe, NULL);
+    // gettimeofday(&timestartSenderRecipe, NULL);
     if (this->sendRecipe(fileRecipe, recipeList, status)) {
         cerr << "Sender : send recipe list success" << endl;
     }
-    gettimeofday(&timeendSenderRecipe, NULL);
-    long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    double second = diff / 1000000.0;
-    printf("Sender send recipe list time is %ld us = %lf s\n", diff, second);
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // double second = diff / 1000000.0;
+    // printf("Sender send recipe list time is %ld us = %lf s\n", diff, second);
 
     free(sendChunkBatchBuffer);
 
     gettimeofday(&timeendSender, NULL);
-    diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
-    second = diff / 1000000.0;
+    long diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+    double second = diff / 1000000.0;
     printf("Sender thread work time is %ld us = %lf s\n", diff, second);
     return;
 }

@@ -4,10 +4,12 @@
 
 branch : SGX_debug_No_epoll
 
-* full test for 20G(20480MB) file upload:
+* full test for 20G(20480MB, 21474836480B) file upload & download:
     * two machines.
     * -O3 optimization with clang compiler.
-    * upload time = 209s, speed = . 
+    * max speed :
+        * upload time = 190.760621, speed = 107.36M/s. 
+        * download time = 188.962076, speed = 108.38M/s. 
 
 ## Aug 12 2019:
 

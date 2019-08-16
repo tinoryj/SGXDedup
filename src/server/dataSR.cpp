@@ -21,7 +21,7 @@ void DataSR::run(Socket socket)
     int sendSize = 0;
     u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
-    double totalSaveChunkTime = 0;
+    // double totalSaveChunkTime = 0;
     uint32_t startID = 0;
     uint32_t endID = startID + restoreChunkBatchSize;
     Recipe_t restoredFileRecipe;
@@ -30,7 +30,7 @@ void DataSR::run(Socket socket)
 
         if (!socket.Recv(recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
-            printf("server save all chunk time is %lf s\n", totalSaveChunkTime);
+            // printf("server save all chunk time is %lf s\n", totalSaveChunkTime);
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -38,15 +38,15 @@ void DataSR::run(Socket socket)
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_UPLOAD_CHUNK: {
-                gettimeofday(&timestartDataSR, NULL);
+                // gettimeofday(&timestartDataSR, NULL);
                 if (!storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
                     return;
                 }
-                gettimeofday(&timeendDataSR, NULL);
-                long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
-                double second = diff / 1000000.0;
-                totalSaveChunkTime += second;
+                // gettimeofday(&timeendDataSR, NULL);
+                // long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                // double second = diff / 1000000.0;
+                // totalSaveChunkTime += second;
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
