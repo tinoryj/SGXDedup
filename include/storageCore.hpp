@@ -15,7 +15,7 @@ using namespace std;
 class Container {
 public:
     uint32_t used_ = 0;
-    char body_[2 << 24]; //8 M container size
+    char body_[2 << 23]; //8 M container size
     Container() {}
     ~Container() {}
     bool saveTOFile(string fileName);

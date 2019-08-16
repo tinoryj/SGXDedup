@@ -1,5 +1,9 @@
 
 #include <dataSR.hpp>
+#include <sys/times.h>
+
+struct timeval timestartDataSR;
+struct timeval timeendDataSR;
 
 extern Configure config;
 
@@ -17,10 +21,9 @@ void DataSR::run(Socket socket)
     u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     while (true) {
-
+        gettimeofday(&timestartDataSR, NULL);
         if (!socket.Recv(recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
-            powServerObj_->closeSession(socket.fd_);
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -38,6 +41,10 @@ void DataSR::run(Socket socket)
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                 sendSize = sizeof(NetworkHeadStruct_t);
                 socket.Send(sendBuffer, sendSize);
+                gettimeofday(&timeendDataSR, NULL);
+                long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                double second = diff / 1000000.0;
+                printf("save chunk list time is %ld us = %lf s\n", diff, second);
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {

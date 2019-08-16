@@ -2,6 +2,17 @@
 
 > Tinoryj
 
+branch : SGX_debug_No_epoll
+
+* basic test for 1G file upload & download:
+    * single machine, 6C6T i5 9600K.
+    * -O3 optimization with clang compiler.
+    * upload avg 6.7s, download avg 6.7s. 
+
+## Aug 12 2019:
+
+> Tinoryj
+
 branch : SGX_final_debug
 
 * basic test for 1G file upload & download:

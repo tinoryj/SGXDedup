@@ -293,7 +293,7 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
 
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
-    if (key.length + currentContainer_.used_ < (2 << 24)) {
+    if (key.length + currentContainer_.used_ < (2 << 23)) {
         memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
     } else {

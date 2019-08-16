@@ -348,12 +348,12 @@ void Sender::run()
         if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
             // cerr << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
             while (true) {
-                // gettimeofday(&timestartSenderRecipe, NULL);
+                gettimeofday(&timestartSenderRecipe, NULL);
                 this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status);
-                // gettimeofday(&timeendSenderRecipe, NULL);
-                // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-                // double second = diff / 1000000.0;
-                // printf("Sender send chunk list time is %ld us = %lf s\n", diff, second);
+                gettimeofday(&timeendSenderRecipe, NULL);
+                long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+                double second = diff / 1000000.0;
+                printf("Sender send chunk list time is %ld us = %lf s\n", diff, second);
 
                 if (status == SUCCESS) {
                     cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
