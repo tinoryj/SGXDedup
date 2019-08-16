@@ -31,6 +31,7 @@ Sender::Sender()
 {
     inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
+    socketPow_.init(CLIENT_TCP, config.getStorageServerIP(), config.getPOWServerPort());
     cryptoObj_ = new CryptoPrimitive();
     clientID_ = config.getClientID();
 }
@@ -38,6 +39,7 @@ Sender::Sender()
 Sender::~Sender()
 {
     socket_.finish();
+    socketPow_.finish();
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
@@ -152,7 +154,7 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+    if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, send sgx msg 01 error" << endl;
         return false;
     }
@@ -187,7 +189,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
     u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+    if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, send sgx msg 3 error" << endl;
         return false;
     }
@@ -224,7 +226,7 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
 
     u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
-    if (!this->sendData(requestBuffer, sendSize, respondBuffer, recvSize)) {
+    if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : send enclave signed hash to server & get back required chunk list" << endl;
         return false;
     }
@@ -260,6 +262,31 @@ bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& re
 
     // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socket_.Recv(respond, respondSize)) {
+        cerr << "Sender : recv data error peer closed" << endl;
+        return false;
+    }
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // second = diff / 1000000.0;
+    // printf("Sender : recv data time is %ld us = %lf s\n", diff, second);
+
+    return true;
+}
+
+bool Sender::sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize)
+{
+    // gettimeofday(&timestartSenderRecipe, NULL);
+    if (!socketPow_.Send(request, requestSize)) {
+        cerr << "Sender : send data error peer closed" << endl;
+        return false;
+    }
+    // gettimeofday(&timeendSenderRecipe, NULL);
+    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
+    // double second = diff / 1000000.0;
+    // printf("Sender : send data time is %ld us = %lf s\n", diff, second);
+
+    // gettimeofday(&timestartSenderRecipe, NULL);
+    if (!socketPow_.Recv(respond, respondSize)) {
         cerr << "Sender : recv data error peer closed" << endl;
         return false;
     }

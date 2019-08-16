@@ -56,7 +56,7 @@
 		"_enclave_name": "pow_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType": 0,
-		"_batchSize": 2000
+		"_batchSize": 3000
 	},
 	"km": {
 		"_quoteType": 0,

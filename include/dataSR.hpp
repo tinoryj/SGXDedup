@@ -28,6 +28,7 @@ public:
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj);
     ~DataSR(){};
     void run(Socket socket);
+    void runPow(Socket socket);
 };
 
 #endif //GENERALDEDUPSYSTEM_DATASR_HPP

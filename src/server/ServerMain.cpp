@@ -64,10 +64,14 @@ int main()
     //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(200 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
-    Socket socket(SERVER_TCP, "", config.getStorageServerPort());
+    Socket socketData(SERVER_TCP, "", config.getStorageServerPort());
+    Socket socketPow(SERVER_TCP, "", config.getPOWServerPort());
     while (true) {
-        Socket tmpSocket = socket.Listen();
+        Socket tmpSocket = socketData.Listen();
         th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, tmpSocket));
+        thList.push_back(th);
+        Socket tmpSocketPow = socketPow.Listen();
+        th = new boost::thread(attrs, boost::bind(&DataSR::runPow, dataSRObj, tmpSocketPow));
         thList.push_back(th);
     }
 

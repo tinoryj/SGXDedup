@@ -14,6 +14,7 @@ class Sender {
 private:
     std::mutex mutexSocket_;
     Socket socket_;
+    Socket socketPow_;
     int clientID_;
     messageQueue<Data_t>* inputMQ_;
     CryptoPrimitive* cryptoObj_;
@@ -38,6 +39,7 @@ public:
 
     //general send data
     bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize);
+    bool sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize);
 
     bool insertMQFromPow(Data_t& newChunk);
     bool extractMQFromPow(Data_t& newChunk);

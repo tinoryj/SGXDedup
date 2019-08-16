@@ -11,6 +11,7 @@ int main()
     while (true) {
         Socket tmpSocket = socket.Listen();
         th = new boost::thread(boost::bind(&keyServer::run, &server, tmpSocket));
+        th->detach();
     }
     return 0;
 }
