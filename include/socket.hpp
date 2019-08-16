@@ -15,8 +15,8 @@ using namespace std;
 
 #define SERVER_TCP 0
 #define CLIENT_TCP 1
-#define UDP 2
-
+#define CLIENT_UDP 2
+#define SERVER_UDP 3
 class Socket {
 public:
     int fd_;

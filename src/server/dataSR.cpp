@@ -34,20 +34,24 @@ void DataSR::run(Socket socket)
             switch (netBody.messageType) {
             case CLIENT_UPLOAD_CHUNK: {
                 gettimeofday(&timestartDataSR, NULL);
-                if (storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
-                    netBody.messageType = SUCCESS;
-                } else {
+                // if (storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
+                //     netBody.messageType = SUCCESS;
+                // } else {
+                //     cerr << "DedupCore : dedup stage 2 report error" << endl;
+                //     netBody.messageType = ERROR_RESEND;
+                // }
+                if (!storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
-                    netBody.messageType = ERROR_RESEND;
+                    return;
                 }
                 gettimeofday(&timeendDataSR, NULL);
                 long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                 double second = diff / 1000000.0;
                 totalSaveChunkTime += second;
-                netBody.dataSize = 0;
-                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                sendSize = sizeof(NetworkHeadStruct_t);
-                socket.Send(sendBuffer, sendSize);
+                // netBody.dataSize = 0;
+                // memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                // sendSize = sizeof(NetworkHeadStruct_t);
+                // socket.Send(sendBuffer, sendSize);
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
@@ -75,7 +79,7 @@ void DataSR::run(Socket socket)
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 }
-                socket.Send(sendBuffer, sendSize);
+                // socket.Send(sendBuffer, sendSize);
                 break;
             }
             case CLIENT_DOWNLOAD_FILEHEAD: {

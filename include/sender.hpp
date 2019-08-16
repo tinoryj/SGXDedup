@@ -38,7 +38,7 @@ public:
     void run();
 
     //general send data
-    bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize);
+    bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize, bool recv);
     bool sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize);
 
     bool insertMQFromPow(Data_t& newChunk);
