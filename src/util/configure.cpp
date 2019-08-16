@@ -55,7 +55,6 @@ void Configure::readConf(std::string path)
     }
 
     _Data_t_MQSize = root.get<int>("messageQueue._Data_t_MQSize");
-    _EpollMessage_t_MQSize = root.get<int>("messageQueue._EpollMessage_t_MQSize");
     _RetrieverData_t_MQSize = root.get<int>("messageQueue._RetrieverData_t_MQSize");
     _StorageData_t_MQSize = root.get<int>("messageQueue._StorageData_t_MQSize");
 
@@ -198,10 +197,7 @@ int Configure::get_Data_t_MQSize()
 {
     return _Data_t_MQSize;
 }
-int Configure::get_EpollMessage_t_MQSize()
-{
-    return _EpollMessage_t_MQSize;
-}
+
 int Configure::get_RetrieverData_t_MQSize()
 {
     return _RetrieverData_t_MQSize;

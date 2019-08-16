@@ -32,7 +32,6 @@
 	},
 	"messageQueue": {
 		"_Data_t_MQSize": 8000,
-		"_EpollMessage_t_MQSize": 50,
 		"_RetrieverData_t_MQSize": 50000,
 		"_StorageData_t_MQSize": 50000
 	},
@@ -119,7 +118,6 @@
 	},
 	"messageQueue": {
 		"_Data_t_MQSize": 8000,
-		"_EpollMessage_t_MQSize": 50,
 		"_RetrieverData_t_MQSize": 50000,
 		"_StorageData_t_MQSize": 50000
 	},

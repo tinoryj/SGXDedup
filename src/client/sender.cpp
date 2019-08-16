@@ -107,7 +107,7 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     respondBody.clientID = 0;
     respondBody.messageType = 0;
     respondBody.dataSize = 0;
-    u_char requestBuffer[EPOLL_MESSAGE_DATA_SIZE];
+    u_char requestBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + sendBufferSize;
     memcpy(requestBufferIn + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
     requestBody.dataSize = sendBufferSize + sizeof(int);

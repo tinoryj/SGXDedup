@@ -12,10 +12,12 @@ Configure config("config.json");
 Database fp2ChunkDB;
 Database fileName2metaDB;
 
-StorageCore* storageObj;
 DataSR* dataSRObj;
+StorageCore* storageObj;
 DedupCore* dedupCoreObj;
 powServer* powServerObj;
+
+vector<boost::thread*> thList;
 
 void CTRLC(int s)
 {
@@ -32,7 +34,9 @@ void CTRLC(int s)
 
     if (powServerObj != nullptr)
         delete powServerObj;
-
+    for (auto it : thList) {
+        it->join();
+    }
     exit(0);
 }
 
@@ -50,45 +54,21 @@ int main()
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
     fileName2metaDB.openDB(config.getFp2MetaDBame());
 
-    vector<boost::thread*> thList;
     boost::thread* th;
-    dataSRObj = new DataSR();
-    dedupCoreObj = new DedupCore(dataSRObj);
-    storageObj = new StorageCore(dataSRObj);
-    powServerObj = new powServer(dataSRObj);
+    dedupCoreObj = new DedupCore();
+    storageObj = new StorageCore();
+    powServerObj = new powServer();
+    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj);
 
     boost::thread::attributes attrs;
     //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(200 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
-
-    //start DataSR
-    th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj));
-    thList.push_back(th);
-    th = new boost::thread(attrs, boost::bind(&DataSR::extractMQ, dataSRObj));
-    thList.push_back(th);
-
-    //start pow
-    th = new boost::thread(attrs, boost::bind(&powServer::run, powServerObj));
-    thList.push_back(th);
-
-    //start DedupCore
-    for (int i = 0; i < config.getDedupCoreThreadLimit(); i++) {
-        th = new boost::thread(attrs, boost::bind(&DedupCore::run, dedupCoreObj));
+    Socket socket(SERVER_TCP, "", config.getStorageServerPort());
+    while (true) {
+        Socket tmpSocket = socket.Listen();
+        th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, tmpSocket));
         thList.push_back(th);
-    }
-
-    //start StorageCore
-
-    for (int i = 0; i < config.getStorageCoreThreadLimit(); i++) {
-        th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForDataSR, storageObj));
-        thList.push_back(th);
-        // th = new boost::thread(attrs, boost::bind(&StorageCore::storageThreadForTimer, storageObj));
-        // thList.push_back(th);
-    }
-
-    for (auto it : thList) {
-        it->join();
     }
 
     return 0;

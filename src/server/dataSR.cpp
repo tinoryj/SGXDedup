@@ -1,246 +1,232 @@
+
 #include <dataSR.hpp>
-#define MESSAGE2RASERVER 1
-#define MESSAGE2STOSTORAGE 2
-#define MESSAGE2DEDUPCORE 3
 
 extern Configure config;
 
-DataSR::DataSR()
+DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
 {
-    MQ2DataSR_CallBack_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
-    MQ2DedupCore_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
-    MQ2StorageCore_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
-    MQ2RAServer_ = new messageQueue<EpollMessage_t>(config.get_EpollMessage_t_MQSize());
-    socket_.init(SERVER_TCP, "", config.getStorageServerPort());
-    epfd = epoll_create(20);
+    storageObj_ = storageObj;
+    dedupCoreObj_ = dedupCoreObj;
+    powServerObj_ = powServerObj;
 }
 
-DataSR::~DataSR()
+void DataSR::run(Socket socket)
 {
-    MQ2DataSR_CallBack_->~messageQueue();
-    MQ2DedupCore_->~messageQueue();
-    MQ2StorageCore_->~messageQueue();
-    MQ2RAServer_->~messageQueue();
-
-    delete MQ2DataSR_CallBack_;
-    delete MQ2DedupCore_;
-    delete MQ2StorageCore_;
-    delete MQ2RAServer_;
-    socket_.finish();
-}
-
-void DataSR::extractMQ()
-{
+    sgx_msg01_t msg01;
+    sgx_ra_msg2_t msg2;
+    sgx_ra_msg3_t* msg3;
+    ra_msg4_t msg4;
+    int recvSize = 0;
+    int sendSize = 0;
+    u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     while (true) {
-        EpollMessage_t msgTemp;
-        epoll_event ev;
-        ev.events = EPOLLOUT | EPOLLET;
-        if (extractMQ2DataSR_CallBack(msgTemp)) {
-            if (epollSession_.find(msgTemp.fd) == epollSession_.end()) {
-                cerr << "find data in epoll session failed" << endl;
+
+        if (!socket.Recv(recvBuffer, recvSize)) {
+            cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
+            powServerObj_->closeSession(socket.fd_);
+            return;
+        } else {
+            NetworkHeadStruct_t netBody;
+            memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
+            cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+            switch (netBody.messageType) {
+            case SGX_RA_MSG01: {
+                memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));
+                memcpy(&msg01.msg1, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
+                if (!powServerObj_->process_msg01(socket.fd_, msg01, msg2)) {
+                    cerr << "PowServer : error process msg01" << endl;
+                    netBody.messageType = ERROR_RESEND;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    netBody.messageType = SUCCESS;
+                    netBody.dataSize = sizeof(sgx_ra_msg2_t);
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &msg2, sizeof(sgx_ra_msg2_t));
+                    sendSize = sizeof(NetworkHeadStruct_t) + sizeof(sgx_ra_msg2_t);
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case SGX_RA_MSG3: {
+                msg3 = (sgx_ra_msg3_t*)new char[netBody.dataSize];
+                memcpy(msg3, recvBuffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
+
+                if (powServerObj_->sessions.find(socket.fd_) == powServerObj_->sessions.end()) {
+                    cerr << "PowServer : client had not send msg01 before" << endl;
+                    netBody.messageType = ERROR_CLOSE;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    // cerr << "PowServer : msg.datasize = " << netBody.dataSize << " sgx_ra_msg3_t size = " << sizeof(sgx_ra_msg3_t) << endl;
+                    if (powServerObj_->process_msg3(powServerObj_->sessions[socket.fd_], msg3, msg4, netBody.dataSize - sizeof(sgx_ra_msg3_t))) {
+                        netBody.messageType = SUCCESS;
+                        netBody.dataSize = sizeof(ra_msg4_t);
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &msg4, sizeof(ra_msg4_t));
+                        sendSize = sizeof(NetworkHeadStruct_t) + sizeof(ra_msg4_t);
+                    } else {
+                        cerr << "PowServer : sgx process msg3 & get msg4 error" << endl;
+                        netBody.messageType = ERROR_CLOSE;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    }
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case SGX_SIGNED_HASH: {
+                powSignedHash_t clientReq;
+                int signedHashNumber = (netBody.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
+                memcpy(clientReq.signature_, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint8_t) * 16);
+                for (int i = 0; i < signedHashNumber; i++) {
+                    string hash;
+                    hash.resize(CHUNK_HASH_SIZE);
+                    memcpy(&hash[0], recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                    clientReq.hash_.push_back(hash);
+                }
+                if (powServerObj_->sessions.find(socket.fd_) == powServerObj_->sessions.end()) {
+                    cerr << "PowServer : client not trusted yet" << endl;
+                    netBody.messageType = ERROR_CLOSE;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    if (!powServerObj_->sessions.at(socket.fd_)->enclaveTrusted) {
+                        cerr << "PowServer : client not trusted yet" << endl;
+                        netBody.messageType = ERROR_CLOSE;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    } else {
+                        if (powServerObj_->process_signedHash(powServerObj_->sessions.at(socket.fd_), clientReq)) {
+
+                            RequiredChunk_t requiredChunkTemp;
+                            if (dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp)) {
+                                netBody.messageType = SUCCESS;
+                                netBody.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
+                                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                                int requiredChunkNumber = requiredChunkTemp.size();
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &requiredChunkNumber, sizeof(int));
+                                for (int i = 0; i < requiredChunkNumber; i++) {
+                                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
+                                }
+                                sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + requiredChunkNumber * sizeof(uint32_t);
+                            } else {
+                                cerr << "DedupCore : recv sgx signed hash success, dedup stage report error" << endl;
+                                netBody.messageType = ERROR_RESEND;
+                                netBody.dataSize = 0;
+                                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                                sendSize = sizeof(NetworkHeadStruct_t);
+                            }
+                        } else {
+                            netBody.messageType = ERROR_RESEND;
+                            netBody.dataSize = 0;
+                            memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                            sendSize = sizeof(NetworkHeadStruct_t);
+                        }
+                    }
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case CLIENT_UPLOAD_CHUNK: {
+                if (storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
+                    netBody.messageType = SUCCESS;
+                } else {
+                    cerr << "DedupCore : dedup stage 2 report error" << endl;
+                    netBody.messageType = ERROR_RESEND;
+                }
+                netBody.dataSize = 0;
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                sendSize = sizeof(NetworkHeadStruct_t);
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case CLIENT_UPLOAD_RECIPE: {
+                Recipe_t tempRecipeHead;
+                memcpy(&tempRecipeHead, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
+                int currentRecipeEntryNumber = (netBody.dataSize - sizeof(Recipe_t)) / sizeof(RecipeEntry_t);
+                RecipeList_t tempRecipeEntryList;
+                for (int i = 0; i < currentRecipeEntryNumber; i++) {
+                    RecipeEntry_t tempRecipeEntry;
+                    memcpy(&tempRecipeEntry, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
+                    tempRecipeEntryList.push_back(tempRecipeEntry);
+                }
+                cerr << "StorageCore : recv Recipe from client" << endl;
+
+                if (!storageObj_->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList)) {
+                    cerr << "StorageCore : verify Recipe fail, send resend flag" << endl;
+                    netBody.messageType = ERROR_RESEND;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    cerr << "StorageCore : verify Recipe succes" << endl;
+                    netBody.messageType = SUCCESS;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case CLIENT_DOWNLOAD_FILEHEAD: {
+                Recipe_t restoredFileRecipe;
+                if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe)) {
+                    netBody.messageType = SUCCESS;
+                    netBody.dataSize = sizeof(Recipe_t);
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &restoredFileRecipe, sizeof(Recipe_t));
+                    sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t);
+                } else {
+                    netBody.messageType = ERROR_FILE_NOT_EXIST;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
+                uint32_t startID, endID;
+                ChunkList_t restoredChunkList;
+                memcpy(&startID, recvBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, sizeof(uint32_t));
+                memcpy(&endID, recvBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), sizeof(uint32_t));
+                cerr << "StorageCore : recv chunk download request, start ID = " << startID << " end ID = " << endID << endl;
+                if (storageObj_->restoreRecipeAndChunk((char*)recvBuffer + sizeof(NetworkHeadStruct_t), startID, endID, restoredChunkList)) {
+                    netBody.messageType = SUCCESS;
+                    int totalSendSize = 0;
+                    for (int i = 0; i < restoredChunkList.size(); i++) {
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
+                        totalSendSize += sizeof(uint32_t);
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
+                        totalSendSize += sizeof(int);
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
+                        totalSendSize += restoredChunkList[i].logicDataSize;
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                        totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
+                    }
+                    netBody.dataSize = totalSendSize;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
+                } else {
+                    netBody.dataSize = 0;
+                    netBody.messageType = ERROR_CHUNK_NOT_EXIST;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                }
+                socket.Send(sendBuffer, sendSize);
+                break;
+            }
+            default:
                 continue;
-            } else {
-                epollSessionMutex_.lock();
-                epollSession_.at(msgTemp.fd).dataSize = msgTemp.dataSize;
-                epollSession_.at(msgTemp.fd).type = msgTemp.type;
-                // cerr << "DataSR : call back message queue current msg data type = " << msgTemp.type << endl;
-                memcpy(epollSession_.at(msgTemp.fd).data, msgTemp.data, msgTemp.dataSize);
-                ev.data.fd = msgTemp.fd;
-                epoll_ctl(epfd, EPOLL_CTL_MOD, msgTemp.fd, &ev);
-                epollSessionMutex_.unlock();
             }
         }
     }
-}
-
-bool DataSR::insertMQ(int queueSwitch, EpollMessage_t& msg)
-{
-    switch (queueSwitch) {
-    case MESSAGE2RASERVER: {
-        return insertMQ2RAServer(msg);
-    }
-    case MESSAGE2STOSTORAGE: {
-        return insertMQ2StorageCore(msg);
-    }
-    case MESSAGE2DEDUPCORE: {
-        return insertMQ2DedupCore(msg);
-    }
-    default: {
-        cerr << "DataSR insert message queue error : wrong message queue name" << endl;
-        return false;
-    }
-    }
-}
-
-void DataSR::run()
-{
-    epoll_event event[100];
-    epoll_event ev;
-    ev.data.ptr = nullptr;
-    ev.events = EPOLLIN | EPOLLET;
-    ev.data.fd = socket_.fd_;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, socket_.fd_, &ev);
-    u_char buffer[EPOLL_MESSAGE_DATA_SIZE];
-    for (int i = 0; i < 100; i++) {
-        event[i].data.ptr = nullptr;
-    }
-
-    while (true) {
-        int nfd = epoll_wait(epfd, event, 20, 500);
-
-        for (int i = 0; i < nfd; i++) {
-            //cerr << "Scan for " << nfd << " connections" << endl;
-            if (event[i].data.fd == socket_.fd_) {
-                Socket tempSock = socket_.Listen();
-                socketConnection.insert(map<int, Socket>::value_type(tempSock.fd_, tempSock));
-
-                EpollMessage_t msgTemp;
-                msgTemp.fd = tempSock.fd_;
-                msgTemp.cid = 0;
-                ev.data.ptr = (void*)&msgTemp;
-                ev.events = EPOLLET | EPOLLIN;
-                ev.data.fd = tempSock.fd_;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, tempSock.fd_, &ev);
-                epollSessionMutex_.lock();
-                epollSession_.insert(make_pair(tempSock.fd_, msgTemp));
-                epollSessionMutex_.unlock();
-            } else if (event[i].events & EPOLLOUT) {
-                // cerr << "Current send event fd = " << event[i].data.fd << endl;
-
-                EpollMessage_t msg1;
-
-                epollSessionMutex_.lock();
-                msg1 = epollSession_.at(event[i].data.fd);
-                epollSessionMutex_.unlock();
-                if (msg1.fd != event[i].data.fd) {
-                    cerr << "epoll event fd not equal to msg-fd " << msg1.fd << endl;
-                    continue;
-                }
-                NetworkHeadStruct_t netBody;
-                netBody.clientID = msg1.cid;
-                netBody.messageType = msg1.type;
-                netBody.dataSize = msg1.dataSize;
-                memcpy(buffer, &netBody, sizeof(NetworkHeadStruct_t));
-                memcpy(buffer + sizeof(NetworkHeadStruct_t), msg1.data, msg1.dataSize);
-
-                if (!socketConnection[event[i].data.fd].Send(buffer, sizeof(NetworkHeadStruct_t) + msg1.dataSize)) {
-                    cerr << "DataSR : client closed socket connect, fd = " << event[i].data.fd << endl;
-                    ev.data.ptr = nullptr;
-                    ev.data.fd = event[i].data.fd;
-                    ev.events = EPOLLHUP;
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, event[i].data.fd, &ev);
-                    epollSessionMutex_.lock();
-                    epollSession_.erase(event[i].data.fd);
-                    epollSessionMutex_.unlock();
-                } else {
-                    ev.data.fd = event[i].data.fd;
-                    ev.events = EPOLLET | EPOLLIN;
-                    epoll_ctl(epfd, EPOLL_CTL_MOD, event[i].data.fd, &ev);
-                }
-
-            } else if (event[i].events & EPOLLIN) {
-                int recvSize = 0;
-                if (!socketConnection[event[i].data.fd].Recv(buffer, recvSize)) {
-                    cerr << "DataSR : client closed socket connect, fd = " << event[i].data.fd << endl;
-                    ev.data.ptr = nullptr;
-                    ev.data.fd = event[i].data.fd;
-                    ev.events = EPOLLHUP;
-                    epoll_ctl(epfd, EPOLL_CTL_DEL, event[i].data.fd, &ev);
-                    epollSessionMutex_.lock();
-                    epollSession_.erase(event[i].data.fd);
-                    epollSessionMutex_.unlock();
-                    // EpollMessage_t msg;
-                    // msg.type = ERROR_CLIENT_CLOSE_CONNECT;
-                    // msg.dataSize = 0;
-                    // insertMQ2StorageCore(msg);
-                } else {
-                    EpollMessage_t msg;
-                    ev.data.ptr = (void*)&msg;
-                    ev.data.fd = event[i].data.fd;
-                    ev.events = EPOLLET | EPOLLIN;
-                    epoll_ctl(epfd, EPOLL_CTL_MOD, event[i].data.fd, &ev);
-                    NetworkHeadStruct_t netBody;
-                    memcpy(&netBody, buffer, sizeof(NetworkHeadStruct_t));
-                    memcpy(msg.data, buffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
-                    msg.dataSize = netBody.dataSize;
-                    msg.cid = netBody.clientID;
-                    msg.type = netBody.messageType;
-                    msg.fd = event[i].data.fd;
-                    cerr << "DataSR : recv message type " << msg.type << ", message size = " << msg.dataSize << endl;
-                    switch (netBody.messageType) {
-                    case SGX_RA_MSG01: {
-                        this->insertMQ(MESSAGE2RASERVER, msg);
-                        break;
-                    }
-                    case SGX_RA_MSG3: {
-                        this->insertMQ(MESSAGE2RASERVER, msg);
-                        break;
-                    }
-                    case SGX_SIGNED_HASH: {
-                        this->insertMQ(MESSAGE2RASERVER, msg);
-                        break;
-                    }
-                    case CLIENT_UPLOAD_CHUNK: {
-                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
-                        break;
-                    }
-                    case CLIENT_UPLOAD_RECIPE: {
-                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
-                        break;
-                    }
-                    case CLIENT_DOWNLOAD_FILEHEAD: {
-                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
-                        break;
-                    }
-                    case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                        this->insertMQ(MESSAGE2STOSTORAGE, msg);
-                        break;
-                    }
-                    default:
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-bool DataSR::insertMQ2DataSR_CallBack(EpollMessage_t& newMessage)
-{
-    return MQ2DataSR_CallBack_->push(newMessage);
-}
-
-bool DataSR::insertMQ2DedupCore(EpollMessage_t& newMessage)
-{
-    return MQ2DedupCore_->push(newMessage);
-}
-
-bool DataSR::insertMQ2RAServer(EpollMessage_t& newMessage)
-{
-    return MQ2RAServer_->push(newMessage);
-}
-
-bool DataSR::insertMQ2StorageCore(EpollMessage_t& newMessage)
-{
-    return MQ2StorageCore_->push(newMessage);
-}
-
-bool DataSR::extractMQ2DedupCore(EpollMessage_t& newMessage)
-{
-    return MQ2DedupCore_->pop(newMessage);
-}
-
-bool DataSR::extractMQ2RAServer(EpollMessage_t& newMessage)
-{
-    return MQ2RAServer_->pop(newMessage);
-}
-
-bool DataSR::extractMQ2StorageCore(EpollMessage_t& newMessage)
-{
-    return MQ2StorageCore_->pop(newMessage);
-}
-
-bool DataSR::extractMQ2DataSR_CallBack(EpollMessage_t& newMessage)
-{
-    return MQ2DataSR_CallBack_->pop(newMessage);
+    return;
 }

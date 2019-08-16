@@ -1,13 +1,16 @@
 #ifndef GENERALDEDUPSYSTEM_DATASR_HPP
 #define GENERALDEDUPSYSTEM_DATASR_HPP
 
+#include "../src/pow/include/powServer.hpp"
 #include "boost/bind.hpp"
 #include "boost/thread.hpp"
 #include "configure.hpp"
 #include "dataStructure.hpp"
+#include "dedupCore.hpp"
 #include "messageQueue.hpp"
 #include "protocol.hpp"
 #include "socket.hpp"
+#include "storageCore.hpp"
 #include "sys/epoll.h"
 #include <bits/stdc++.h>
 
@@ -17,36 +20,14 @@ extern Configure config;
 
 class DataSR {
 private:
-    messageQueue<EpollMessage_t>* MQ2DataSR_CallBack_;
-    messageQueue<EpollMessage_t>* MQ2DedupCore_;
-    messageQueue<EpollMessage_t>* MQ2StorageCore_;
-    messageQueue<EpollMessage_t>* MQ2RAServer_;
-    Socket socket_;
-    unordered_map<int, EpollMessage_t> epollSession_;
-    map<int, Socket> socketConnection;
-    std::mutex epollSessionMutex_;
-    int epfd;
+    StorageCore* storageObj_;
+    DedupCore* dedupCoreObj_;
+    powServer* powServerObj_;
 
 public:
-    DataSR();
-    ~DataSR();
-    void run();
-    bool receiveData();
-    bool sendData();
-    bool workloadProgress();
-    void extractMQ();
-    bool insertMQ(int queueSwitch, EpollMessage_t& msg);
-    bool insertMQ2DedupCore(EpollMessage_t& newMessage);
-    bool insertMQ2StorageCore(EpollMessage_t& newMessage);
-    bool insertMQ2RAServer(EpollMessage_t& newMessage);
-    bool insertMQ2DataSR_CallBack(EpollMessage_t& newMessage);
-    bool extractMQ2DedupCore(EpollMessage_t& newMessage);
-    bool extractMQ2StorageCore(EpollMessage_t& newMessage);
-    bool extractMQ2RAServer(EpollMessage_t& newMessage);
-    bool extractMQ2DataSR_CallBack(EpollMessage_t& newMessage);
-
-    // bool extractTimerMQToStorageCore(StorageCoreData_t& newData);
-    // bool insertTimerMQToStorageCore(StorageCoreData_t& newData);
+    DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj);
+    ~DataSR(){};
+    void run(Socket socket);
 };
 
 #endif //GENERALDEDUPSYSTEM_DATASR_HPP

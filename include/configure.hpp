@@ -30,11 +30,10 @@ using namespace std;
 #define DATA_TYPE_RECIPE 1
 #define DATA_TYPE_CHUNK 2
 
-#define EPOLL_MESSAGE_DATA_SIZE 12 * 1000 * 1000
+#define NETWORK_MESSAGE_DATA_SIZE 12 * 1000 * 1000
 #define NETWORK_STRUCT_DATA_SIZE 12 * 1000 * 1000
 #define SGX_MESSAGE_MAX_SIZE 1024 * 1024
 #define NETWORK_RESPOND_BUFFER_MAX_SIZE 12 * 1000 * 1000
-
 #define CRYPTO_BLOCK_SZIE 16
 
 class Configure {
@@ -60,7 +59,6 @@ private:
 
     //message queue size settings
     int _Data_t_MQSize;
-    int _EpollMessage_t_MQSize;
     int _RetrieverData_t_MQSize;
     int _StorageData_t_MQSize;
 
@@ -154,7 +152,6 @@ public:
 
     //message queue size setting
     int get_Data_t_MQSize();
-    int get_EpollMessage_t_MQSize();
     int get_RetrieverData_t_MQSize();
     int get_StorageData_t_MQSize();
 

@@ -27,9 +27,8 @@ void PRINT_BYTE_ARRAY_STORAGE_CORE(
     fprintf(file, "\n}\n");
 }
 
-StorageCore::StorageCore(DataSR* dataSRObjTemp)
+StorageCore::StorageCore()
 {
-    dataSRObj_ = dataSRObjTemp;
     RecipeNamePrefix_ = config.getRecipeRootPath();
     containerNamePrefix_ = config.getContainerRootPath();
     RecipeNameTail_ = ".recipe";
@@ -67,135 +66,20 @@ StorageCore::~StorageCore()
     delete cryptoObj_;
 }
 
-bool StorageCore::extractMQFromDataSR(EpollMessage_t& newMessage)
-{
-    return dataSRObj_->extractMQ2StorageCore(newMessage);
-}
-
-bool StorageCore::insertMQToDataSR_CallBack(EpollMessage_t& newMessage)
-{
-    return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
-}
-
-void StorageCore::storageThreadForDataSR()
-{
-    while (true) {
-        EpollMessage_t epollMessage;
-        if (extractMQFromDataSR(epollMessage)) {
-            switch (epollMessage.type) {
-
-            case CLIENT_UPLOAD_RECIPE: {
-                Recipe_t tempRecipeHead;
-                memcpy(&tempRecipeHead, epollMessage.data, sizeof(Recipe_t));
-                int currentRecipeEntryNumber = (epollMessage.dataSize - sizeof(Recipe_t)) / sizeof(RecipeEntry_t);
-                RecipeList_t tempRecipeEntryList;
-                for (int i = 0; i < currentRecipeEntryNumber; i++) {
-                    RecipeEntry_t tempRecipeEntry;
-                    memcpy(&tempRecipeEntry, epollMessage.data + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
-                    tempRecipeEntryList.push_back(tempRecipeEntry);
-                }
-                cerr << "StorageCore : recv Recipe from client" << endl;
-
-                if (!this->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList)) {
-                    cerr << "StorageCore : verify Recipe fail, send resend flag" << endl;
-                    epollMessage.type = ERROR_RESEND;
-                    epollMessage.dataSize = 0;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                } else {
-                    cerr << "StorageCore : verify Recipe succes" << endl;
-                    epollMessage.type = SUCCESS;
-                    epollMessage.dataSize = 0;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                }
-                break;
-            }
-            case CLIENT_UPLOAD_CHUNK: {
-                if (this->saveChunks(epollMessage)) {
-                    epollMessage.type = SUCCESS;
-                } else {
-                    cerr << "DedupCore : dedup stage 2 report error" << endl;
-                    epollMessage.type = ERROR_RESEND;
-                }
-                epollMessage.dataSize = 0;
-                insertMQToDataSR_CallBack(epollMessage);
-                break;
-            }
-            case CLIENT_DOWNLOAD_FILEHEAD: {
-                Recipe_t restoredFileRecipe;
-                if (restoreRecipeHead((char*)epollMessage.data, restoredFileRecipe)) {
-                    epollMessage.type = SUCCESS;
-                    epollMessage.dataSize = sizeof(Recipe_t);
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    memcpy(epollMessage.data, &restoredFileRecipe, sizeof(Recipe_t));
-                    // cerr << "StorageCore : restored file recipe head for " << endl;
-                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, restoredFileRecipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                } else {
-                    epollMessage.type = ERROR_FILE_NOT_EXIST;
-                    epollMessage.dataSize = 0;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                }
-                break;
-            }
-
-            case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                uint32_t startID, endID;
-                ChunkList_t restoredChunkList;
-                memcpy(&startID, epollMessage.data + FILE_NAME_HASH_SIZE, sizeof(uint32_t));
-                memcpy(&endID, epollMessage.data + FILE_NAME_HASH_SIZE + sizeof(uint32_t), sizeof(uint32_t));
-                cerr << "StorageCore : recv chunk download request, start ID = " << startID << " end ID = " << endID << endl;
-                if (restoreRecipeAndChunk((char*)epollMessage.data, startID, endID, restoredChunkList)) {
-                    // epollMessage.dataSize = restoredChunkList.size() * sizeof(Chunk_t);
-                    epollMessage.type = SUCCESS;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    int totalSendSize = 0;
-                    for (int i = 0; i < restoredChunkList.size(); i++) {
-                        memcpy(epollMessage.data + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
-                        totalSendSize += sizeof(uint32_t);
-                        memcpy(epollMessage.data + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
-                        totalSendSize += sizeof(int);
-                        memcpy(epollMessage.data + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
-                        totalSendSize += restoredChunkList[i].logicDataSize;
-                        memcpy(epollMessage.data + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                        totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
-                    }
-                    epollMessage.dataSize = totalSendSize;
-                    // cerr << "StorageCore : restore chunk from " << startID << " to " << endID << " over" << endl;
-                    insertMQToDataSR_CallBack(epollMessage);
-                } else {
-                    epollMessage.dataSize = 0;
-                    epollMessage.type = ERROR_CHUNK_NOT_EXIST;
-                    memset(epollMessage.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    insertMQToDataSR_CallBack(epollMessage);
-                }
-                break;
-            }
-            default: {
-                cerr << "StorageCore : recved message type error" << endl;
-                break;
-            }
-            }
-        }
-    }
-}
-
-bool StorageCore::saveChunks(EpollMessage_t& epollMessageTemp)
+bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
 {
     gettimeofday(&timestartStorage, NULL);
     int chunkNumber;
-    memcpy(&chunkNumber, epollMessageTemp.data, sizeof(int));
+    memcpy(&chunkNumber, data, sizeof(int));
     int readSize = sizeof(int);
     u_char hash[CHUNK_HASH_SIZE];
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
-        string originHash((char*)epollMessageTemp.data + readSize, CHUNK_HASH_SIZE);
+        string originHash(data + readSize, CHUNK_HASH_SIZE);
         readSize += CHUNK_HASH_SIZE;
-        memcpy(&currentChunkSize, epollMessageTemp.data + readSize, sizeof(int));
+        memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);
-        if (!saveChunk(originHash, (char*)epollMessageTemp.data + readSize, currentChunkSize)) {
+        if (!saveChunk(originHash, data + readSize, currentChunkSize)) {
             return false;
         }
         readSize += currentChunkSize;

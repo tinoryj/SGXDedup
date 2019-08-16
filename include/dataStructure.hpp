@@ -71,16 +71,6 @@ typedef struct {
     u_char key[CHUNK_ENCRYPT_KEY_SIZE];
 } KeyGenEntry_t;
 
-// network data structures
-typedef struct {
-    int fd;
-    int epfd;
-    int type;
-    int cid;
-    int dataSize;
-    u_char data[EPOLL_MESSAGE_DATA_SIZE];
-} EpollMessage_t;
-
 typedef struct {
     int fd;
     int epfd;

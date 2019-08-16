@@ -29,10 +29,8 @@ void powServer::closeSession(int fd)
     sessions.erase(fd);
 }
 
-powServer::powServer(DataSR* dataSRObjTemp)
+powServer::powServer()
 {
-
-    dataSRObj_ = dataSRObjTemp;
     cryptoObj_ = new CryptoPrimitive();
     ERR_load_crypto_strings();
     OpenSSL_add_all_algorithms();
@@ -66,119 +64,6 @@ powServer::powServer(DataSR* dataSRObjTemp)
     _quote_type = config.getPOWQuoteType();
     _service_private_key = key_private_from_bytes(def_service_private_key);
     _iasVersion = config.getPOWIASVersion();
-}
-
-void powServer::run()
-{
-    EpollMessage_t msg;
-    sgx_msg01_t msg01;
-    sgx_ra_msg2_t msg2;
-    sgx_ra_msg3_t* msg3;
-    ra_msg4_t msg4;
-
-    while (true) {
-        if (!extractMQFromDataSR(msg)) {
-            continue;
-        }
-        switch (msg.type) {
-        case SGX_RA_MSG01: {
-            memcpy(&msg01.msg0_extended_epid_group_id, msg.data, sizeof(msg01.msg0_extended_epid_group_id));
-            memcpy(&msg01.msg1, msg.data + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
-            memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-            // cerr << "PowServer : recv msg 01 success, data: \n msg0 = " << endl;
-            // PRINT_BYTE_ARRAY(stderr, &msg01.msg0_extended_epid_group_id, sizeof(msg01.msg0_extended_epid_group_id));
-            // cerr << "msg 1 = " << endl;
-            // PRINT_BYTE_ARRAY(stderr, &msg01.msg1, sizeof(msg01.msg1));
-            if (!process_msg01(msg.fd, msg01, msg2)) {
-                cerr << "PowServer : error process msg01" << endl;
-                msg.type = ERROR_RESEND;
-                msg.dataSize = 0;
-            } else {
-                msg.type = SUCCESS;
-                msg.dataSize = sizeof(sgx_ra_msg2_t);
-                memcpy(msg.data, &msg2, sizeof(sgx_ra_msg2_t));
-            }
-
-            insertMQToDataSR(msg);
-            break;
-        }
-        case SGX_RA_MSG3: {
-            msg3 = (sgx_ra_msg3_t*)new char[msg.dataSize];
-            memcpy(msg3, msg.data, msg.dataSize);
-            // cerr << "PowServer : recv msg 3 success, data: " << endl;
-            // PRINT_BYTE_ARRAY(stderr, msg3, msg.dataSize);
-
-            if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "PowServer : client had not send msg01 before" << endl;
-                msg.type = ERROR_CLOSE;
-                msg.dataSize = 0;
-                memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-            } else {
-                // cout << "Current msg.fd = " << msg.fd << endl;
-                // for (auto it : sessions) {
-                //     cerr << "session hold fd =  " << it.first << endl;
-                // }
-                cerr << "msg.datasize = " << msg.dataSize << " sgx_ra_msg3_t size = " << sizeof(sgx_ra_msg3_t) << endl;
-                if (this->process_msg3(sessions[msg.fd], msg3, msg4,
-                        msg.dataSize - sizeof(sgx_ra_msg3_t))) {
-                    msg.type = SUCCESS;
-                    msg.dataSize = sizeof(ra_msg4_t);
-                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                    memcpy(msg.data, &msg4, sizeof(ra_msg4_t));
-                    cerr << "PowServer : process msg3 success" << endl;
-                } else {
-                    cerr << "PowServer : sgx process msg3 & get msg4 error" << endl;
-                    msg.type = ERROR_CLOSE;
-                    msg.dataSize = 0;
-                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                }
-            }
-            insertMQToDataSR(msg);
-            break;
-        }
-        case SGX_SIGNED_HASH: {
-            powSignedHash_t clientReq;
-            int signedHashNumber = (msg.dataSize - sizeof(uint8_t) * 16) / CHUNK_HASH_SIZE;
-            memcpy(clientReq.signature_, msg.data, sizeof(uint8_t) * 16);
-            for (int i = 0; i < signedHashNumber; i++) {
-                string hash;
-                hash.resize(CHUNK_HASH_SIZE);
-                memcpy(&hash[0], msg.data + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
-                clientReq.hash_.push_back(hash);
-            }
-            if (sessions.find(msg.fd) == sessions.end()) {
-                cerr << "PowServer : client not trusted yet" << endl;
-                msg.type = ERROR_CLOSE;
-                msg.dataSize = 0;
-                memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-            } else {
-                if (!sessions.at(msg.fd)->enclaveTrusted) {
-                    cerr << "PowServer : client not trusted yet" << endl;
-                    msg.type = ERROR_CLOSE;
-                    msg.dataSize = 0;
-                    memset(msg.data, 0, EPOLL_MESSAGE_DATA_SIZE);
-                } else {
-                    if (this->process_signedHash(sessions.at(msg.fd), clientReq)) {
-                        msg.type = SGX_SIGNED_HASH_TO_DEDUPCORE;
-                        insertMQToDedupCore(msg);
-                        break;
-                    } else {
-                        msg.type = ERROR_RESEND;
-                    }
-                }
-            }
-            insertMQToDataSR(msg);
-            break;
-        }
-        case POW_CLOSE_SESSION: {
-            this->closeSession(msg.fd);
-            break;
-        }
-        default: {
-            break;
-        }
-        }
-    }
 }
 
 bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
@@ -424,19 +309,4 @@ bool powServer::process_signedHash(powSession* session, powSignedHash_t req)
         return false;
     }
     return true;
-}
-
-bool powServer::extractMQFromDataSR(EpollMessage_t& newMessage)
-{
-    return dataSRObj_->extractMQ2RAServer(newMessage);
-}
-
-bool powServer::insertMQToDataSR(EpollMessage_t& newMessage)
-{
-    return dataSRObj_->insertMQ2DataSR_CallBack(newMessage);
-}
-
-bool powServer::insertMQToDedupCore(EpollMessage_t& newMessage)
-{
-    return dataSRObj_->insertMQ2DedupCore(newMessage);
 }

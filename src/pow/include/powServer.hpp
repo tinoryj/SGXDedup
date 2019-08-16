@@ -6,7 +6,6 @@
 #include "configure.hpp"
 #include "crypto.h"
 #include "cryptoPrimitive.hpp"
-#include "dataSR.hpp"
 #include "dataStructure.hpp"
 #include "iasrequest.h"
 #include "json.hpp"
@@ -35,18 +34,7 @@ using namespace std;
 
 class powServer {
 private:
-    DataSR* dataSRObj_;
-    map<int, powSession*> sessions;
     CryptoPrimitive* cryptoObj_;
-    void closeSession(int fd);
-    bool process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2);
-    bool process_msg3(powSession* session, sgx_ra_msg3_t* msg3, ra_msg4_t& msg4, uint32_t quote_sz);
-    bool process_signedHash(powSession* session, powSignedHash_t req);
-    bool derive_kdk(EVP_PKEY* Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
-    bool get_sigrl(sgx_epid_group_id_t gid, char* sig_rl, uint32_t* sig_rl_size);
-    bool get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4);
-
-public:
     IAS_Connection* _ias;
     X509* _signing_ca;
     X509_STORE* _store;
@@ -54,13 +42,18 @@ public:
     uint16_t _quote_type;
     EVP_PKEY* _service_private_key;
     uint16_t _iasVersion;
+    bool derive_kdk(EVP_PKEY* Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
+    bool get_sigrl(sgx_epid_group_id_t gid, char* sig_rl, uint32_t* sig_rl_size);
+    bool get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4);
 
-    powServer(DataSR* dataSRObjTemp);
+public:
+    map<int, powSession*> sessions;
+    void closeSession(int fd);
+    bool process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2);
+    bool process_msg3(powSession* session, sgx_ra_msg3_t* msg3, ra_msg4_t& msg4, uint32_t quote_sz);
+    bool process_signedHash(powSession* session, powSignedHash_t req);
 
-    bool extractMQFromDataSR(EpollMessage_t& newMessage);
-    bool insertMQToDataSR(EpollMessage_t& newMessage);
-    bool insertMQToDedupCore(EpollMessage_t& newMessage);
-    void run();
+    powServer();
 };
 
 #endif //GENERALDEDUPSYSTEM_POWSERVER_HPP
