@@ -9,6 +9,7 @@ extern Configure config;
 
 DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
 {
+    restoreChunkBatchSize = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
@@ -21,6 +22,10 @@ void DataSR::run(Socket socket)
     u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     double totalSaveChunkTime = 0;
+    uint32_t startID = 0;
+    uint32_t endID = startID + restoreChunkBatchSize;
+    Recipe_t restoredFileRecipe;
+    uint32_t totalRestoredChunkNumber = 0;
     while (true) {
 
         if (!socket.Recv(recvBuffer, recvSize)) {
@@ -34,12 +39,6 @@ void DataSR::run(Socket socket)
             switch (netBody.messageType) {
             case CLIENT_UPLOAD_CHUNK: {
                 gettimeofday(&timestartDataSR, NULL);
-                // if (storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
-                //     netBody.messageType = SUCCESS;
-                // } else {
-                //     cerr << "DedupCore : dedup stage 2 report error" << endl;
-                //     netBody.messageType = ERROR_RESEND;
-                // }
                 if (!storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
                     return;
@@ -48,10 +47,6 @@ void DataSR::run(Socket socket)
                 long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                 double second = diff / 1000000.0;
                 totalSaveChunkTime += second;
-                // netBody.dataSize = 0;
-                // memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                // sendSize = sizeof(NetworkHeadStruct_t);
-                // socket.Send(sendBuffer, sendSize);
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
@@ -83,7 +78,7 @@ void DataSR::run(Socket socket)
                 break;
             }
             case CLIENT_DOWNLOAD_FILEHEAD: {
-                Recipe_t restoredFileRecipe;
+
                 if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe)) {
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = sizeof(Recipe_t);
@@ -100,34 +95,42 @@ void DataSR::run(Socket socket)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                uint32_t startID, endID;
-                ChunkList_t restoredChunkList;
-                memcpy(&startID, recvBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, sizeof(uint32_t));
-                memcpy(&endID, recvBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), sizeof(uint32_t));
-                cerr << "StorageCore : recv chunk download request, start ID = " << startID << " end ID = " << endID << endl;
-                if (storageObj_->restoreRecipeAndChunk((char*)recvBuffer + sizeof(NetworkHeadStruct_t), startID, endID, restoredChunkList)) {
-                    netBody.messageType = SUCCESS;
-                    int totalSendSize = 0;
-                    for (int i = 0; i < restoredChunkList.size(); i++) {
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
-                        totalSendSize += sizeof(uint32_t);
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
-                        totalSendSize += sizeof(int);
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
-                        totalSendSize += restoredChunkList[i].logicDataSize;
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                        totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
+
+                while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
+                    ChunkList_t restoredChunkList;
+                    if (storageObj_->restoreRecipeAndChunk((char*)recvBuffer + sizeof(NetworkHeadStruct_t), startID, endID, restoredChunkList)) {
+                        netBody.messageType = SUCCESS;
+                        int currentChunkNumber = restoredChunkList.size();
+                        int totalSendSize = sizeof(int);
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &currentChunkNumber, sizeof(int));
+                        for (int i = 0; i < currentChunkNumber; i++) {
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
+                            totalSendSize += sizeof(uint32_t);
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
+                            totalSendSize += sizeof(int);
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
+                            totalSendSize += restoredChunkList[i].logicDataSize;
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                            totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
+                        }
+                        netBody.dataSize = totalSendSize;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
+                        totalRestoredChunkNumber += restoredChunkList.size();
+                        startID = endID;
+                        if (restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber < restoreChunkBatchSize) {
+                            endID += restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber;
+                        } else {
+                            endID += config.getSendChunkBatchSize();
+                        }
+                    } else {
+                        netBody.dataSize = 0;
+                        netBody.messageType = ERROR_CHUNK_NOT_EXIST;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
                     }
-                    netBody.dataSize = totalSendSize;
-                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                    sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
-                } else {
-                    netBody.dataSize = 0;
-                    netBody.messageType = ERROR_CHUNK_NOT_EXIST;
-                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                    sendSize = sizeof(NetworkHeadStruct_t);
+                    socket.Send(sendBuffer, sendSize);
                 }
-                socket.Send(sendBuffer, sendSize);
                 break;
             }
             default:

@@ -169,71 +169,55 @@ void RecvDecode::run()
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
     request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     request.clientID = clientID_;
-    int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
+    int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
     u_char requestBuffer[sendSize];
     u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize;
-    uint32_t startID;
-    uint32_t endID;
-    int chunkNumber;
-    while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
-        startID = totalRecvChunks;
-        if ((fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks) > recvChunkBatchSize) {
-            endID = startID + recvChunkBatchSize;
-        } else {
-            endID = startID + fileRecipe_.fileRecipeHead.totalChunkNumber - totalRecvChunks;
-        }
-        // cerr << "RecvDecode : current request chunks from " << startID << " to " << endID << endl;
-        chunkNumber = endID - startID;
-        memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, &startID, sizeof(uint32_t));
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), &endID, sizeof(uint32_t));
-        while (true) {
-            if (!socket_.Send(requestBuffer, sendSize)) {
-                cerr << "RecvDecode : storage server closed" << endl;
-                return;
-            }
-            if (!socket_.Recv(respondBuffer, recvSize)) {
-                cerr << "RecvDecode : storage server closed" << endl;
-                return;
-            }
-            memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
-            if (respond.messageType == ERROR_RESEND)
-                continue;
-            if (respond.messageType == ERROR_CLOSE) {
-                std::cerr << "RecvDecode : Server reject download request!" << endl;
-                return;
-            }
-            if (respond.messageType == SUCCESS) {
-                cerr << "RecvDecode : recv chunks from " << startID << " to " << endID << endl;
-                int totalRecvSize = 0;
-                int chunkSize;
-                uint32_t chunkID;
-                u_char chunkPlaintData[MAX_CHUNK_SIZE];
-                for (int i = 0; i < chunkNumber; i++) {
-                    memcpy(&chunkID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
-                    totalRecvSize += sizeof(uint32_t);
-                    memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
-                    totalRecvSize += sizeof(int);
-                    cryptoObj_->decryptChunk(respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
 
-                    //cerr << "RecvDecode : recv chunk id = " << tempChunk.ID << endl;
-                    // cout << "Recv : Chunk ID = " << chunkID << " size = " << chunkSize << endl;
-                    // PRINT_BYTE_ARRAY_RECV(stdout, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, CHUNK_ENCRYPT_KEY_SIZE);
-                    // PRINT_BYTE_ARRAY_RECV(stdout, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize);
-                    RetrieverData_t newData;
-                    newData.ID = chunkID;
-                    newData.logicDataSize = chunkSize;
-                    memcpy(newData.logicData, chunkPlaintData, chunkSize);
-                    if (!insertMQToRetriever(newData)) {
-                        cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
-                    }
-                    totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
+    memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
+
+    if (!socket_.Send(requestBuffer, sendSize)) {
+        cerr << "RecvDecode : storage server closed" << endl;
+        return;
+    }
+    while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
+
+        if (!socket_.Recv(respondBuffer, recvSize)) {
+            cerr << "RecvDecode : storage server closed" << endl;
+            return;
+        }
+        memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
+        if (respond.messageType == ERROR_RESEND)
+            continue;
+        if (respond.messageType == ERROR_CLOSE) {
+            std::cerr << "RecvDecode : Server reject download request!" << endl;
+            return;
+        }
+        if (respond.messageType == SUCCESS) {
+            int totalRecvSize = sizeof(int);
+            int chunkSize;
+            uint32_t chunkID;
+            int chunkNumber;
+            u_char chunkPlaintData[MAX_CHUNK_SIZE];
+            memcpy(&chunkNumber, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int));
+            for (int i = 0; i < chunkNumber; i++) {
+                memcpy(&chunkID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
+                totalRecvSize += sizeof(uint32_t);
+                memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
+                totalRecvSize += sizeof(int);
+                cryptoObj_->decryptChunk(respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
+
+                RetrieverData_t newData;
+                newData.ID = chunkID;
+                newData.logicDataSize = chunkSize;
+                memcpy(newData.logicData, chunkPlaintData, chunkSize);
+                if (!insertMQToRetriever(newData)) {
+                    cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
                 }
-                totalRecvChunks += chunkNumber;
-                break;
+                totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
             }
+            totalRecvChunks += chunkNumber;
         }
     }
     cerr << "RecvDecode : download job done, exit now" << endl;

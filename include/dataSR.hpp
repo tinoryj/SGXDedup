@@ -23,6 +23,7 @@ private:
     StorageCore* storageObj_;
     DedupCore* dedupCoreObj_;
     powServer* powServerObj_;
+    uint32_t restoreChunkBatchSize;
 
 public:
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj);
