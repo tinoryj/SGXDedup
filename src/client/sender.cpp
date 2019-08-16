@@ -300,6 +300,7 @@ bool Sender::sendDataPow(u_char* request, int requestSize, u_char* respond, int&
 
 void Sender::run()
 {
+    double totalSendTime = 0;
     gettimeofday(&timestartSender, NULL);
     Data_t tempChunk;
     RecipeList_t recipeList;
@@ -353,7 +354,7 @@ void Sender::run()
                 gettimeofday(&timeendSenderRecipe, NULL);
                 long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
                 double second = diff / 1000000.0;
-                printf("Sender send chunk list time is %ld us = %lf s\n", diff, second);
+                totalSendTime += second;
 
                 if (status == SUCCESS) {
                     cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
@@ -372,7 +373,7 @@ void Sender::run()
             }
         }
     }
-
+    printf("Sender send chunk list time is %lf s\n", totalSendTime);
     while (true) {
         gettimeofday(&timestartSenderRecipe, NULL);
         this->sendRecipe(fileRecipe, recipeList, status);
