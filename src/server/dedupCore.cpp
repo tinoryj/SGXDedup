@@ -39,10 +39,13 @@ bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
     string tmpdata;
     int size = in.hash_.size();
     for (int i = 0; i < size; i++) {
+        cout << "query chunk hash" << endl;
+        PRINT_BYTE_ARRAY_DEDUP_CORE(stdout, &in.hash_[i][0], CHUNK_HASH_SIZE);
         if (fp2ChunkDB.query(in.hash_[i], tmpdata)) {
             continue;
+        } else {
+            out.push_back(i);
         }
-        out.push_back(i);
     }
     return true;
 }

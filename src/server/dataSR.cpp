@@ -7,6 +7,25 @@ struct timeval timeendDataSR;
 
 extern Configure config;
 
+void PRINT_BYTE_ARRAY_DATA_SR(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
 {
     restoreChunkBatchSize = config.getSendChunkBatchSize();
@@ -237,6 +256,9 @@ void DataSR::runPow(Socket socket)
                         if (powServerObj_->process_signedHash(powServerObj_->sessions.at(socket.fd_), clientReq)) {
 
                             RequiredChunk_t requiredChunkTemp;
+                            // cerr << "Client req signature = " << endl;
+                            // PRINT_BYTE_ARRAY_DATA_SR(stderr, clientReq.signature_, 16);
+                            // cerr << "Client req hash size = " << clientReq.hash_.size() << endl;
                             if (dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp)) {
                                 netBody.messageType = SUCCESS;
                                 netBody.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);

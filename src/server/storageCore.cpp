@@ -76,6 +76,8 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
         string originHash(data + readSize, CHUNK_HASH_SIZE);
+        cout << "save chunk hash" << endl;
+        PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &originHash[0], CHUNK_HASH_SIZE);
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);

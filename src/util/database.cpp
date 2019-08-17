@@ -2,7 +2,7 @@
 
 bool Database::query(std::string key, std::string& value)
 {
-    //std::lock_guard<std::mutex> locker(this->mutexDataBase_);
+    std::lock_guard<std::mutex> locker(this->mutexDataBase_);
     leveldb::Status queryStatus = this->levelDBObj_->Get(leveldb::ReadOptions(), key, &value);
     return queryStatus.ok();
 }
