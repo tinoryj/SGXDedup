@@ -341,7 +341,7 @@ void Sender::run()
             // totalSendTime += second;
         }
     }
-    printf("Sender send chunk list time is %lf s\n", totalSendTime);
+    // printf("Sender send chunk list time is %lf s\n", totalSendTime);
 
     // gettimeofday(&timestartSenderRecipe, NULL);
     if (this->sendRecipe(fileRecipe, recipeList, status)) {
