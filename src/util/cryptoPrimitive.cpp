@@ -341,7 +341,7 @@ bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize,
 {
     int plaintextSize, plaintextTailSize;
 
-    EVP_EncryptInit_ex(cipherctx_, EVP_aes_128_cbc(), NULL, key, iv);
+    EVP_EncryptInit_ex(cipherctx_, EVP_aes_128_cfb(), NULL, key, iv);
     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
     EVP_DecryptUpdate(cipherctx_, dataBuffer, &plaintextSize, ciphertext, dataSize);
     EVP_DecryptFinal_ex(cipherctx_, dataBuffer + plaintextSize, &plaintextTailSize);
@@ -350,7 +350,6 @@ bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize,
 
     if (plaintextSize != dataSize) {
         cerr << "CryptoPrimitive Error: the size of the plaintext output (" << plaintextSize << "bytes) does not match with that of the original data (" << dataSize << " bytes)!" << endl;
-
         return false;
     }
 
@@ -361,7 +360,7 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
 {
     int ciphertextSize, ciphertextTailSize;
 
-    EVP_EncryptInit_ex(cipherctx_, EVP_aes_128_cbc(), NULL, key, iv);
+    EVP_EncryptInit_ex(cipherctx_, EVP_aes_128_cfb(), NULL, key, iv);
     /*disable padding to ensure that the generated ciphertext has the same size as the input data*/
     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
     EVP_EncryptUpdate(cipherctx_, ciphertext, &ciphertextSize, dataBuffer, dataSize);

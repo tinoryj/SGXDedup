@@ -7,17 +7,17 @@
 #include <sgx_utils.h>
 #include <string.h>
 
-// static const sgx_ec256_public_t def_service_public_key = {
-//     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
-//         0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
-//         0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
-//         0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38 },
-//     { 0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
-//         0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
-//         0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
-//         0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06 }
+static const sgx_ec256_public_t def_service_public_key = {
+    { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
+        0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
+        0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
+        0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38 },
+    { 0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
+        0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
+        0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
+        0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06 }
 
-// }; //little endding/hard coding
+}; //little endding/hard coding
 
 #define PSE_RETRIES 5 /* Arbitrary. Not too long, not too short. */
 
@@ -93,52 +93,56 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
         return ret_status;
     }
 
-    BIGNUM *d = BN_new(), *n = BN_new(), *result = BN_new();
-    BN_bin2bn(keyd, keydLen, d);
-    BN_bin2bn(keyn, keynLen, n);
-    uint8_t* hash;
+    // BIGNUM *d = BN_new(), *n = BN_new(), *result = BN_new();
+    // BN_bin2bn(keyd, keydLen, d);
+    // BN_bin2bn(keyn, keynLen, n);
+    unsigned char *hash, *originhash;
     uint32_t len;
-    hash = (unsigned char*)malloc(srcLen);
-    if (hash == NULL)
-        return SGX_ERROR_OUT_OF_MEMORY;
+    hash = (unsigned char*)malloc(srcLen * 2);
+    originhash = (unsigned char*)malloc(srcLen);
+    // if (hash == NULL)
+    //     return SGX_ERROR_OUT_OF_MEMORY;
 
-    BN_CTX* bnCtx = BN_CTX_new();
-    if (bnCtx == NULL) {
-        free(hash);
-        return SGX_ERROR_UNEXPECTED;
-    }
+    // BN_CTX* bnCtx = BN_CTX_new();
+    // if (bnCtx == NULL) {
+    //     free(hash);
+    //     return SGX_ERROR_UNEXPECTED;
+    // }
 
-    if (!decrypt(src, srcLen, k, 16, hash, &len)) {
-        free(hash);
-        BN_CTX_free(bnCtx);
-        return SGX_ERROR_UNEXPECTED;
-    }
-    BN_bin2bn(hash, srcLen, result);
-    BN_mod_exp(result, result, d, n, bnCtx);
-    BN_bn2bin(result, src + srcLen - BN_num_bits(result));
-    if (!encrypt(src, 16, k, 16, key, &len)) {
-        free(hash);
-        BN_CTX_free(bnCtx);
-        return SGX_ERROR_UNEXPECTED;
-    }
-    BN_CTX_free(bnCtx);
+    // if (!decrypt(src, srcLen, k, 16, originhash, &len)) {
+    //     free(hash);
+    //     // BN_CTX_free(bnCtx);
+    //     return SGX_ERROR_UNEXPECTED;
+    // }
+    // BN_bin2bn(hash, srcLen, result);
+    // BN_mod_exp(result, result, d, n, bnCtx);
+    // BN_bn2bin(result, src + srcLen - BN_num_bits(result));
+    sgx_sha256_msg(src, srcLen, key);
+    // if (!encrypt(hash, srcLen, k, 16, key, &len)) {
+    //     free(hash);
+    //     // BN_CTX_free(bnCtx);
+    //     return SGX_ERROR_UNEXPECTED;
+    // }
+    // BN_CTX_free(bnCtx);
     free(hash);
-    BN_free(d);
-    BN_free(n);
-    BN_free(result);
-    return SGX_SUCCESS;
+    free(originhash);
+    if (srcLen != len) {
+        return SGX_ERROR_UNEXPECTED;
+    } else {
+        return SGX_SUCCESS;
+    }
 }
 
 int encrypt(uint8_t* plaint, uint32_t plaintLen,
     uint8_t* symKey, uint32_t symKeyLen,
     uint8_t* cipher, uint32_t* cipherLen)
 {
-    uint8_t iv[16] = { 0 };
+    // uint8_t iv[16] = { 0 };
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (ctx == NULL)
         return 0;
 
-    if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, iv)) {
+    if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, symKey)) {
         goto error;
     }
 
@@ -164,12 +168,12 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen,
     uint8_t* plaint, uint32_t* plaintLen)
 {
 
-    uint8_t iv[16] = { 0 };
+    // uint8_t iv[16] = { 0 };
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (ctx == NULL)
         return 0;
 
-    if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, iv)) {
+    if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, symKey)) {
         goto error;
     }
 

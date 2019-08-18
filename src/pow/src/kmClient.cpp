@@ -38,12 +38,12 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
         return false;
     }
     memcpy(src, hash, hashSize);
-    uint8_t* ans = new uint8_t[1024];
+    uint8_t* ans = new uint8_t[keySize];
     // cerr << "keyd len = " << _keyd.length() << endl;
     // PRINT_BYTE_ARRAY_KM(stderr, &_keyd[0], _keyd.length());
     // cerr << "keyn len = " << _keyn.length() << endl;
     // PRINT_BYTE_ARRAY_KM(stderr, &_keyn[0], _keyn.length());
-    cerr << "Start ecall for key gen" << endl;
+    // cerr << "Start ecall for key gen" << endl;
     status = ecall_keygen(_eid,
         &retval,
         &_ctx,
@@ -58,10 +58,13 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : ecall failed" << endl;
         return false;
-    } else {
-        cerr << "KmClient : ecall key gen success" << endl;
     }
+    // else {
+    //     cerr << "KmClient : ecall key gen success" << endl;
+    // }
     memcpy(key, ans, keySize);
+    // cerr << "keyn len = " << _keyn.length() << endl;
+    // PRINT_BYTE_ARRAY_KM(stderr, &_keyn[0], _keyn.length());
     delete[] src;
     delete[] ans;
     return true;

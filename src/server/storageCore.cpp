@@ -318,6 +318,9 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
     if (containerNameStr.compare(currentReadContainerFileName_) == 0) {
         memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
         return true;
+    } else if (containerNameStr.compare(lastContainerFileName_) == 0) {
+        memcpy(data, currentContainer_.body_ + key.offset, key.length);
+        return true;
     } else {
         containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
         if (!containerIn.is_open()) {
@@ -331,14 +334,11 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
         if (containerIn.gcount() != containerSize) {
             cerr << "StorageCore : read container error" << endl;
             return false;
-        } else {
-            cerr << "StorageCore : read container " << containerNameStr << " success" << endl;
         }
+        containerIn.close();
         currentReadContainer_.used_ = containerSize;
         memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
         currentReadContainerFileName_ = containerNameStr;
-        // memcpy(&currentReadContainerFileName_[0], &containerNameStr[0], lastContainerFileName_.length());
-        cerr << "StorageCore : current read container name" << currentReadContainerFileName_ << endl;
         return true;
     }
 }

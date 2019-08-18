@@ -247,7 +247,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->mk);
             cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
                 6, current->sk);
-            PRINT_BYTE_ARRAY_KMS(stderr, current->sk, 16);
+            // PRINT_BYTE_ARRAY_KMS(stderr, current->sk, 16);
             current->enclaveTrusted = true;
             return true;
         } else {

@@ -19,7 +19,6 @@ void Retriever::recvThread()
 {
     RetrieverData_t newData;
     while (totalRecvNumber_ < totalChunkNumber_) {
-
         if (extractMQFromRecvDecode(newData)) {
             retrieveFile_.write(newData.logicData, newData.logicDataSize);
             totalRecvNumber_++;

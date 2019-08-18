@@ -32,13 +32,11 @@ keyServer::keyServer()
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
     RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
-}
-
-keyServer::~keyServer()
-{
     BIO_free_all(key_);
     RSA_free(rsa_);
 }
+
+keyServer::~keyServer() {}
 
 void keyServer::run(Socket socket)
 {
@@ -46,10 +44,23 @@ void keyServer::run(Socket socket)
     u_char keynBuffer[4096];
     u_char keydBuffer[4096];
     int lenKeyn, lenKeyd;
+    BN_print_fp(stderr, keyD_);
+    cerr << endl;
+    BN_print_fp(stderr, keyN_);
+    cerr << endl;
     lenKeyn = BN_bn2bin(keyN_, keynBuffer);
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
     string keyn((char*)keynBuffer, lenKeyn);
     string keyd((char*)keydBuffer, lenKeyd);
+    // keyn.resize(4096);
+    // keyd.resize(4096);
+    // lenKeyn = BN_bn2bin(keyN_, (unsigned char*)keyn.c_str());
+    // lenKeyd = BN_bn2bin(keyD_, (unsigned char*)keyd.c_str());
+    // keyn.resize(lenKeyn);
+    // keyd.resize(lenKeyd);
+    cerr << "keyd len = " << lenKeyd << " keyn len = " << lenKeyn << endl;
+    PRINT_BYTE_ARRAY_KEY_SERVER(stderr, &keyn[0], lenKeyn);
+    PRINT_BYTE_ARRAY_KEY_SERVER(stderr, &keyd[0], lenKeyd);
     kmClient* client = new kmClient(keyn, keyd);
     if (!client->init(socket)) {
         cerr << "keyServer: enclave not truster" << endl;
@@ -77,8 +88,6 @@ void keyServer::run(Socket socket)
 
         for (int i = 0; i < recvNumber; i++) {
             client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            cerr << "KeyServer : request for chunk " << i << " done" << endl;
-            PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
         }
 
         // gettimeofday(&timeend, 0);
