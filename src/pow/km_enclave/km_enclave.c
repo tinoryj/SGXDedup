@@ -123,6 +123,9 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
     }
     BN_CTX_free(bnCtx);
     free(hash);
+    BN_free(d);
+    BN_free(n);
+    BN_free(result);
     return SGX_SUCCESS;
 }
 

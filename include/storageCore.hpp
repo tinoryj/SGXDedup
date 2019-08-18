@@ -24,12 +24,14 @@ public:
 class StorageCore {
 private:
     std::string lastContainerFileName_;
+    std::string currentReadContainerFileName_;
     std::string containerNamePrefix_;
     std::string containerNameTail_;
     std::string RecipeNamePrefix_;
     std::string RecipeNameTail_;
     CryptoPrimitive* cryptoObj_;
     Container currentContainer_;
+    Container currentReadContainer_;
     bool writeContainer(keyForChunkHashDB_t& key, char* data);
     bool readContainer(keyForChunkHashDB_t key, char* data);
 

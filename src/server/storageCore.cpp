@@ -41,7 +41,7 @@ StorageCore::StorageCore()
         fin.close();
 
         //read last container
-        fin.open("cr/" + lastContainerFileName_ + containerNameTail_, ifstream::in | ifstream::binary);
+        fin.open(containerNamePrefix_ + lastContainerFileName_ + containerNameTail_, ifstream::in | ifstream::binary);
         fin.read(currentContainer_.body_, currentContainer_.used_);
         fin.close();
 
@@ -76,8 +76,8 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
         string originHash(data + readSize, CHUNK_HASH_SIZE);
-        cout << "save chunk hash" << endl;
-        PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &originHash[0], CHUNK_HASH_SIZE);
+        // cout << "save chunk hash" << endl;
+        // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &originHash[0], CHUNK_HASH_SIZE);
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);
@@ -315,24 +315,31 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
     ifstream containerIn;
     string containerNameStr((char*)key.containerName, lastContainerFileName_.length());
     string readName = containerNamePrefix_ + containerNameStr + containerNameTail_;
-    if (containerNameStr.compare(lastContainerFileName_) == 0) {
-        memcpy(data, currentContainer_.body_ + key.offset, key.length);
+    if (containerNameStr.compare(currentReadContainerFileName_) == 0) {
+        memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
         return true;
     } else {
         containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
-
         if (!containerIn.is_open()) {
-            std::cerr << "Can not open Container: " << readName << endl;
+            std::cerr << "StorageCore : Can not open Container: " << readName << endl;
             return false;
         }
-
-        containerIn.seekg(key.offset);
-        containerIn.read(data, key.length);
-        if (containerIn.gcount() == key.length) {
-            return true;
+        containerIn.seekg(0, ios_base::end);
+        int containerSize = containerIn.tellg();
+        containerIn.seekg(0, ios_base::beg);
+        containerIn.read(currentReadContainer_.body_, containerSize);
+        if (containerIn.gcount() != containerSize) {
+            cerr << "StorageCore : read container error" << endl;
+            return false;
         } else {
-            return false;
+            cerr << "StorageCore : read container " << containerNameStr << " success" << endl;
         }
+        currentReadContainer_.used_ = containerSize;
+        memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
+        currentReadContainerFileName_ = containerNameStr;
+        // memcpy(&currentReadContainerFileName_[0], &containerNameStr[0], lastContainerFileName_.length());
+        cerr << "StorageCore : current read container name" << currentReadContainerFileName_ << endl;
+        return true;
     }
 }
 

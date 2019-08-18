@@ -5,6 +5,25 @@ extern Configure config;
 // -A AttestationReportSigningCACert.pem -C client.crt
 // -s 797F0D90EE75B24B554A73AB01FD3335 -Y client.pem
 
+void PRINT_BYTE_ARRAY_KMS(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 kmServer::kmServer(Socket socket)
 {
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
@@ -228,7 +247,7 @@ bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->mk);
             cmac128(current->kdk, (unsigned char*)("\x01SK\x00\x80\x00"),
                 6, current->sk);
-
+            PRINT_BYTE_ARRAY_KMS(stderr, current->sk, 16);
             current->enclaveTrusted = true;
             return true;
         } else {

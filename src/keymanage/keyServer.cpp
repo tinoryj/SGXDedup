@@ -5,6 +5,25 @@ extern Configure config;
 // struct timeval timestart;
 // struct timeval timeend;
 
+void PRINT_BYTE_ARRAY_KEY_SERVER(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 keyServer::keyServer()
 {
     rsa_ = RSA_new();
@@ -13,22 +32,24 @@ keyServer::keyServer()
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
     RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
+}
+
+keyServer::~keyServer()
+{
     BIO_free_all(key_);
     RSA_free(rsa_);
 }
 
-keyServer::~keyServer() {}
-
 void keyServer::run(Socket socket)
 {
-    string keyn, keyd;
+
+    u_char keynBuffer[4096];
+    u_char keydBuffer[4096];
     int lenKeyn, lenKeyd;
-    keyn.resize(2048);
-    keyd.resize(2048);
-    lenKeyn = BN_bn2bin(keyN_, (unsigned char*)keyn.c_str());
-    lenKeyd = BN_bn2bin(keyD_, (unsigned char*)keyd.c_str());
-    keyn.resize(lenKeyn);
-    keyd.resize(lenKeyd);
+    lenKeyn = BN_bn2bin(keyN_, keynBuffer);
+    lenKeyd = BN_bn2bin(keyD_, keydBuffer);
+    string keyn((char*)keynBuffer, lenKeyn);
+    string keyd((char*)keydBuffer, lenKeyd);
     kmClient* client = new kmClient(keyn, keyd);
     if (!client->init(socket)) {
         cerr << "keyServer: enclave not truster" << endl;
@@ -56,6 +77,8 @@ void keyServer::run(Socket socket)
 
         for (int i = 0; i < recvNumber; i++) {
             client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+            cerr << "KeyServer : request for chunk " << i << " done" << endl;
+            PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
         }
 
         // gettimeofday(&timeend, 0);

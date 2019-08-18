@@ -3,6 +3,25 @@
 using namespace std;
 extern Configure config;
 
+void PRINT_BYTE_ARRAY_KM(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
+
 bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
 {
     sgx_status_t retval;
@@ -20,6 +39,11 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     }
     memcpy(src, hash, hashSize);
     uint8_t* ans = new uint8_t[1024];
+    // cerr << "keyd len = " << _keyd.length() << endl;
+    // PRINT_BYTE_ARRAY_KM(stderr, &_keyd[0], _keyd.length());
+    // cerr << "keyn len = " << _keyn.length() << endl;
+    // PRINT_BYTE_ARRAY_KM(stderr, &_keyn[0], _keyn.length());
+    cerr << "Start ecall for key gen" << endl;
     status = ecall_keygen(_eid,
         &retval,
         &_ctx,
@@ -34,8 +58,12 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : ecall failed" << endl;
         return false;
+    } else {
+        cerr << "KmClient : ecall key gen success" << endl;
     }
     memcpy(key, ans, keySize);
+    delete[] src;
+    delete[] ans;
     return true;
 }
 
