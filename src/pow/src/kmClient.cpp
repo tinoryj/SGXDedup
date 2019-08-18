@@ -63,8 +63,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     //     cerr << "KmClient : ecall key gen success" << endl;
     // }
     memcpy(key, ans, keySize);
-    // cerr << "keyn len = " << _keyn.length() << endl;
-    // PRINT_BYTE_ARRAY_KM(stderr, &_keyn[0], _keyn.length());
+    // PRINT_BYTE_ARRAY_KM(stderr, key, keySize);
     delete[] src;
     delete[] ans;
     return true;

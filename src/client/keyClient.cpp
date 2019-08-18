@@ -60,7 +60,6 @@ void keyClient::run()
 {
     gettimeofday(&timestartKey, NULL);
     vector<Data_t> batchList;
-    //batchList.resize(keyBatchSize_);
     int batchNumber = 0;
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
@@ -90,7 +89,8 @@ void keyClient::run()
             } else {
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    // cerr << "KeyClient : new chunk key for chunk i " << i << " = " << endl;
+                    // cerr << "KeyClient : chunk hash & key for chunk " << i << " = " << endl;
+                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkHash + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
                     // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
                     if (encodeChunk(batchList[i])) {
                         insertMQToPOW(batchList[i]);
@@ -127,17 +127,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     // cryptoObj_->keyExchangeEncrypt(batchHashList, CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, keyExchangeKey_, sendHash);
 
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    // for (int i = 0; i < batchNumber; i++) {
-    //     cryptoObj_->keyExchangeEncrypt(batchHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE);
-    // }
-    // if (!socket_.Send(sendHash, CHUNK_HASH_SIZE * batchNumber)) {
-    //     cerr << "keyClient: send socket error" << endl;
-    //     return false;
-    // }
-    if (!socket_.Send(batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
+    for (int i = 0; i < batchNumber; i++) {
+        cryptoObj_->keyExchangeEncrypt(batchHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE);
+    }
+    if (!socket_.Send(sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
+    // if (!socket_.Send(batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
+    //     cerr << "keyClient: send socket error" << endl;
+    //     return false;
+    // }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!socket_.Recv(recvBuffer, recvSize)) {
@@ -148,17 +148,26 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
-    // for (int i = 0; i < batchNumber; i++) {
-    //     cryptoObj_->keyExchangeDecrypt(recvBuffer + i * CHUNK_HASH_SIZE, recvSize, keyExchangeKey_, keyExchangeKey_, batchKeyList + i * CHUNK_ENCRYPT_KEY_SIZE);
-    // }
-    memcpy(batchKeyList, recvBuffer, batchNumber * CHUNK_ENCRYPT_KEY_SIZE);
-    // cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, batchKeyList);
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
+        for (int i = 0; i < batchkeyNumber; i++) {
+            u_char key[CHUNK_ENCRYPT_KEY_SIZE];
+            cryptoObj_->keyExchangeDecrypt(recvBuffer + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, key);
+            // cerr << "KeyClient : encrypted data " << i << endl;
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+            // cerr << "KeyClient : decrypt data " << i << endl;
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchHashList + i * CHUNK_HASH_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, key, CHUNK_ENCRYPT_KEY_SIZE);
+            memcpy(batchKeyList + i * CHUNK_ENCRYPT_KEY_SIZE, key, CHUNK_ENCRYPT_KEY_SIZE);
+        }
         return true;
     } else {
         return false;
     }
+
+    // memcpy(batchKeyList, recvBuffer, batchNumber * CHUNK_ENCRYPT_KEY_SIZE);
+    // cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, batchKeyList);
 }
 
 bool keyClient::encodeChunk(Data_t& newChunk)
