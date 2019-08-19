@@ -1,3 +1,29 @@
+## Aug 19 2019:
+
+> Tinoryj
+
+Branch : SGX_debug_No_epoll
+Commit : Final version, bugs fixed down (c3c862db7550c22bf99d69a159d937bdfd921a51)
+
+### Full test for 20G(20480MB, 21474836480Byte) file upload & download:
+* two machines.
+* -O3 optimization with clang compiler.
+* first round :
+    * upload time = 197.782273s, speed = 103.55M/s. 
+        - Sender time = 197.776763s
+        - PowClient time = 189.691515s
+        - KeyClient time = 188.999533s
+        - Chunker time = 188.761145s
+* second round : 
+    >double send same file, not clean server side, upload 0 chunk
+
+    * upload time = 147.361298, speed = 138.98M/s. 
+        - Sender time = 147.357486s
+        - PowClient time = 146.010096s
+        - KeyClient time = 145.930319s
+        - Chunker time = 145.930319s
+    * download time = 195.584832, speed = 104.71M/s. 
+
 ## Aug 16 2019:
 
 > Tinoryj
