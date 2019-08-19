@@ -56,16 +56,14 @@ void DataSR::run(Socket socket)
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
+            case CLIENT_EXIT: {
+                return;
+            }
             case CLIENT_UPLOAD_CHUNK: {
-                // gettimeofday(&timestartDataSR, NULL);
                 if (!storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
                     cerr << "DedupCore : dedup stage 2 report error" << endl;
                     return;
                 }
-                // gettimeofday(&timeendDataSR, NULL);
-                // long diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
-                // double second = diff / 1000000.0;
-                // totalSaveChunkTime += second;
                 break;
             }
             case CLIENT_UPLOAD_RECIPE: {
@@ -181,6 +179,9 @@ void DataSR::runPow(Socket socket)
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
+            case CLIENT_EXIT: {
+                return;
+            }
             case SGX_RA_MSG01: {
                 memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));
                 memcpy(&msg01.msg1, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));

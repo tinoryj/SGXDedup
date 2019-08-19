@@ -226,53 +226,49 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
 bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& respondSize, bool recv)
 {
     std::lock_guard<std::mutex> locker(mutexSocket_);
-    // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socket_.Send(request, requestSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }
-    // gettimeofday(&timeendSenderRecipe, NULL);
-    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    // double second = diff / 1000000.0;
-    // printf("Sender : send data time is %ld us = %lf s\n", diff, second);
-
-    // gettimeofday(&timestartSenderRecipe, NULL);
     if (recv) {
         if (!socket_.Recv(respond, respondSize)) {
             cerr << "Sender : recv data error peer closed" << endl;
             return false;
         }
     }
-    // gettimeofday(&timeendSenderRecipe, NULL);
-    // diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    // second = diff / 1000000.0;
-    // printf("Sender : recv data time is %ld us = %lf s\n", diff, second);
-
     return true;
 }
 
 bool Sender::sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize)
 {
-    // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socketPow_.Send(request, requestSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }
-    // gettimeofday(&timeendSenderRecipe, NULL);
-    // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    // double second = diff / 1000000.0;
-    // printf("Sender : send data time is %ld us = %lf s\n", diff, second);
-
-    // gettimeofday(&timestartSenderRecipe, NULL);
     if (!socketPow_.Recv(respond, respondSize)) {
         cerr << "Sender : recv data error peer closed" << endl;
         return false;
     }
-    // gettimeofday(&timeendSenderRecipe, NULL);
-    // diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    // second = diff / 1000000.0;
-    // printf("Sender : recv data time is %ld us = %lf s\n", diff, second);
+    return true;
+}
 
+bool Sender::sendEndFlag()
+{
+    NetworkHeadStruct_t requestBody;
+    requestBody.messageType = CLIENT_EXIT;
+    requestBody.clientID = clientID_;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    requestBody.dataSize = 0;
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    if (!socketPow_.Send(requestBuffer, sendSize)) {
+        cerr << "Sender : send data error peer closed" << endl;
+        return false;
+    }
+    if (!socket_.Send(requestBuffer, sendSize)) {
+        cerr << "Sender : send data error peer closed" << endl;
+        return false;
+    }
     return true;
 }
 
@@ -353,7 +349,7 @@ void Sender::run()
     // printf("Sender send recipe list time is %ld us = %lf s\n", diff, second);
 
     free(sendChunkBatchBuffer);
-
+    sendEndFlag();
     gettimeofday(&timeendSender, NULL);
     long diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
     double second = diff / 1000000.0;

@@ -14,7 +14,7 @@
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyServerIP": [
-			"10.59.13.200"
+			"127.0.0.1"
 		],
 		"_keyServerPort": [
 			6666
@@ -23,7 +23,7 @@
 	"SPConfig": {
 		"_storageServerNumber": 1,
 		"_storageServerIP": [
-			"10.59.13.200"
+			"127.0.0.1"
 		],
 		"_storageServerPort": [
 			6668
