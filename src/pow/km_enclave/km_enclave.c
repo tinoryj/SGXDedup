@@ -96,10 +96,12 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
     // BIGNUM *d = BN_new(), *n = BN_new(), *result = BN_new();
     // BN_bin2bn(keyd, keydLen, d);
     // BN_bin2bn(keyn, keynLen, n);
-    unsigned char *hash, *originhash, *hashTemp;
+    uint8_t *hash, *originhash;
+    uint8_t *hashTemp, *dest;
     uint32_t len;
-    hash = (unsigned char*)malloc(srcLen);
-    originhash = (unsigned char*)malloc(srcLen + keydLen);
+    hash = (uint8_t*)malloc(srcLen);
+    originhash = (uint8_t*)malloc(srcLen);
+    hashTemp = (uint8_t*)malloc(srcLen + keydLen);
     // if (hash == NULL)
     //     return SGX_ERROR_OUT_OF_MEMORY;
 
@@ -114,10 +116,16 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
         // BN_CTX_free(bnCtx);
         return SGX_ERROR_UNEXPECTED;
     }
+    for (int i = 0; i < keydLen; i++) {
+        *(hashTemp + i) = *(keyd + i);
+    }
+    for (int i = 0; i < srcLen; i++) {
+        *(hashTemp + keydLen + i) = *(originhash + i);
+    }
     // BN_bin2bn(hash, srcLen, result);
     // BN_mod_exp(result, result, d, n, bnCtx);
     // BN_bn2bin(result, src + srcLen - BN_num_bits(result));
-    sgx_sha256_msg(originhash, srcLen, hash);
+    sgx_sha256_msg(hashTemp, srcLen, hash);
     if (!encrypt(hash, srcLen, k, 16, key, &len)) {
         free(hash);
         // BN_CTX_free(bnCtx);
