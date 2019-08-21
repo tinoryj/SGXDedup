@@ -24,7 +24,7 @@ void Retriever::recvThread()
             totalRecvNumber_++;
         }
     }
-    cerr << "Retriever : job done, thread exit now" << endl;
+    cout << "Retriever : job done, thread exit now" << endl;
     return;
 }
 

@@ -32,23 +32,17 @@ int main(int argv, char* argc[])
 {
     vector<boost::thread*> thList;
     boost::thread* th;
-
     if (argv != 3) {
         usage();
         return 0;
     }
-
     boost::thread::attributes attrs;
-    //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(200 * 1024 * 1024);
 
     if (strcmp("-r", argc[1]) == 0) {
-        //run receive
         string fileName(argc[2]);
 
         recvDecodeObj = new RecvDecode(fileName);
-        //Recipe_t fileRecipe = recvDecodeObj->getFileRecipeHead();
-        //memcpy(&fileRecipe, &recvDecodeObj->getFileRecipeHead(), sizeof(Recipe_t));
         retrieverObj = new Retriever(fileName, recvDecodeObj);
 
         gettimeofday(&timestart, NULL);
@@ -56,18 +50,22 @@ int main(int argv, char* argc[])
         for (int i = 0; i < config.getRecvDecodeThreadLimit(); i++) {
             th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
             thList.push_back(th);
-        };
+        }
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
-        // th = new boost::thread(attrs, boost::bind(&Retriever::retrieveFileThread, retrieverObj));
-        // thList.push_back(th);
-
     } else if (strcmp("-s", argc[1]) == 0) {
-        //run send
+
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
-        keyClientObj = new keyClient(PowClientObj, senderObj->getKeyServerSK());
+        u_char sessionKey[16];
+        if (!senderObj->getKeyServerSK(sessionKey)) {
+            cerr << "Client : get key server session key failed" << endl;
+            delete senderObj;
+            delete PowClientObj;
+            return 0;
+        }
+        keyClientObj = new keyClient(PowClientObj, sessionKey);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
 

@@ -113,8 +113,6 @@ void keyClient::run()
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
-    // cryptoObj_->keyExchangeEncrypt(batchHashList, CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, keyExchangeKey_, sendHash);
-
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
     for (int i = 0; i < batchNumber; i++) {
         cryptoObj_->keyExchangeEncrypt(batchHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE);
@@ -123,10 +121,6 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
-    // if (!socket_.Send(batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
-    //     cerr << "keyClient: send socket error" << endl;
-    //     return false;
-    // }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!socket_.Recv(recvBuffer, recvSize)) {
@@ -154,9 +148,6 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     } else {
         return false;
     }
-
-    // memcpy(batchKeyList, recvBuffer, batchNumber * CHUNK_ENCRYPT_KEY_SIZE);
-    // cryptoObj_->keyExchangeDecrypt(recvBuffer, recvSize, keyExchangeKey_, keyExchangeKey_, batchKeyList);
 }
 
 bool keyClient::encodeChunk(Data_t& newChunk)
@@ -164,10 +155,10 @@ bool keyClient::encodeChunk(Data_t& newChunk)
     bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);
     bool statusHash = cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
     if (!statusChunk) {
-        cerr << "Encoder : error encrypt chunk" << endl;
+        cerr << "KeyClient : error encrypt chunk" << endl;
         return false;
     } else if (!statusHash) {
-        cerr << "Encoder : error compute hash" << endl;
+        cerr << "KeyClient : error compute hash" << endl;
         return false;
     } else {
         return true;

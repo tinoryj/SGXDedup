@@ -28,7 +28,7 @@ public:
     bool sendRecipe(Recipe_t request, RecipeList_t requestList, int& status);
     bool sendChunkList(ChunkList_t request, int& status);
     bool sendChunkList(char* requestBufferIn, int sendBufferSize, int sendChunkNumber, int& status);
-    u_char* getKeyServerSK();
+    bool getKeyServerSK(u_char* SK);
     //for pow
     bool sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status);
     bool sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t sz, ra_msg4_t*& msg4, int& status);

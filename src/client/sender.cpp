@@ -49,10 +49,8 @@ Sender::~Sender()
 
 bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
 {
-    // cerr << "Sender : send file recipe head, file size = " << request.fileRecipeHead.fileSize << " file chunk number = " << request.fileRecipeHead.totalChunkNumber << endl;
-    // PRINT_BYTE_ARRAY_SENDER(stderr, request.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
     int totalRecipeNumber = recipeList.size();
-    cerr << "Sender : Start sending file recipes, total recipe entry = " << totalRecipeNumber << endl;
+    cout << "Sender : Start sending file recipes, total recipe entry = " << totalRecipeNumber << endl;
     int sendRecipeNumber = 0;
     int sendRecipeBatchNumber = config.getSendRecipeBatchSize();
     int currentSendRecipeNumber = 0;
@@ -82,14 +80,14 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
             cerr << "Sender : error sending file resipces, peer may close" << endl;
             return false;
         }
-        cerr << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
+        cout << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
         sendRecipeNumber += currentSendRecipeNumber;
         currentSendRecipeNumber = 0;
     }
     return true;
 }
 
-u_char* Sender::getKeyServerSK()
+bool Sender::getKeyServerSK(u_char* SK)
 {
     NetworkHeadStruct_t requestBody, respondBody;
     requestBody.clientID = clientID_;
@@ -103,11 +101,10 @@ u_char* Sender::getKeyServerSK()
     u_char respondBuffer[sizeof(NetworkHeadStruct_t) + 16];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        return nullptr;
+        return false;
     } else {
-        u_char SK[16];
         memcpy(SK, respondBuffer + sizeof(NetworkHeadStruct_t), 16);
-        return SK;
+        return true;
     }
 }
 
@@ -225,7 +222,7 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
     u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
-        cerr << "Sender : send enclave signed hash to server & get back required chunk list" << endl;
+        cerr << "Sender : send enclave signed hash to server & get back required chunk list error" << endl;
         return false;
     }
 
@@ -314,7 +311,7 @@ void Sender::run()
         }
         if (extractMQFromPow(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                // cerr << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+                // cout << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
                 // PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 memcpy(&fileRecipe, &tempChunk.recipe, sizeof(Recipe_t));
                 continue;
@@ -343,11 +340,12 @@ void Sender::run()
             }
         }
         if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
-            // cerr << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
+            // cout << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
             // gettimeofday(&timestartSenderRecipe, NULL);
             if (this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status)) {
-                // cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
+                // cout << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
                 currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
+                memset(sendChunkBatchBuffer, 0, sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(char) * sendBatchSize * (CHUNK_HASH_SIZE + MAX_CHUNK_SIZE + sizeof(int)));
                 currentChunkNumber = 0;
             } else {
                 cerr << "Sender : send " << setbase(10) << currentChunkNumber << " chunk error" << endl;
@@ -363,7 +361,7 @@ void Sender::run()
 
     // gettimeofday(&timestartSenderRecipe, NULL);
     if (this->sendRecipe(fileRecipe, recipeList, status)) {
-        cerr << "Sender : send recipe list success" << endl;
+        cout << "Sender : send recipe list success" << endl;
     }
     // gettimeofday(&timeendSenderRecipe, NULL);
     // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;

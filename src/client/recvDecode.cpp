@@ -70,24 +70,24 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
         }
         memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
         if (respond.messageType == ERROR_RESEND) {
-            std::cerr << "RecvDecode : Server send resend flag!" << endl;
+            cerr << "RecvDecode : Server send resend flag!" << endl;
             continue;
         }
         if (respond.messageType == ERROR_CLOSE) {
-            std::cerr << "RecvDecode : Server reject download request!" << endl;
+            cerr << "RecvDecode : Server reject download request!" << endl;
             exit(1);
         }
         if (respond.messageType == ERROR_FILE_NOT_EXIST) {
-            std::cerr << "RecvDecode : Server reject download request, file not exist in server!" << endl;
+            cerr << "RecvDecode : Server reject download request, file not exist in server!" << endl;
             exit(1);
         }
         if (respond.messageType == ERROR_CHUNK_NOT_EXIST) {
-            std::cerr << "RecvDecode : Server reject download request, chunk not exist in server!" << endl;
+            cerr << "RecvDecode : Server reject download request, chunk not exist in server!" << endl;
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
             if (respond.dataSize != sizeof(Recipe_t)) {
-                std::cerr << "RecvDecode : Server send file recipe head faild!" << endl;
+                cerr << "RecvDecode : Server send file recipe head faild!" << endl;
                 exit(1);
             } else {
                 memcpy(&fileRecipe, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
@@ -125,7 +125,7 @@ bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& 
         if (respond.messageType == ERROR_RESEND)
             continue;
         if (respond.messageType == ERROR_CLOSE) {
-            std::cerr << "RecvDecode : Server reject download request!" << endl;
+            cerr << "RecvDecode : Server reject download request!" << endl;
             exit(1);
         }
         if (respond.messageType == SUCCESS) {
@@ -142,7 +142,6 @@ bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& 
                 memcpy(&tempChunk.encryptKey, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, CHUNK_ENCRYPT_KEY_SIZE);
                 totalRecvSize += CHUNK_ENCRYPT_KEY_SIZE;
                 recvChunk.push_back(tempChunk);
-                //cerr << "RecvDecode : recv chunk id = " << tempChunk.ID << endl;
             }
             break;
         }
@@ -193,7 +192,7 @@ void RecvDecode::run()
         if (respond.messageType == ERROR_RESEND)
             continue;
         if (respond.messageType == ERROR_CLOSE) {
-            std::cerr << "RecvDecode : Server reject download request!" << endl;
+            cerr << "RecvDecode : Server reject download request!" << endl;
             return;
         }
         if (respond.messageType == SUCCESS) {

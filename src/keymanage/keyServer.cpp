@@ -33,23 +33,16 @@ keyServer::keyServer(Socket socket)
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
     RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
 
-    u_char keynBuffer[4096];
     u_char keydBuffer[4096];
-    int lenKeyn, lenKeyd;
-    BN_print_fp(stderr, keyD_);
-    cerr << endl;
-    BN_print_fp(stderr, keyN_);
-    cerr << endl;
-    lenKeyn = BN_bn2bin(keyN_, keynBuffer);
+    int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
-    string keyn((char*)keynBuffer, lenKeyn);
-    string keyd((char*)keydBuffer, lenKeyd);
-    client = new kmClient(keyn, keyd);
+    string keyd((char*)keydBuffer, lenKeyd / 2);
+    client = new kmClient(keyd);
     if (!client->init(socket)) {
         cerr << "keyServer : enclave not truster" << endl;
         return;
     } else {
-        cerr << "KeyServer : enclave trusted" << endl;
+        cout << "KeyServer : enclave trusted" << endl;
     }
     socket.finish();
 }
@@ -87,7 +80,7 @@ void keyServer::run(Socket socket)
         multiThreadMutex_.lock();
         for (int i = 0; i < recvNumber; i++) {
             client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            // cerr << "chunk " << i << " :" << endl;
+            // cout << "chunk " << i << " :" << endl;
             // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
             // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
         }

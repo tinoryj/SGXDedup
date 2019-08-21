@@ -44,9 +44,9 @@ void Socket::init(const int type, string ip, int port)
         this->fd_ = socket(AF_INET, SOCK_DGRAM, 0);
         inet_pton(AF_INET, ip.c_str(), &addr_.sin_addr);
         if (bind(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) == -1) {
-            std::cerr << "Socket : Can not bind to sockfd" << endl
-                      << " May cause by shutdown server before client " << endl
-                      << " Wait for 30 sec and try again" << endl;
+            cerr << "Socket : Can not bind to sockfd" << endl
+                 << " May cause by shutdown server before client " << endl
+                 << " Wait for 30 sec and try again" << endl;
             exit(1);
         }
         return;
@@ -55,9 +55,9 @@ void Socket::init(const int type, string ip, int port)
         this->fd_ = socket(AF_INET, SOCK_DGRAM, 0);
         inet_pton(AF_INET, ip.c_str(), &addr_.sin_addr);
         if (connect(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) == -1) {
-            std::cerr << "Socket : Can not bind to sockfd" << endl
-                      << " May cause by shutdown server before client " << endl
-                      << " Wait for 30 sec and try again" << endl;
+            cerr << "Socket : Can not bind to sockfd" << endl
+                 << " May cause by shutdown server before client " << endl
+                 << " Wait for 30 sec and try again" << endl;
             exit(1);
         }
         return;
@@ -125,7 +125,7 @@ bool Socket::Recv(u_char* buffer, int& recvSize)
         return false;
     }
     if (recvedSize < 0) {
-        cerr << "Socket: recvSize: " << setbase(10) << recvedSize << endl;
+        cerr << "Socket: error recvSize = " << setbase(10) << recvedSize << endl;
         return false;
     }
 
