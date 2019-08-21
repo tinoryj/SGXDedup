@@ -83,11 +83,6 @@ bool kmClient::init(Socket socket)
     return enclave_trusted;
 }
 
-bool kmClient::trusted()
-{
-    return enclave_trusted;
-}
-
 bool kmClient::createEnclave(sgx_enclave_id_t& eid,
     sgx_ra_context_t& ctx,
     string enclaveName)

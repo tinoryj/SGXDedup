@@ -207,6 +207,7 @@ void Chunker::fixSizeChunking()
     u_char hash[CHUNK_HASH_SIZE];
     /*start chunking*/
     while (true) {
+        memset((char*)waitingForChunkingBuffer, 0, sizeof(unsigned char) * ReadSize);
         fin.read((char*)waitingForChunkingBuffer, sizeof(char) * ReadSize);
         uint64_t totalReadSize = fin.gcount();
         fileSize += totalReadSize;
@@ -287,6 +288,7 @@ void Chunker::varSizeChunking()
     u_char hash[CHUNK_HASH_SIZE];
     /*start chunking*/
     while (true) {
+        memset((char*)waitingForChunkingBuffer, 0, sizeof(unsigned char) * ReadSize);
         fin.read((char*)waitingForChunkingBuffer, sizeof(unsigned char) * ReadSize);
         int len = fin.gcount();
         fileSize += len;

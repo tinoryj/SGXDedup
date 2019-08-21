@@ -4,7 +4,6 @@
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
-#include "kmServer.hpp"
 #include "messageQueue.hpp"
 #include "powClient.hpp"
 #include "powSession.hpp"
@@ -19,11 +18,10 @@ private:
     CryptoPrimitive* cryptoObj_;
     int keyBatchSize_;
     Socket socket_;
-    bool trustdKM_;
     u_char keyExchangeKey_[16];
 
 public:
-    keyClient(powClient* powObjTemp);
+    keyClient(powClient* powObjTemp, u_char* keyExchangeKey);
     ~keyClient();
     void run();
     bool encodeChunk(Data_t& newChunk);

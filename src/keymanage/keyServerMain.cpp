@@ -7,7 +7,8 @@ int main()
 {
     Socket socket(SERVER_TCP, "", config.getKeyServerPort());
     boost::thread* th;
-    keyServer server;
+    Socket tmpServerSocket = socket.Listen();
+    keyServer server(tmpServerSocket);
     while (true) {
         Socket tmpSocket = socket.Listen();
         th = new boost::thread(boost::bind(&keyServer::run, &server, tmpSocket));

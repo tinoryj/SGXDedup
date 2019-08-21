@@ -26,7 +26,7 @@ void PRINT_BYTE_ARRAY_KMS(
 
 kmServer::kmServer(Socket socket)
 {
-    if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE)) {
+    if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE_KM)) {
         cerr << "KmServer : can not load IAS Signing Cert CA" << endl;
         exit(1);
     }
@@ -53,7 +53,7 @@ kmServer::kmServer(Socket socket)
     _ias->ca_bundle(CA_BUNDLE);
 
     _quote_type = config.getKMQuoteType();
-    _service_private_key = key_private_from_bytes(def_service_private_key);
+    _service_private_key = key_private_from_bytes(def_service_private_key_km);
     _iasVersion = config.getKMIASVersion();
     _socket = socket;
 }

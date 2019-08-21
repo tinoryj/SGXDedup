@@ -18,9 +18,11 @@ private:
     RSA* rsa_;
     BIO* key_;
     const BIGNUM *keyN_, *keyD_;
+    kmClient* client;
+    std::mutex multiThreadMutex_;
 
 public:
-    keyServer();
+    keyServer(Socket socket);
     ~keyServer();
     void run(Socket socket);
 };

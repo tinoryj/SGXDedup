@@ -26,25 +26,14 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "\n}\n");
 }
 
-keyClient::keyClient(powClient* powObjTemp)
+keyClient::keyClient(powClient* powObjTemp, u_char* keyExchangeKey)
 {
     inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
     powObj_ = powObjTemp;
     cryptoObj_ = new CryptoPrimitive();
     keyBatchSize_ = (int)config.getKeyBatchSize();
+    memcpy(keyExchangeKey_, keyExchangeKey, 16);
     socket_.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
-    kmServer server(socket_);
-    powSession* session = server.authkm();
-    if (session != nullptr) {
-        trustdKM_ = true;
-        memcpy(keyExchangeKey_, session->sk, 16);
-        delete session;
-    } else {
-        trustdKM_ = false;
-        delete session;
-        cerr << "KeyClient : keyServer enclave not trusted, client exit now" << endl;
-        exit(0);
-    }
 }
 
 keyClient::~keyClient()

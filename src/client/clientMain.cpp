@@ -67,7 +67,7 @@ int main(int argv, char* argc[])
         //run send
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
-        keyClientObj = new keyClient(PowClientObj);
+        keyClientObj = new keyClient(PowClientObj, senderObj->getKeyServerSK());
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
 

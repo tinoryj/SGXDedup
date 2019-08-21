@@ -89,6 +89,28 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
     return true;
 }
 
+u_char* Sender::getKeyServerSK()
+{
+    NetworkHeadStruct_t requestBody, respondBody;
+    requestBody.clientID = clientID_;
+    requestBody.messageType = CLIENT_GET_KEY_SERVER_SK;
+    respondBody.clientID = 0;
+    respondBody.messageType = 0;
+    respondBody.dataSize = 0;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    u_char respondBuffer[sizeof(NetworkHeadStruct_t) + 16];
+    int recvSize = 0;
+    if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
+        return nullptr;
+    } else {
+        u_char SK[16];
+        memcpy(SK, respondBuffer + sizeof(NetworkHeadStruct_t), 16);
+        return SK;
+    }
+}
+
 bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendChunkNumber, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;
@@ -324,7 +346,7 @@ void Sender::run()
             // cerr << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
             // gettimeofday(&timestartSenderRecipe, NULL);
             if (this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status)) {
-                cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
+                // cerr << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
                 currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
                 currentChunkNumber = 0;
             } else {

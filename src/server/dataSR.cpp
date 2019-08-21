@@ -26,12 +26,13 @@ void PRINT_BYTE_ARRAY_DATA_SR(
     fprintf(file, "\n}\n");
 }
 
-DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
+DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, u_char* keyExchangeKey)
 {
     restoreChunkBatchSize = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
+    memcpy(keyExchangeKey_, keyExchangeKey, 16);
 }
 
 void DataSR::run(Socket socket)
@@ -42,7 +43,7 @@ void DataSR::run(Socket socket)
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     // double totalSaveChunkTime = 0;
     uint32_t startID = 0;
-    uint32_t endID = startID + restoreChunkBatchSize;
+    uint32_t endID = 0;
     Recipe_t restoredFileRecipe;
     uint32_t totalRestoredChunkNumber = 0;
     while (true) {
@@ -97,6 +98,7 @@ void DataSR::run(Socket socket)
             case CLIENT_DOWNLOAD_FILEHEAD: {
 
                 if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe)) {
+                    cerr << "StorageCore : restore file size = " << restoredFileRecipe.fileRecipeHead.fileSize << " chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = sizeof(Recipe_t);
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -112,7 +114,9 @@ void DataSR::run(Socket socket)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-
+                if (restoredFileRecipe.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
+                    endID = restoredFileRecipe.fileRecipeHead.totalChunkNumber - 1;
+                }
                 while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
                     ChunkList_t restoredChunkList;
                     if (storageObj_->restoreRecipeAndChunk((char*)recvBuffer + sizeof(NetworkHeadStruct_t), startID, endID, restoredChunkList)) {
@@ -145,6 +149,7 @@ void DataSR::run(Socket socket)
                         netBody.messageType = ERROR_CHUNK_NOT_EXIST;
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         sendSize = sizeof(NetworkHeadStruct_t);
+                        return;
                     }
                     socket.Send(sendBuffer, sendSize);
                 }
@@ -181,6 +186,13 @@ void DataSR::runPow(Socket socket)
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
                 return;
+            }
+            case CLIENT_GET_KEY_SERVER_SK: {
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), keyExchangeKey_, 16);
+                sendSize = sizeof(NetworkHeadStruct_t) + 16;
+                socket.Send(sendBuffer, sendSize);
+                break;
             }
             case SGX_RA_MSG01: {
                 memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));

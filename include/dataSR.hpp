@@ -24,9 +24,10 @@ private:
     DedupCore* dedupCoreObj_;
     powServer* powServerObj_;
     uint32_t restoreChunkBatchSize;
+    u_char keyExchangeKey_[16];
 
 public:
-    DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj);
+    DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, u_char* keyExchangeKey);
     ~DataSR(){};
     void run(Socket socket);
     void runPow(Socket socket);

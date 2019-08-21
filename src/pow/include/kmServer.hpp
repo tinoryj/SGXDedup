@@ -20,12 +20,12 @@
 #include <iostream>
 
 #define CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
-#define IAS_SIGNING_CA_FILE "key/AttestationReportSigningCACert_km.pem"
+#define IAS_SIGNING_CA_FILE_KM "key/AttestationReportSigningCACert_km.pem"
 #define IAS_CERT_FILE "key/iasclient.crt"
 #define IAS_CLIENT_KEY "key/iasclient.pem"
 
 //sp private key
-static const unsigned char def_service_private_key[32] = {
+static const unsigned char def_service_private_key_km[32] = {
     0x90, 0xe7, 0x6c, 0xbb, 0x2d, 0x52, 0xa1, 0xce,
     0x3b, 0x66, 0xde, 0x11, 0x43, 0x9c, 0x87, 0xec,
     0x1f, 0x86, 0x6a, 0x3b, 0x65, 0xb6, 0xae, 0xea,

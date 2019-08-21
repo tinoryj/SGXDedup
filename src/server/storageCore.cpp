@@ -186,6 +186,7 @@ bool StorageCore::restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, ui
             memcpy(&newRecipeEntry, readBuffer + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
             string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
             string chunkData;
+            // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
             if (restoreChunk(chunkHash, chunkData)) {
                 if (chunkData.length() != newRecipeEntry.chunkSize) {
                     cerr << "StorageCore : restore chunk logic data size error" << endl;
@@ -218,7 +219,6 @@ bool StorageCore::restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, ui
 
 bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSize)
 {
-
     // cout << "Save Chunk size = " << chunkSize << endl;
     // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &chunkHash[0], CHUNK_HASH_SIZE);
     // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, chunkData, chunkSize);
@@ -257,9 +257,11 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
             memcpy(&chunkDataStr[0], chunkData, key.length);
             return true;
         } else {
+            cerr << "StorageCore : can not read container for chunk" << endl;
             return false;
         }
     } else {
+        cerr << "StorageCore : chunk not in database" << endl;
         return false;
     }
 }
