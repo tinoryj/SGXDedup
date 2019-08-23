@@ -163,3 +163,8 @@ $RECYCLE.BIN/
 # VisualStudioCode
 .vscode
 
+#Clion
+bin/
+cmake-build-debug/
+lib/
+.idea

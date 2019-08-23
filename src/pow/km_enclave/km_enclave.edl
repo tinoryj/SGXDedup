@@ -1,0 +1,26 @@
+enclave {
+
+  include "sgx_key_exchange.h"
+  include "sgx_trts.h"
+
+  from "sgx_tkey_exchange.edl" import *;
+  from "sgx_tsgxssl.edl" import *;
+
+  trusted {
+
+	public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
+			                            [out] sgx_ra_context_t *ctx,
+			                            [out] sgx_status_t *pse_status);
+
+    public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
+
+    public sgx_status_t ecall_keygen([in]sgx_ra_context_t *ctx,
+                                      sgx_ra_key_type_t type,
+                                      [in,size = srcLen] uint8_t *src,
+                                      uint32_t srcLen,
+                                      [in,size=keydLen] uint8_t *keyd,
+                                      uint32_t keydLen,
+                                      [out,size = 32] uint8_t *key);
+    };
+
+};
