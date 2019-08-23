@@ -53,8 +53,10 @@ private:
     uint64_t _keyServerNumber;
     std::vector<std::string> _keyServerIP;
     std::vector<int> _keyServerPort;
+    int _keyServerRArequestPort;
     int _keyBatchSize;
     uint64_t _keyCacheSize;
+    uint64_t _keyGenLimitPerSessionKey;
 
     //message queue size settings
     int _Data_t_MQSize;
@@ -102,6 +104,7 @@ private:
     std::string _containerRootPath;
     std::string _fp2ChunkDBName;
     std::string _fp2MetaDBame;
+    uint64_t _raSessionKeylifeSpan;
 
     //client settings
     int _clientID;
@@ -146,8 +149,10 @@ public:
     //std::vector<std::string> getkeyServerIP();
     int getKeyServerPort();
     //std::vector<int> getKeyServerPort();
+    int getkeyServerRArequestPort();
     int getKeyBatchSize();
     uint64_t getKeyCacheSize();
+    uint64_t getKeyGenLimitPerSessionkeySize();
 
     //message queue size setting
     int get_Data_t_MQSize();
@@ -201,6 +206,7 @@ public:
     std::string getContainerRootPath();
     std::string getFp2ChunkDBName();
     std::string getFp2MetaDBame();
+    uint64_t getRASessionKeylifeSpan();
 
     //client settings
     int getClientID();

@@ -32,6 +32,8 @@ void Configure::readConf(std::string path)
     _keyServerNumber = root.get<uint64_t>("KeyServerConfig._keyServerNumber");
     _keyBatchSize = root.get<uint64_t>("KeyServerConfig._keyBatchSize");
     _keyCacheSize = root.get<uint64_t>("KeyServerConfig._keyCacheSize");
+    _keyGenLimitPerSessionKey = root.get<uint64_t>("KeyServerConfig._keyGenLimitPerSessionKey");
+    _keyServerRArequestPort = root.get<int>("KeyServerConfig._keyServerRArequestPort");
     _keyServerIP.clear();
     for (ptree::value_type& it : root.get_child("KeyServerConfig._keyServerIP")) {
         _keyServerIP.push_back(it.second.data());
@@ -93,6 +95,7 @@ void Configure::readConf(std::string path)
     _containerRootPath = root.get<std::string>("server._containerRootPath");
     _fp2ChunkDBName = root.get<std::string>("server._fp2ChunkDBName");
     _fp2MetaDBame = root.get<std::string>("server._fp2MetaDBame");
+    _raSessionKeylifeSpan = root.get<uint64_t>("server._raSessionKeylifeSpan");
 
     //client Configure
     _clientID = root.get<int>("client._clientID");
@@ -164,9 +167,20 @@ int Configure::getKeyBatchSize()
     return _keyBatchSize;
 }
 
+int Configure::getkeyServerRArequestPort()
+{
+
+    return _keyServerRArequestPort;
+}
+
 uint64_t Configure::getKeyCacheSize()
 {
     return _keyCacheSize;
+}
+
+uint64_t Configure::getKeyGenLimitPerSessionkeySize()
+{
+    return _keyGenLimitPerSessionKey;
 }
 
 /*
@@ -370,6 +384,11 @@ std::string Configure::getFp2ChunkDBName()
 std::string Configure::getFp2MetaDBame()
 {
     return _fp2MetaDBame;
+}
+
+uint64_t Configure::getRASessionKeylifeSpan()
+{
+    return _raSessionKeylifeSpan;
 }
 
 int Configure::getSenderThreadLimit()

@@ -24,7 +24,7 @@ void PRINT_BYTE_ARRAY_KEY_SERVER(
     fprintf(file, "\n}\n");
 }
 
-keyServer::keyServer(Socket socket)
+keyServer::keyServer()
 {
     rsa_ = RSA_new();
     key_ = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
@@ -32,19 +32,15 @@ keyServer::keyServer(Socket socket)
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
     RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
-
     u_char keydBuffer[4096];
     int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
     string keyd((char*)keydBuffer, lenKeyd / 2);
     client = new kmClient(keyd);
-    if (!client->init(socket)) {
-        cerr << "keyServer : enclave not truster" << endl;
-        return;
-    } else {
-        cout << "KeyServer : enclave trusted" << endl;
-    }
-    socket.finish();
+    clientThreadCount = 0;
+    keyGenerateCount = 0;
+    keyGenLimitPerSessionKey_ = config.getKeyGenLimitPerSessionkeySize();
+    raRequestFlag = false;
 }
 
 keyServer::~keyServer()
@@ -54,19 +50,78 @@ keyServer::~keyServer()
     delete client;
 }
 
+bool keyServer::doRemoteAttestation(Socket socket)
+{
+    if (!client->init(socket)) {
+        cerr << "keyServer : enclave not truster" << endl;
+        return false;
+    } else {
+        cout << "KeyServer : enclave trusted" << endl;
+    }
+    multiThreadCountMutex_.lock();
+    keyGenerateCount = 0;
+    multiThreadCountMutex_.unlock();
+    return true;
+}
+
+void keyServer::runRAwithSPRequest()
+{
+    Socket socketRARequest(SERVER_TCP, "", config.getkeyServerRArequestPort());
+    u_char recvBuffer[sizeof(NetworkHeadStruct_t)];
+    int recvSize;
+    while (true) {
+        Socket raRequestTempSocket = socketRARequest.Listen();
+        raRequestTempSocket.Recv(recvBuffer, recvSize);
+        raRequestFlag = true;
+        cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
+        raRequestTempSocket.finish();
+    }
+}
+
+void keyServer::runRA()
+{
+    while (true) {
+        if (keyGenerateCount >= keyGenLimitPerSessionKey_ || raRequestFlag) {
+            while (!(clientThreadCount == 0))
+                ;
+            cout << "KeyServer : start do remote attestation to storage server" << endl;
+            keyGenerateCount = 0;
+            Socket tmpServerSocket;
+            tmpServerSocket.init(CLIENT_TCP, config.getStorageServerIP(), config.getKMServerPort());
+            if (doRemoteAttestation(tmpServerSocket)) {
+                tmpServerSocket.finish();
+                raRequestFlag = false;
+                cout << "KeyServer : do remote attestation to storage SP done" << endl;
+            } else {
+                tmpServerSocket.finish();
+                cerr << "KeyServer : do remote attestation to storage SP error" << endl;
+                return;
+            }
+        }
+    }
+}
+
 void keyServer::run(Socket socket)
 {
-
+    multiThreadCountMutex_.lock();
+    clientThreadCount++;
+    multiThreadCountMutex_.unlock();
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
         if (!socket.Recv(hash, recvSize)) {
             socket.finish();
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
             return;
         }
 
         if ((recvSize % CHUNK_HASH_SIZE) != 0) {
-            cerr << "key manager recv chunk hash error : hash size wrong" << endl;
+            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
             socket.finish();
             return;
         }
@@ -84,6 +139,7 @@ void keyServer::run(Socket socket)
             // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
             // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
         }
+        keyGenerateCount += recvNumber;
         multiThreadMutex_.unlock();
 
         // gettimeofday(&timeend, 0);
@@ -92,6 +148,9 @@ void keyServer::run(Socket socket)
 
         if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
             socket.finish();
             return;
         }

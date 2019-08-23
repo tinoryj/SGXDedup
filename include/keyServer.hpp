@@ -20,11 +20,20 @@ private:
     const BIGNUM *keyN_, *keyD_;
     kmClient* client;
     std::mutex multiThreadMutex_;
+    std::mutex multiThreadCountMutex_;
+    std::mutex clientThreadNumberCountMutex_;
+    uint64_t keyGenerateCount;
+    uint64_t clientThreadCount;
+    uint64_t keyGenLimitPerSessionKey_;
+    bool raRequestFlag;
 
 public:
-    keyServer(Socket socket);
+    keyServer();
     ~keyServer();
     void run(Socket socket);
+    void runRA();
+    void runRAwithSPRequest();
+    bool doRemoteAttestation(Socket socket);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYSERVER_HPP

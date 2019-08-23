@@ -67,6 +67,7 @@ bool kmClient::init(Socket socket)
 {
     _ctx = 0xdeadbeef;
     _socket = socket;
+    raclose(_eid, _ctx);
     enclave_trusted = doAttestation();
     return enclave_trusted;
 }

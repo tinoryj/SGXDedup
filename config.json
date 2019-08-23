@@ -13,6 +13,8 @@
 		"_keyBatchSize": 2000,
 		"_keyServerNumber": 1,
 		"_keyCacheSize": 10000,
+		"_keyGenLimitPerSessionKey": 10000000,
+		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
 			"127.0.0.1"
 		],
@@ -71,7 +73,8 @@
 		"_RecipeRootPath": "Recipes/",
 		"_containerRootPath": "Containers/",
 		"_fp2ChunkDBName": "db1",
-		"_fp2MetaDBame": "db2"
+		"_fp2MetaDBame": "db2",
+		"_raSessionKeylifeSpan": 10000000
 	},
 	"client": {
 		"_clientID": 1,

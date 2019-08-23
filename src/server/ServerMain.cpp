@@ -4,7 +4,6 @@
 #include "dataSR.hpp"
 #include "database.hpp"
 #include "dedupCore.hpp"
-#include "kmServer.hpp"
 #include "messageQueue.hpp"
 #include "storageCore.hpp"
 #include <signal.h>
@@ -55,27 +54,15 @@ int main()
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
     fileName2metaDB.openDB(config.getFp2MetaDBame());
 
-    Socket socket_;
-    socket_.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
-    kmServer server(socket_);
-    powSession* session = server.authkm();
-    u_char keyExchangeKey_[16];
-    if (session != nullptr) {
-        memcpy(keyExchangeKey_, session->sk, 16);
-        cerr << "KeyClient : keyServer enclave trusted" << endl;
-        delete session;
-    } else {
-        delete session;
-        cerr << "KeyClient : keyServer enclave not trusted, storage server exit now" << endl;
-        return 0;
-    }
-
     dedupCoreObj = new DedupCore();
     storageObj = new StorageCore();
     powServerObj = new powServer();
-    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, keyExchangeKey_);
+    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj);
 
     boost::thread* th;
+    th = new boost::thread(boost::bind(&DataSR::runKeyServerRA, dataSRObj));
+    thList.push_back(th);
+    th->detach();
     boost::thread::attributes attrs;
     //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(200 * 1024 * 1024);

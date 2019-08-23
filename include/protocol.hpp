@@ -24,6 +24,7 @@
 #define ERROR_CLIENT_CLOSE_CONNECT 18
 #define CLIENT_EXIT 19
 #define CLIENT_GET_KEY_SERVER_SK 20
+#define RA_REQUEST 21
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK

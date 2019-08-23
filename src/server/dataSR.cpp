@@ -26,13 +26,14 @@ void PRINT_BYTE_ARRAY_DATA_SR(
     fprintf(file, "\n}\n");
 }
 
-DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, u_char* keyExchangeKey)
+DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
 {
     restoreChunkBatchSize = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
-    memcpy(keyExchangeKey_, keyExchangeKey, 16);
+    keyExchangeKeySetFlag = false;
+    // memcpy(keyExchangeKey_, keyExchangeKey, 16);
 }
 
 void DataSR::run(Socket socket)
@@ -188,9 +189,18 @@ void DataSR::runPow(Socket socket)
                 return;
             }
             case CLIENT_GET_KEY_SERVER_SK: {
-                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), keyExchangeKey_, 16);
-                sendSize = sizeof(NetworkHeadStruct_t) + 16;
+                if (keyExchangeKeySetFlag == true) {
+                    netBody.messageType = SUCCESS;
+                    netBody.dataSize = 16;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), keyExchangeKey_, 16);
+                    sendSize = sizeof(NetworkHeadStruct_t) + 16;
+                } else {
+                    netBody.messageType = ERROR_CLOSE;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                }
                 socket.Send(sendBuffer, sendSize);
                 break;
             }
@@ -305,5 +315,48 @@ void DataSR::runPow(Socket socket)
             }
         }
     }
+    return;
+}
+
+void DataSR::runKeyServerRA()
+{
+    Socket socketRARequest;
+    Socket socketRAListen;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    u_char sendBuffer[sendSize];
+    NetworkHeadStruct_t netHead;
+    netHead.messageType = RA_REQUEST;
+    netHead.dataSize = 0;
+    memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
+    socketRAListen.init(SERVER_TCP, "", config.getKMServerPort());
+    while (true) {
+    errorRetry:
+        keyExchangeKeySetFlag = false;
+        memset(keyExchangeKey_, 0, 16);
+        socketRARequest.init(CLIENT_TCP, config.getKeyServerIP(), config.getkeyServerRArequestPort());
+        socketRARequest.Send(sendBuffer, sendSize);
+        socketRARequest.finish();
+        Socket tempSocket = socketRAListen.Listen();
+        cerr << "DataSR : key server start remote attestation now" << endl;
+        kmServer server(tempSocket);
+        powSession* session = server.authkm();
+        if (session != nullptr) {
+            // memcpy(keyExchangeKey_, keyExchangeKey, 16);
+            memcpy(keyExchangeKey_, session->sk, 16);
+            PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, 16);
+            keyExchangeKeySetFlag = true;
+            cerr << "KeyClient : keyServer enclave trusted" << endl;
+            delete session;
+            boost::xtime xt;
+            boost::xtime_get(&xt, boost::TIME_UTC_);
+            xt.sec += config.getRASessionKeylifeSpan();
+            boost::thread::sleep(xt);
+        } else {
+            delete session;
+            cerr << "KeyClient : keyServer enclave not trusted, storage try again now" << endl;
+            goto errorRetry;
+        }
+    }
+
     return;
 }

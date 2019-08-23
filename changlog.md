@@ -1,3 +1,9 @@
+## Aug 23 2019:
+> Tinoryj
+
+* Add key server session key life time control.
+* key server do remote attestation to storage server to reduce client remote attestation time & make sure key server only run one enclave for all connections.
+
 ## Aug 19 2019:
 
 > Tinoryj
