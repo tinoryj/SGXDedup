@@ -31,14 +31,8 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     }
 
     sgx_status_t status;
-    uint8_t* src = new uint8_t[hashSize];
-
-    if (src == nullptr) {
-        cerr << "kmClient: mem error" << endl;
-        return false;
-    }
-    memcpy(src, hash, hashSize);
-    uint8_t* ans = new uint8_t[keySize];
+    uint8_t* ans;
+    ans = (uint8_t*)malloc(keySize);
     status = ecall_keygen(_eid,
         &retval,
         &_ctx,
@@ -53,8 +47,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
         return false;
     }
     memcpy(key, ans, keySize);
-    delete[] src;
-    delete[] ans;
+    free(ans);
     return true;
 }
 

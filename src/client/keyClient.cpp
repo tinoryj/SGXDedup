@@ -47,7 +47,15 @@ keyClient::~keyClient()
 
 void keyClient::run()
 {
-    gettimeofday(&timestartKey, NULL);
+
+#ifdef BREAK_DOWN
+    double keyGenTime = 0;
+    double chunkHashGenerateTime = 0;
+    double encryptionTime = 0;
+    double keyExchangeTime = 0;
+    long diff;
+    double second;
+#endif
     vector<Data_t> batchList;
     int batchNumber = 0;
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
@@ -66,22 +74,50 @@ void keyClient::run()
                 continue;
             }
             batchList.push_back(tempChunk);
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartKey, NULL);
+#endif
+            cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendKey, NULL);
+            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+            second = diff / 1000000.0;
+            keyGenTime += second;
+            chunkHashGenerateTime += second;
+#endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             batchNumber++;
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             int batchedKeySize = 0;
-
-            if (!keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize)) {
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartKey, NULL);
+#endif
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendKey, NULL);
+            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+            second = diff / 1000000.0;
+            keyGenTime += second;
+            keyExchangeTime += second;
+#endif
+            if (!keyExchangeStatus) {
                 cerr << "KeyClient : error get key for " << setbase(10) << batchNumber << " chunks" << endl;
                 return;
             } else {
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    // cerr << "KeyClient : chunk hash & key for chunk " << i << " = " << endl;
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkHash + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    if (encodeChunk(batchList[i])) {
+#ifdef BREAK_DOWN
+                    gettimeofday(&timestartKey, NULL);
+#endif
+                    bool encodeChunkStatus = encodeChunk(batchList[i]);
+#ifdef BREAK_DOWN
+                    gettimeofday(&timeendKey, NULL);
+                    diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+                    second = diff / 1000000.0;
+                    encryptionTime += second;
+#endif
+                    if (encodeChunkStatus) {
                         insertMQToPOW(batchList[i]);
                     } else {
                         cerr << "KeyClient : encode chunk error, exiting" << endl;
@@ -103,20 +139,20 @@ void keyClient::run()
             break;
         }
     }
-
-    gettimeofday(&timeendKey, NULL);
-    long diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-    double second = diff / 1000000.0;
-    printf("Key client thread work time is %ld us = %lf s\n", diff, second);
+#ifdef BREAK_DOWN
+    cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
+    cout << "KeyClient : chunk hash generate time = " << chunkHashGenerateTime << " s" << endl;
+    cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
+    cout << "KeyClient : chunk encryption work time = " << encryptionTime << " s" << endl;
+#endif
     return;
 }
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    for (int i = 0; i < batchNumber; i++) {
-        cryptoObj_->keyExchangeEncrypt(batchHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE);
-    }
+    cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
+
     if (!socket_.Send(sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
@@ -133,17 +169,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        for (int i = 0; i < batchkeyNumber; i++) {
-            u_char key[CHUNK_ENCRYPT_KEY_SIZE];
-            cryptoObj_->keyExchangeDecrypt(recvBuffer + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, key);
-            // cerr << "KeyClient : encrypted data " << i << endl;
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, sendHash + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            // cerr << "KeyClient : decrypt data " << i << endl;
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, batchHashList + i * CHUNK_HASH_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            // PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, key, CHUNK_ENCRYPT_KEY_SIZE);
-            memcpy(batchKeyList + i * CHUNK_ENCRYPT_KEY_SIZE, key, CHUNK_ENCRYPT_KEY_SIZE);
-        }
+        cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
         return true;
     } else {
         return false;

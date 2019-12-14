@@ -92,37 +92,51 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
     if (ret_status != SGX_SUCCESS) {
         return ret_status;
     }
-    uint8_t *originhash, *hashTemp;
-    uint32_t len;
-    sgx_sha256_hash_t* hash;
-    originhash = (uint8_t*)malloc(srcLen);
-    hashTemp = (uint8_t*)malloc(srcLen + keydLen);
 
-    if (!decrypt(src, srcLen, k, 16, originhash, &len)) {
+    uint8_t *originhash, *hashTemp, *keySeed, *hash;
+    uint32_t decryptLen, encryptLen;
+    hash = (uint8_t*)malloc(32);
+    originhash = (uint8_t*)malloc(srcLen);
+    keySeed = (uint8_t*)malloc(srcLen);
+    hashTemp = (uint8_t*)malloc(32 + keydLen);
+
+    if (!decrypt(src, srcLen, k, 16, originhash, &decryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
+        free(keySeed);
         return SGX_ERROR_UNEXPECTED;
     }
-    for (int i = 0; i < keydLen; i++) {
-        *(hashTemp + i) = *(keyd + i);
-    }
-    for (int i = 0; i < srcLen; i++) {
-        *(hashTemp + keydLen + i) = *(originhash + i);
+
+    for (int index = 0; index < (decryptLen / 32); index++) {
+        for (int i = 0; i < keydLen; i++) {
+            *(hashTemp + i) = *(keyd + i);
+        }
+        for (int i = 0; i < 32; i++) {
+            *(hashTemp + keydLen + i) = *(originhash + i + index * 32);
+        }
+        uint32_t hashdataSize = 32 + keydLen;
+        sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, hashdataSize, hash);
+        if (sha256Status != SGX_SUCCESS) {
+            return sha256Status;
+        }
+        for (int i = 0; i < 32; i++) {
+            *(keySeed + index * 32 + i) = *(hash + i);
+        }
     }
 
-    sgx_sha256_msg(hashTemp, srcLen, hash);
-
-    if (!encrypt((uint8_t*)hash, srcLen, k, 16, key, &len)) {
+    if (!encrypt(keySeed, srcLen, k, 16, key, &encryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
+        free(keySeed);
         return SGX_ERROR_UNEXPECTED;
     }
     free(hash);
     free(originhash);
     free(hashTemp);
-    if (srcLen != len) {
+    free(keySeed);
+    if (srcLen != decryptLen) {
         return SGX_ERROR_UNEXPECTED;
     } else {
         return SGX_SUCCESS;
@@ -177,11 +191,11 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen,
         goto error;
     }
 
-    int len;
-    if (!EVP_DecryptFinal_ex(ctx, plaint + *plaintLen, &len)) {
+    int decryptLen;
+    if (!EVP_DecryptFinal_ex(ctx, plaint + *plaintLen, &decryptLen)) {
         goto error;
     }
-    plaintLen += len;
+    plaintLen += decryptLen;
 
     EVP_CIPHER_CTX_cleanup(ctx);
     return 1;

@@ -47,6 +47,10 @@ private:
 
     void varSizeChunking();
 
+    void traceDrivenChunkingFSL();
+
+    void traceDrivenChunkingUBC();
+
     void ChunkerInit(string path);
 
     bool insertMQToKeyClient(Data_t& newData);

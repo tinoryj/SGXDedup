@@ -20,7 +20,7 @@ enclave {
                                       uint32_t srcLen,
                                       [in,size=keydLen] uint8_t *keyd,
                                       uint32_t keydLen,
-                                      [out,size = 32] uint8_t *key);
+                                      [out, size=64000] uint8_t *key);
     };
 
 };

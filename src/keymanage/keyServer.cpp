@@ -128,17 +128,19 @@ void keyServer::run(Socket socket)
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
         cerr << "KeyServer : recv hash number = " << recvNumber << endl;
 
-        u_char key[recvNumber * CHUNK_ENCRYPT_KEY_SIZE];
+        u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 
         // gettimeofday(&timestart, 0);
 
         multiThreadMutex_.lock();
-        for (int i = 0; i < recvNumber; i++) {
-            client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-            // cout << "chunk " << i << " :" << endl;
-            // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
-            // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-        }
+        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+
+        // for (int i = 0; i < recvNumber; i++) {
+        //     client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+        //     // cout << "chunk " << i << " :" << endl;
+        //     // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+        //     // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+        // }
         keyGenerateCount += recvNumber;
         multiThreadMutex_.unlock();
 

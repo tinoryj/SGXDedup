@@ -7,8 +7,25 @@
 
 using namespace std;
 
+#define BREAK_DOWN 
+#define HIGH_SECURITY
+
+#ifdef HIGH_SECURITY
+#define CHUNK_FINGER_PRINT_SIZE 32
+#define CHUNK_HASH_SIZE 32
+#define CHUNK_ENCRYPT_KEY_SIZE 32
+#define FILE_NAME_HASH_SIZE 32
+#else
+#define CHUNK_FINGER_PRINT_SIZE 16
+#define CHUNK_HASH_SIZE 16
+#define CHUNK_ENCRYPT_KEY_SIZE 16
+#define FILE_NAME_HASH_SIZE 16
+#endif
+
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
 #define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
+#define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
+#define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
 #define MIN_CHUNK_SIZE 4096 //macro for the min size of variable-size chunker
 #define AVG_CHUNK_SIZE 8192 //macro for the average size of variable-size chunker
 #define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
