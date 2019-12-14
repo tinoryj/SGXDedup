@@ -7,8 +7,9 @@
 
 using namespace std;
 
-#define BREAK_DOWN 
+#define BREAK_DOWN
 #define HIGH_SECURITY
+#define NON_OPRF
 
 #ifdef HIGH_SECURITY
 #define CHUNK_FINGER_PRINT_SIZE 32

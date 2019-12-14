@@ -147,7 +147,32 @@ void keyClient::run()
 #endif
     return;
 }
-
+#ifdef NON_OPRF
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
+{
+    if (!socket_.Send(batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
+        cerr << "keyClient: send socket error" << endl;
+        return false;
+    }
+    u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
+    int recvSize;
+    if (!socket_.Recv(recvBuffer, recvSize)) {
+        cerr << "keyClient: recv socket error" << endl;
+        return false;
+    }
+    if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
+        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        return false;
+    }
+    batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
+    if (batchkeyNumber == batchNumber) {
+        memcpy(batchKeyList, recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE);
+        return true;
+    } else {
+        return false;
+    }
+}
+#else
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
@@ -175,7 +200,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
 }
-
+#endif
 bool keyClient::encodeChunk(Data_t& newChunk)
 {
     bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);

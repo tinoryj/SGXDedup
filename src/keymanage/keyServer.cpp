@@ -1,5 +1,8 @@
 #include "keyServer.hpp"
 #include <sys/time.h>
+#ifdef NON_OPRF
+#include <openssl/sha.h>
+#endif
 extern Configure config;
 
 // struct timeval timestart;
@@ -134,13 +137,14 @@ void keyServer::run(Socket socket)
 
         multiThreadMutex_.lock();
         client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
-
-        // for (int i = 0; i < recvNumber; i++) {
-        //     client->request(hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-        //     // cout << "chunk " << i << " :" << endl;
-        //     // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
-        //     // PRINT_BYTE_ARRAY_KEY_SERVER(stderr, key + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-        // }
+#ifdef NON_OPRF
+        for (int i = 0; i < recvNumber; i++) {
+            u_char tempKeySeed[CHUNK_HASH_SIZE + 64];
+            memset(tempKeySeed, 0, CHUNK_HASH_SIZE + 64);
+            memcpy(tempKeySeed, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+            SHA256(tempKeySeed, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE);
+        }
+#endif
         keyGenerateCount += recvNumber;
         multiThreadMutex_.unlock();
 

@@ -29,7 +29,12 @@ void PRINT_BYTE_ARRAY_POW_CLIENT(
 
 void powClient::run()
 {
-    gettimeofday(&timestartPowClient, NULL);
+#ifdef BREAK_DOWN
+    double powEnclaveCaluationTime = 0;
+    double powExchangeinofrmationTime = 0;
+    long diff;
+    double second;
+#endif
     vector<Data_t> batchChunk;
     vector<string> batchHash;
     uint64_t powBatchSize = config.getPOWBatchSize();
@@ -54,16 +59,9 @@ void powClient::run()
         }
         if (extractMQFromEncoder(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                // cerr << "PowClient : get file recipe head frome message queue, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                // PRINT_BYTE_ARRAY_POW_CLIENT(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
                 insertMQToSender(tempChunk);
                 continue;
             } else {
-                // cout << "PowClient : current extract  chunk ID = " << tempChunk.chunk.ID << " chunk data size = " << tempChunk.chunk.logicDataSize << endl;
-                // cout << setw(6) << "chunk hash = " << endl;
-                // PRINT_BYTE_ARRAY_POW_CLIENT(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                // cout << setw(6) << "chunk key = " << endl;
-                // PRINT_BYTE_ARRAY_POW_CLIENT(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                 string tempChunkHash;
                 tempChunkHash.resize(CHUNK_HASH_SIZE);
                 memcpy(&tempChunkHash[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
@@ -81,12 +79,30 @@ void powClient::run()
             string batchChunkLogicData;
             batchChunkLogicData.resize(currentBatchSize);
             memcpy(&batchChunkLogicData[0], batchChunkLogicData_charBuffer, currentBatchSize);
-
-            if (!this->request(batchChunkLogicData, request.signature_)) {
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartPowClient, NULL);
+#endif
+            bool powRequestStatus = this->request(batchChunkLogicData, request.signature_);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendPowClient, NULL);
+            diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
+            second = diff / 1000000.0;
+            powEnclaveCaluationTime += second;
+#endif
+            if (!powRequestStatus) {
                 cerr << "PowClient : sgx request failed" << endl;
                 exit(1);
             }
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartPowClient, NULL);
+#endif
             senderObj->sendEnclaveSignedHash(request, lists, netstatus);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendPowClient, NULL);
+            diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
+            second = diff / 1000000.0;
+            powExchangeinofrmationTime += second;
+#endif
             if (netstatus != SUCCESS) {
                 cerr << "PowClient : send pow signed hash error" << endl;
                 exit(1);
@@ -118,10 +134,11 @@ void powClient::run()
             break;
         }
     }
-    gettimeofday(&timeendPowClient, NULL);
-    long diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
-    double second = diff / 1000000.0;
-    printf("PowClient : thread work time is %ld us = %lf s\n", diff, second);
+#ifdef BREAK_DOWN
+    cout << "PowClient : enclave compute work time = " << powEnclaveCaluationTime << " s" << endl;
+    cout << "PowClient : exchange status to SSP time = " << powExchangeinofrmationTime << " s" << endl;
+    cout << "PowClient : Total work time = " << powExchangeinofrmationTime + powEnclaveCaluationTime << " s" << endl;
+#endif
     return;
 }
 
