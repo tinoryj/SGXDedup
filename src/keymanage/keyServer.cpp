@@ -5,8 +5,8 @@
 #endif
 extern Configure config;
 
-// struct timeval timestart;
-// struct timeval timeend;
+struct timeval timestart;
+struct timeval timeend;
 
 void PRINT_BYTE_ARRAY_KEY_SERVER(
     FILE* file, void* mem, uint32_t len)
@@ -106,9 +106,15 @@ void keyServer::runRA()
 
 void keyServer::run(Socket socket)
 {
+#ifdef BREAK_DOWN
+    double keyGenTime = 0;
+    long diff;
+    double second;
+#endif
     multiThreadCountMutex_.lock();
     clientThreadCount++;
     multiThreadCountMutex_.unlock();
+    uint64_t currentThreadkeyGenerationNumber = 0;
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
@@ -117,6 +123,10 @@ void keyServer::run(Socket socket)
             multiThreadCountMutex_.lock();
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
             return;
         }
 
@@ -126,6 +136,10 @@ void keyServer::run(Socket socket)
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
             socket.finish();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
             return;
         }
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
@@ -133,9 +147,10 @@ void keyServer::run(Socket socket)
 
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 
-        // gettimeofday(&timestart, 0);
-
         multiThreadMutex_.lock();
+#ifdef BREAK_DOWN
+        gettimeofday(&timestart, 0);
+#endif
         client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #ifdef NON_OPRF
         for (int i = 0; i < recvNumber; i++) {
@@ -145,19 +160,25 @@ void keyServer::run(Socket socket)
             SHA256(tempKeySeed, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE);
         }
 #endif
+#ifdef BREAK_DOWN
+        gettimeofday(&timeend, 0);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        keyGenTime += second;
+#endif
         keyGenerateCount += recvNumber;
         multiThreadMutex_.unlock();
-
-        // gettimeofday(&timeend, 0);
-        // long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-        // printf("KeyServer : Compute time is %ld us\n", diff);
-
+        currentThreadkeyGenerationNumber += recvNumber;
         if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
             socket.finish();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
             return;
         }
     }
