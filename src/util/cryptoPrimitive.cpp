@@ -369,8 +369,6 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
     }
     EVP_CIPHER_CTX_cleanup(ctx);
     return true;
-
-    int ciphertextSize, ciphertextTailSize;
 }
 
 bool CryptoPrimitive::cmac128(vector<string>& message, string& mac, u_char* key, int keyLen)

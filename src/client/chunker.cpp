@@ -332,7 +332,6 @@ void Chunker::traceDrivenChunkingFSL()
     long diff;
     double second;
 #endif
-    char* readFlag;
     std::ifstream& fin = getChunkingFile();
     uint64_t chunkIDCounter = 0;
     uint64_t fileSize = 0;
@@ -407,7 +406,6 @@ void Chunker::traceDrivenChunkingFSL()
 
 void Chunker::traceDrivenChunkingUBC()
 {
-    char* readFlag;
 #ifdef BREAK_DOWN
     double chunkTime = 0;
     long diff;

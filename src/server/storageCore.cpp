@@ -72,7 +72,6 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     int chunkNumber;
     memcpy(&chunkNumber, data, sizeof(int));
     int readSize = sizeof(int);
-    u_char hash[CHUNK_HASH_SIZE];
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
         string originHash(data + readSize, CHUNK_HASH_SIZE);
@@ -107,7 +106,6 @@ bool StorageCore::restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe)
             std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
             return false;
         } else {
-            Recipe_t tempRecipeHead;
             char recipeHeadBuffer[sizeof(Recipe_t)];
             memset(recipeHeadBuffer, 0, sizeof(Recipe_t));
             // RecipeIn.seekg(0, ios_base::end);
@@ -151,7 +149,6 @@ bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, Recipe
         RecipeOut.write(tempHeadBuffer, sizeof(Recipe_t));
         cerr << "StorageCore : save recipe head over, total chunk number = " << recipeHead.fileRecipeHead.totalChunkNumber << " file size = " << recipeHead.fileRecipeHead.fileSize << endl;
         // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempHeadBuffer, sizeof(Recipe_t));
-        char tempBuffer[sizeof(RecipeEntry_t)];
         for (int i = 0; i < recipeListSize; i++) {
             // memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
             RecipeOut.write((char*)&recipeList[i], sizeof(RecipeEntry_t));

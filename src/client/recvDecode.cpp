@@ -165,7 +165,6 @@ bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
 
 void RecvDecode::run()
 {
-    int recvChunkBatchSize = config.getSendChunkBatchSize();
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
     request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);

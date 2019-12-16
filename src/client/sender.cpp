@@ -121,13 +121,10 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     respondBody.clientID = 0;
     respondBody.messageType = 0;
     respondBody.dataSize = 0;
-    u_char requestBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + sendBufferSize;
     memcpy(requestBufferIn + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
     requestBody.dataSize = sendBufferSize + sizeof(int);
     memcpy(requestBufferIn, &requestBody, sizeof(NetworkHeadStruct_t));
-    u_char respondBuffer[sizeof(NetworkHeadStruct_t)];
-    int recvSize = 0;
     if (!socket_.Send((u_char*)requestBufferIn, sendSize)) {
         return false;
     } else {
