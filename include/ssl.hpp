@@ -16,11 +16,11 @@
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
 
-#define SERVER_CERT "key/servercert.pem"
-#define SERVER_KEY "key/server.key"
-#define CLIENT_CERT "key/clientcert.pem"
-#define CLIENT_KEY "key/client.key"
-#define CA_CERT "key/cacert.pem"
+#define SECRT "key/sslKeys/server-cert.pem"
+#define SEKEY "key/sslKeys/server-key.pem"
+#define CLCRT "key/sslKeys/client-cert.pem"
+#define CLKEY "key/sslKeys/client-key.pem"
+#define CACRT "key/sslKeys/ca-cert.pem"
 
 using namespace std;
 
