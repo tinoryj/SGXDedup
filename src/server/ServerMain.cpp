@@ -68,7 +68,7 @@ int main()
     attrs.set_stack_size(200 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
     Socket socketData(SERVER_TCP, "", config.getStorageServerPort());
-    Socket socketPow(SERVER_TCP, "", config.getPOWServerPort());
+    Socket socketPow(SERVER_TCP, "", config.getPOWServerPort()); 
     while (true) {
         Socket tmpSocket = socketData.Listen();
         th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, tmpSocket));

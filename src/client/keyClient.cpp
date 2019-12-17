@@ -33,7 +33,8 @@ keyClient::keyClient(powClient* powObjTemp, u_char* keyExchangeKey)
     cryptoObj_ = new CryptoPrimitive();
     keyBatchSize_ = (int)config.getKeyBatchSize();
     memcpy(keyExchangeKey_, keyExchangeKey, 16);
-    socket_.init(CLIENT_TCP, config.getKeyServerIP(), config.getKeyServerPort());
+    keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
+    sslConnection_ = keySecurityChannel_->sslConnect().second;
 }
 
 keyClient::~keyClient()
@@ -178,13 +179,13 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
 
-    if (!socket_.Send(sendHash, CHUNK_HASH_SIZE * batchNumber)) {
+    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
-    if (!socket_.Recv(recvBuffer, recvSize)) {
+    if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
         cerr << "keyClient: recv socket error" << endl;
         return false;
     }

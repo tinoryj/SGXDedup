@@ -46,7 +46,7 @@ void Socket::init(const int type, string ip, int port)
         if (bind(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) == -1) {
             cerr << "Socket : Can not bind to sockfd" << endl
                  << " May cause by shutdown server before client " << endl
-                 << " Wait for 30 sec and try again" << endl;
+                 << " Wait for 1 min and try again" << endl;
             exit(1);
         }
         return;
@@ -57,7 +57,7 @@ void Socket::init(const int type, string ip, int port)
         if (connect(this->fd_, (struct sockaddr*)&this->addr_, sizeof this->addr_) == -1) {
             cerr << "Socket : Can not bind to sockfd" << endl
                  << " May cause by shutdown server before client " << endl
-                 << " Wait for 30 sec and try again" << endl;
+                 << " Wait for 1 min and try again" << endl;
             exit(1);
         }
         return;

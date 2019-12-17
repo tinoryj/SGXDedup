@@ -1,20 +1,19 @@
 #include "keyServer.hpp"
-#include "socket.hpp"
 
 Configure config("config.json");
 
 int main()
 {
-    Socket socket(SERVER_TCP, "", config.getKeyServerPort());
+    ssl* keySecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), SERVERSIDE);
     boost::thread* th;
-    keyServer* server = new keyServer();
+    keyServer* server = new keyServer(keySecurityChannelTemp);
     th = new boost::thread(boost::bind(&keyServer::runRA, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     while (true) {
-        Socket tmpSocket = socket.Listen();
-        th = new boost::thread(boost::bind(&keyServer::run, server, tmpSocket));
+        SSL* sslConnection = keySecurityChannelTemp->sslListen().second;
+        th = new boost::thread(boost::bind(&keyServer::run, server, sslConnection));
         th->detach();
     }
     return 0;

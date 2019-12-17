@@ -331,11 +331,6 @@ void DataSR::runKeyServerRA()
     socketRAListen.init(SERVER_TCP, "", config.getKMServerPort());
     while (true) {
     errorRetry:
-        keyExchangeKeySetFlag = false;
-        memset(keyExchangeKey_, 0, 16);
-        socketRARequest.init(CLIENT_TCP, config.getKeyServerIP(), config.getkeyServerRArequestPort());
-        socketRARequest.Send(sendBuffer, sendSize);
-        socketRARequest.finish();
         Socket tempSocket = socketRAListen.Listen();
         cerr << "DataSR : key server start remote attestation now" << endl;
         kmServer server(tempSocket);
@@ -351,6 +346,11 @@ void DataSR::runKeyServerRA()
             boost::xtime_get(&xt, boost::TIME_UTC_);
             xt.sec += config.getRASessionKeylifeSpan();
             boost::thread::sleep(xt);
+            keyExchangeKeySetFlag = false;
+            memset(keyExchangeKey_, 0, 16);
+            socketRARequest.init(CLIENT_TCP, config.getKeyServerIP(), config.getkeyServerRArequestPort());
+            socketRARequest.Send(sendBuffer, sendSize);
+            socketRARequest.finish();
         } else {
             delete session;
             cerr << "KeyClient : keyServer enclave not trusted, storage try again now" << endl;

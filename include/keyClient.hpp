@@ -7,9 +7,7 @@
 #include "messageQueue.hpp"
 #include "powClient.hpp"
 #include "powSession.hpp"
-#include "socket.hpp"
-
-#define KEYMANGER_PUBLIC_KEY_FILE "key/serverpub.key"
+#include "ssl.hpp"
 
 class keyClient {
 private:
@@ -17,7 +15,8 @@ private:
     powClient* powObj_;
     CryptoPrimitive* cryptoObj_;
     int keyBatchSize_;
-    Socket socket_;
+    ssl* keySecurityChannel_;
+    SSL* sslConnection_;
     u_char keyExchangeKey_[16];
 
 public:

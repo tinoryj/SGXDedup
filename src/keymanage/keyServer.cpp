@@ -27,7 +27,7 @@ void PRINT_BYTE_ARRAY_KEY_SERVER(
     fprintf(file, "\n}\n");
 }
 
-keyServer::keyServer()
+keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
 {
     rsa_ = RSA_new();
     key_ = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
@@ -43,7 +43,8 @@ keyServer::keyServer()
     clientThreadCount = 0;
     keyGenerateCount = 0;
     keyGenLimitPerSessionKey_ = config.getKeyGenLimitPerSessionkeySize();
-    raRequestFlag = false;
+    raRequestFlag = true;
+    keySecurityChannel_ = keyServerSecurityChannelTemp;
 }
 
 keyServer::~keyServer()
@@ -83,13 +84,13 @@ void keyServer::runRAwithSPRequest()
 
 void keyServer::runRA()
 {
+    Socket tmpServerSocket;
     while (true) {
         if (keyGenerateCount >= keyGenLimitPerSessionKey_ || raRequestFlag) {
             while (!(clientThreadCount == 0))
                 ;
             cout << "KeyServer : start do remote attestation to storage server" << endl;
             keyGenerateCount = 0;
-            Socket tmpServerSocket;
             tmpServerSocket.init(CLIENT_TCP, config.getStorageServerIP(), config.getKMServerPort());
             if (doRemoteAttestation(tmpServerSocket)) {
                 tmpServerSocket.finish();
@@ -98,13 +99,13 @@ void keyServer::runRA()
             } else {
                 tmpServerSocket.finish();
                 cerr << "KeyServer : do remote attestation to storage SP error" << endl;
-                return;
+                continue;
             }
         }
     }
 }
 
-void keyServer::run(Socket socket)
+void keyServer::run(SSL* connection)
 {
 #ifdef BREAK_DOWN
     double keyGenTime = 0;
@@ -118,8 +119,7 @@ void keyServer::run(Socket socket)
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
-        if (!socket.Recv(hash, recvSize)) {
-            socket.finish();
+        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
             multiThreadCountMutex_.lock();
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
@@ -135,7 +135,6 @@ void keyServer::run(Socket socket)
             multiThreadCountMutex_.lock();
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
-            socket.finish();
 #ifdef BREAK_DOWN
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -169,12 +168,11 @@ void keyServer::run(Socket socket)
         keyGenerateCount += recvNumber;
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!socket.Send(key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount--;
             multiThreadCountMutex_.unlock();
-            socket.finish();
 #ifdef BREAK_DOWN
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;

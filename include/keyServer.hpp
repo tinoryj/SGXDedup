@@ -7,12 +7,12 @@
 #include "messageQueue.hpp"
 #include "openssl/bn.h"
 #include "socket.hpp"
+#include "ssl.hpp"
 #include <bits/stdc++.h>
 
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
-#define KEYMANGER_PRIVATE_KEY "key/server.key"
-
+#define KEYMANGER_PRIVATE_KEY "key/sslKeys/server-key.pem"
 class keyServer {
 private:
     RSA* rsa_;
@@ -26,11 +26,12 @@ private:
     uint64_t clientThreadCount;
     uint64_t keyGenLimitPerSessionKey_;
     bool raRequestFlag;
+    ssl* keySecurityChannel_;
 
 public:
-    keyServer();
+    keyServer(ssl* keySecurityChannelTemp);
     ~keyServer();
-    void run(Socket socket);
+    void run(SSL* connection);
     void runRA();
     void runRAwithSPRequest();
     bool doRemoteAttestation(Socket socket);

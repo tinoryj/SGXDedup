@@ -1,17 +1,14 @@
 #ifndef GENERALDEDUPSYSTEM_SSL_HPP
 #define GENERALDEDUPSYSTEM_SSL_HPP
 
-#include <iostream>
-
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "openssl/bio.h"
 #include "openssl/err.h"
 #include "openssl/ssl.h"
+#include <arpa/inet.h>
 #include <bits/stdc++.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
@@ -26,23 +23,18 @@ using namespace std;
 
 class ssl {
 private:
-    SSL_CTX* ctx_;
-    struct sockaddr_in sockAddr_;
-    std::string serverIP_;
-    int port_;
-    //    std::vector<int>_fdList;
-    //    std::vector<SSL*>_sslList;
+    SSL_CTX* _ctx;
+    struct sockaddr_in _sockAddr;
+    std::string _serverIP;
+    int _port;
 
 public:
-    int listenFd_;
+    int listenFd;
     ssl(std::string ip, int port, int scSwitch);
     ~ssl();
     std::pair<int, SSL*> sslConnect();
     std::pair<int, SSL*> sslListen();
-    //std::pair<int,SSL*> sslConnect();
-    //std::pair<int,SSL*> sslListen();
-    void sslWrite(SSL* connection, std::string data);
-    bool sslRead(SSL* connection, std::string& data);
+    bool send(SSL* connection, char* data, int dataSize);
+    bool recv(SSL* connection, char* data, int& dataSize);
 };
-
 #endif //GENERALDEDUPSYSTEM_SSL_HPP
