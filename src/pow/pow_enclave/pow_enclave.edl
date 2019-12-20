@@ -2,12 +2,14 @@ enclave {
 
   include "sgx_key_exchange.h"
   include "sgx_trts.h"
-
+	include "types.h"
   from "sgx_tkey_exchange.edl" import *;
+  from "sgx_tstdc.edl" import *;
+
 
   trusted {
 
-	public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
+	  public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
 			                            [out] sgx_ra_context_t *ctx,
 			                            [out] sgx_status_t *pse_status);
 
@@ -18,6 +20,7 @@ enclave {
                                       [in,size = srcLen] uint8_t *src,
                                       uint32_t srcLen,
                                       [out,size = 16] uint8_t *cmac);
-    };
-
-};
+                                      
+    public int initialize_enclave([in]struct sealed_buf_t* sealed_buf);
+	  public int increase_and_seal_data([in, out]struct sealed_buf_t* sealed_buf);
+  };

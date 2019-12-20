@@ -264,6 +264,54 @@ bool powClient::do_attestation()
     return true;
 }
 
+sgx_status_t powClient::load_and_initialize_enclave(sgx_enclave_id_t* eid, struct sealed_buf_t* buf)
+{
+    sgx_status_t status = SGX_SUCCESS;
+    string enclaveName = config.getKMEnclaveName();
+    cerr << "kmClient : start to create enclave" << endl;
+    int retval = 0;
+    for (;;) {
+        // Step 2: load the enclave
+        // Debug: set the 2nd parameter to 1 which indicates the enclave are launched in debug mode
+        status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &_eid, NULL);
+        if (status != SGX_SUCCESS)
+            return status;
+
+        // Step 3: enter the enclave to initialize the enclave
+        //      If power transition occurs when the process is inside the enclave, SGX_ERROR_ENCLAVE_LOST will be returned after the system resumes.
+        //      Then we can load and intialize the enclave again or just return this error code and exit to handle the power transition.
+        //      In this sample, we choose to load and intialize the enclave again.
+        status = initialize_enclave(*_eid, &retval, buf);
+        if (status == SGX_ERROR_ENCLAVE_LOST) {
+            cout << "Power transition occured in initialize_enclave()" << endl;
+            continue; // Try to load and initialize the enclave again
+        } else {
+            // No power transilation occurs.
+            // If the initialization operation returns failure, change the return value.
+            if (status == SGX_SUCCESS && retval != 0) {
+                status = SGX_ERROR_UNEXPECTED;
+                sgx_destroy_enclave(*eid);
+            }
+            break;
+        }
+    }
+    return status;
+}
+
+bool powClient::increase_and_seal_data_in_enclave()
+{
+    sgx_status_t ret = SGX_SUCCESS;
+    int retval = 0;
+    ret = increase_and_seal_data(_eid, &retval, &sealed_buf);
+    if (ret != SGX_SUCCESS) {
+        sgxErrorReport(ret);
+        return false;
+    } else if (retval != 0) {
+        return false;
+    }
+    return true;
+}
+
 bool powClient::editJobDoneFlag()
 {
     inputMQ_->done_ = true;

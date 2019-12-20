@@ -11,6 +11,8 @@
 #include "pow_enclave_u.h"
 #include "protocol.hpp"
 #include "sender.hpp"
+#include "sgxErrorSupport.h"
+#include "types.h"
 #include <bits/stdc++.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
@@ -36,6 +38,9 @@ private:
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;
+    sgx_status_t load_and_initialize_enclave(sgx_enclave_id_t* eid, struct sealed_buf_t* buf);
+    bool increase_and_seal_data_in_enclave();
+    struct sealed_buf_t sealed_buf;
 
 public:
     sgx_launch_token_t _token = { 0 };
