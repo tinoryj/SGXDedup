@@ -15,12 +15,12 @@ enclave {
 
     public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
 
-    public sgx_status_t ecall_calcmac([in]sgx_ra_context_t *ctx,
-                                      sgx_ra_key_type_t type,
-                                      [in,size = srcLen] uint8_t *src,
+    public sgx_status_t ecall_calcmac([in,size = srcLen] uint8_t *src,
                                       uint32_t srcLen,
                                       [out,size = 16] uint8_t *cmac);
-                                      
-    public int initialize_enclave([in]struct sealed_buf_t* sealed_buf);
-	  public int increase_and_seal_data([in, out]struct sealed_buf_t* sealed_buf);
+    public sgx_status_t ecall_setSK([in]sgx_ra_context_t *ctx,
+                                      sgx_ra_key_type_t type);                                  
+    public sgx_status_t enclave_sealed_init([in]struct sealed_buf_t* sealed_buf);
+	  public sgx_status_t enclave_sealed_close([in, out]struct sealed_buf_t* sealed_buf);
   };
+};

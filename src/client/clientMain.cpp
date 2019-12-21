@@ -101,5 +101,15 @@ int main(int argv, char* argc[])
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
     printf("the total work time is %ld us = %lf s\n", diff, second);
+    if (PowClientObj->powEnclaveSealedColse() == true) {
+        cout << "PowClient : enclave sealing done" << endl;
+        if (PowClientObj->outputSealedData() == true) {
+            cout << "PowClient : enclave sealing write out done" << endl;
+        } else {
+            cerr << "PowClient : enclave sealing write out error" << endl;
+        }
+    } else {
+        cerr << "PowClient : enclave sealing error" << endl;
+    }
     return 0;
 }

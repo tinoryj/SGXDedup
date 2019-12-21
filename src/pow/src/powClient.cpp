@@ -91,7 +91,7 @@ void powClient::run()
 #endif
             if (!powRequestStatus) {
                 cerr << "PowClient : sgx request failed" << endl;
-                exit(1);
+                break;
             }
 #ifdef BREAK_DOWN
             gettimeofday(&timestartPowClient, NULL);
@@ -105,7 +105,7 @@ void powClient::run()
 #endif
             if (netstatus != SUCCESS) {
                 cerr << "PowClient : send pow signed hash error" << endl;
-                exit(1);
+                break;
             } else {
                 // cerr << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
                 int totalNeedChunkNumber = lists.size();
@@ -126,13 +126,13 @@ void powClient::run()
             request.hash_.clear();
         }
         if (jobDoneFlag) {
-            if (!senderObj->editJobDoneFlag()) {
-                cerr << "PowClient : error to set job done flag for sender" << endl;
-            } else {
-                cerr << "PowClient : pow thread job done, set job done flag for sender done, exit now" << endl;
-            }
             break;
         }
+    }
+    if (!senderObj->editJobDoneFlag()) {
+        cerr << "PowClient : error to set job done flag for sender" << endl;
+    } else {
+        cerr << "PowClient : pow thread job done, set job done flag for sender done, exit now" << endl;
     }
 #ifdef BREAK_DOWN
     cout << "PowClient : enclave compute work time = " << powEnclaveCaluationTime << " s" << endl;
@@ -155,13 +155,58 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
     }
     memcpy(src, &logicDataBatch[0], logicDataBatch.length());
 
-    status = ecall_calcmac(_eid, &retval, &_ctx, SGX_RA_KEY_SK, src, srcLen, cmac);
+    status = ecall_calcmac(_eid, &retval, src, srcLen, cmac);
     delete[] src;
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : ecall failed" << endl;
         return false;
     }
     return true;
+}
+
+bool powClient::loadSealedData()
+{
+    std::ifstream sealDataFile;
+    if (sealDataFile.is_open()) {
+        sealDataFile.close();
+    }
+    sealDataFile.open("pow-enclave.sealed", std::ios::binary);
+    if (!sealDataFile.is_open()) {
+        cerr << "PowClient : sealed init not success, sealed data not exist" << endl;
+        return false;
+    } else {
+        sealDataFile.seekg(0, ios_base::end);
+        int sealedDataLength = sealDataFile.tellg();
+        sealDataFile.seekg(0, ios_base::beg);
+        char inPutDataBuffer[sealedDataLength];
+        sealDataFile.read(inPutDataBuffer, sealedDataLength);
+        if (sealDataFile.gcount() != sealedDataLength) {
+            cerr << "PowClient : read sealed file error" << endl;
+            return false;
+        }
+        sealDataFile.close();
+        memcpy(&sealed_buf, inPutDataBuffer, sealedDataLength);
+        return true;
+    }
+}
+
+bool powClient::outputSealedData()
+{
+    std::ofstream sealDataFile;
+    if (sealDataFile.is_open()) {
+        sealDataFile.close();
+    }
+    sealDataFile.open("pow-enclave.sealed", std::ofstream::out | std::ios::binary);
+    if (sealDataFile.is_open()) {
+        int sealedDataLength = sizeof(sealed_buf);
+        char outPutDataBuffer[sealedDataLength];
+        memcpy(outPutDataBuffer, &sealed_buf, sealedDataLength);
+        sealDataFile.write(outPutDataBuffer, sealedDataLength);
+        sealDataFile.close();
+        return true;
+    } else {
+        return false;
+    }
 }
 
 powClient::powClient(Sender* senderObjTemp)
@@ -172,8 +217,38 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
-    if (!this->do_attestation()) {
-        exit(1);
+    if (loadSealedData() == true) {
+        if (powEnclaveSealedInit() == true) {
+            cerr << "PowClient : enclave init via sealed data done" << endl;
+        } else {
+            if (!this->do_attestation()) {
+                return;
+            } else {
+                sgx_status_t retval;
+                sgx_status_t status;
+                status = ecall_setSK(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
+                if (status != SGX_SUCCESS) {
+                    cerr << "PowClient : ecall set session key failed" << endl;
+                    exit(0);
+                } else {
+                    cerr << "PowClient : ecall set session key success" << endl;
+                }
+            }
+        }
+    } else {
+        if (!this->do_attestation()) {
+            return;
+        } else {
+            sgx_status_t retval;
+            sgx_status_t status;
+            status = ecall_setSK(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
+            if (status != SGX_SUCCESS) {
+                cerr << "PowClient : ecall set session key failed" << endl;
+                exit(0);
+            } else {
+                cerr << "PowClient : ecall set session key success" << endl;
+            }
+        }
     }
 }
 
@@ -182,6 +257,7 @@ powClient::~powClient()
     inputMQ_->~messageQueue();
     delete inputMQ_;
     delete cryptoObj;
+    sgx_destroy_enclave(_eid);
 }
 
 bool powClient::do_attestation()
@@ -264,47 +340,32 @@ bool powClient::do_attestation()
     return true;
 }
 
-sgx_status_t powClient::load_and_initialize_enclave(sgx_enclave_id_t* eid, struct sealed_buf_t* buf)
+bool powClient::powEnclaveSealedInit()
 {
     sgx_status_t status = SGX_SUCCESS;
     string enclaveName = config.getKMEnclaveName();
     cerr << "kmClient : start to create enclave" << endl;
     int retval = 0;
-    for (;;) {
-        // Step 2: load the enclave
-        // Debug: set the 2nd parameter to 1 which indicates the enclave are launched in debug mode
-        status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &_eid, NULL);
-        if (status != SGX_SUCCESS)
-            return status;
-
-        // Step 3: enter the enclave to initialize the enclave
-        //      If power transition occurs when the process is inside the enclave, SGX_ERROR_ENCLAVE_LOST will be returned after the system resumes.
-        //      Then we can load and intialize the enclave again or just return this error code and exit to handle the power transition.
-        //      In this sample, we choose to load and intialize the enclave again.
-        status = initialize_enclave(*_eid, &retval, buf);
-        if (status == SGX_ERROR_ENCLAVE_LOST) {
-            cout << "Power transition occured in initialize_enclave()" << endl;
-            continue; // Try to load and initialize the enclave again
-        } else {
-            // No power transilation occurs.
-            // If the initialization operation returns failure, change the return value.
-            if (status == SGX_SUCCESS && retval != 0) {
-                status = SGX_ERROR_UNEXPECTED;
-                sgx_destroy_enclave(*eid);
-            }
-            break;
-        }
+    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &_eid, NULL);
+    if (status != SGX_SUCCESS) {
+        sgxErrorReport(status);
+        return false;
     }
-    return status;
+
+    status = enclave_sealed_init(_eid, &retval, &sealed_buf);
+    if (status != SGX_SUCCESS) {
+        sgxErrorReport(status);
+        return false;
+    }
+    return true;
 }
 
-bool powClient::increase_and_seal_data_in_enclave()
+bool powClient::powEnclaveSealedColse()
 {
     sgx_status_t ret = SGX_SUCCESS;
     int retval = 0;
-    ret = increase_and_seal_data(_eid, &retval, &sealed_buf);
+    ret = enclave_sealed_close(_eid, &retval, &sealed_buf);
     if (ret != SGX_SUCCESS) {
-        sgxErrorReport(ret);
         return false;
     } else if (retval != 0) {
         return false;

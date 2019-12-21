@@ -11,4 +11,4 @@ add_library(retriever STATIC retriever.cpp)
 
 add_executable(client clientMain.cpp)
 
-target_link_libraries(client ${CLIENT_OBJ} ${LINK_OBJ} hexutil)
+target_link_libraries(client ${CLIENT_OBJ} ${LINK_OBJ} hexutil sgxErrorSupport)

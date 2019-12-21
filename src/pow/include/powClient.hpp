@@ -12,11 +12,12 @@
 #include "protocol.hpp"
 #include "sender.hpp"
 #include "sgxErrorSupport.h"
+#include "sgx_tseal.h"
+#include "sgx_urts.h"
 #include "types.h"
 #include <bits/stdc++.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
-#include <sgx_urts.h>
 
 //server public key
 static const sgx_ec256_public_t def_service_public_key = {
@@ -38,8 +39,6 @@ private:
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;
-    sgx_status_t load_and_initialize_enclave(sgx_enclave_id_t* eid, struct sealed_buf_t* buf);
-    bool increase_and_seal_data_in_enclave();
     struct sealed_buf_t sealed_buf;
 
 public:
@@ -47,6 +46,11 @@ public:
     sgx_enclave_id_t _eid;
     sgx_ra_context_t _ctx;
     int updated;
+
+    bool powEnclaveSealedInit();
+    bool powEnclaveSealedColse();
+    bool loadSealedData();
+    bool outputSealedData();
 
     powClient(Sender* senderObjTemp);
     ~powClient();
