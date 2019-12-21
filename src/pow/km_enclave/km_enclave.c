@@ -1,4 +1,5 @@
 #include "km_enclave_t.h"
+#include "mbusafecrt.h"
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <sgx_tae_service.h>
@@ -77,28 +78,34 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen,
     uint8_t* symKey, uint32_t symKeyLen,
     uint8_t* plaint, uint32_t* plaintLen);
 
-/*
- * work load pow_enclave
- * */
+sgx_ra_key_128_t k;
+uint8_t* serverSecret;
 
-sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t* src, uint32_t srcLen, uint8_t* keyd,
-    uint32_t keydLen, uint8_t* key)
+sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
+    serverSecret = (uint8_t*)malloc(32);
+    uint8_t* secretTemp = (uint8_t*)malloc(64 + keydLen);
+    memset(secretTemp, 1, keydLen + 64);
+    memcpy_s(secretTemp + 64, 128, keyd, keydLen);
+    sgx_status_t sha256Status = sgx_sha256_msg(secretTemp, 64 + keydLen, (sgx_sha256_hash_t*)serverSecret);
+    return sha256Status;
+}
 
+sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
+{
     sgx_status_t ret_status;
-    sgx_ra_key_128_t k;
-
     ret_status = sgx_ra_get_keys(*ctx, type, &k);
-    if (ret_status != SGX_SUCCESS) {
-        return ret_status;
-    }
+    return ret_status;
+}
 
+sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
+{
     uint8_t *originhash, *hashTemp, *keySeed, *hash;
     uint32_t decryptLen, encryptLen;
     hash = (uint8_t*)malloc(32);
     originhash = (uint8_t*)malloc(srcLen);
     keySeed = (uint8_t*)malloc(srcLen);
-    hashTemp = (uint8_t*)malloc(32 + keydLen);
+    hashTemp = (uint8_t*)malloc(64);
 
     if (!decrypt(src, srcLen, k, 16, originhash, &decryptLen)) {
         free(hash);
@@ -109,20 +116,13 @@ sgx_status_t ecall_keygen(sgx_ra_context_t* ctx, sgx_ra_key_type_t type, uint8_t
     }
 
     for (int index = 0; index < (decryptLen / 32); index++) {
-        for (int i = 0; i < keydLen; i++) {
-            *(hashTemp + i) = *(keyd + i);
-        }
-        for (int i = 0; i < 32; i++) {
-            *(hashTemp + keydLen + i) = *(originhash + i + index * 32);
-        }
-        uint32_t hashdataSize = 32 + keydLen;
-        sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, hashdataSize, (sgx_sha256_hash_t*)hash);
+        memcpy_s(hashTemp, 64, originhash + index * 32, 32);
+        memcpy_s(hashTemp + 32, 64, serverSecret, 32);
+        sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
             return sha256Status;
         }
-        for (int i = 0; i < 32; i++) {
-            *(keySeed + index * 32 + i) = *(hash + i);
-        }
+        memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
 
     if (!encrypt(keySeed, srcLen, k, 16, key, &encryptLen)) {

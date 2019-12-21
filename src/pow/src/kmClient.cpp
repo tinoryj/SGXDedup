@@ -35,12 +35,8 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     ans = (uint8_t*)malloc(keySize);
     status = ecall_keygen(_eid,
         &retval,
-        &_ctx,
-        SGX_RA_KEY_SK,
         (uint8_t*)hash,
         (uint32_t)hashSize,
-        (uint8_t*)_keyd.c_str(),
-        (uint32_t)_keyd.length(),
         ans);
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : ecall failed" << endl;
@@ -62,7 +58,29 @@ bool kmClient::init(Socket socket)
     _socket = socket;
     raclose(_eid, _ctx);
     enclave_trusted = doAttestation();
-    return enclave_trusted;
+    if (enclave_trusted) {
+        sgx_status_t status;
+        sgx_status_t retval;
+        status = ecall_setSessionKey(_eid,
+            &retval,
+            &_ctx,
+            SGX_RA_KEY_SK);
+        if (status == SGX_SUCCESS) {
+            status = ecall_setServerSecret(_eid,
+                &retval,
+                (uint8_t*)_keyd.c_str(),
+                (uint32_t)_keyd.length());
+            if (status == SGX_SUCCESS) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
 }
 
 bool kmClient::createEnclave(sgx_enclave_id_t& eid,

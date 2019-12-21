@@ -56,6 +56,7 @@ int main(int argv, char* argc[])
 
     } else if (strcmp("-s", argc[1]) == 0) {
 
+        gettimeofday(&timestart, NULL);
         senderObj = new Sender();
         PowClientObj = new powClient(senderObj);
         u_char sessionKey[16];
@@ -68,6 +69,10 @@ int main(int argv, char* argc[])
         keyClientObj = new keyClient(PowClientObj, sessionKey);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
+        gettimeofday(&timeend, NULL);
+        long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        double second = diff / 1000000.0;
+        printf("System : init time is %ld us = %lf s\n", diff, second);
 
         gettimeofday(&timestart, NULL);
         //start chunking thread
@@ -100,7 +105,7 @@ int main(int argv, char* argc[])
     gettimeofday(&timeend, NULL);
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
-    printf("the total work time is %ld us = %lf s\n", diff, second);
+    printf("System : total work time is %ld us = %lf s\n", diff, second);
     if (PowClientObj->powEnclaveSealedColse() == true) {
         cout << "PowClient : enclave sealing done" << endl;
         if (PowClientObj->outputSealedData() == true) {

@@ -8,19 +8,17 @@ enclave {
 
   trusted {
 
-	public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
+	  public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
 			                            [out] sgx_ra_context_t *ctx,
 			                            [out] sgx_status_t *pse_status);
 
     public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
 
-    public sgx_status_t ecall_keygen([in]sgx_ra_context_t *ctx,
-                                      sgx_ra_key_type_t type,
-                                      [in,size = srcLen] uint8_t *src,
+    public sgx_status_t ecall_keygen([in,size = srcLen] uint8_t *src,
                                       uint32_t srcLen,
-                                      [in,size=keydLen] uint8_t *keyd,
-                                      uint32_t keydLen,
                                       [out, size=64000] uint8_t *key);
-    };
+    public sgx_status_t ecall_setServerSecret([in,size=keydLen]uint8_t* keyd, uint32_t keydLen);
+    public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx, sgx_ra_key_type_t type);
+  };
 
 };

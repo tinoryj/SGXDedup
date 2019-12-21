@@ -217,37 +217,50 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
-    if (loadSealedData() == true) {
-        if (powEnclaveSealedInit() == true) {
-            cerr << "PowClient : enclave init via sealed data done" << endl;
-        } else {
-            if (!this->do_attestation()) {
-                return;
-            } else {
-                sgx_status_t retval;
-                sgx_status_t status;
-                status = ecall_setSK(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
-                if (status != SGX_SUCCESS) {
-                    cerr << "PowClient : ecall set session key failed" << endl;
-                    exit(0);
-                } else {
-                    cerr << "PowClient : ecall set session key success" << endl;
-                }
-            }
-        }
+    // if (loadSealedData() == true) {
+    //     if (powEnclaveSealedInit() == true) {
+    //         cerr << "PowClient : enclave init via sealed data done" << endl;
+    //     } else {
+    //         if (!this->do_attestation()) {
+    //             return;
+    //         } else {
+    //             sgx_status_t retval;
+    //             sgx_status_t status;
+    //             status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
+    //             if (status != SGX_SUCCESS) {
+    //                 cerr << "PowClient : ecall set session key failed" << endl;
+    //                 exit(0);
+    //             } else {
+    //                 cerr << "PowClient : ecall set session key success" << endl;
+    //             }
+    //         }
+    //     }
+    // } else {
+    //     if (!this->do_attestation()) {
+    //         return;
+    //     } else {
+    //         sgx_status_t retval;
+    //         sgx_status_t status;
+    //         status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
+    //         if (status != SGX_SUCCESS) {
+    //             cerr << "PowClient : ecall set session key failed" << endl;
+    //             exit(0);
+    //         } else {
+    //             cerr << "PowClient : ecall set session key success" << endl;
+    //         }
+    //     }
+    // }
+    if (!this->do_attestation()) {
+        return;
     } else {
-        if (!this->do_attestation()) {
-            return;
+        sgx_status_t retval;
+        sgx_status_t status;
+        status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
+        if (status != SGX_SUCCESS) {
+            cerr << "PowClient : ecall set session key failed" << endl;
+            exit(0);
         } else {
-            sgx_status_t retval;
-            sgx_status_t status;
-            status = ecall_setSK(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
-            if (status != SGX_SUCCESS) {
-                cerr << "PowClient : ecall set session key failed" << endl;
-                exit(0);
-            } else {
-                cerr << "PowClient : ecall set session key success" << endl;
-            }
+            cerr << "PowClient : ecall set session key success" << endl;
         }
     }
 }
@@ -257,7 +270,6 @@ powClient::~powClient()
     inputMQ_->~messageQueue();
     delete inputMQ_;
     delete cryptoObj;
-    sgx_destroy_enclave(_eid);
 }
 
 bool powClient::do_attestation()
