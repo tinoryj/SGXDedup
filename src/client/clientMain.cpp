@@ -1,6 +1,7 @@
 #include "../pow/include/powClient.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
+#include "encoder.hpp"
 #include "keyClient.hpp"
 #include "recvDecode.hpp"
 #include "retriever.hpp"
@@ -17,7 +18,8 @@ keyClient* keyClientObj;
 Sender* senderObj;
 RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
-powClient* PowClientObj;
+powClient* powClientObj;
+Encoder* encoderObj;
 
 struct timeval timestart;
 struct timeval timeend;
@@ -58,15 +60,16 @@ int main(int argv, char* argc[])
 
         gettimeofday(&timestart, NULL);
         senderObj = new Sender();
-        PowClientObj = new powClient(senderObj);
+        powClientObj = new powClient(senderObj);
         u_char sessionKey[16];
         if (!senderObj->getKeyServerSK(sessionKey)) {
             cerr << "Client : get key server session key failed" << endl;
             delete senderObj;
-            delete PowClientObj;
+            delete powClientObj;
             return 0;
         }
-        keyClientObj = new keyClient(PowClientObj, sessionKey);
+        encoderObj = new Encoder(powClientObj);
+        keyClientObj = new keyClient(encoderObj, sessionKey);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
         gettimeofday(&timeend, NULL);
@@ -78,15 +81,16 @@ int main(int argv, char* argc[])
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
-
         //start key client thread
         for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
             th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
             thList.push_back(th);
         }
-
+        //start encoder thread
+        th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
+        thList.push_back(th);
         // //start pow thread
-        th = new boost::thread(attrs, boost::bind(&powClient::run, PowClientObj));
+        th = new boost::thread(attrs, boost::bind(&powClient::run, powClientObj));
         thList.push_back(th);
 
         // //start sender thread
@@ -106,9 +110,9 @@ int main(int argv, char* argc[])
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
     printf("System : total work time is %ld us = %lf s\n", diff, second);
-    if (PowClientObj->powEnclaveSealedColse() == true) {
+    if (powClientObj->powEnclaveSealedColse() == true) {
         cout << "PowClient : enclave sealing done" << endl;
-        if (PowClientObj->outputSealedData() == true) {
+        if (powClientObj->outputSealedData() == true) {
             cout << "PowClient : enclave sealing write out done" << endl;
         } else {
             cerr << "PowClient : enclave sealing write out error" << endl;

@@ -239,12 +239,14 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->sk);
 
             current->enclaveTrusted = true;
+            cerr << "PowServer : Client trusted, set session key done" << endl;
             return true;
         } else {
+            cerr << "PowServer : set client session key" << endl;
             return false;
         }
     } else {
-        cerr << "PowServer : Remote Attestation Failed\n";
+        cerr << "PowServer : Remote Attestation Failed" << endl;
         return false;
     }
 }

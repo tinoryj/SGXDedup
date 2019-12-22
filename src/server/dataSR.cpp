@@ -174,11 +174,12 @@ void DataSR::runPow(Socket socket)
     int sendSize = 0;
     u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    int clientID;
     while (true) {
 
         if (!socket.Recv(recvBuffer, recvSize)) {
-            cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
-            powServerObj_->closeSession(socket.fd_);
+            cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << ", Client ID = " << clientID << " Thread exit now" << endl;
+            // powServerObj_->closeSession(socket.fd_);
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -205,9 +206,11 @@ void DataSR::runPow(Socket socket)
                 break;
             }
             case SGX_RA_MSG01: {
+                clientID = netBody.clientID;
+                cerr << "DataSR : set client ID = " << clientID << endl;
                 memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));
                 memcpy(&msg01.msg1, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
-                if (!powServerObj_->process_msg01(socket.fd_, msg01, msg2)) {
+                if (!powServerObj_->process_msg01(clientID, msg01, msg2)) {
                     cerr << "PowServer : error process msg01" << endl;
                     netBody.messageType = ERROR_RESEND;
                     netBody.dataSize = 0;
@@ -227,7 +230,7 @@ void DataSR::runPow(Socket socket)
                 msg3 = (sgx_ra_msg3_t*)new char[netBody.dataSize];
                 memcpy(msg3, recvBuffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
 
-                if (powServerObj_->sessions.find(socket.fd_) == powServerObj_->sessions.end()) {
+                if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
                     cerr << "PowServer : client had not send msg01 before" << endl;
                     netBody.messageType = ERROR_CLOSE;
                     netBody.dataSize = 0;
@@ -235,7 +238,7 @@ void DataSR::runPow(Socket socket)
                     sendSize = sizeof(NetworkHeadStruct_t);
                 } else {
                     // cerr << "PowServer : msg.datasize = " << netBody.dataSize << " sgx_ra_msg3_t size = " << sizeof(sgx_ra_msg3_t) << endl;
-                    if (powServerObj_->process_msg3(powServerObj_->sessions[socket.fd_], msg3, msg4, netBody.dataSize - sizeof(sgx_ra_msg3_t))) {
+                    if (powServerObj_->process_msg3(powServerObj_->sessions[clientID], msg3, msg4, netBody.dataSize - sizeof(sgx_ra_msg3_t))) {
                         netBody.messageType = SUCCESS;
                         netBody.dataSize = sizeof(ra_msg4_t);
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -262,21 +265,21 @@ void DataSR::runPow(Socket socket)
                     memcpy(&hash[0], recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                     clientReq.hash_.push_back(hash);
                 }
-                if (powServerObj_->sessions.find(socket.fd_) == powServerObj_->sessions.end()) {
+                if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
                     cerr << "PowServer : client not trusted yet" << endl;
                     netBody.messageType = ERROR_CLOSE;
                     netBody.dataSize = 0;
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 } else {
-                    if (!powServerObj_->sessions.at(socket.fd_)->enclaveTrusted) {
-                        cerr << "PowServer : client not trusted yet" << endl;
+                    if (!powServerObj_->sessions.at(clientID)->enclaveTrusted) {
+                        cerr << "PowServer : client not trusted yet, client ID exist but not passed" << endl;
                         netBody.messageType = ERROR_CLOSE;
                         netBody.dataSize = 0;
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         sendSize = sizeof(NetworkHeadStruct_t);
                     } else {
-                        if (powServerObj_->process_signedHash(powServerObj_->sessions.at(socket.fd_), clientReq)) {
+                        if (powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq)) {
 
                             RequiredChunk_t requiredChunkTemp;
                             // cerr << "Client req signature = " << endl;

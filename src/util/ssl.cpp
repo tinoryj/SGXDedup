@@ -14,8 +14,6 @@ ssl::ssl(std::string ip, int port, int scSwitch)
     _sockAddr.sin_port = htons(port);
     _sockAddr.sin_family = AF_INET;
 
-    char passwd[5] = "1111";
-
     switch (scSwitch) {
     case SERVERSIDE: {
         _ctx = SSL_CTX_new(TLS_server_method());

@@ -29,7 +29,7 @@ void PRINT_BYTE_ARRAY_SENDER(
 
 Sender::Sender()
 {
-    inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
+    inputMQ_ = new messageQueue<Data_t>;
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     socketPow_.init(CLIENT_TCP, config.getStorageServerIP(), config.getPOWServerPort());
     cryptoObj_ = new CryptoPrimitive();
@@ -89,12 +89,10 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
 
 bool Sender::getKeyServerSK(u_char* SK)
 {
-    NetworkHeadStruct_t requestBody, respondBody;
+    NetworkHeadStruct_t requestBody;
     requestBody.clientID = clientID_;
     requestBody.messageType = CLIENT_GET_KEY_SERVER_SK;
-    respondBody.clientID = 0;
-    respondBody.messageType = 0;
-    respondBody.dataSize = 0;
+    requestBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t);
     u_char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
@@ -115,12 +113,9 @@ bool Sender::getKeyServerSK(u_char* SK)
 
 bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendChunkNumber, int& status)
 {
-    NetworkHeadStruct_t requestBody, respondBody;
+    NetworkHeadStruct_t requestBody;
     requestBody.clientID = clientID_;
     requestBody.messageType = CLIENT_UPLOAD_CHUNK;
-    respondBody.clientID = 0;
-    respondBody.messageType = 0;
-    respondBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + sendBufferSize;
     memcpy(requestBufferIn + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
     requestBody.dataSize = sendBufferSize + sizeof(int);

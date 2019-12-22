@@ -6,8 +6,8 @@ struct timeval timestartChunker;
 struct timeval timeendChunker;
 struct timeval timestartChunker_VarSizeInsert;
 struct timeval timeendChunker_VarSizeInsert;
-struct timeval timestartChunker_VarSizeHash;
-struct timeval timeendChunker_VarSizeHash;
+struct timeval timestartChunker_ReadFile;
+struct timeval timeendChunker_ReadFile;
 
 void PRINT_BYTE_ARRAY_CHUNKER(
     FILE* file, void* mem, uint32_t len)
@@ -487,6 +487,7 @@ void Chunker::varSizeChunking()
 {
 #ifdef BREAK_DOWN
     double insertTime = 0;
+    double readFileTime = 0;
     long diff;
     double second;
 #endif
@@ -495,12 +496,24 @@ void Chunker::varSizeChunking()
     ifstream& fin = getChunkingFile();
     uint64_t fileSize = 0;
     u_char hash[CHUNK_HASH_SIZE];
-    /*start chunking*/
+/*start chunking*/
+#ifdef BREAK_DOWN
+    gettimeofday(&timestartChunker, NULL);
+#endif
     while (true) {
+#ifdef BREAK_DOWN
+        gettimeofday(&timestartChunker_ReadFile, NULL);
+#endif
         memset((char*)waitingForChunkingBuffer, 0, sizeof(unsigned char) * ReadSize);
         fin.read((char*)waitingForChunkingBuffer, sizeof(unsigned char) * ReadSize);
         int len = fin.gcount();
         fileSize += len;
+#ifdef BREAK_DOWN
+        gettimeofday(&timeendChunker_ReadFile, NULL);
+        diff = 1000000 * (timeendChunker_ReadFile.tv_sec - timestartChunker_ReadFile.tv_sec) + timeendChunker_ReadFile.tv_usec - timestartChunker_ReadFile.tv_usec;
+        second = diff / 1000000.0;
+        readFileTime += second;
+#endif
         for (int i = 0; i < len; i++) {
 
             chunkBuffer[chunkBufferCnt] = waitingForChunkingBuffer[i];
@@ -614,12 +627,12 @@ void Chunker::varSizeChunking()
         cerr << "Chunker: set chunking done flag error" << endl;
         return;
     }
-    cout << "Chunker : variable size chunking over:\nTotal file size = " << recipe.recipe.fileRecipeHead.fileSize << "; Total chunk number = " << recipe.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cout << "Chunker : variable size chunking over: File size = " << recipe.recipe.fileRecipeHead.fileSize << "; Chunk number = " << recipe.recipe.fileRecipeHead.totalChunkNumber << endl;
 #ifdef BREAK_DOWN
     gettimeofday(&timeendChunker, NULL);
     diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
     second = diff / 1000000.0;
-    cout << "Chunker : total chunking time = " << setbase(10) << second - insertTime << " s" << endl;
+    cout << "Chunker : total chunking time = " << setbase(10) << second - insertTime - readFileTime << " s" << endl;
 #endif
     return;
 }

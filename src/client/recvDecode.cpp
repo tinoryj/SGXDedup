@@ -24,7 +24,7 @@ void PRINT_BYTE_ARRAY_RECV(
 RecvDecode::RecvDecode(string fileName)
 {
     clientID_ = config.getClientID();
-    outPutMQ_ = new messageQueue<RetrieverData_t>(config.get_RetrieverData_t_MQSize());
+    outPutMQ_ = new messageQueue<RetrieverData_t>;
     cryptoObj_ = new CryptoPrimitive();
     socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
     socketPow_.init(CLIENT_TCP, config.getStorageServerIP(), config.getPOWServerPort());

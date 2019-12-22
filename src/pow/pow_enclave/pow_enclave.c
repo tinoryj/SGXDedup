@@ -162,7 +162,6 @@ sgx_status_t enclave_sealed_close(struct sealed_buf_t* sealed_buf)
     if (sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)] == NULL || sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)] == NULL || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)], sealed_len) || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)], sealed_len)) {
         return SGX_ERROR_UNEXPECTED;
     }
-    uint32_t temp_secret = 0;
     uint8_t* plain_text = NULL;
     uint32_t plain_text_length = 0;
     uint8_t* temp_sealed_buf = (uint8_t*)malloc(sealed_len);

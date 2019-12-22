@@ -10,24 +10,16 @@
 
 template <class T>
 class messageQueue {
-    int capacity;
-    boost::lockfree::queue<T> lockFreeQueue_;
-    int getCapacity(int size)
-    {
-        capacity = size;
-        return capacity;
-    }
+    boost::lockfree::queue<T, boost::lockfree::capacity<10000>> lockFreeQueue_;
 
 public:
     boost::atomic<bool> done_;
-    explicit messageQueue(int size)
-        : lockFreeQueue_(getCapacity(size))
+    messageQueue()
     {
         done_ = false;
     }
     ~messageQueue()
     {
-        // lockFreeQueue_.~queue<T>();
     }
     bool push(T& data)
     {

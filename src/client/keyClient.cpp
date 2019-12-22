@@ -26,10 +26,10 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "\n}\n");
 }
 
-keyClient::keyClient(powClient* powObjTemp, u_char* keyExchangeKey)
+keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
 {
-    inputMQ_ = new messageQueue<Data_t>(config.get_Data_t_MQSize());
-    powObj_ = powObjTemp;
+    inputMQ_ = new messageQueue<Data_t>;
+    encoderObj_ = encoderobjTemp;
     cryptoObj_ = new CryptoPrimitive();
     keyBatchSize_ = (int)config.getKeyBatchSize();
     memcpy(keyExchangeKey_, keyExchangeKey, 16);
@@ -52,7 +52,6 @@ void keyClient::run()
 #ifdef BREAK_DOWN
     double keyGenTime = 0;
     double chunkHashGenerateTime = 0;
-    double encryptionTime = 0;
     double keyExchangeTime = 0;
     long diff;
     double second;
@@ -71,7 +70,7 @@ void keyClient::run()
         }
         if (extractMQFromChunker(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                insertMQToPOW(tempChunk);
+                insertMQToEncoder(tempChunk);
                 continue;
             }
             batchList.push_back(tempChunk);
@@ -108,22 +107,7 @@ void keyClient::run()
             } else {
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-#ifdef BREAK_DOWN
-                    gettimeofday(&timestartKey, NULL);
-#endif
-                    bool encodeChunkStatus = encodeChunk(batchList[i]);
-#ifdef BREAK_DOWN
-                    gettimeofday(&timeendKey, NULL);
-                    diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-                    second = diff / 1000000.0;
-                    encryptionTime += second;
-#endif
-                    if (encodeChunkStatus) {
-                        insertMQToPOW(batchList[i]);
-                    } else {
-                        cerr << "KeyClient : encode chunk error, exiting" << endl;
-                        return;
-                    }
+                    insertMQToEncoder(batchList[i]);
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -132,7 +116,7 @@ void keyClient::run()
             }
         }
         if (JobDoneFlag) {
-            if (!powObj_->editJobDoneFlag()) {
+            if (!encoderObj_->editJobDoneFlag()) {
                 cerr << "KeyClient : error to set job done flag for encoder" << endl;
             } else {
                 cerr << "KeyClient : key exchange thread job done, set job done flag for encoder done, exit now" << endl;
@@ -144,7 +128,6 @@ void keyClient::run()
     cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
     cout << "KeyClient : chunk hash generate time = " << chunkHashGenerateTime << " s" << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
-    cout << "KeyClient : chunk encryption work time = " << encryptionTime << " s" << endl;
 #endif
     return;
 }
@@ -202,20 +185,6 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 #endif
-bool keyClient::encodeChunk(Data_t& newChunk)
-{
-    bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);
-    bool statusHash = cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
-    if (!statusChunk) {
-        cerr << "KeyClient : error encrypt chunk" << endl;
-        return false;
-    } else if (!statusHash) {
-        cerr << "KeyClient : error compute hash" << endl;
-        return false;
-    } else {
-        return true;
-    }
-}
 
 bool keyClient::insertMQFromChunker(Data_t& newChunk)
 {
@@ -227,9 +196,9 @@ bool keyClient::extractMQFromChunker(Data_t& newChunk)
     return inputMQ_->pop(newChunk);
 }
 
-bool keyClient::insertMQToPOW(Data_t& newChunk)
+bool keyClient::insertMQToEncoder(Data_t& newChunk)
 {
-    return powObj_->insertMQFromEncoder(newChunk);
+    return encoderObj_->insertMQFromKeyClient(newChunk);
 }
 
 bool keyClient::editJobDoneFlag()
