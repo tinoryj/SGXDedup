@@ -37,6 +37,7 @@ private:
 
 public:
     kmClient(string keyd);
+    ~kmClient();
     bool init(Socket socket);
     bool trusted();
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);

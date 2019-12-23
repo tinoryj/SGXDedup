@@ -183,10 +183,12 @@ bool powClient::loadSealedData()
         if (sealDataFile.gcount() != sealedDataLength) {
             cerr << "PowClient : read sealed file error" << endl;
             return false;
+        } else {
+            sealDataFile.close();
+            memcpy(sealed_buf, inPutDataBuffer, sealedDataLength);
+            cerr << "PowClient : read sealed file size = " << sealedDataLength << endl;
+            return true;
         }
-        sealDataFile.close();
-        memcpy(&sealed_buf, inPutDataBuffer, sealedDataLength);
-        return true;
     }
 }
 
@@ -198,10 +200,9 @@ bool powClient::outputSealedData()
     }
     sealDataFile.open("pow-enclave.sealed", std::ofstream::out | std::ios::binary);
     if (sealDataFile.is_open()) {
-        int sealedDataLength = sizeof(sealed_buf);
-        char outPutDataBuffer[sealedDataLength];
-        memcpy(outPutDataBuffer, &sealed_buf, sealedDataLength);
-        sealDataFile.write(outPutDataBuffer, sealedDataLength);
+        char outPutDataBuffer[sealed_len];
+        memcpy(outPutDataBuffer, sealed_buf, sealed_len);
+        sealDataFile.write(outPutDataBuffer, sealed_len);
         sealDataFile.close();
         return true;
     } else {
@@ -217,7 +218,11 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
+    sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
+    sealed_buf = (char*)malloc(sealed_len);
+    memset(sealed_buf, -1, sealed_len);
     if (loadSealedData() == true) {
+        cerr << "PowClient : load sealed enclave success" << endl;
         if (powEnclaveSealedInit() == true) {
             cerr << "PowClient : enclave init via sealed data done" << endl;
         } else {
@@ -270,6 +275,18 @@ powClient::~powClient()
     inputMQ_->~messageQueue();
     delete inputMQ_;
     delete cryptoObj;
+    if (powEnclaveSealedColse() == true) {
+        cout << "PowClient : enclave sealing done" << endl;
+        if (outputSealedData() == true) {
+            cout << "PowClient : enclave sealing write out done" << endl;
+        } else {
+            cerr << "PowClient : enclave sealing write out error" << endl;
+        }
+    } else {
+        cerr << "PowClient : enclave sealing error" << endl;
+    }
+    free(sealed_buf);
+    sgx_destroy_enclave(_eid);
 }
 
 bool powClient::do_attestation()
@@ -356,33 +373,34 @@ bool powClient::powEnclaveSealedInit()
 {
     sgx_status_t status = SGX_SUCCESS;
     string enclaveName = config.getKMEnclaveName();
-    cerr << "kmClient : start to create enclave" << endl;
     int retval = 0;
-    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &_eid, NULL);
+    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         sgxErrorReport(status);
         return false;
     }
-
-    status = enclave_sealed_init(_eid, &retval, &sealed_buf);
-    if (status != SGX_SUCCESS) {
-        sgxErrorReport(status);
-        return false;
-    }
+    cerr << "PowClient : create enclave done" << endl;
+    status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf);
+    cerr << "PowClient : init status, decrypted size = " << retval << endl;
     return true;
 }
 
 bool powClient::powEnclaveSealedColse()
 {
-    sgx_status_t ret = SGX_SUCCESS;
+    sgx_status_t ret;
     int retval = 0;
-    ret = enclave_sealed_close(_eid, &retval, &sealed_buf);
+    ret = enclave_sealed_close(_eid, &retval, (uint8_t*)sealed_buf);
+    cerr << "PowClient : seal data size = " << sealed_len << endl;
+    cerr << ret << endl;
+    cerr << retval << endl;
     if (ret != SGX_SUCCESS) {
+        sgxErrorReport(ret);
         return false;
-    } else if (retval != 0) {
-        return false;
+    } else {
+        // PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf.sealed_buf_ptr[0], sizeof(sealed_buf.sealed_buf_ptr[0]));
+        PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf, sealed_len);
+        return true;
     }
-    return true;
 }
 
 bool powClient::editJobDoneFlag()

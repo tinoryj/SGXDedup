@@ -239,7 +239,8 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->sk);
 
             current->enclaveTrusted = true;
-            cerr << "PowServer : Client trusted, set session key done" << endl;
+            cerr << "PowServer : Client trusted, set session key = " << endl;
+            PRINT_BYTE_ARRAY_POW_SERVER(stdout, current->sk, sizeof(current->sk));
             return true;
         } else {
             cerr << "PowServer : set client session key" << endl;

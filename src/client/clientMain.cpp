@@ -78,26 +78,26 @@ int main(int argv, char* argc[])
         printf("System : init time is %ld us = %lf s\n", diff, second);
 
         gettimeofday(&timestart, NULL);
+
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
+
         //start key client thread
-        for (int i = 0; i < config.getKeyClientThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
-            thList.push_back(th);
-        }
+        th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
+        thList.push_back(th);
+
         //start encoder thread
         th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
         thList.push_back(th);
-        // //start pow thread
+        //start pow thread
         th = new boost::thread(attrs, boost::bind(&powClient::run, powClientObj));
         thList.push_back(th);
 
-        // //start sender thread
-        for (int i = 0; i < config.getSenderThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
-            thList.push_back(th);
-        }
+        //start sender thread
+        th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
+        thList.push_back(th);
+
     } else {
         usage();
         return 0;
@@ -110,15 +110,13 @@ int main(int argv, char* argc[])
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
     printf("System : total work time is %ld us = %lf s\n", diff, second);
-    if (powClientObj->powEnclaveSealedColse() == true) {
-        cout << "PowClient : enclave sealing done" << endl;
-        if (powClientObj->outputSealedData() == true) {
-            cout << "PowClient : enclave sealing write out done" << endl;
-        } else {
-            cerr << "PowClient : enclave sealing write out error" << endl;
-        }
-    } else {
-        cerr << "PowClient : enclave sealing error" << endl;
-    }
+
+    delete chunkerObj;
+    delete keyClientObj;
+    delete senderObj;
+    delete recvDecodeObj;
+    delete retrieverObj;
+    delete powClientObj;
+    delete encoderObj;
     return 0;
 }

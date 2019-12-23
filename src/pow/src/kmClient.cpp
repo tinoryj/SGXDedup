@@ -52,6 +52,11 @@ kmClient::kmClient(string keyd)
     _keyd = keyd;
 }
 
+kmClient::~kmClient()
+{
+    sgx_destroy_enclave(_eid);
+}
+
 bool kmClient::init(Socket socket)
 {
     _ctx = 0xdeadbeef;

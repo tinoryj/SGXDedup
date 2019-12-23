@@ -39,7 +39,8 @@ private:
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;
-    struct sealed_buf_t sealed_buf;
+    char* sealed_buf;
+    uint32_t sealed_len;
 
 public:
     sgx_launch_token_t _token = { 0 };

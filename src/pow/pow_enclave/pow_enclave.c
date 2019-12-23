@@ -73,11 +73,12 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
 }
 
 sgx_ra_key_128_t k;
-
+int setSessionKeyFlag = 0;
 sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
 {
     sgx_status_t ret_status;
     ret_status = sgx_ra_get_keys(*ctx, type, &k);
+    setSessionKeyFlag = 1;
     return ret_status;
 }
 
@@ -92,7 +93,9 @@ sgx_status_t ecall_calcmac(
     sgx_sha256_hash_t chunkHash;
     sgx_cmac_state_handle_t cmac_ctx;
     sgx_status_t ret_status;
-
+    if (setSessionKeyFlag != 1) {
+        return SGX_ERROR_UNEXPECTED;
+    }
     sgx_cmac128_init(&k, &cmac_ctx);
 
     int it, sz = 0;
@@ -119,66 +122,75 @@ sgx_status_t ecall_calcmac(
     return ret_status;
 }
 
-sgx_status_t enclave_sealed_init(struct sealed_buf_t* sealed_buf)
+sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
 {
-    // sealed_buf == NULL indicates it is the first time to initialize the enclave
     if (sealed_buf == NULL) {
-        return SGX_ERROR_UNEXPECTED;
+        return 1;
     }
-    // It is not the first time to initialize the enclave
-    // Reinitialize the enclave to recover the secret data from the input backup sealed data.
     uint32_t len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
-    //Check the sealed_buf length and check the outside pointers deeply
-    if (sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)] == NULL || sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)] == NULL || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)], len) || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)], len)) {
-        return SGX_ERROR_UNEXPECTED;
+    uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));
+    if (sgxCalSealedLen != len) {
+        return 4;
     }
-    // Retrieve the secret from current backup sealed data
-    uint32_t unsealed_data_length;
+    uint32_t unsealed_data_length = 0;
     uint8_t* plain_text = NULL;
     uint32_t plain_text_length = 0;
-    uint8_t* temp_sealed_buf = (uint8_t*)malloc(len);
-    if (temp_sealed_buf == NULL) {
-        return SGX_ERROR_UNEXPECTED;
-    }
-
-    memcpy(temp_sealed_buf, sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)], len);
-
+    uint8_t* unsealed_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
+    uint8_t* sealed_data = (uint8_t*)malloc(sgxCalSealedLen);
+    memcpy_s(sealed_data, sgxCalSealedLen, sealed_buf, sgxCalSealedLen);
     // Unseal current sealed buf
-    sgx_status_t ret = sgx_unseal_data((sgx_sealed_data_t*)temp_sealed_buf, plain_text, &plain_text_length, (uint8_t*)&k, &unsealed_data_length);
-
+    int decryptSize = sgx_get_encrypt_txt_len((sgx_sealed_data_t*)sealed_data);
+    sgx_status_t ret;
+    ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_data, plain_text, &plain_text_length, unsealed_data, &unsealed_data_length);
+    memcpy_s(&k, sizeof(k), unsealed_data, decryptSize);
+    setSessionKeyFlag = 1;
     if (ret == SGX_SUCCESS) {
-        free(temp_sealed_buf);
-        return SGX_SUCCESS;
+        if (unsealed_data_length != sizeof(sgx_ra_key_128_t)) {
+            return unsealed_data_length;
+        } else {
+            return 0;
+        }
     } else {
-        free(temp_sealed_buf);
-        return SGX_ERROR_UNEXPECTED;
+        return 3;
     }
 }
 
-sgx_status_t enclave_sealed_close(struct sealed_buf_t* sealed_buf)
+sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
 {
     uint32_t sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
+    uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));
+    if (sgxCalSealedLen != sealed_len) {
+        return 1;
+    }
     // Check the sealed_buf length and check the outside pointers deeply
-    if (sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)] == NULL || sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)] == NULL || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index)], sealed_len) || !sgx_is_outside_enclave(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)], sealed_len)) {
-        return SGX_ERROR_UNEXPECTED;
+    if (sealed_buf == NULL) {
+        return 2;
     }
     uint8_t* plain_text = NULL;
+    uint8_t* target_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
     uint32_t plain_text_length = 0;
     uint8_t* temp_sealed_buf = (uint8_t*)malloc(sealed_len);
     if (temp_sealed_buf == NULL) {
-        return SGX_ERROR_UNEXPECTED;
+        return 4;
     }
-    memset(temp_sealed_buf, 0, sealed_len);
-    sgx_status_t ret = sgx_seal_data(plain_text_length, plain_text, sizeof(sgx_ra_key_128_t), (uint8_t*)&k, sealed_len, (sgx_sealed_data_t*)temp_sealed_buf);
+    memset_s(temp_sealed_buf, sealed_len, 0, sealed_len);
+    memcpy_s(target_data, sizeof(sgx_ra_key_128_t), &k, sizeof(sgx_ra_key_128_t));
+    sgx_status_t ret = sgx_seal_data(plain_text_length, plain_text, sizeof(sgx_ra_key_128_t), target_data, sealed_len, (sgx_sealed_data_t*)temp_sealed_buf);
     if (ret != SGX_SUCCESS) {
         free(temp_sealed_buf);
-        return SGX_ERROR_UNEXPECTED;
+        free(target_data);
+        return 5;
+    } else {
+        // Backup the sealed data to outside buffer
+        memcpy_s(sealed_buf, sealed_len, temp_sealed_buf, sealed_len);
+        // uint8_t* unsealed_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
+        // uint32_t unsealed_data_length;
+        // ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_buf, plain_text, &plain_text_length, unsealed_data, &unsealed_data_length);
+        free(temp_sealed_buf);
+        free(target_data);
+        // if (strcmp((const char*)unsealed_data, k) != 0) {
+        //     return sgx_get_encrypt_txt_len((sgx_sealed_data_t*)temp_sealed_buf);
+        // }
+        return 0;
     }
-    // Backup the sealed data to outside buffer
-    memcpy(sealed_buf->sealed_buf_ptr[MOD2(sealed_buf->index + 1)], temp_sealed_buf, sealed_len);
-    sealed_buf->index++;
-
-    free(temp_sealed_buf);
-
-    return SGX_SUCCESS;
 }
