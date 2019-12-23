@@ -9,6 +9,7 @@
 #include "sys/time.h"
 #include <bits/stdc++.h>
 #include <boost/thread/thread.hpp>
+#include <signal.h>
 
 using namespace std;
 
@@ -24,6 +25,19 @@ Encoder* encoderObj;
 struct timeval timestart;
 struct timeval timeend;
 
+void CTRLC(int s)
+{
+    cerr << "Client close" << endl;
+    delete chunkerObj;
+    delete keyClientObj;
+    delete senderObj;
+    delete recvDecodeObj;
+    delete retrieverObj;
+    delete powClientObj;
+    delete encoderObj;
+    exit(0);
+}
+
 void usage()
 {
     cout << "[client -r filename] for receive file" << endl;
@@ -32,6 +46,14 @@ void usage()
 
 int main(int argv, char* argc[])
 {
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &sa, 0);
+
+    sa.sa_handler = CTRLC;
+    sigaction(SIGKILL, &sa, 0);
+    sigaction(SIGINT, &sa, 0);
+
     vector<boost::thread*> thList;
     boost::thread* th;
     if (argv != 3) {

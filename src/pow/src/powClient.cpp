@@ -51,6 +51,7 @@ void powClient::run()
     batchChunk.clear();
     batchHash.clear();
     request.hash_.clear();
+    bool powRequestStatus = false;
 
     while (true) {
 
@@ -82,7 +83,7 @@ void powClient::run()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartPowClient, NULL);
 #endif
-            bool powRequestStatus = this->request(batchChunkLogicData, request.signature_);
+            powRequestStatus = this->request(batchChunkLogicData, request.signature_);
 #ifdef BREAK_DOWN
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
@@ -157,7 +158,7 @@ bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
 
     status = ecall_calcmac(_eid, &retval, src, srcLen, cmac);
     delete[] src;
-    if (status != SGX_SUCCESS) {
+    if (retval != SGX_SUCCESS) {
         cerr << "PowClient : ecall failed" << endl;
         return false;
     }
@@ -218,7 +219,8 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
-    sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
+    sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t) + 20;
+    // cout << "PowClient : sgx-sealed-data-t size = " << sizeof(sgx_sealed_data_t) << ", sk size = " << sizeof(sgx_ra_key_128_t) << endl;
     sealed_buf = (char*)malloc(sealed_len);
     memset(sealed_buf, -1, sealed_len);
     if (loadSealedData() == true) {
@@ -287,6 +289,7 @@ powClient::~powClient()
     }
     free(sealed_buf);
     sgx_destroy_enclave(_eid);
+    cerr << "PowClient : enclave clean up" << endl;
 }
 
 bool powClient::do_attestation()
@@ -347,8 +350,6 @@ bool powClient::do_attestation()
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "PowClient : sgx_ra_proc_msg2 : " << status << endl;
-        return false;
     }
 
     if (!senderObj->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
@@ -380,8 +381,16 @@ bool powClient::powEnclaveSealedInit()
         return false;
     }
     cerr << "PowClient : create enclave done" << endl;
-    status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf);
+    uint8_t* sk = (uint8_t*)malloc(16);
+    memset(sk, 0, 16);
+    PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf, 596);
+    status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf, sk);
     cerr << "PowClient : init status, decrypted size = " << retval << endl;
+    uint8_t* ans = (uint8_t*)malloc(16);
+    memcpy(ans, sk, 16);
+    PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sk, 16);
+    free(sk);
+    free(ans);
     return true;
 }
 
@@ -391,7 +400,6 @@ bool powClient::powEnclaveSealedColse()
     int retval = 0;
     ret = enclave_sealed_close(_eid, &retval, (uint8_t*)sealed_buf);
     cerr << "PowClient : seal data size = " << sealed_len << endl;
-    cerr << ret << endl;
     cerr << retval << endl;
     if (ret != SGX_SUCCESS) {
         sgxErrorReport(ret);

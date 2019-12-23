@@ -2,13 +2,13 @@
 #include "sgx_thread.h"
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
-#include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include <sgx_tae_service.h>
 #include <sgx_tcrypto.h>
 #include <sgx_tkey_exchange.h>
 #include <sgx_utils.h>
+#include <stdio.h>
 
 static const sgx_ec256_public_t def_service_public_key = {
     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -73,31 +73,23 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
 }
 
 sgx_ra_key_128_t k;
-int setSessionKeyFlag = 0;
 sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
 {
     sgx_status_t ret_status;
     ret_status = sgx_ra_get_keys(*ctx, type, &k);
-    setSessionKeyFlag = 1;
     return ret_status;
 }
 
 /*
  * work load pow_enclave
  * */
-sgx_status_t ecall_calcmac(
-    uint8_t* src,
-    uint32_t srcLen,
-    uint8_t* cmac)
+sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac)
 {
     sgx_sha256_hash_t chunkHash;
     sgx_cmac_state_handle_t cmac_ctx;
     sgx_status_t ret_status;
-    if (setSessionKeyFlag != 1) {
-        return SGX_ERROR_UNEXPECTED;
-    }
-    sgx_cmac128_init(&k, &cmac_ctx);
 
+    sgx_cmac128_init(&k, &cmac_ctx);
     int it, sz = 0;
     for (it = 0; it < srcLen; it = it + sz) {
         if (srcLen - sizeof(int) < it) {
@@ -122,7 +114,7 @@ sgx_status_t ecall_calcmac(
     return ret_status;
 }
 
-sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
+sgx_status_t enclave_sealed_init(uint8_t* sealed_buf, uint8_t* sk)
 {
     if (sealed_buf == NULL) {
         return 1;
@@ -133,7 +125,6 @@ sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
         return 4;
     }
     uint32_t unsealed_data_length = 0;
-    uint8_t* plain_text = NULL;
     uint32_t plain_text_length = 0;
     uint8_t* unsealed_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
     uint8_t* sealed_data = (uint8_t*)malloc(sgxCalSealedLen);
@@ -141,18 +132,21 @@ sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
     // Unseal current sealed buf
     int decryptSize = sgx_get_encrypt_txt_len((sgx_sealed_data_t*)sealed_data);
     sgx_status_t ret;
-    ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_data, plain_text, &plain_text_length, unsealed_data, &unsealed_data_length);
-    memcpy_s(&k, sizeof(k), unsealed_data, decryptSize);
-    setSessionKeyFlag = 1;
-    if (ret == SGX_SUCCESS) {
-        if (unsealed_data_length != sizeof(sgx_ra_key_128_t)) {
-            return unsealed_data_length;
-        } else {
-            return 0;
-        }
-    } else {
-        return 3;
-    }
+    ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_data, NULL, &plain_text_length, unsealed_data, &unsealed_data_length);
+    memcpy_s((uint8_t*)&k, 16 * sizeof(uint8_t), sealed_buf + sgxCalSealedLen, 16 * sizeof(uint8_t));
+    memcpy_s(sk, 16, sealed_buf + sgxCalSealedLen, 16);
+    free(unsealed_data);
+    free(sealed_data);
+    return 0;
+    // if (ret == SGX_SUCCESS) {
+    //     if (decryptSize != sizeof(sgx_ra_key_128_t)) {
+    //         return decryptSize;
+    //     } else {
+    //         return 0;
+    //     }
+    // } else {
+    //     return 3;
+    // }
 }
 
 sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
@@ -166,31 +160,29 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
     if (sealed_buf == NULL) {
         return 2;
     }
-    uint8_t* plain_text = NULL;
     uint8_t* target_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
-    uint32_t plain_text_length = 0;
-    uint8_t* temp_sealed_buf = (uint8_t*)malloc(sealed_len);
+    sgx_sealed_data_t* temp_sealed_buf = (sgx_sealed_data_t*)malloc(sgxCalSealedLen * sizeof(uint8_t));
     if (temp_sealed_buf == NULL) {
         return 4;
     }
-    memset_s(temp_sealed_buf, sealed_len, 0, sealed_len);
-    memcpy_s(target_data, sizeof(sgx_ra_key_128_t), &k, sizeof(sgx_ra_key_128_t));
-    sgx_status_t ret = sgx_seal_data(plain_text_length, plain_text, sizeof(sgx_ra_key_128_t), target_data, sealed_len, (sgx_sealed_data_t*)temp_sealed_buf);
+    memset_s(temp_sealed_buf, sgxCalSealedLen, 0, sgxCalSealedLen);
+    memcpy_s(target_data, 16 * sizeof(uint8_t), (uint8_t*)&k, 16 * sizeof(uint8_t));
+    sgx_status_t ret = sgx_seal_data(0, NULL, sizeof(sgx_ra_key_128_t), target_data, sgxCalSealedLen, (sgx_sealed_data_t*)temp_sealed_buf);
     if (ret != SGX_SUCCESS) {
         free(temp_sealed_buf);
         free(target_data);
         return 5;
     } else {
         // Backup the sealed data to outside buffer
-        memcpy_s(sealed_buf, sealed_len, temp_sealed_buf, sealed_len);
+        memcpy_s(sealed_buf, sgxCalSealedLen, (uint8_t*)temp_sealed_buf, sgxCalSealedLen);
+        memcpy_s(sealed_buf + sgxCalSealedLen, 16 * sizeof(uint8_t), (uint8_t*)&k, 16 * sizeof(uint8_t));
         // uint8_t* unsealed_data = (uint8_t*)malloc(sizeof(sgx_ra_key_128_t));
         // uint32_t unsealed_data_length;
         // ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_buf, plain_text, &plain_text_length, unsealed_data, &unsealed_data_length);
         free(temp_sealed_buf);
         free(target_data);
-        // if (strcmp((const char*)unsealed_data, k) != 0) {
-        //     return sgx_get_encrypt_txt_len((sgx_sealed_data_t*)temp_sealed_buf);
-        // }
         return 0;
     }
+    // memcpy_s(sealed_buf, 16 * sizeof(uint8_t), (uint8_t*)&k, 16 * sizeof(uint8_t));
+    // return 0;
 }

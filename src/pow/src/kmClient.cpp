@@ -66,10 +66,7 @@ bool kmClient::init(Socket socket)
     if (enclave_trusted) {
         sgx_status_t status;
         sgx_status_t retval;
-        status = ecall_setSessionKey(_eid,
-            &retval,
-            &_ctx,
-            SGX_RA_KEY_SK);
+        status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
         if (status == SGX_SUCCESS) {
             status = ecall_setServerSecret(_eid,
                 &retval,
