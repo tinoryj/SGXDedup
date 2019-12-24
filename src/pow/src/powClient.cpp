@@ -10,12 +10,14 @@ struct timeval timeendPowClient;
 
 void print(const char* str)
 {
-    cerr << str << endl
-         << endl;
-
-    for (size_t i = 0; i < strlen(str); i++) {
-        printf("%02X,", str[i]);
+    cerr << str << endl;
+    uint8_t* array = (uint8_t*)str;
+    for (int i = 0; i < strlen(str) - 1; i++) {
+        printf("0x%x, ", array[i]);
+        if (i % 8 == 7)
+            printf("\n");
     }
+    printf("0x%x ", array[strlen(str) - 1]);
     printf("\n=====================================\n");
 }
 
@@ -206,20 +208,20 @@ bool powClient::loadSealedData()
 
 bool powClient::powEnclaveSealedInit()
 {
-    sgx_status_t status = SGX_SUCCESS;
+    sgx_status_t ret = SGX_SUCCESS;
     string enclaveName = config.getKMEnclaveName();
     sgx_status_t retval;
-    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
-    if (status != SGX_SUCCESS) {
-        cerr << "PowClient : create enclave error" << endl;
+    ret = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    if (ret != SGX_SUCCESS) {
+        cerr << "PowClient : create enclave error, eid = " << _eid << endl;
         sgx_destroy_enclave(_eid);
-        sgxErrorReport(status);
+        sgxErrorReport(ret);
         return false;
     } else {
-        cerr << "PowClient : create enclave done" << endl;
-        status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf);
-        cerr << "PowClient : init status = " << retval << "\t" << status << endl;
-        if (status == SGX_SUCCESS) {
+        cerr << "PowClient : create enclave done, eid = " << _eid << endl;
+        ret = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf);
+        cerr << "PowClient : unseal data size = " << sealed_len << "\t retval = " << retval << "\t status = " << ret << endl;
+        if (ret == SGX_SUCCESS) {
             return true;
         } else {
             return false;
@@ -301,10 +303,10 @@ powClient::powClient(Sender* senderObjTemp)
             sgx_status_t status;
             status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
             if (status != SGX_SUCCESS) {
-                cerr << "PowClient : ecall set session key failed" << endl;
+                cerr << "PowClient : ecall set session key failed, eid = " << _eid << endl;
                 exit(0);
             } else {
-                cerr << "PowClient : ecall set session key success" << endl;
+                cerr << "PowClient : ecall set session key success, eid = " << _eid << endl;
             }
         }
     }

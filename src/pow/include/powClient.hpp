@@ -39,13 +39,13 @@ private:
     Sender* senderObj;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
     CryptoPrimitive* cryptoObj;
-    char* sealed_buf;
     uint32_t sealed_len;
 
 public:
     sgx_launch_token_t _token = { 0 };
     sgx_enclave_id_t _eid;
     sgx_ra_context_t _ctx;
+    char* sealed_buf;
     int updated;
 
     bool powEnclaveSealedInit();
