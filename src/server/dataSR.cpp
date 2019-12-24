@@ -189,6 +189,15 @@ void DataSR::runPow(Socket socket)
             case CLIENT_EXIT: {
                 return;
             }
+            case CLIENT_SET_LOGOUT: {
+                powServerObj_->closeSession(netBody.clientID);
+                netBody.messageType = SUCCESS;
+                netBody.dataSize = 0;
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                sendSize = sizeof(NetworkHeadStruct_t);
+                socket.Send(sendBuffer, sendSize);
+                continue;
+            }
             case CLIENT_GET_KEY_SERVER_SK: {
                 if (keyExchangeKeySetFlag == true) {
                     netBody.messageType = SUCCESS;

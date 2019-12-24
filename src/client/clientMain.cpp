@@ -131,7 +131,6 @@ int main(int argv, char* argc[])
     gettimeofday(&timeend, NULL);
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
-    printf("System : total work time is %ld us = %lf s\n", diff, second);
 
     delete chunkerObj;
     delete keyClientObj;
@@ -140,5 +139,6 @@ int main(int argv, char* argc[])
     delete retrieverObj;
     delete powClientObj;
     delete encoderObj;
+    printf("System : total work time is %ld us = %lf s\n", diff, second);
     return 0;
 }

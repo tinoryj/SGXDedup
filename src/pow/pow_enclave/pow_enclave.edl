@@ -16,7 +16,10 @@ enclave {
                                       uint32_t srcLen,
                                       [out,size = 16] uint8_t *cmac);
     public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t *ctx, sgx_ra_key_type_t type);                                  
-    public sgx_status_t enclave_sealed_init([in,size=596]uint8_t* sealed_buf,[out,size=16]uint8_t *sk);
-	  public sgx_status_t enclave_sealed_close([out,size=596]uint8_t* sealed_buf);
+    public sgx_status_t enclave_sealed_init([in,size=576] uint8_t* sealed_buf);
+	  public sgx_status_t enclave_sealed_close([out,size=576] uint8_t* sealed_buf);
+  };
+  untrusted {
+		void print([in, string] const char *string);
   };
 };

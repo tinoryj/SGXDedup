@@ -8,6 +8,17 @@ extern Configure config;
 struct timeval timestartPowClient;
 struct timeval timeendPowClient;
 
+void print(const char* str)
+{
+    cerr << str << endl
+         << endl;
+
+    for (size_t i = 0; i < strlen(str); i++) {
+        printf("%02X,", str[i]);
+    }
+    printf("\n=====================================\n");
+}
+
 void PRINT_BYTE_ARRAY_POW_CLIENT(
     FILE* file, void* mem, uint32_t len)
 {
@@ -193,6 +204,44 @@ bool powClient::loadSealedData()
     }
 }
 
+bool powClient::powEnclaveSealedInit()
+{
+    sgx_status_t status = SGX_SUCCESS;
+    string enclaveName = config.getKMEnclaveName();
+    sgx_status_t retval;
+    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    if (status != SGX_SUCCESS) {
+        cerr << "PowClient : create enclave error" << endl;
+        sgx_destroy_enclave(_eid);
+        sgxErrorReport(status);
+        return false;
+    } else {
+        cerr << "PowClient : create enclave done" << endl;
+        status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf);
+        cerr << "PowClient : init status = " << retval << "\t" << status << endl;
+        if (status == SGX_SUCCESS) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+bool powClient::powEnclaveSealedColse()
+{
+    sgx_status_t ret;
+    sgx_status_t retval;
+    ret = enclave_sealed_close(_eid, &retval, (uint8_t*)sealed_buf);
+    cerr << "PowClient : seal data size = " << sealed_len << "\t retval = " << retval << "\t status = " << ret << endl;
+    if (ret != SGX_SUCCESS) {
+        sgxErrorReport(ret);
+        return false;
+    } else {
+        PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf, sealed_len);
+        return true;
+    }
+}
+
 bool powClient::outputSealedData()
 {
     std::ofstream sealDataFile;
@@ -219,8 +268,8 @@ powClient::powClient(Sender* senderObjTemp)
     _ctx = 0xdeadbeef;
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
-    sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t) + 20;
-    // cout << "PowClient : sgx-sealed-data-t size = " << sizeof(sgx_sealed_data_t) << ", sk size = " << sizeof(sgx_ra_key_128_t) << endl;
+    sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
+    cout << "PowClient : sealed size = " << sealed_len << endl;
     sealed_buf = (char*)malloc(sealed_len);
     memset(sealed_buf, -1, sealed_len);
     if (loadSealedData() == true) {
@@ -228,6 +277,7 @@ powClient::powClient(Sender* senderObjTemp)
         if (powEnclaveSealedInit() == true) {
             cerr << "PowClient : enclave init via sealed data done" << endl;
         } else {
+            senderObj->sendLogOutMessage();
             if (!this->do_attestation()) {
                 return;
             } else {
@@ -243,6 +293,7 @@ powClient::powClient(Sender* senderObjTemp)
             }
         }
     } else {
+        senderObj->sendLogOutMessage();
         if (!this->do_attestation()) {
             return;
         } else {
@@ -257,19 +308,6 @@ powClient::powClient(Sender* senderObjTemp)
             }
         }
     }
-    // if (!this->do_attestation()) {
-    //     return;
-    // } else {
-    //     sgx_status_t retval;
-    //     sgx_status_t status;
-    //     status = ecall_setSessionKey(_eid, &retval, &_ctx, SGX_RA_KEY_SK);
-    //     if (status != SGX_SUCCESS) {
-    //         cerr << "PowClient : ecall set session key failed" << endl;
-    //         exit(0);
-    //     } else {
-    //         cerr << "PowClient : ecall set session key success" << endl;
-    //     }
-    // }
 }
 
 powClient::~powClient()
@@ -288,8 +326,13 @@ powClient::~powClient()
         cerr << "PowClient : enclave sealing error" << endl;
     }
     free(sealed_buf);
-    sgx_destroy_enclave(_eid);
-    cerr << "PowClient : enclave clean up" << endl;
+    sgx_status_t ret;
+    ret = sgx_destroy_enclave(_eid);
+    if (ret != SGX_SUCCESS) {
+        cerr << "PowClient : enclave clean up error" << endl;
+    } else {
+        cerr << "PowClient : enclave clean up" << endl;
+    }
 }
 
 bool powClient::do_attestation()
@@ -368,47 +411,6 @@ bool powClient::do_attestation()
     enclave_trusted = msg4->status;
 
     return true;
-}
-
-bool powClient::powEnclaveSealedInit()
-{
-    sgx_status_t status = SGX_SUCCESS;
-    string enclaveName = config.getKMEnclaveName();
-    int retval = 0;
-    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
-    if (status != SGX_SUCCESS) {
-        sgxErrorReport(status);
-        return false;
-    }
-    cerr << "PowClient : create enclave done" << endl;
-    uint8_t* sk = (uint8_t*)malloc(16);
-    memset(sk, 0, 16);
-    PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf, 596);
-    status = enclave_sealed_init(_eid, &retval, (uint8_t*)sealed_buf, sk);
-    cerr << "PowClient : init status, decrypted size = " << retval << endl;
-    uint8_t* ans = (uint8_t*)malloc(16);
-    memcpy(ans, sk, 16);
-    PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sk, 16);
-    free(sk);
-    free(ans);
-    return true;
-}
-
-bool powClient::powEnclaveSealedColse()
-{
-    sgx_status_t ret;
-    int retval = 0;
-    ret = enclave_sealed_close(_eid, &retval, (uint8_t*)sealed_buf);
-    cerr << "PowClient : seal data size = " << sealed_len << endl;
-    cerr << retval << endl;
-    if (ret != SGX_SUCCESS) {
-        sgxErrorReport(ret);
-        return false;
-    } else {
-        // PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf.sealed_buf_ptr[0], sizeof(sealed_buf.sealed_buf_ptr[0]));
-        PRINT_BYTE_ARRAY_POW_CLIENT(stdout, sealed_buf, sealed_len);
-        return true;
-    }
 }
 
 bool powClient::editJobDoneFlag()

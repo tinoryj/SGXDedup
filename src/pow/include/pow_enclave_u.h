@@ -1,7 +1,7 @@
 #ifndef POW_ENCLAVE_U_H__
 #define POW_ENCLAVE_U_H__
 
-#include "sgx_edger8r.h" /* for sgx_satus_t etc. */
+#include "sgx_edger8r.h" /* for sgx_status_t etc. */
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,6 +9,7 @@
 
 #include "sgx_key_exchange.h"
 #include "sgx_trts.h"
+#include "types.h"
 
 #include <stdlib.h> /* for size_t */
 
@@ -18,6 +19,10 @@
 extern "C" {
 #endif
 
+#ifndef PRINT_DEFINED__
+#define PRINT_DEFINED__
+void SGX_UBRIDGE(SGX_NOCONVENTION, print, (const char* string));
+#endif
 #ifndef CREATE_SESSION_OCALL_DEFINED__
 #define CREATE_SESSION_OCALL_DEFINED__
 sgx_status_t SGX_UBRIDGE(SGX_NOCONVENTION, create_session_ocall, (uint32_t * sid, uint8_t* dh_msg1, uint32_t dh_msg1_size, uint32_t timeout));
@@ -59,11 +64,12 @@ sgx_status_t enclave_ra_init(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ec2
 sgx_status_t enclave_ra_close(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context);
 sgx_status_t ecall_calcmac(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* src, uint32_t srcLen, uint8_t* cmac);
 sgx_status_t ecall_setSessionKey(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx, sgx_ra_key_type_t type);
+sgx_status_t enclave_sealed_init(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* sealed_buf);
+sgx_status_t enclave_sealed_close(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* sealed_buf);
 sgx_status_t sgx_ra_get_ga(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context, sgx_ec256_public_t* g_a);
 sgx_status_t sgx_ra_proc_msg2_trusted(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context, const sgx_ra_msg2_t* p_msg2, const sgx_target_info_t* p_qe_target, sgx_report_t* p_report, sgx_quote_nonce_t* p_nonce);
 sgx_status_t sgx_ra_get_msg3_trusted(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context, uint32_t quote_size, sgx_report_t* qe_report, sgx_ra_msg3_t* p_msg3, uint32_t msg3_size);
-sgx_status_t enclave_sealed_init(sgx_enclave_id_t eid, int* retval, uint8_t* sealed_buf, uint8_t* sk);
-sgx_status_t enclave_sealed_close(sgx_enclave_id_t eid, int* retval, uint8_t* sealed_buf);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
