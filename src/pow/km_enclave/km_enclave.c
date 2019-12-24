@@ -78,7 +78,7 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen,
     uint8_t* symKey, uint32_t symKeyLen,
     uint8_t* plaint, uint32_t* plaintLen);
 
-sgx_ra_key_128_t k;
+sgx_ra_key_128_t sessionkey;
 uint8_t* serverSecret;
 
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
@@ -94,7 +94,7 @@ sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
 {
     sgx_status_t ret_status;
-    ret_status = sgx_ra_get_keys(*ctx, type, &k);
+    ret_status = sgx_ra_get_keys(*ctx, type, &sessionkey);
     return ret_status;
 }
 
@@ -107,7 +107,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
     keySeed = (uint8_t*)malloc(srcLen);
     hashTemp = (uint8_t*)malloc(64);
 
-    if (!decrypt(src, srcLen, k, 16, originhash, &decryptLen)) {
+    if (!decrypt(src, srcLen, sessionkey, 16, originhash, &decryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
@@ -125,7 +125,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
 
-    if (!encrypt(keySeed, srcLen, k, 16, key, &encryptLen)) {
+    if (!encrypt(keySeed, srcLen, sessionkey, 16, key, &encryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);

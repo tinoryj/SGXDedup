@@ -1,8 +1,17 @@
 # src/pow/pow_enclave
 
+set(SGXOPENSSL_INCLUDE_PATH /opt/intel/sgxssl/include)
+set(SGXOPENSSL_LIBRARY_PATH /opt/intel/sgxssl/lib64)
+
 set(EDL_SEARCH_PATHS /opt/intel/sgxsdk/include)
 set(E_SRC pow_enclave.c)
 set(LDS pow_enclave.lds)
+set(EDL_SEARCH_PATHS ${SGXOPENSSL_INCLUDE_PATH} /opt/intel/sgxsdk/include)
+set(SGXOPENSSL_OBJECTS  sgx_tsgxssl_crypto sgx_tsgxssl sgx_tstdc sgx_tcxx)
+
+include_directories(${SGXOPENSSL_INCLUDE_PATH})
+link_directories(${SGXOPENSSL_LIBRARY_PATH})
+
 
 add_enclave_library(pow_enclave
                     SRCS ${E_SRC}

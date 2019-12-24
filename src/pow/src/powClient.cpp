@@ -211,7 +211,7 @@ bool powClient::powEnclaveSealedInit()
     sgx_status_t ret = SGX_SUCCESS;
     string enclaveName = config.getKMEnclaveName();
     sgx_status_t retval;
-    ret = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    ret = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &_eid, NULL);
     if (ret != SGX_SUCCESS) {
         cerr << "PowClient : create enclave error, eid = " << _eid << endl;
         sgx_destroy_enclave(_eid);
