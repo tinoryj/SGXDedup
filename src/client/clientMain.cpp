@@ -80,9 +80,16 @@ int main(int argv, char* argc[])
 
     } else if (strcmp("-s", argc[1]) == 0) {
 
-        gettimeofday(&timestart, NULL);
         senderObj = new Sender();
+
+        gettimeofday(&timestart, NULL);
         powClientObj = new powClient(senderObj);
+        gettimeofday(&timeend, NULL);
+        long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        double second = diff / 1000000.0;
+        cout << "System : init time is " << second << " s" << endl;
+        gettimeofday(&timestart, NULL);
+
         u_char sessionKey[16];
         if (!senderObj->getKeyServerSK(sessionKey)) {
             cerr << "Client : get key server session key failed" << endl;
@@ -94,12 +101,6 @@ int main(int argv, char* argc[])
         keyClientObj = new keyClient(encoderObj, sessionKey);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
-        gettimeofday(&timeend, NULL);
-        long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-        double second = diff / 1000000.0;
-        printf("System : init time is %ld us = %lf s\n", diff, second);
-
-        gettimeofday(&timestart, NULL);
 
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
@@ -131,7 +132,6 @@ int main(int argv, char* argc[])
     gettimeofday(&timeend, NULL);
     long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     double second = diff / 1000000.0;
-
     delete chunkerObj;
     delete keyClientObj;
     delete senderObj;
@@ -139,6 +139,6 @@ int main(int argv, char* argc[])
     delete retrieverObj;
     delete powClientObj;
     delete encoderObj;
-    printf("System : total work time is %ld us = %lf s\n", diff, second);
+    cout << "System : total work time is " << second << " s" << endl;
     return 0;
 }

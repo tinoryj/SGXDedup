@@ -126,6 +126,27 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
         return true;
     }
 }
+
+bool Sender::sendLogInMessage()
+{
+    NetworkHeadStruct_t requestBody;
+    requestBody.clientID = clientID_;
+    requestBody.messageType = CLIENT_SET_LOGIN;
+    requestBody.dataSize = 0;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    u_char requestBuffer[sendSize];
+    memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    int recvSize = 0;
+
+    if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
+        cerr << "Sender : peer closed, set log out error" << endl;
+        return false;
+    } else {
+        return true;
+    }
+}
+
 bool Sender::sendLogOutMessage()
 {
     NetworkHeadStruct_t requestBody;
@@ -145,6 +166,7 @@ bool Sender::sendLogOutMessage()
         return true;
     }
 }
+
 bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& msg2, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;

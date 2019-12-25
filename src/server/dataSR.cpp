@@ -179,7 +179,6 @@ void DataSR::runPow(Socket socket)
 
         if (!socket.Recv(recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << ", Client ID = " << clientID << " Thread exit now" << endl;
-            // powServerObj_->closeSession(socket.fd_);
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -189,7 +188,22 @@ void DataSR::runPow(Socket socket)
             case CLIENT_EXIT: {
                 return;
             }
+            case CLIENT_SET_LOGIN: {
+                cerr << "DataSR : client send login message, init session" << endl;
+                clientID = netBody.clientID;
+                cerr << "DataSR : set client ID = " << clientID << endl;
+                // cerr << "current session list size = " << powServerObj_->sessions.size() << endl;
+                // for (auto it = powServerObj_->sessions.begin(); it != powServerObj_->sessions.end(); it++)
+                //     cout << it->first << endl;
+                netBody.messageType = SUCCESS;
+                netBody.dataSize = 0;
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                sendSize = sizeof(NetworkHeadStruct_t);
+                socket.Send(sendBuffer, sendSize);
+                continue;
+            }
             case CLIENT_SET_LOGOUT: {
+                cerr << "DataSR : client send logout message, clean up loged session" << endl;
                 powServerObj_->closeSession(netBody.clientID);
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
@@ -215,8 +229,6 @@ void DataSR::runPow(Socket socket)
                 break;
             }
             case SGX_RA_MSG01: {
-                clientID = netBody.clientID;
-                cerr << "DataSR : set client ID = " << clientID << endl;
                 memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));
                 memcpy(&msg01.msg1, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
                 if (!powServerObj_->process_msg01(clientID, msg01, msg2)) {
@@ -238,7 +250,6 @@ void DataSR::runPow(Socket socket)
             case SGX_RA_MSG3: {
                 msg3 = (sgx_ra_msg3_t*)new char[netBody.dataSize];
                 memcpy(msg3, recvBuffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
-
                 if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
                     cerr << "PowServer : client had not send msg01 before" << endl;
                     netBody.messageType = ERROR_CLOSE;

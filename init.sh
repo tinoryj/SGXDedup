@@ -2,7 +2,7 @@
 cd ./build
 rm -rf ./*
 cmake ..
-make -j12
+make -j6
 cd ..
 cd ./bin
 mkdir Containers Recipes

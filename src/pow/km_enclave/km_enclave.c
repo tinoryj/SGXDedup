@@ -115,7 +115,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
         return SGX_ERROR_UNEXPECTED;
     }
 
-    for (int index = 0; index < (decryptLen / 32); index++) {
+    for (uint32_t index = 0; index < (decryptLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
         memcpy_s(hashTemp + 32, 64, serverSecret, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);

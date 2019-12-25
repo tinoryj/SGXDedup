@@ -16,7 +16,7 @@
 		"_keyGenLimitPerSessionKey": 10000000,
 		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
-			"10.59.13.231"
+			"127.0.0.1"
 		],
 		"_keyServerPort": [
 			6666
@@ -25,7 +25,7 @@
 	"SPConfig": {
 		"_storageServerNumber": 1,
 		"_storageServerIP": [
-			"10.59.13.231"
+			"127.0.0.1"
 		],
 		"_storageServerPort": [
 			6668
@@ -53,7 +53,7 @@
 	"pow": {
 		"_quoteType": 0,
 		"_iasVersion": 3,
-		"_ServerIp": "10.59.13.231",
+		"_ServerIp": "127.0.0.1",
 		"_ServerPort": 6698,
 		"_enclave_name": "pow_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
@@ -63,7 +63,7 @@
 	"km": {
 		"_quoteType": 0,
 		"_iasVersion": 3,
-		"_ServerIp": "10.59.13.231",
+		"_ServerIp": "127.0.0.1",
 		"_ServerPort": 6676,
 		"_enclave_name": "km_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
