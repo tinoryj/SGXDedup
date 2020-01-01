@@ -52,11 +52,12 @@ keyServer::~keyServer()
     BIO_free_all(key_);
     RSA_free(rsa_);
     delete client;
+    delete keySecurityChannel_;
 }
 
-bool keyServer::doRemoteAttestation(Socket socket)
+bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
 {
-    if (!client->init(socket)) {
+    if (!client->init(raSecurityChannel, sslConnection)) {
         cerr << "keyServer : enclave not truster" << endl;
         return false;
     } else {
@@ -70,34 +71,36 @@ bool keyServer::doRemoteAttestation(Socket socket)
 
 void keyServer::runRAwithSPRequest()
 {
-    Socket socketRARequest(SERVER_TCP, "", config.getkeyServerRArequestPort());
-    u_char recvBuffer[sizeof(NetworkHeadStruct_t)];
+    ssl* raSecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), SERVERSIDE);
+    char recvBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize;
     while (true) {
-        Socket raRequestTempSocket = socketRARequest.Listen();
-        raRequestTempSocket.Recv(recvBuffer, recvSize);
+        SSL* sslConnection = raSecurityChannelTemp->sslListen().second;
+        raSecurityChannelTemp->recv(sslConnection, recvBuffer, recvSize);
         raRequestFlag = true;
         cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
-        raRequestTempSocket.finish();
+        free(sslConnection);
     }
 }
 
 void keyServer::runRA()
 {
-    Socket tmpServerSocket;
     while (true) {
         if (keyGenerateCount >= keyGenLimitPerSessionKey_ || raRequestFlag) {
             while (!(clientThreadCount == 0))
                 ;
             cout << "KeyServer : start do remote attestation to storage server" << endl;
             keyGenerateCount = 0;
-            tmpServerSocket.init(CLIENT_TCP, config.getStorageServerIP(), config.getKMServerPort());
-            if (doRemoteAttestation(tmpServerSocket)) {
-                tmpServerSocket.finish();
+            ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
+            SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            if (doRemoteAttestation(raSecurityChannelTemp, sslConnection)) {
+                delete raSecurityChannelTemp;
+                free(sslConnection);
                 raRequestFlag = false;
                 cout << "KeyServer : do remote attestation to storage SP done" << endl;
             } else {
-                tmpServerSocket.finish();
+                delete raSecurityChannelTemp;
+                free(sslConnection);
                 cerr << "KeyServer : do remote attestation to storage SP error" << endl;
                 continue;
             }

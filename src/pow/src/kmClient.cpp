@@ -57,10 +57,11 @@ kmClient::~kmClient()
     sgx_destroy_enclave(_eid);
 }
 
-bool kmClient::init(Socket socket)
+bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
 {
     _ctx = 0xdeadbeef;
-    _socket = socket;
+    raSecurityChannel_ = raSecurityChannel;
+    sslConnection_ = sslConnection;
     raclose(_eid, _ctx);
     enclave_trusted = doAttestation();
     if (enclave_trusted) {
@@ -228,16 +229,16 @@ bool kmClient::doAttestation()
         return false;
     }
 
-    u_char msg01Buffer[sizeof(msg01)];
+    char msg01Buffer[sizeof(msg01)];
     memcpy(msg01Buffer, &msg01, sizeof(msg01));
-    u_char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
+    char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg2RecvSize = 0;
-    if (!_socket.Send(msg01Buffer, sizeof(msg01))) {
+    if (!raSecurityChannel_->send(sslConnection_, msg01Buffer, sizeof(msg01))) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    if (!_socket.Recv(msg2Buffer, msg2RecvSize)) {
+    if (!raSecurityChannel_->recv(sslConnection_, msg2Buffer, msg2RecvSize)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
@@ -264,17 +265,17 @@ bool kmClient::doAttestation()
     }
     cerr << "kmClient : process msg2 success" << endl;
 
-    u_char msg3Buffer[msg3_sz];
+    char msg3Buffer[msg3_sz];
     memcpy(msg3Buffer, msg3, msg3_sz);
-    u_char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
+    char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg4RecvSize = 0;
-    if (!_socket.Send(msg3Buffer, msg3_sz)) {
+    if (!raSecurityChannel_->send(sslConnection_, msg3Buffer, msg3_sz)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
-    if (!_socket.Recv(msg4Buffer, msg4RecvSize)) {
+    if (!raSecurityChannel_->recv(sslConnection_, msg4Buffer, msg4RecvSize)) {
         cerr << "kmClient: socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;

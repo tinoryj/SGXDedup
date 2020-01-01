@@ -9,7 +9,7 @@
 #include "../../../include/cryptoPrimitive.hpp"
 #include "../../../include/messageQueue.hpp"
 #include "../../../include/protocol.hpp"
-#include "../../../include/socket.hpp"
+#include "../../../include/ssl.hpp"
 #include "base64.h"
 #include "byteorder.h"
 #include "crypto.h"
@@ -35,7 +35,6 @@ static const unsigned char def_service_private_key_km[32] = {
 class kmServer {
 private:
     IAS_Connection* _ias;
-    Socket _socket;
     X509* _signing_ca;
     X509_STORE* _store;
     CryptoPrimitive _crypto;
@@ -48,9 +47,11 @@ private:
     bool derive_kdk(EVP_PKEY* Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
     bool get_sigrl(sgx_epid_group_id_t gid, char* sig_rl, uint32_t* sig_rl_size);
     bool get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4);
+    ssl* raSecurityChannel_;
+    SSL* sslConnection_;
 
 public:
-    kmServer(Socket socket);
+    kmServer(ssl* raSecurityChannel, SSL* sslConnection);
     powSession* authkm();
 };
 

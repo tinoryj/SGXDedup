@@ -7,7 +7,6 @@
 #include "database.hpp"
 #include "messageQueue.hpp"
 #include "protocol.hpp"
-#include "socket.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;

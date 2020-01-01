@@ -26,8 +26,10 @@ RecvDecode::RecvDecode(string fileName)
     clientID_ = config.getClientID();
     outPutMQ_ = new messageQueue<RetrieverData_t>;
     cryptoObj_ = new CryptoPrimitive();
-    socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
-    socketPow_.init(CLIENT_TCP, config.getStorageServerIP(), config.getPOWServerPort());
+    dataSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getStorageServerPort(), CLIENTSIDE);
+    powSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getPOWServerPort(), CLIENTSIDE);
+    sslConnectionData_ = dataSecurityChannel_->sslConnect().second;
+    sslConnectionPow_ = powSecurityChannel_->sslConnect().second;
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
     recvFileHead(fileRecipe_, fileNameHash_);
     cerr << "RecvDecode : recv file recipe head, file size = " << fileRecipe_.fileRecipeHead.fileSize << ", total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
@@ -35,8 +37,8 @@ RecvDecode::RecvDecode(string fileName)
 
 RecvDecode::~RecvDecode()
 {
-    socket_.finish();
-    socketPow_.finish();
+    delete dataSecurityChannel_;
+    delete powSecurityChannel_;
     if (cryptoObj_ != nullptr) {
         delete cryptoObj_;
     }
@@ -52,19 +54,19 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
     request.clientID = clientID_;
 
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
-    u_char requestBuffer[sendSize];
-    u_char respondBuffer[1024 * 1024];
+    char requestBuffer[sendSize];
+    char respondBuffer[1024 * 1024];
     int recvSize;
 
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash, FILE_NAME_HASH_SIZE);
 
     while (true) {
-        if (!socket_.Send(requestBuffer, sendSize)) {
+        if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
             cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
-        if (!socket_.Recv(respondBuffer, recvSize)) {
+        if (!dataSecurityChannel_->recv(sslConnectionData_, respondBuffer, recvSize)) {
             cerr << "RecvDecode : storage server closed" << endl;
             return false;
         }
@@ -98,57 +100,6 @@ bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)
     return true;
 }
 
-bool RecvDecode::recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& startID, uint32_t& endID)
-{
-    NetworkHeadStruct_t request, respond;
-    request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
-    request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
-    request.clientID = clientID_;
-    int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
-    u_char requestBuffer[sendSize];
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
-    int recvSize;
-    memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE, &startID, sizeof(uint32_t));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE + sizeof(uint32_t), &endID, sizeof(uint32_t));
-    while (true) {
-        if (!socket_.Send(requestBuffer, sendSize)) {
-            cerr << "RecvDecode : storage server closed" << endl;
-            return false;
-        }
-        if (!socket_.Recv(respondBuffer, recvSize)) {
-            cerr << "RecvDecode : storage server closed" << endl;
-            return false;
-        }
-        memcpy(&respond, respondBuffer, sizeof(NetworkHeadStruct_t));
-        if (respond.messageType == ERROR_RESEND)
-            continue;
-        if (respond.messageType == ERROR_CLOSE) {
-            cerr << "RecvDecode : Server reject download request!" << endl;
-            exit(1);
-        }
-        if (respond.messageType == SUCCESS) {
-            chunkNumber = endID - startID;
-            int totalRecvSize = 0;
-            for (int i = 0; i < chunkNumber; i++) {
-                Chunk_t tempChunk;
-                memcpy(&tempChunk.ID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
-                totalRecvSize += sizeof(uint32_t);
-                memcpy(&tempChunk.logicDataSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
-                totalRecvSize += sizeof(int);
-                memcpy(&tempChunk.logicData, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, tempChunk.logicDataSize);
-                totalRecvSize += tempChunk.logicDataSize;
-                memcpy(&tempChunk.encryptKey, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, CHUNK_ENCRYPT_KEY_SIZE);
-                totalRecvSize += CHUNK_ENCRYPT_KEY_SIZE;
-                recvChunk.push_back(tempChunk);
-            }
-            break;
-        }
-    }
-    return true;
-}
-
 Recipe_t RecvDecode::getFileRecipeHead()
 {
     return fileRecipe_;
@@ -170,20 +121,20 @@ void RecvDecode::run()
     request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
     request.clientID = clientID_;
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
-    u_char requestBuffer[sendSize];
-    u_char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    char requestBuffer[sendSize];
+    char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
     int recvSize;
 
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash_, FILE_NAME_HASH_SIZE);
 
-    if (!socket_.Send(requestBuffer, sendSize)) {
+    if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
         cerr << "RecvDecode : storage server closed" << endl;
         return;
     }
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
 
-        if (!socket_.Recv(respondBuffer, recvSize)) {
+        if (!dataSecurityChannel_->recv(sslConnectionData_, respondBuffer, recvSize)) {
             cerr << "RecvDecode : storage server closed" << endl;
             return;
         }
@@ -206,7 +157,7 @@ void RecvDecode::run()
                 totalRecvSize += sizeof(uint32_t);
                 memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
                 totalRecvSize += sizeof(int);
-                cryptoObj_->decryptChunk(respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
+                cryptoObj_->decryptChunk((u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, (u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
 
                 RetrieverData_t newData;
                 newData.ID = chunkID;

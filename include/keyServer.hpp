@@ -6,7 +6,6 @@
 #include "kmClient.hpp"
 #include "messageQueue.hpp"
 #include "openssl/bn.h"
-#include "socket.hpp"
 #include "ssl.hpp"
 #include <bits/stdc++.h>
 
@@ -34,7 +33,7 @@ public:
     void run(SSL* connection);
     void runRA();
     void runRAwithSPRequest();
-    bool doRemoteAttestation(Socket socket);
+    bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYSERVER_HPP

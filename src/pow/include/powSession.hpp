@@ -5,7 +5,7 @@
 #include "../../../include/cryptoPrimitive.hpp"
 #include "../../../include/messageQueue.hpp"
 #include "../../../include/protocol.hpp"
-#include "../../../include/socket.hpp"
+#include "../../../include/ssl.hpp"
 #include "base64.h"
 #include "byteorder.h"
 #include "crypto.h"

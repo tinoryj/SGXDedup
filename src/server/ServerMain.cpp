@@ -54,10 +54,13 @@ int main()
     fp2ChunkDB.openDB(config.getFp2ChunkDBName());
     fileName2metaDB.openDB(config.getFp2MetaDBame());
 
+    ssl* dataSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getStorageServerPort(), SERVERSIDE);
+    ssl* powSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getPOWServerPort(), SERVERSIDE);
+
     dedupCoreObj = new DedupCore();
     storageObj = new StorageCore();
     powServerObj = new powServer();
-    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj);
+    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
 
     boost::thread* th;
     th = new boost::thread(boost::bind(&DataSR::runKeyServerRA, dataSRObj));
@@ -67,14 +70,13 @@ int main()
     //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(200 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
-    Socket socketData(SERVER_TCP, "", config.getStorageServerPort());
-    Socket socketPow(SERVER_TCP, "", config.getPOWServerPort()); 
+
     while (true) {
-        Socket tmpSocket = socketData.Listen();
-        th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, tmpSocket));
+        SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;
+        th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, sslConnectionData));
         thList.push_back(th);
-        Socket tmpSocketPow = socketPow.Listen();
-        th = new boost::thread(attrs, boost::bind(&DataSR::runPow, dataSRObj, tmpSocketPow));
+        SSL* sslConnectionPow = powSecurityChannelTemp->sslListen().second;
+        th = new boost::thread(attrs, boost::bind(&DataSR::runPow, dataSRObj, sslConnectionPow));
         thList.push_back(th);
     }
 

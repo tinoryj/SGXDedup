@@ -6,15 +6,17 @@
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
 #include "protocol.hpp"
-#include "socket.hpp"
+#include "ssl.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;
 
 class RecvDecode {
 private:
-    Socket socket_;
-    Socket socketPow_;
+    ssl* powSecurityChannel_;
+    ssl* dataSecurityChannel_;
+    SSL* sslConnectionPow_;
+    SSL* sslConnectionData_;
     void receiveChunk();
     u_char fileNameHash_[FILE_NAME_HASH_SIZE];
     CryptoPrimitive* cryptoObj_;

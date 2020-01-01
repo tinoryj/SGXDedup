@@ -24,7 +24,7 @@ void PRINT_BYTE_ARRAY_KMS(
     fprintf(file, "\n}\n");
 }
 
-kmServer::kmServer(Socket socket)
+kmServer::kmServer(ssl* raSecurityChannel, SSL* sslConnection)
 {
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE_KM)) {
         cerr << "KmServer : can not load IAS Signing Cert CA" << endl;
@@ -55,7 +55,8 @@ kmServer::kmServer(Socket socket)
     _quote_type = config.getKMQuoteType();
     _service_private_key = key_private_from_bytes(def_service_private_key_km);
     _iasVersion = config.getKMIASVersion();
-    _socket = socket;
+    raSecurityChannel_ = raSecurityChannel;
+    sslConnection_ = sslConnection;
 }
 
 bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
@@ -317,9 +318,9 @@ powSession* kmServer::authkm()
     sgx_ra_msg2_t msg2;
     ra_msg4_t msg4;
 
-    u_char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
+    char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg01RecvSize;
-    if (!_socket.Recv(msg01Buffer, msg01RecvSize)) {
+    if (!raSecurityChannel_->recv(sslConnection_, msg01Buffer, msg01RecvSize)) {
         cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }
@@ -330,16 +331,16 @@ powSession* kmServer::authkm()
     }
 
     int msg2SendSize = sizeof(msg2) + msg2.sig_rl_size;
-    u_char msg2Buffer[msg2SendSize];
+    char msg2Buffer[msg2SendSize];
     memcpy(msg2Buffer, &msg2, sizeof(msg2) + msg2.sig_rl_size);
-    if (!_socket.Send(msg2Buffer, msg2SendSize)) {
+    if (!raSecurityChannel_->send(sslConnection_, msg2Buffer, msg2SendSize)) {
         cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }
 
     int msg3RecvSize;
-    u_char msg3Buffer[SGX_MESSAGE_MAX_SIZE];
-    if (!_socket.Recv(msg3Buffer, msg3RecvSize)) {
+    char msg3Buffer[SGX_MESSAGE_MAX_SIZE];
+    if (!raSecurityChannel_->recv(sslConnection_, msg3Buffer, msg3RecvSize)) {
         cerr << "KmServer : error msg01" << endl;
         return nullptr;
     }
@@ -351,9 +352,9 @@ powSession* kmServer::authkm()
     }
 
     int msg4SendSize = sizeof(msg4);
-    u_char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
+    char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     memcpy(msg4Buffer, &msg4, sizeof(msg4));
-    if (!_socket.Send(msg4Buffer, msg4SendSize)) {
+    if (!raSecurityChannel_->send(sslConnection_, msg4Buffer, msg4SendSize)) {
         cerr << "KmServer : error socket reading" << endl;
         return nullptr;
     }

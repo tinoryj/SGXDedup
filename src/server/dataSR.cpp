@@ -26,22 +26,24 @@ void PRINT_BYTE_ARRAY_DATA_SR(
     fprintf(file, "\n}\n");
 }
 
-DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj)
+DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp)
 {
     restoreChunkBatchSize = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
     keyExchangeKeySetFlag = false;
+    powSecurityChannel_ = powSecurityChannelTemp;
+    dataSecurityChannel_ = dataSecurityChannelTemp;
     // memcpy(keyExchangeKey_, keyExchangeKey, 16);
 }
 
-void DataSR::run(Socket socket)
+void DataSR::run(SSL* sslConnection)
 {
     int recvSize = 0;
     int sendSize = 0;
-    u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
-    u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     // double totalSaveChunkTime = 0;
     uint32_t startID = 0;
     uint32_t endID = 0;
@@ -49,8 +51,8 @@ void DataSR::run(Socket socket)
     uint32_t totalRestoredChunkNumber = 0;
     while (true) {
 
-        if (!socket.Recv(recvBuffer, recvSize)) {
-            cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << " Thread exit now" << endl;
+        if (!dataSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
+            cerr << "DataSR : client closed socket connect, thread exit now" << endl;
             // printf("server save all chunk time is %lf s\n", totalSaveChunkTime);
             return;
         } else {
@@ -111,7 +113,7 @@ void DataSR::run(Socket socket)
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 }
-                socket.Send(sendBuffer, sendSize);
+                dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
@@ -152,7 +154,7 @@ void DataSR::run(Socket socket)
                         sendSize = sizeof(NetworkHeadStruct_t);
                         return;
                     }
-                    socket.Send(sendBuffer, sendSize);
+                    dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 }
                 break;
             }
@@ -164,7 +166,7 @@ void DataSR::run(Socket socket)
     return;
 }
 
-void DataSR::runPow(Socket socket)
+void DataSR::runPow(SSL* sslConnection)
 {
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
@@ -172,13 +174,13 @@ void DataSR::runPow(Socket socket)
     ra_msg4_t msg4;
     int recvSize = 0;
     int sendSize = 0;
-    u_char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
-    u_char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
+    char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int clientID;
     while (true) {
 
-        if (!socket.Recv(recvBuffer, recvSize)) {
-            cerr << "DataSR : client closed socket connect, fd = " << socket.fd_ << ", Client ID = " << clientID << " Thread exit now" << endl;
+        if (!powSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
+            cerr << "DataSR : client closed socket connect, Client ID = " << clientID << " Thread exit now" << endl;
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -199,7 +201,7 @@ void DataSR::runPow(Socket socket)
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                 sendSize = sizeof(NetworkHeadStruct_t);
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 continue;
             }
             case CLIENT_SET_LOGOUT: {
@@ -209,7 +211,7 @@ void DataSR::runPow(Socket socket)
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                 sendSize = sizeof(NetworkHeadStruct_t);
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 continue;
             }
             case CLIENT_GET_KEY_SERVER_SK: {
@@ -225,7 +227,7 @@ void DataSR::runPow(Socket socket)
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 }
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             case SGX_RA_MSG01: {
@@ -244,7 +246,7 @@ void DataSR::runPow(Socket socket)
                     memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &msg2, sizeof(sgx_ra_msg2_t));
                     sendSize = sizeof(NetworkHeadStruct_t) + sizeof(sgx_ra_msg2_t);
                 }
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             case SGX_RA_MSG3: {
@@ -272,7 +274,7 @@ void DataSR::runPow(Socket socket)
                         sendSize = sizeof(NetworkHeadStruct_t);
                     }
                 }
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             case SGX_SIGNED_HASH: {
@@ -330,7 +332,7 @@ void DataSR::runPow(Socket socket)
                         }
                     }
                 }
-                socket.Send(sendBuffer, sendSize);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             default:
@@ -343,20 +345,18 @@ void DataSR::runPow(Socket socket)
 
 void DataSR::runKeyServerRA()
 {
-    Socket socketRARequest;
-    Socket socketRAListen;
+    ssl* sslRAListen = new ssl(config.getStorageServerIP(), config.getKMServerPort(), SERVERSIDE);
     int sendSize = sizeof(NetworkHeadStruct_t);
-    u_char sendBuffer[sendSize];
+    char sendBuffer[sendSize];
     NetworkHeadStruct_t netHead;
     netHead.messageType = RA_REQUEST;
     netHead.dataSize = 0;
     memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
-    socketRAListen.init(SERVER_TCP, "", config.getKMServerPort());
     while (true) {
     errorRetry:
-        Socket tempSocket = socketRAListen.Listen();
+        SSL* sslRAListenConnection = sslRAListen->sslListen().second;
         cerr << "DataSR : key server start remote attestation now" << endl;
-        kmServer server(tempSocket);
+        kmServer server(sslRAListen, sslRAListenConnection);
         powSession* session = server.authkm();
         if (session != nullptr) {
             // memcpy(keyExchangeKey_, keyExchangeKey, 16);
@@ -371,9 +371,11 @@ void DataSR::runKeyServerRA()
             boost::thread::sleep(xt);
             keyExchangeKeySetFlag = false;
             memset(keyExchangeKey_, 0, 16);
-            socketRARequest.init(CLIENT_TCP, config.getKeyServerIP(), config.getkeyServerRArequestPort());
-            socketRARequest.Send(sendBuffer, sendSize);
-            socketRARequest.finish();
+            ssl* sslRARequest = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), CLIENTSIDE);
+            SSL* sslRARequestConnection = sslRARequest->sslConnect().second;
+            sslRARequest->send(sslRARequestConnection, sendBuffer, sendSize);
+            delete sslRARequest;
+            free(sslRARequestConnection);
         } else {
             delete session;
             cerr << "KeyClient : keyServer enclave not trusted, storage try again now" << endl;

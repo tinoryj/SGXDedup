@@ -30,16 +30,18 @@ void PRINT_BYTE_ARRAY_SENDER(
 Sender::Sender()
 {
     inputMQ_ = new messageQueue<Data_t>;
-    socket_.init(CLIENT_TCP, config.getStorageServerIP(), config.getStorageServerPort());
-    socketPow_.init(CLIENT_TCP, config.getStorageServerIP(), config.getPOWServerPort());
+    dataSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getStorageServerPort(), CLIENTSIDE);
+    powSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getPOWServerPort(), CLIENTSIDE);
+    sslConnectionData_ = dataSecurityChannel_->sslConnect().second;
+    sslConnectionPow_ = powSecurityChannel_->sslConnect().second;
     cryptoObj_ = new CryptoPrimitive();
     clientID_ = config.getClientID();
 }
 
 Sender::~Sender()
 {
-    socket_.finish();
-    socketPow_.finish();
+    delete dataSecurityChannel_;
+    delete powSecurityChannel_;
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
@@ -70,13 +72,13 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
         respondBody.dataSize = 0;
         int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + currentSendRecipeNumber * sizeof(RecipeEntry_t);
         requestBody.dataSize = sizeof(Recipe_t) + currentSendRecipeNumber * sizeof(RecipeEntry_t);
-        u_char requestBuffer[sendSize];
+        char requestBuffer[sendSize];
         memcpy(requestBuffer, &requestBody, sizeof(requestBody));
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
         for (int i = 0; i < currentSendRecipeNumber; i++) {
             memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), &recipeList[sendRecipeNumber + i], sizeof(RecipeEntry_t));
         }
-        if (!socket_.Send(requestBuffer, sendSize)) {
+        if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
             cerr << "Sender : error sending file resipces, peer may close" << endl;
             return false;
         }
@@ -94,9 +96,9 @@ bool Sender::getKeyServerSK(u_char* SK)
     requestBody.messageType = CLIENT_GET_KEY_SERVER_SK;
     requestBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t);
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    u_char respondBuffer[sizeof(NetworkHeadStruct_t) + 16];
+    char respondBuffer[sizeof(NetworkHeadStruct_t) + 16];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
@@ -120,7 +122,8 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     memcpy(requestBufferIn + sizeof(NetworkHeadStruct_t), &sendChunkNumber, sizeof(int));
     requestBody.dataSize = sendBufferSize + sizeof(int);
     memcpy(requestBufferIn, &requestBody, sizeof(NetworkHeadStruct_t));
-    if (!socket_.Send((u_char*)requestBufferIn, sendSize)) {
+    if (!dataSecurityChannel_->send(sslConnectionData_, requestBufferIn, sendSize)) {
+        cerr << "Sender : error sending chunk list, peer may close" << endl;
         return false;
     } else {
         return true;
@@ -134,11 +137,10 @@ bool Sender::sendLogInMessage()
     requestBody.messageType = CLIENT_SET_LOGIN;
     requestBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t);
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
-
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, set log out error" << endl;
         return false;
@@ -154,11 +156,10 @@ bool Sender::sendLogOutMessage()
     requestBody.messageType = CLIENT_SET_LOGOUT;
     requestBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t);
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
-
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, set log out error" << endl;
         return false;
@@ -178,12 +179,12 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     respondBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(msg0) + sizeof(msg1);
     requestBody.dataSize = sizeof(msg0) + sizeof(msg1);
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &msg0, sizeof(msg0));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg0), &msg1, sizeof(msg1));
 
-    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -214,11 +215,11 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
 
     int sendSize = sizeof(NetworkHeadStruct_t) + size;
     requestBody.dataSize = size;
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), msg3, size);
 
-    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
 
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
@@ -249,14 +250,14 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
     int signedHashNumber = request.hash_.size();
     int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
     requestBody.dataSize = sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request.signature_, 16 * sizeof(uint8_t));
     for (int i = 0; i < signedHashNumber; i++) {
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + 16 * sizeof(uint8_t) + i * CHUNK_HASH_SIZE, &request.hash_[i][0], CHUNK_HASH_SIZE);
     }
 
-    u_char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : send enclave signed hash to server & get back required chunk list error" << endl;
@@ -279,29 +280,13 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
     }
 }
 
-bool Sender::sendData(u_char* request, int requestSize, u_char* respond, int& respondSize, bool recv)
+bool Sender::sendDataPow(char* request, int requestSize, char* respond, int& respondSize)
 {
-    std::lock_guard<std::mutex> locker(mutexSocket_);
-    if (!socket_.Send(request, requestSize)) {
+    if (!powSecurityChannel_->send(sslConnectionPow_, request, requestSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }
-    if (recv) {
-        if (!socket_.Recv(respond, respondSize)) {
-            cerr << "Sender : recv data error peer closed" << endl;
-            return false;
-        }
-    }
-    return true;
-}
-
-bool Sender::sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize)
-{
-    if (!socketPow_.Send(request, requestSize)) {
-        cerr << "Sender : send data error peer closed" << endl;
-        return false;
-    }
-    if (!socketPow_.Recv(respond, respondSize)) {
+    if (!powSecurityChannel_->recv(sslConnectionPow_, respond, respondSize)) {
         cerr << "Sender : recv data error peer closed" << endl;
         return false;
     }
@@ -315,13 +300,13 @@ bool Sender::sendEndFlag()
     requestBody.clientID = clientID_;
     int sendSize = sizeof(NetworkHeadStruct_t);
     requestBody.dataSize = 0;
-    u_char requestBuffer[sendSize];
+    char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    if (!socketPow_.Send(requestBuffer, sendSize)) {
+    if (!powSecurityChannel_->send(sslConnectionPow_, requestBuffer, sendSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }
-    if (!socket_.Send(requestBuffer, sendSize)) {
+    if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
         cerr << "Sender : send data error peer closed" << endl;
         return false;
     }

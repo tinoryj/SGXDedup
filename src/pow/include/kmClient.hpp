@@ -7,7 +7,7 @@
 #include "protocol.hpp"
 #include "pthread.h"
 #include "sender.hpp"
-#include "socket.hpp"
+#include "ssl.hpp"
 #include <bits/stdc++.h>
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
@@ -33,12 +33,13 @@ private:
     string _keyd, _keyn;
     sgx_launch_token_t _token = { 0 };
     int updated;
-    Socket _socket;
+    ssl* raSecurityChannel_;
+    SSL* sslConnection_;
 
 public:
     kmClient(string keyd);
     ~kmClient();
-    bool init(Socket socket);
+    bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
     bool doAttestation();

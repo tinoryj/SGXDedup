@@ -6,15 +6,17 @@
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
 #include "protocol.hpp"
-#include "socket.hpp"
+#include "ssl.hpp"
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 
 class Sender {
 private:
     std::mutex mutexSocket_;
-    Socket socket_;
-    Socket socketPow_;
+    ssl* powSecurityChannel_;
+    ssl* dataSecurityChannel_;
+    SSL* sslConnectionPow_;
+    SSL* sslConnectionData_;
     int clientID_;
     messageQueue<Data_t>* inputMQ_;
     CryptoPrimitive* cryptoObj_;
@@ -39,8 +41,7 @@ public:
     void run();
 
     //general send data
-    bool sendData(u_char* request, int requestSize, u_char* respond, int& respondSize, bool recv);
-    bool sendDataPow(u_char* request, int requestSize, u_char* respond, int& respondSize);
+    bool sendDataPow(char* request, int requestSize, char* respond, int& respondSize);
     bool sendEndFlag();
     bool insertMQFromPow(Data_t& newChunk);
     bool extractMQFromPow(Data_t& newChunk);

@@ -7,7 +7,6 @@
 #include "messageQueue.hpp"
 #include "protocol.hpp"
 #include "recvDecode.hpp"
-#include "socket.hpp"
 #include <bits/stdc++.h>
 #include <boost/thread.hpp>
 
