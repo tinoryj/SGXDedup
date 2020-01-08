@@ -2,9 +2,6 @@
 #include <dataSR.hpp>
 #include <sys/times.h>
 
-struct timeval timestartDataSR;
-struct timeval timeendDataSR;
-
 extern Configure config;
 
 void PRINT_BYTE_ARRAY_DATA_SR(
@@ -49,11 +46,21 @@ void DataSR::run(SSL* sslConnection)
     uint32_t endID = 0;
     Recipe_t restoredFileRecipe;
     uint32_t totalRestoredChunkNumber = 0;
+#ifdef BREAK_DOWN
+    struct timeval timestartDataSR;
+    struct timeval timeendDataSR;
+    double saveChunkTime = 0;
+    double saveRecipeTime = 0;
+    long diff;
+    double second;
+#endif
     while (true) {
-
         if (!dataSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, thread exit now" << endl;
-            // printf("server save all chunk time is %lf s\n", totalSaveChunkTime);
+#ifdef BREAK_DOWN
+            cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
+            cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
+#endif
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -61,11 +68,29 @@ void DataSR::run(SSL* sslConnection)
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
+#ifdef BREAK_DOWN
+                cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
+                cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
+#endif
                 return;
             }
             case CLIENT_UPLOAD_CHUNK: {
-                if (!storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t))) {
-                    cerr << "DedupCore : dedup stage 2 report error" << endl;
+#ifdef BREAK_DOWN
+                gettimeofday(&timestartDataSR, NULL);
+#endif
+                bool saveChunkStatus = storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t));
+#ifdef BREAK_DOWN
+                gettimeofday(&timeendDataSR, NULL);
+                diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                second = diff / 1000000.0;
+                saveChunkTime += second;
+#endif
+                if (!saveChunkStatus) {
+                    cerr << "DedupCore : save chunks report error" << endl;
+#ifdef BREAK_DOWN
+                    cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
+                    cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
+#endif
                     return;
                 }
                 break;
@@ -80,22 +105,31 @@ void DataSR::run(SSL* sslConnection)
                     memcpy(&tempRecipeEntry, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
                     tempRecipeEntryList.push_back(tempRecipeEntry);
                 }
-                cerr << "StorageCore : recv Recipe from client" << endl;
-
-                if (!storageObj_->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList)) {
-                    cerr << "StorageCore : verify Recipe fail, send resend flag" << endl;
-                    netBody.messageType = ERROR_RESEND;
-                    netBody.dataSize = 0;
-                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                    sendSize = sizeof(NetworkHeadStruct_t);
-                } else {
+                cerr << "StorageCore : recv Recipe from client " << netBody.clientID << endl;
+#ifdef BREAK_DOWN
+                gettimeofday(&timestartDataSR, NULL);
+#endif
+                bool saveRecipeStatus = storageObj_->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList);
+#ifdef BREAK_DOWN
+                gettimeofday(&timeendDataSR, NULL);
+                diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                second = diff / 1000000.0;
+                saveRecipeTime += second;
+#endif
+                if (saveRecipeStatus) {
                     cerr << "StorageCore : verify Recipe succes" << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = 0;
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    cerr << "StorageCore : verify Recipe fail, send resend flag" << endl;
+                    netBody.messageType = ERROR_RESEND;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
                 }
-                // socket.Send(sendBuffer, sendSize);
+                dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }
             case CLIENT_DOWNLOAD_FILEHEAD: {
@@ -177,10 +211,22 @@ void DataSR::runPow(SSL* sslConnection)
     char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int clientID;
+#ifdef BREAK_DOWN
+    struct timeval timestartDataSR;
+    struct timeval timeendDataSR;
+    double verifyTime = 0;
+    double dedupTime = 0;
+    long diff;
+    double second;
+#endif
     while (true) {
 
         if (!powSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, Client ID = " << clientID << " Thread exit now" << endl;
+#ifdef BREAK_DOWN
+            cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
+            cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
+#endif
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -188,15 +234,16 @@ void DataSR::runPow(SSL* sslConnection)
             cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
+#ifdef BREAK_DOWN
+                cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
+                cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
+#endif
                 return;
             }
             case CLIENT_SET_LOGIN: {
                 cerr << "DataSR : client send login message, init session" << endl;
                 clientID = netBody.clientID;
                 cerr << "DataSR : set client ID = " << clientID << endl;
-                // cerr << "current session list size = " << powServerObj_->sessions.size() << endl;
-                // for (auto it = powServerObj_->sessions.begin(); it != powServerObj_->sessions.end(); it++)
-                //     cout << it->first << endl;
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -301,13 +348,29 @@ void DataSR::runPow(SSL* sslConnection)
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         sendSize = sizeof(NetworkHeadStruct_t);
                     } else {
-                        if (powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq)) {
-
+#ifdef BREAK_DOWN
+                        gettimeofday(&timestartDataSR, NULL);
+#endif
+                        bool powVerifyStatus = powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq);
+#ifdef BREAK_DOWN
+                        gettimeofday(&timeendDataSR, NULL);
+                        diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                        second = diff / 1000000.0;
+                        verifyTime += second;
+#endif
+                        if (powVerifyStatus) {
                             RequiredChunk_t requiredChunkTemp;
-                            // cerr << "Client req signature = " << endl;
-                            // PRINT_BYTE_ARRAY_DATA_SR(stderr, clientReq.signature_, 16);
-                            // cerr << "Client req hash size = " << clientReq.hash_.size() << endl;
-                            if (dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp)) {
+#ifdef BREAK_DOWN
+                            gettimeofday(&timestartDataSR, NULL);
+#endif
+                            bool dedupQueryStatus = dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp);
+#ifdef BREAK_DOWN
+                            gettimeofday(&timeendDataSR, NULL);
+                            diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                            second = diff / 1000000.0;
+                            dedupTime += second;
+#endif
+                            if (dedupQueryStatus) {
                                 netBody.messageType = SUCCESS;
                                 netBody.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
                                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -382,6 +445,5 @@ void DataSR::runKeyServerRA()
             goto errorRetry;
         }
     }
-
     return;
 }

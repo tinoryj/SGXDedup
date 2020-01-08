@@ -2,7 +2,7 @@
 cd ./build
 rm -rf ./*
 cmake ..
-make -j6
+make -j$(shell grep -c ^processor /proc/cpuinfo 2>/dev/null)
 cd ..
 cd ./bin
 mkdir Containers Recipes

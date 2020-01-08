@@ -64,7 +64,6 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
             currentSendRecipeNumber = sendRecipeBatchNumber;
         }
         NetworkHeadStruct_t requestBody, respondBody;
-
         requestBody.clientID = clientID_;
         requestBody.messageType = CLIENT_UPLOAD_RECIPE;
         respondBody.clientID = 0;
@@ -78,13 +77,26 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
         for (int i = 0; i < currentSendRecipeNumber; i++) {
             memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), &recipeList[sendRecipeNumber + i], sizeof(RecipeEntry_t));
         }
+    ReSendFlag:
         if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
             cerr << "Sender : error sending file resipces, peer may close" << endl;
             return false;
         }
-        cout << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
-        sendRecipeNumber += currentSendRecipeNumber;
-        currentSendRecipeNumber = 0;
+        char respondBuffer[sendSize];
+        int recvSize;
+        if (!dataSecurityChannel_->recv(sslConnectionData_, respondBuffer, recvSize)) {
+            cerr << "Sender : error recv file resipces status, peer may close" << endl;
+            return false;
+        } else {
+            memcpy(&respondBody, respondBuffer, recvSize);
+            if (respondBody.messageType == SUCCESS) {
+                cout << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
+                sendRecipeNumber += currentSendRecipeNumber;
+                currentSendRecipeNumber = 0;
+            } else {
+                goto ReSendFlag;
+            }
+        }
     }
     return true;
 }

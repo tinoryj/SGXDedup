@@ -9,7 +9,13 @@ using namespace std;
 
 #define BREAK_DOWN
 #define HIGH_SECURITY
+
+/* define of key generation method */
 // #define NON_OPRF
+// #define MLE
+// #define SKE
+// #define MinHash
+// #define OPRF
 
 #ifdef HIGH_SECURITY
 #define CHUNK_FINGER_PRINT_SIZE 32
@@ -75,11 +81,6 @@ private:
     int _keyBatchSize;
     uint64_t _keyCacheSize;
     uint64_t _keyGenLimitPerSessionKey;
-
-    //message queue size settings
-    int _Data_t_MQSize;
-    int _RetrieverData_t_MQSize;
-    int _StorageData_t_MQSize;
 
     //muti thread settings
     int _encodeThreadLimit;
@@ -171,11 +172,6 @@ public:
     int getKeyBatchSize();
     uint64_t getKeyCacheSize();
     uint64_t getKeyGenLimitPerSessionkeySize();
-
-    //message queue size setting
-    int get_Data_t_MQSize();
-    int get_RetrieverData_t_MQSize();
-    int get_StorageData_t_MQSize();
 
     //muti thread settings
     int getEncoderThreadLimit();

@@ -56,10 +56,6 @@ void Configure::readConf(std::string path)
         _storageServerPort.push_back(it.second.get_value<int>());
     }
 
-    _Data_t_MQSize = root.get<int>("messageQueue._Data_t_MQSize");
-    _RetrieverData_t_MQSize = root.get<int>("messageQueue._RetrieverData_t_MQSize");
-    _StorageData_t_MQSize = root.get<int>("messageQueue._StorageData_t_MQSize");
-
     //muti thread settings;
     _encodeThreadLimit = root.get<int>("mutiThread._encodeThreadLimit");
     _keyClientThreadLimit = root.get<int>("mutiThread._keyClientThreadLimit");
@@ -204,21 +200,6 @@ std::string Configure::getKeyServerIP()
 int Configure::getKeyServerPort()
 {
     return _keyServerPort[0];
-}
-
-// message queue size setting
-int Configure::get_Data_t_MQSize()
-{
-    return _Data_t_MQSize;
-}
-
-int Configure::get_RetrieverData_t_MQSize()
-{
-    return _RetrieverData_t_MQSize;
-}
-int Configure::get_StorageData_t_MQSize()
-{
-    return _StorageData_t_MQSize;
 }
 
 //muti thread settings
