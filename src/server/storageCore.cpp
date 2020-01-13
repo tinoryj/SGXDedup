@@ -166,7 +166,7 @@ bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, Recipe
     return true;
 }
 
-bool StorageCore::restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList)
+bool StorageCore::restoreRecipeList(char* fileNameHash, char* recipeBuffer, uint32_t recipeBufferSize)
 {
     ifstream RecipeIn;
     string readRecipeName;
@@ -180,46 +180,50 @@ bool StorageCore::restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, ui
         if (!RecipeIn.is_open()) {
             std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
             return false;
+        } else {
+            RecipeIn.seekg(sizeof(Recipe_t));
+            RecipeIn.read(recipeBuffer, recipeBufferSize);
+            RecipeIn.close();
+            return true;
         }
 
-        char readBuffer[sizeof(RecipeEntry_t) * (endID - startID)];
-        RecipeIn.seekg(sizeof(Recipe_t) + startID * sizeof(RecipeEntry_t));
-        RecipeIn.read(readBuffer, sizeof(RecipeEntry_t) * (endID - startID));
-        RecipeIn.close();
-        for (int i = 0; i < (endID - startID); i++) {
-            RecipeEntry_t newRecipeEntry;
-            memcpy(&newRecipeEntry, readBuffer + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
-            string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
-            string chunkData;
-            // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
-            if (restoreChunk(chunkHash, chunkData)) {
-                if (chunkData.length() != newRecipeEntry.chunkSize) {
-                    cerr << "StorageCore : restore chunk logic data size error" << endl;
-                    return false;
-                } else {
-                    Chunk_t newChunk;
-                    newChunk.ID = newRecipeEntry.chunkID;
-                    newChunk.logicDataSize = newRecipeEntry.chunkSize;
-                    memcpy(newChunk.chunkHash, newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
-                    memcpy(newChunk.encryptKey, newRecipeEntry.chunkKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
-                    restoredChunkList.push_back(newChunk);
-                    // cerr << "StorageCore : restore chunk ID = " << newChunk.ID << endl;
-                    // cout << "StorageCore : Restore Chunk ID = " << newChunk.ID << " size = " << newChunk.logicDataSize << endl;
-                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.chunkHash, CHUNK_HASH_SIZE);
-                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.logicData, newChunk.logicDataSize);
-                }
-
-            } else {
-                cerr << "StorageCore : can not restore chunk" << endl;
-                return false;
-            }
-        }
-        return true;
     } else {
         return false;
     }
+}
+
+bool StorageCore::restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList)
+{
+    for (int i = 0; i < endID - startID; i++) {
+        RecipeEntry_t newRecipeEntry;
+        memcpy(&newRecipeEntry, recipeBuffer + startID * sizeof(RecipeEntry_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
+        string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+        string chunkData;
+        // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+        if (restoreChunk(chunkHash, chunkData)) {
+            if (chunkData.length() != newRecipeEntry.chunkSize) {
+                cerr << "StorageCore : restore chunk logic data size error" << endl;
+                return false;
+            } else {
+                Chunk_t newChunk;
+                newChunk.ID = newRecipeEntry.chunkID;
+                newChunk.logicDataSize = newRecipeEntry.chunkSize;
+                memcpy(newChunk.chunkHash, newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+                memcpy(newChunk.encryptKey, newRecipeEntry.chunkKey, CHUNK_ENCRYPT_KEY_SIZE);
+                memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
+                restoredChunkList.push_back(newChunk);
+                // cerr << "StorageCore : restore chunk ID = " << newChunk.ID << endl;
+                // cout << "StorageCore : Restore Chunk ID = " << newChunk.ID << " size = " << newChunk.logicDataSize << endl;
+                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.chunkHash, CHUNK_HASH_SIZE);
+                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.logicData, newChunk.logicDataSize);
+            }
+        } else {
+            cerr << "StorageCore : can not restore chunk" << endl;
+            return false;
+        }
+    }
+    return true;
 }
 
 bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSize)

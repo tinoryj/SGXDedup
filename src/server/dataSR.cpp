@@ -154,41 +154,53 @@ void DataSR::run(SSL* sslConnection)
                 if (restoredFileRecipe.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
                     endID = restoredFileRecipe.fileRecipeHead.totalChunkNumber - 1;
                 }
-                while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
-                    ChunkList_t restoredChunkList;
-                    if (storageObj_->restoreRecipeAndChunk((char*)recvBuffer + sizeof(NetworkHeadStruct_t), startID, endID, restoredChunkList)) {
-                        netBody.messageType = SUCCESS;
-                        int currentChunkNumber = restoredChunkList.size();
-                        int totalSendSize = sizeof(int);
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &currentChunkNumber, sizeof(int));
-                        for (int i = 0; i < currentChunkNumber; i++) {
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
-                            totalSendSize += sizeof(uint32_t);
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
-                            totalSendSize += sizeof(int);
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
-                            totalSendSize += restoredChunkList[i].logicDataSize;
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                            totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
-                        }
-                        netBody.dataSize = totalSendSize;
-                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                        sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
-                        totalRestoredChunkNumber += restoredChunkList.size();
-                        startID = endID;
-                        if (restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber < restoreChunkBatchSize) {
-                            endID += restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber;
+                uint32_t restoreRecipeListSize = sizeof(char) * sizeof(RecipeEntry_t) * restoredFileRecipe.fileRecipeHead.totalChunkNumber;
+                char* recipeList = (char*)malloc(restoreRecipeListSize);
+                bool restoreRecipeListStatus = storageObj_->restoreRecipeList((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeList, restoreRecipeListSize);
+                if (restoreRecipeListStatus) {
+                    while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
+                        ChunkList_t restoredChunkList;
+                        if (storageObj_->restoreChunks(recipeList, restoreRecipeListSize, startID, endID, restoredChunkList)) {
+                            netBody.messageType = SUCCESS;
+                            int currentChunkNumber = restoredChunkList.size();
+                            int totalSendSize = sizeof(int);
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &currentChunkNumber, sizeof(int));
+                            for (int i = 0; i < currentChunkNumber; i++) {
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
+                                totalSendSize += sizeof(uint32_t);
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
+                                totalSendSize += sizeof(int);
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
+                                totalSendSize += restoredChunkList[i].logicDataSize;
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                                totalSendSize += CHUNK_ENCRYPT_KEY_SIZE;
+                            }
+                            netBody.dataSize = totalSendSize;
+                            memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                            sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
+                            totalRestoredChunkNumber += restoredChunkList.size();
+                            startID = endID;
+                            if (restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber < restoreChunkBatchSize) {
+                                endID += restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber;
+                            } else {
+                                endID += config.getSendChunkBatchSize();
+                            }
                         } else {
-                            endID += config.getSendChunkBatchSize();
+                            netBody.dataSize = 0;
+                            netBody.messageType = ERROR_CHUNK_NOT_EXIST;
+                            memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                            sendSize = sizeof(NetworkHeadStruct_t);
+                            dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+                            free(recipeList);
+                            return;
                         }
-                    } else {
-                        netBody.dataSize = 0;
-                        netBody.messageType = ERROR_CHUNK_NOT_EXIST;
-                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                        sendSize = sizeof(NetworkHeadStruct_t);
-                        return;
+                        dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                     }
-                    dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+                    free(recipeList);
+                } else {
+                    cerr << "DataSR : error restore target file recipes" << endl;
+                    free(recipeList);
+                    return;
                 }
                 break;
             }

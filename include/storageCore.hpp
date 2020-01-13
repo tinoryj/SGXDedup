@@ -40,7 +40,8 @@ public:
 
     bool saveChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);
-    bool restoreRecipeAndChunk(char* fileNameHash, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
+    bool restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
+    bool restoreRecipeList(char* fileNameHash, char* recipeBuffer, uint32_t recipeBufferSize);
     bool saveChunk(std::string chunkHash, char* chunkData, int chunkSize);
     bool restoreChunk(std::string chunkHash, std::string& chunkData);
     bool checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList);
