@@ -74,14 +74,17 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     int readSize = sizeof(int);
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
+#ifdef STORAGE_SERVER_VERIFY_UPLOAD
         u_char oldHash[CHUNK_HASH_SIZE];
-        string originHash(data + readSize, CHUNK_HASH_SIZE);
         memcpy(oldHash, data + readSize, CHUNK_HASH_SIZE);
+#endif
+        string originHash(data + readSize, CHUNK_HASH_SIZE);
         // cout << "save chunk hash" << endl;
         // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &originHash[0], CHUNK_HASH_SIZE);
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);
+#ifdef STORAGE_SERVER_VERIFY_UPLOAD
         u_char newHash[CHUNK_HASH_SIZE];
         cryptoObj_->generateHash((u_char*)data + readSize, currentChunkSize, newHash);
         if (memcmp(oldHash, newHash, CHUNK_HASH_SIZE) == 0) {
@@ -91,6 +94,11 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
         } else {
             cerr << "StorageCore : save chunk error, chunk may fake" << endl;
         }
+#else
+        if (!saveChunk(originHash, data + readSize, currentChunkSize)) {
+            return false;
+        }
+#endif
         readSize += currentChunkSize;
     }
     // cerr << "DedupCore : recv " << setbase(10) << chunkNumber << " chunk from client" << endl;
@@ -181,12 +189,19 @@ bool StorageCore::restoreRecipeList(char* fileNameHash, char* recipeBuffer, uint
             std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
             return false;
         } else {
-            RecipeIn.seekg(sizeof(Recipe_t));
+            Recipe_t currentFileRecipeHeader;
+            RecipeIn.read((char*)&currentFileRecipeHeader, sizeof(Recipe_t));
+            cerr << "StorageCore : restore file header, file size = " << currentFileRecipeHeader.fileRecipeHead.fileSize << ", total chunk number = " << currentFileRecipeHeader.fileRecipeHead.totalChunkNumber << endl;
             RecipeIn.read(recipeBuffer, recipeBufferSize);
             RecipeIn.close();
-            return true;
+            if (RecipeIn.gcount() != recipeBufferSize) {
+                cerr << "StorageCore : read file recipe error, should read " << recipeBufferSize << ", read size " << RecipeIn.gcount() << endl;
+                return false;
+            } else {
+                // cerr << "StorageCore : read file recipe done, read " << recipeBufferSize << endl;
+                return true;
+            }
         }
-
     } else {
         return false;
     }
@@ -199,6 +214,7 @@ bool StorageCore::restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, u
         memcpy(&newRecipeEntry, recipeBuffer + startID * sizeof(RecipeEntry_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
         string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
         string chunkData;
+        // cerr << "StorageCore : restore chunk ID = " << newRecipeEntry.chunkID << ", size = " << newRecipeEntry.chunkSize << endl;
         // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
         if (restoreChunk(chunkHash, chunkData)) {
             if (chunkData.length() != newRecipeEntry.chunkSize) {
@@ -243,7 +259,9 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
     string dbValue;
     dbValue.resize(sizeof(keyForChunkHashDB_t));
     memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
-    status = fp2ChunkDB.query(chunkHash, dbValue);
+#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+    string ans;
+    status = fp2ChunkDB.query(chunkHash, ans);
     if (status) {
         status = fp2ChunkDB.insert(chunkHash, dbValue);
         if (!status) {
@@ -257,6 +275,17 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
         std::cerr << "StorageCore : Can't insert chunk to database, chunk is not valid" << endl;
         return false;
     }
+#else
+    status = fp2ChunkDB.insert(chunkHash, dbValue);
+    if (!status) {
+        std::cerr << "StorageCore : Can't insert chunk to database" << endl;
+        return false;
+    } else {
+        currentContainer_.used_ += key.length;
+        return true;
+    }
+
+#endif
 }
 
 bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
@@ -266,6 +295,7 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
     bool status = fp2ChunkDB.query(chunkHash, ans);
     if (status) {
         memcpy(&key, &ans[0], sizeof(keyForChunkHashDB_t));
+        // cerr << "StorageCore : restore chunk from " << key.containerName << ", size = " << key.length << endl;
         char chunkData[key.length];
         if (readContainer(key, chunkData)) {
             chunkDataStr.resize(key.length);
@@ -337,6 +367,7 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
         memcpy(data, currentContainer_.body_ + key.offset, key.length);
         return true;
     } else {
+#ifdef STORAGE_READ_CACHE
         bool cacheHitStatus = containerCache.existsInCache(containerNameStr);
         if (cacheHitStatus) {
             string containerDataStr = containerCache.getFromCache(containerNameStr);
@@ -351,18 +382,41 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
             containerIn.seekg(0, ios_base::end);
             int containerSize = containerIn.tellg();
             containerIn.seekg(0, ios_base::beg);
-            char containerDataBuffer[containerSize];
-            containerIn.read(containerDataBuffer, containerSize);
+            containerIn.read(currentReadContainer_.body_, containerSize);
+            containerIn.close();
             if (containerIn.gcount() != containerSize) {
-                cerr << "StorageCore : read container error" << endl;
+                cerr << "StorageCore : read container " << readName << " error, should read " << containerSize << ", read in size " << containerIn.gcount() << endl;
                 return false;
             }
-            containerIn.close();
-            memcpy(data, containerDataBuffer + key.offset, key.length);
-            string containerDataStrTemp(containerDataBuffer, containerSize);
+            memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
+            string containerDataStrTemp(currentReadContainer_.body_, containerSize);
             containerCache.insertToCache(containerNameStr, containerDataStrTemp);
             return true;
         }
+#else
+        if (currentReadContainerFileName_.compare(containerNameStr) == 0) {
+            memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
+            return true;
+        } else {
+            containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
+            if (!containerIn.is_open()) {
+                std::cerr << "StorageCore : Can not open Container: " << readName << endl;
+                return false;
+            }
+            containerIn.seekg(0, ios_base::end);
+            int containerSize = containerIn.tellg();
+            containerIn.seekg(0, ios_base::beg);
+            containerIn.read(currentReadContainer_.body_, containerSize);
+            containerIn.close();
+            if (containerIn.gcount() != containerSize) {
+                cerr << "StorageCore : read container " << readName << " error, should read " << containerSize << ", read in size " << containerIn.gcount() << endl;
+                return false;
+            }
+            memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
+            currentReadContainerFileName_ = containerNameStr;
+            return true;
+        }
+#endif
     }
 }
 

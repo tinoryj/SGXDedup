@@ -45,15 +45,18 @@ bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
         if (fp2ChunkDBQueryStatus) {
             continue;
         } else {
-            string dbValue;
+#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+            string dbValue = "";
             bool status = fp2ChunkDB.insert(in.hash_[i], dbValue);
             if (status) {
-                out.push_back(i);    
+                out.push_back(i);
             } else {
-                cerr << "DedupCore : dedup by hash error at chunk " <<  i << endl;
+                cerr << "DedupCore : dedup by hash error at chunk " << i << endl;
                 return false;
             }
-            
+#else
+            out.push_back(i);
+#endif
         }
     }
     return true;

@@ -34,9 +34,9 @@ void CTRLC(int s)
 
     if (powServerObj != nullptr)
         delete powServerObj;
-    for (auto it : thList) {
-        it->join();
-    }
+    // for (auto th : thList) {
+    //     th->join();
+    // }
     exit(0);
 }
 
@@ -68,7 +68,7 @@ int main()
     th->detach();
     boost::thread::attributes attrs;
     //cerr << attrs.get_stack_size() << endl;
-    attrs.set_stack_size(200 * 1024 * 1024);
+    attrs.set_stack_size(1000 * 1024 * 1024);
     //cerr << attrs.get_stack_size() << endl;
 
     while (true) {

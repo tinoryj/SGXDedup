@@ -37,6 +37,15 @@ RecvDecode::RecvDecode(string fileName)
 
 RecvDecode::~RecvDecode()
 {
+    NetworkHeadStruct_t request;
+    request.messageType = CLIENT_EXIT;
+    request.dataSize = 0;
+    request.clientID = clientID_;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    char requestBuffer[sendSize];
+    memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
+    dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize);
+    powSecurityChannel_->send(sslConnectionPow_, requestBuffer, sendSize);
     delete dataSecurityChannel_;
     delete powSecurityChannel_;
     if (cryptoObj_ != nullptr) {

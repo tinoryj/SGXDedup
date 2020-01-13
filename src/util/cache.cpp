@@ -30,11 +30,7 @@ bool Cache::existsInCache(string& name)
 string Cache::getFromCache(string& name)
 {
     string ans = "";
-    if (!existsInCache(name))
-        return ans;
-    {
-        boost::shared_lock<boost::shared_mutex> t(this->mtx);
-        ans = this->Cache_->get(name).get();
-    }
+    boost::shared_lock<boost::shared_mutex> t(this->mtx);
+    ans = this->Cache_->get(name).get();
     return ans;
 }

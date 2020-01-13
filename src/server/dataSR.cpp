@@ -72,6 +72,7 @@ void DataSR::run(SSL* sslConnection)
                 cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                 cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
+                cerr << "DataSR : data thread recv exit flag, thread exit now";
                 return;
             }
             case CLIENT_UPLOAD_CHUNK: {
@@ -158,9 +159,11 @@ void DataSR::run(SSL* sslConnection)
                 char* recipeList = (char*)malloc(restoreRecipeListSize);
                 bool restoreRecipeListStatus = storageObj_->restoreRecipeList((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeList, restoreRecipeListSize);
                 if (restoreRecipeListStatus) {
+                    cerr << "DataSR : restore recipes list done" << endl;
                     while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
                         ChunkList_t restoredChunkList;
                         if (storageObj_->restoreChunks(recipeList, restoreRecipeListSize, startID, endID, restoredChunkList)) {
+                            cerr << "DataSR : restore chunks from " << startID << " to " << endID << " done" << endl;
                             netBody.messageType = SUCCESS;
                             int currentChunkNumber = restoredChunkList.size();
                             int totalSendSize = sizeof(int);
@@ -250,6 +253,7 @@ void DataSR::runPow(SSL* sslConnection)
                 cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
                 cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
 #endif
+                cerr << "DataSR : pow thread recv exit flag, exit now" << endl;
                 return;
             }
             case CLIENT_SET_LOGIN: {

@@ -9,7 +9,10 @@ using namespace std;
 
 #define BREAK_DOWN
 #define HIGH_SECURITY
-
+/* define of server verify method */
+// #define STORAGE_SERVER_VERIFY_UPLOAD
+/* define of restore method */
+// #define STORAGE_READ_CACHE
 /* define of key generation method */
 #define LOCAL_STORAGE
 // #define AWS_S3_STORAGE
