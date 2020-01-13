@@ -1,6 +1,7 @@
 #ifndef GENERALDEDUPSYSTEM_STORAGECORE_HPP
 #define GENERALDEDUPSYSTEM_STORAGECORE_HPP
 
+#include "cache.hpp"
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -37,7 +38,7 @@ private:
 public:
     StorageCore();
     ~StorageCore();
-
+    Cache containerCache;
     bool saveChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);
     bool restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);

@@ -84,7 +84,7 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
         readSize += sizeof(int);
         u_char newHash[CHUNK_HASH_SIZE];
         cryptoObj_->generateHash((u_char*)data + readSize, currentChunkSize, newHash);
-        if(memcmp(oldHash, newHash, CHUNK_HASH_SIZE) == 0){
+        if (memcmp(oldHash, newHash, CHUNK_HASH_SIZE) == 0) {
             if (!saveChunk(originHash, data + readSize, currentChunkSize)) {
                 return false;
             }
@@ -244,7 +244,7 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
     dbValue.resize(sizeof(keyForChunkHashDB_t));
     memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
     status = fp2ChunkDB.query(chunkHash, dbValue);
-    if(status){
+    if (status) {
         status = fp2ChunkDB.insert(chunkHash, dbValue);
         if (!status) {
             std::cerr << "StorageCore : Can't insert chunk to database" << endl;
@@ -257,7 +257,6 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
         std::cerr << "StorageCore : Can't insert chunk to database, chunk is not valid" << endl;
         return false;
     }
-
 }
 
 bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
@@ -333,31 +332,37 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
     ifstream containerIn;
     string containerNameStr((char*)key.containerName, lastContainerFileName_.length());
     string readName = containerNamePrefix_ + containerNameStr + containerNameTail_;
-    if (containerNameStr.compare(currentReadContainerFileName_) == 0) {
-        memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
-        return true;
-    } else if (containerNameStr.compare(lastContainerFileName_) == 0) {
+
+    if (containerNameStr.compare(lastContainerFileName_) == 0) {
         memcpy(data, currentContainer_.body_ + key.offset, key.length);
         return true;
     } else {
-        containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
-        if (!containerIn.is_open()) {
-            std::cerr << "StorageCore : Can not open Container: " << readName << endl;
-            return false;
+        bool cacheHitStatus = containerCache.existsInCache(containerNameStr);
+        if (cacheHitStatus) {
+            string containerDataStr = containerCache.getFromCache(containerNameStr);
+            memcpy(data, &containerDataStr[0] + key.offset, key.length);
+            return true;
+        } else {
+            containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
+            if (!containerIn.is_open()) {
+                std::cerr << "StorageCore : Can not open Container: " << readName << endl;
+                return false;
+            }
+            containerIn.seekg(0, ios_base::end);
+            int containerSize = containerIn.tellg();
+            containerIn.seekg(0, ios_base::beg);
+            char containerDataBuffer[containerSize];
+            containerIn.read(containerDataBuffer, containerSize);
+            if (containerIn.gcount() != containerSize) {
+                cerr << "StorageCore : read container error" << endl;
+                return false;
+            }
+            containerIn.close();
+            memcpy(data, containerDataBuffer + key.offset, key.length);
+            string containerDataStrTemp(containerDataBuffer, containerSize);
+            containerCache.insertToCache(containerNameStr, containerDataStrTemp);
+            return true;
         }
-        containerIn.seekg(0, ios_base::end);
-        int containerSize = containerIn.tellg();
-        containerIn.seekg(0, ios_base::beg);
-        containerIn.read(currentReadContainer_.body_, containerSize);
-        if (containerIn.gcount() != containerSize) {
-            cerr << "StorageCore : read container error" << endl;
-            return false;
-        }
-        containerIn.close();
-        currentReadContainer_.used_ = containerSize;
-        memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
-        currentReadContainerFileName_ = containerNameStr;
-        return true;
     }
 }
 
