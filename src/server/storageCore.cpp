@@ -74,14 +74,22 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     int readSize = sizeof(int);
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
+        u_char oldHash[CHUNK_HASH_SIZE];
         string originHash(data + readSize, CHUNK_HASH_SIZE);
+        memcpy(oldHash, data + readSize, CHUNK_HASH_SIZE);
         // cout << "save chunk hash" << endl;
         // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &originHash[0], CHUNK_HASH_SIZE);
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);
-        if (!saveChunk(originHash, data + readSize, currentChunkSize)) {
-            return false;
+        u_char newHash[CHUNK_HASH_SIZE];
+        cryptoObj_->generateHash((u_char*)data + readSize, currentChunkSize, newHash);
+        if(memcmp(oldHash, newHash, CHUNK_HASH_SIZE) == 0){
+            if (!saveChunk(originHash, data + readSize, currentChunkSize)) {
+                return false;
+            }
+        } else {
+            cerr << "StorageCore : save chunk error, chunk may fake" << endl;
         }
         readSize += currentChunkSize;
     }
@@ -231,14 +239,21 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
     string dbValue;
     dbValue.resize(sizeof(keyForChunkHashDB_t));
     memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
-    status = fp2ChunkDB.insert(chunkHash, dbValue);
-    if (!status) {
-        std::cerr << "Can't insert chunk to database" << endl;
-        return false;
+    status = fp2ChunkDB.query(chunkHash, dbValue);
+    if(status){
+        status = fp2ChunkDB.insert(chunkHash, dbValue);
+        if (!status) {
+            std::cerr << "StorageCore : Can't insert chunk to database" << endl;
+            return false;
+        } else {
+            currentContainer_.used_ += key.length;
+            return true;
+        }
     } else {
-        currentContainer_.used_ += key.length;
-        return true;
+        std::cerr << "StorageCore : Can't insert chunk to database, chunk is not valid" << endl;
+        return false;
     }
+
 }
 
 bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)

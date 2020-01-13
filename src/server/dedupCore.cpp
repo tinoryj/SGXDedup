@@ -41,10 +41,19 @@ bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
     for (int i = 0; i < size; i++) {
         // cout << "query chunk hash" << endl;
         // PRINT_BYTE_ARRAY_DEDUP_CORE(stdout, &in.hash_[i][0], CHUNK_HASH_SIZE);
-        if (fp2ChunkDB.query(in.hash_[i], tmpdata)) {
+        bool fp2ChunkDBQueryStatus = fp2ChunkDB.query(in.hash_[i], tmpdata);
+        if (fp2ChunkDBQueryStatus) {
             continue;
         } else {
-            out.push_back(i);
+            string dbValue;
+            bool status = fp2ChunkDB.insert(in.hash_[i], dbValue);
+            if (status) {
+                out.push_back(i);    
+            } else {
+                cerr << "DedupCore : dedup by hash error at chunk " <<  i << endl;
+                return false;
+            }
+            
         }
     }
     return true;

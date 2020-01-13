@@ -11,6 +11,10 @@ using namespace std;
 #define HIGH_SECURITY
 
 /* define of key generation method */
+#define LOCAL_STORAGE
+// #define AWS_S3_STORAGE
+/* define of key generation method */
+#define SGX_KEY_GEN
 // #define NON_OPRF
 // #define MLE
 // #define SKE

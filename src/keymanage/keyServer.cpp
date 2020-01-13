@@ -93,7 +93,8 @@ void keyServer::runRA()
             keyGenerateCount = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
-            if (doRemoteAttestation(raSecurityChannelTemp, sslConnection)) {
+            bool remoteAttestationStatus = doRemoteAttestation(raSecurityChannelTemp, sslConnection);
+            if (remoteAttestationStatus) {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 raRequestFlag = false;
@@ -107,6 +108,78 @@ void keyServer::runRA()
         }
     }
 }
+
+#ifdef SGX_KEY_GEN
+void keyServer::run(SSL* connection)
+{
+#ifdef BREAK_DOWN
+    double keyGenTime = 0;
+    long diff;
+    double second;
+#endif
+    multiThreadCountMutex_.lock();
+    clientThreadCount++;
+    multiThreadCountMutex_.unlock();
+    uint64_t currentThreadkeyGenerationNumber = 0;
+    while (true) {
+        u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        int recvSize = 0;
+        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+
+        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+
+        int recvNumber = recvSize / CHUNK_HASH_SIZE;
+        cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+        u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        multiThreadMutex_.lock();
+
+#ifdef BREAK_DOWN
+        gettimeofday(&timestart, 0);
+#endif
+        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+#ifdef BREAK_DOWN
+        gettimeofday(&timeend, 0);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        keyGenTime += second;
+#endif
+        keyGenerateCount += recvNumber;
+        multiThreadMutex_.unlock();
+        currentThreadkeyGenerationNumber += recvNumber;
+        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+            cerr << "KeyServer : error send back chunk key to client" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+    }
+}
+
+#elif NO_OPRF
 
 void keyServer::run(SSL* connection)
 {
@@ -153,15 +226,12 @@ void keyServer::run(SSL* connection)
 #ifdef BREAK_DOWN
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
-#ifdef NON_OPRF
         for (int i = 0; i < recvNumber; i++) {
             u_char tempKeySeed[CHUNK_HASH_SIZE + 64];
             memset(tempKeySeed, 0, CHUNK_HASH_SIZE + 64);
             memcpy(tempKeySeed, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
             SHA256(tempKeySeed, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE);
         }
-#endif
 #ifdef BREAK_DOWN
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -184,3 +254,81 @@ void keyServer::run(SSL* connection)
         }
     }
 }
+
+#elif OPRF
+
+void keyServer::run(SSL* connection)
+{
+#ifdef BREAK_DOWN
+    double keyGenTime = 0;
+    long diff;
+    double second;
+#endif
+    multiThreadCountMutex_.lock();
+    clientThreadCount++;
+    multiThreadCountMutex_.unlock();
+    uint64_t currentThreadkeyGenerationNumber = 0;
+    int OPRFResultSize = 128;
+    while (true) {
+        u_char hash[config.getKeyBatchSize() * OPRFResultSize];
+        int recvSize = 0;
+        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+
+        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+        int recvNumber = recvSize / OPRFResultSize;
+        cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+
+        u_char key[config.getKeyBatchSize() * OPRFResultSize];
+
+        multiThreadMutex_.lock();
+#ifdef BREAK_DOWN
+        gettimeofday(&timestart, 0);
+#endif
+        for (int i = 0; i < recvNumber; i++) {
+            u_char tempKeySeed[CHUNK_HASH_SIZE + 64];
+            memset(tempKeySeed, 0, CHUNK_HASH_SIZE + 64);
+            memcpy(tempKeySeed, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+            SHA256(tempKeySeed, CHUNK_HASH_SIZE, key + i * CHUNK_ENCRYPT_KEY_SIZE);
+        }
+#ifdef BREAK_DOWN
+        gettimeofday(&timeend, 0);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        keyGenTime += second;
+#endif
+        keyGenerateCount += recvNumber;
+        multiThreadMutex_.unlock();
+        currentThreadkeyGenerationNumber += recvNumber;
+        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * OPRFResultSize)) {
+            cerr << "KeyServer : error send back chunk key to client" << endl;
+            multiThreadCountMutex_.lock();
+            clientThreadCount--;
+            multiThreadCountMutex_.unlock();
+#ifdef BREAK_DOWN
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            return;
+        }
+    }
+}
+#endif
