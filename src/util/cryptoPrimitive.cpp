@@ -132,9 +132,14 @@ CryptoPrimitive::~CryptoPrimitive()
 #else
     EVP_MD_CTX_reset(mdctx_);
 #endif
-    EVP_CIPHER_CTX_reset(cipherctx_);
     EVP_MD_CTX_destroy(mdctx_);
+#ifdef OPENSSL_V_1_0_2
+    EVP_CIPHER_CTX_free(cipherctx_);
     EVP_CIPHER_CTX_cleanup(cipherctx_);
+#else
+    EVP_CIPHER_CTX_reset(cipherctx_);
+    EVP_CIPHER_CTX_cleanup(cipherctx_);
+#endif
     free(iv_);
     free(chunkKeyEncryptionKey_);
 }
@@ -169,7 +174,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 #else
         EVP_MD_CTX_reset(ctx);
 #endif
-        EVP_MD_CTX_destory(ctx);
+        EVP_MD_CTX_destroy(ctx);
         return false;
     }
 
@@ -180,7 +185,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 #else
         EVP_MD_CTX_reset(ctx);
 #endif
-        EVP_MD_CTX_destory(ctx);
+        EVP_MD_CTX_destroy(ctx);
         return false;
     }
     int hashSize;
@@ -191,7 +196,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 #else
         EVP_MD_CTX_reset(ctx);
 #endif
-        EVP_MD_CTX_destory(ctx);
+        EVP_MD_CTX_destroy(ctx);
         return false;
     }
 #ifdef OPENSSL_V_1_0_2
@@ -199,7 +204,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 #else
     EVP_MD_CTX_reset(ctx);
 #endif
-    EVP_MD_CTX_destory(ctx);
+    EVP_MD_CTX_destroy(ctx);
     return true;
 }
 
