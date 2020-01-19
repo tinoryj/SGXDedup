@@ -30,7 +30,8 @@ in the License.
 #include <sgx_key_exchange.h>
 #include <stdio.h>
 #include <string.h>
-#include "configure.hpp"
+
+#define OPENSSL_V_1_0_2
 
 #ifdef OPENSSL_V_1_0_2
 typedef enum {big, little} endianess_t;
