@@ -23,6 +23,7 @@ using namespace std;
 // #define SKE
 // #define MinHash
 // #define OPRF
+#define OPENSSL_V_1_0_2
 
 #ifdef HIGH_SECURITY
 #define CHUNK_FINGER_PRINT_SIZE 32

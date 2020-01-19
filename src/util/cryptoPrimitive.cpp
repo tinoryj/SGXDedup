@@ -104,7 +104,11 @@ CryptoPrimitive::CryptoPrimitive()
     blockSize_ = CRYPTO_BLOCK_SZIE;
     md_ = EVP_sha256();
     cipherctx_ = EVP_CIPHER_CTX_new();
+#ifdef OPENSSL_V_1_0_2
+    mdctx_ = EVP_MD_CTX_create();
+#else
     mdctx_ = EVP_MD_CTX_new();
+#endif
     EVP_MD_CTX_init(mdctx_);
     EVP_CIPHER_CTX_init(cipherctx_);
     cipher_ = EVP_aes_256_cfb();
@@ -123,7 +127,11 @@ CryptoPrimitive::CryptoPrimitive()
  */
 CryptoPrimitive::~CryptoPrimitive()
 {
+#ifdef OPENSSL_V_1_0_2
+    EVP_MD_CTX_cleanup(mdctx_);
+#else
     EVP_MD_CTX_reset(mdctx_);
+#endif
     EVP_CIPHER_CTX_reset(cipherctx_);
     EVP_MD_CTX_destroy(mdctx_);
     EVP_CIPHER_CTX_cleanup(cipherctx_);
@@ -142,7 +150,12 @@ CryptoPrimitive::~CryptoPrimitive()
  */
 bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_char* hash)
 {
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* ctx;
+#ifdef OPENSSL_V_1_0_2
+    ctx = EVP_MD_CTX_create();
+#else
+    ctx = EVP_MD_CTX_new();
+#endif
 
     if (ctx == nullptr) {
         cerr << "error initial MD ctx\n";
@@ -151,22 +164,42 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 
     if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
         cerr << "hash error\n";
-        EVP_MD_CTX_free(ctx);
+#ifdef OPENSSL_V_1_0_2
+        EVP_MD_CTX_cleanup(ctx);
+#else
+        EVP_MD_CTX_reset(ctx);
+#endif
+        EVP_MD_CTX_destory(ctx);
         return false;
     }
 
     if (EVP_DigestUpdate(ctx, dataBuffer, dataSize) != 1) {
         cerr << "hash error\n";
-        EVP_MD_CTX_free(ctx);
+#ifdef OPENSSL_V_1_0_2
+        EVP_MD_CTX_cleanup(ctx);
+#else
+        EVP_MD_CTX_reset(ctx);
+#endif
+        EVP_MD_CTX_destory(ctx);
         return false;
     }
     int hashSize;
     if (EVP_DigestFinal_ex(ctx, hash, (unsigned int*)&hashSize) != 1) {
         cerr << "hash error\n";
-        EVP_MD_CTX_free(ctx);
+#ifdef OPENSSL_V_1_0_2
+        EVP_MD_CTX_cleanup(ctx);
+#else
+        EVP_MD_CTX_reset(ctx);
+#endif
+        EVP_MD_CTX_destory(ctx);
         return false;
     }
-    EVP_MD_CTX_free(ctx);
+#ifdef OPENSSL_V_1_0_2
+    EVP_MD_CTX_cleanup(ctx);
+#else
+    EVP_MD_CTX_reset(ctx);
+#endif
+    EVP_MD_CTX_destory(ctx);
     return true;
 }
 

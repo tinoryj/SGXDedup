@@ -34,7 +34,12 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     char passwd[5] = "1111";
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
+#ifdef OPENSSL_V_1_0_2
+    keyD_ = rsa_->d;
+    keyN_ = rsa_->n;
+#else
     RSA_get0_key(rsa_, &keyN_, nullptr, &keyD_);
+#endif
     u_char keydBuffer[4096];
     int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);

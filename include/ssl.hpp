@@ -1,6 +1,7 @@
 #ifndef GENERALDEDUPSYSTEM_SSL_HPP
 #define GENERALDEDUPSYSTEM_SSL_HPP
 
+#include "configure.hpp"
 #include "openssl/bio.h"
 #include "openssl/err.h"
 #include "openssl/ssl.h"
