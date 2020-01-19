@@ -101,25 +101,25 @@ int AgentWget::request(string const& url, string const& post, Response& response
         wget_args.push_back(arg);
     }
 
-    arg = conn->proxy_server();
-    // Override environment
-    if (arg != "") {
-        string proxy_url = "http://";
-        proxy_url += arg;
-        if (conn->proxy_port() != 80) {
-            proxy_url += ":";
-            proxy_url += to_string(conn->proxy_port());
-        }
-        proxy_url += "/";
+    // arg = conn->proxy_server();
+    // // Override environment
+    // if (arg != "") {
+    //     string proxy_url = "http://";
+    //     proxy_url += arg;
+    //     if (conn->proxy_port() != 80) {
+    //         proxy_url += ":";
+    //         proxy_url += to_string(conn->proxy_port());
+    //     }
+    //     proxy_url += "/";
 
-        setenv("https_proxy", proxy_url.c_str(), 1);
-    }
+    //     setenv("https_proxy", proxy_url.c_str(), 1);
+    // }
 
-    if (conn->proxy_mode() == IAS_PROXY_NONE) {
-        wget_args.push_back("--no-proxy");
-    } else if (conn->proxy_mode() == IAS_PROXY_FORCE) {
-        unsetenv("no_proxy");
-    }
+    // if (conn->proxy_mode() == IAS_PROXY_NONE) {
+    //     wget_args.push_back("--no-proxy");
+    // } else if (conn->proxy_mode() == IAS_PROXY_FORCE) {
+    //     unsetenv("no_proxy");
+    // }
 
     size_t sz;
 
