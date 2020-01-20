@@ -19,6 +19,7 @@ private:
     u_char keyExchangeKey_[16];
 
 public:
+    double keyExchangeEncTime = 0;
     keyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
     ~keyClient();
     void run();
