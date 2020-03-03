@@ -35,9 +35,10 @@ private:
     int updated;
     ssl* raSecurityChannel_;
     SSL* sslConnection_;
+    uint64_t keyRegressionMaxTimes_;
 
 public:
-    kmClient(string keyd);
+    kmClient(string keyd, uint64_t keyRegressionMaxTimes);
     ~kmClient();
     bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();

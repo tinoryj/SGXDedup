@@ -42,6 +42,7 @@ void Configure::readConf(std::string path)
     for (ptree::value_type& it : root.get_child("KeyServerConfig._keyServerPort")) {
         _keyServerPort.push_back(it.second.get_value<int>());
     }
+    _keyRegressionMaxTimes = root.get<uint64_t>("KeyServerConfig._keyRegressionMaxTimes");
 
     //SP Configure
     _storageServerNumber = root.get<uint64_t>("SPConfig._storageServerNumber");
@@ -200,6 +201,11 @@ std::string Configure::getKeyServerIP()
 int Configure::getKeyServerPort()
 {
     return _keyServerPort[0];
+}
+
+uint64_t Configure::getKeyRegressionMaxTimes()
+{
+    return _keyRegressionMaxTimes;
 }
 
 //muti thread settings

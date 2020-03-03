@@ -89,6 +89,7 @@ private:
     int _keyBatchSize;
     uint64_t _keyCacheSize;
     uint64_t _keyGenLimitPerSessionKey;
+    uint64_t _keyRegressionMaxTimes;
 
     //muti thread settings
     int _encodeThreadLimit;
@@ -180,9 +181,11 @@ public:
     int getKeyBatchSize();
     uint64_t getKeyCacheSize();
     uint64_t getKeyGenLimitPerSessionkeySize();
+    uint64_t getKeyRegressionMaxTimes();
 
     //muti thread settings
-    int getEncoderThreadLimit();
+    int
+    getEncoderThreadLimit();
     int getKeyClientThreadLimit();
     int getKeyServerThreadLimit();
 

@@ -21,9 +21,10 @@ private:
     std::mutex multiThreadMutex_;
     std::mutex multiThreadCountMutex_;
     std::mutex clientThreadNumberCountMutex_;
-    uint64_t keyGenerateCount;
-    uint64_t clientThreadCount;
+    uint64_t keyGenerateCount_;
+    uint64_t clientThreadCount_;
     uint64_t keyGenLimitPerSessionKey_;
+    uint64_t sessionKeyUpdateCount_;
     bool raRequestFlag;
     ssl* keySecurityChannel_;
 
