@@ -76,10 +76,12 @@ int encrypt(uint8_t* plaint, uint32_t plaintLen, uint8_t* symKey,
 int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
     uint32_t symKeyLen, uint8_t* plaint, uint32_t* plaintLen);
 
-sgx_ra_key_128_t* sessionkey;
-sgx_ra_key_128_t* macKey;
+sgx_ra_key_128_t sessionkey;
+sgx_ra_key_128_t macKey;
+sgx_ra_key_256_t currentSessionKey;
 uint8_t* serverSecret;
 uint64_t keyRegressionMaxTimes_;
+uint64_t keyRegressionCurrentTimes_;
 
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
@@ -95,8 +97,6 @@ sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 sgx_status_t ecall_setKeyRegressionCounter(uint64_t keyRegressionMaxTimes)
 {
     keyRegressionMaxTimes_ = keyRegressionMaxTimes;
-    sessionkey = (sgx_ra_key_128_t*)malloc(sizeof(sgx_ra_key_128_t) * keyRegressionMaxTimes_);
-    mackey = (sgx_ra_key_128_t*)malloc(sizeof(sgx_ra_key_128_t) * keyRegressionMaxTimes_);
     return SGX_SUCCESS;
 }
 
@@ -108,7 +108,15 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
         return ret_status;
     } else {
         ret_status = sgx_ra_get_keys(*ctx, SGX_RA_KEY_MK, &macKey);
-        return ret_status;
+        if (ret_status != SGX_SUCCESS) {
+            return ret_status;
+        } else {
+            memcpy(&currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
+            memcpy(&currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
+            for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+            }
+            return SGX_SUCCESS;
+        }
     }
 }
 
