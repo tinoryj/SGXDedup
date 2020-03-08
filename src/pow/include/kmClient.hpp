@@ -44,6 +44,7 @@ public:
     bool trusted();
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
     bool doAttestation();
+    bool sessionKeyUpdate();
     bool createEnclave(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string enclaveName);
     bool getMsg01(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string& msg01);
     bool processMsg2(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string& Msg2, string& msg3);

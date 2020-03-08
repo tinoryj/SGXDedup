@@ -27,6 +27,7 @@
 #define RA_REQUEST 21
 #define CLIENT_SET_LOGIN 22
 #define CLIENT_SET_LOGOUT 23
+#define KEY_SERVER_SESSION_KEY_UPDATE 24
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK

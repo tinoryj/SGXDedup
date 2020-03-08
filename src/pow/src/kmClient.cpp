@@ -68,14 +68,22 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
     if (enclave_trusted) {
         sgx_status_t status;
         sgx_status_t retval;
-        status = ecall_setSessionKey(_eid, &retval, &_ctx);
+        status = ecall_setServerSecret(_eid,
+            &retval,
+            (uint8_t*)_keyd.c_str(),
+            (uint32_t)_keyd.length());
         if (status == SGX_SUCCESS) {
-            status = ecall_setServerSecret(_eid,
+            status = ecall_setKeyRegressionCounter(_eid,
                 &retval,
-                (uint8_t*)_keyd.c_str(),
-                (uint32_t)_keyd.length());
+                256);
             if (status == SGX_SUCCESS) {
-                return true;
+                status = ecall_setSessionKey(_eid,
+                    &retval);
+                if (status == SGX_SUCCESS) {
+                    return true;
+                } else {
+                    return false;
+                }
             } else {
                 return false;
             }
@@ -181,6 +189,15 @@ void kmClient::raclose(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx)
     enclave_ra_close(eid, &status, ctx);
 }
 
+bool kmClient::sessionKeyUpdate()
+{
+    sgx_status_t status, retval;
+    if (ecall_setSessionKeyUpdate(_eid, &retval) != SGX_SUCCESS) {
+        return false;
+    } else {
+        return true;
+    }
+}
 bool kmClient::doAttestation()
 {
     sgx_status_t status, sgxrv, pse_status;

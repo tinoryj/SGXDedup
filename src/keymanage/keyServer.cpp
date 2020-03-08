@@ -92,7 +92,7 @@ void keyServer::runRAwithSPRequest()
 void keyServer::runRA()
 {
     while (true) {
-        if (keyGenerateCount_ >= keyGenLimitPerSessionKey_ || raRequestFlag) {
+        if (raRequestFlag) {
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start do remote attestation to storage server" << endl;
@@ -109,6 +109,37 @@ void keyServer::runRA()
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 cerr << "KeyServer : do remote attestation to storage SP error" << endl;
+                continue;
+            }
+        }
+    }
+}
+
+void keyServer::runSessionKeyUpdate()
+{
+    while (true) {
+        if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
+            while (!(clientThreadCount_ == 0))
+                ;
+            cout << "KeyServer : start session key update with storage server" << endl;
+            keyGenerateCount_ = 0;
+            ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
+            SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            bool enclaveSessionKeyUpdateStatus = client.sessionKeyUpdate();
+            if (remoteAttestationStatus) {
+                char sendBuffer[sizeof(NetworkHeadStruct_t)];
+                int sendSize;
+                NetworkHeadStruct_t requestHeader;
+                requestHeader.messageType = KEY_SERVER_SESSION_KEY_UPDATE;
+                memcpy(sendBuffer, &requestHeader, sizeof(requestHeader));
+                raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
+                delete raSecurityChannelTemp;
+                free(sslConnection);
+                cout << "KeyServer : update session key storage SP done" << endl;
+            } else {
+                delete raSecurityChannelTemp;
+                free(sslConnection);
+                cerr << "KeyServer : update session key with storage SP error" << endl;
                 continue;
             }
         }

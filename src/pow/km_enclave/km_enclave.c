@@ -113,8 +113,17 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
         } else {
             memcpy(&currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
             memcpy(&currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
+            uint8_t* hashDataTemp = (uint8_t*)malloc(32);
+            uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+            memcpy_s(hashDataTemp, 32, &currentSessionKey, 32);
             for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+                sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
+                if (sha256Status != SGX_SUCCESS) {
+                    return -1;
+                }
+                memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
             }
+            memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
             return SGX_SUCCESS;
         }
     }
@@ -122,9 +131,22 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
 
 sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
 {
-    sgx_status_t ret_status;
-    ret_status = sgx_ra_get_keys(*ctx, type, &sessionkey);
-    return ret_status;
+    keyRegressionCurrentTimes_--;
+    memset(currentSessionKey, 0, 32);
+    memcpy(&currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
+    memcpy(&currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
+    uint8_t* hashDataTemp = (uint8_t*)malloc(32);
+    uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+    memcpy_s(hashDataTemp, 32, &currentSessionKey, 32);
+    for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+        sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
+        if (sha256Status != SGX_SUCCESS) {
+            return -1;
+        }
+        memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
+    }
+    memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
+    return SGX_SUCCESS;
 }
 
 sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
@@ -136,7 +158,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
     keySeed = (uint8_t*)malloc(srcLen);
     hashTemp = (uint8_t*)malloc(64);
 
-    if (!decrypt(src, srcLen, sessionkey, 16, originhash, &decryptLen)) {
+    if (!decrypt(src, srcLen, currentSessionKey, 32, originhash, &decryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
@@ -154,7 +176,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
 
-    if (!encrypt(keySeed, srcLen, sessionkey, 16, key, &encryptLen)) {
+    if (!encrypt(keySeed, srcLen, currentSessionKey, 32, key, &encryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
@@ -180,7 +202,7 @@ int encrypt(uint8_t* plaint, uint32_t plaintLen, uint8_t* symKey,
     if (ctx == NULL)
         return 0;
 
-    if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, symKey)) {
+    if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_cfb(), NULL, symKey, symKey)) {
         goto error;
     }
 
@@ -210,7 +232,7 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
     if (ctx == NULL)
         return 0;
 
-    if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_cfb(), NULL, symKey, symKey)) {
+    if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_cfb(), NULL, symKey, symKey)) {
         goto error;
     }
 
