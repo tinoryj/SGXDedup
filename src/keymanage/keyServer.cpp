@@ -126,7 +126,7 @@ void keyServer::runSessionKeyUpdate()
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
             bool enclaveSessionKeyUpdateStatus = client.sessionKeyUpdate();
-            if (remoteAttestationStatus) {
+            if (enclaveSessionKeyUpdateStatus) {
                 char sendBuffer[sizeof(NetworkHeadStruct_t)];
                 int sendSize;
                 NetworkHeadStruct_t requestHeader;
