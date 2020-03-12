@@ -110,16 +110,16 @@ bool Sender::getKeyServerSK(u_char* SK)
     int sendSize = sizeof(NetworkHeadStruct_t);
     char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    char respondBuffer[sizeof(NetworkHeadStruct_t) + 16];
+    char respondBuffer[sizeof(NetworkHeadStruct_t) + KEY_SERVER_SESSION_KEY_SIZE];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         return false;
     } else {
-        if (recvSize != sizeof(NetworkHeadStruct_t) + 16) {
+        if (recvSize != sizeof(NetworkHeadStruct_t) + KEY_SERVER_SESSION_KEY_SIZE) {
             cerr << "Client : storage server reject connection beacuse keyexchange key not set not, try again later" << endl;
             return false;
         } else {
-            memcpy(SK, respondBuffer + sizeof(NetworkHeadStruct_t), 16);
+            memcpy(SK, respondBuffer + sizeof(NetworkHeadStruct_t), KEY_SERVER_SESSION_KEY_SIZE);
             return true;
         }
     }

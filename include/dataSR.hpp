@@ -24,10 +24,11 @@ private:
     DedupCore* dedupCoreObj_;
     powServer* powServerObj_;
     uint32_t restoreChunkBatchSize;
-    u_char keyExchangeKey_[16];
+    u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     bool keyExchangeKeySetFlag;
     ssl* powSecurityChannel_;
     ssl* dataSecurityChannel_;
+    uint64_t keyRegressionCurrentTimes_;
 
 public:
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp);

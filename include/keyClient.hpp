@@ -16,7 +16,7 @@ private:
     int keyBatchSize_;
     ssl* keySecurityChannel_;
     SSL* sslConnection_;
-    u_char keyExchangeKey_[16];
+    u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
 
 public:
     double keyExchangeEncTime = 0;

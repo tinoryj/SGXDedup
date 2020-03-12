@@ -90,7 +90,7 @@ int main(int argv, char* argc[])
         cout << "System : init time is " << second << " s" << endl;
         gettimeofday(&timestart, NULL);
 
-        u_char sessionKey[16];
+        u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
         if (!senderObj->getKeyServerSK(sessionKey)) {
             cerr << "Client : get key server session key failed" << endl;
             delete senderObj;

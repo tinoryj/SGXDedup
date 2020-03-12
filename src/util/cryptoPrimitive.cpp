@@ -346,7 +346,7 @@ bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize,
         return false;
     }
     EVP_CIPHER_CTX_set_padding(ctx, 0);
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cfb(), nullptr, key, iv) != 1) {
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cfb(), nullptr, key, iv) != 1) {
         cerr << "decrypt error\n";
         EVP_CIPHER_CTX_cleanup(ctx);
         return false;
@@ -383,7 +383,7 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
         return false;
     }
     EVP_CIPHER_CTX_set_padding(ctx, 0);
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_cfb(), nullptr, key, iv) != 1) {
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cfb(), nullptr, key, iv) != 1) {
         cerr << "encrypt error\n";
         EVP_CIPHER_CTX_cleanup(ctx);
         return false;

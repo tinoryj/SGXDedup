@@ -9,13 +9,10 @@ using namespace std;
 
 #define BREAK_DOWN
 #define HIGH_SECURITY
-/* define of server verify method */
 // #define STORAGE_SERVER_VERIFY_UPLOAD
-/* define of restore method */
+
 // #define STORAGE_READ_CACHE
-/* define of key generation method */
-#define LOCAL_STORAGE
-// #define AWS_S3_STORAGE
+
 /* define of key generation method */
 #define SGX_KEY_GEN
 // #define NON_OPRF
@@ -23,7 +20,7 @@ using namespace std;
 // #define SKE
 // #define MinHash
 // #define OPRF
-#define OPENSSL_V_1_0_2
+// #define OPENSSL_V_1_0_2
 
 #ifdef HIGH_SECURITY
 #define CHUNK_FINGER_PRINT_SIZE 32
@@ -49,6 +46,7 @@ using namespace std;
 #define CHUNK_HASH_SIZE 32
 #define CHUNK_ENCRYPT_KEY_SIZE 32
 #define FILE_NAME_HASH_SIZE 32
+#define KEY_SERVER_SESSION_KEY_SIZE 32
 
 #define CHUNK_TYPE_ENCRYPTED 0
 #define CHUNK_TYPE_VERIFY_PASSED 1

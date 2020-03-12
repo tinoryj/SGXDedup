@@ -99,6 +99,13 @@ void keyServer::runRA()
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            int sendSize = sizeof(NetworkHeadStruct_t);
+            char sendBuffer[sendSize];
+            NetworkHeadStruct_t netHead;
+            netHead.messageType = KEY_SERVER_RA_REQUES;
+            netHead.dataSize = 0;
+            memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
+            raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
             bool remoteAttestationStatus = doRemoteAttestation(raSecurityChannelTemp, sslConnection);
             if (remoteAttestationStatus) {
                 delete raSecurityChannelTemp;

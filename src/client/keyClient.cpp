@@ -35,7 +35,7 @@ keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     encoderObj_ = encoderobjTemp;
     cryptoObj_ = new CryptoPrimitive();
     keyBatchSize_ = (int)config.getKeyBatchSize();
-    memcpy(keyExchangeKey_, keyExchangeKey, 16);
+    memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     sslConnection_ = keySecurityChannel_->sslConnect().second;
 }

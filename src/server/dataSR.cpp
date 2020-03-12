@@ -32,6 +32,7 @@ DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powS
     keyExchangeKeySetFlag = false;
     powSecurityChannel_ = powSecurityChannelTemp;
     dataSecurityChannel_ = dataSecurityChannelTemp;
+    keyRegressionCurrentTimes_ = config.getKeyRegressionMaxTimes();
     // memcpy(keyExchangeKey_, keyExchangeKey, 16);
 }
 
@@ -280,10 +281,10 @@ void DataSR::runPow(SSL* sslConnection)
             case CLIENT_GET_KEY_SERVER_SK: {
                 if (keyExchangeKeySetFlag == true) {
                     netBody.messageType = SUCCESS;
-                    netBody.dataSize = 16;
+                    netBody.dataSize = KEY_SERVER_SESSION_KEY_SIZE;
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), keyExchangeKey_, 16);
-                    sendSize = sizeof(NetworkHeadStruct_t) + 16;
+                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
+                    sendSize = sizeof(NetworkHeadStruct_t) + KEY_SERVER_SESSION_KEY_SIZE;
                 } else {
                     netBody.messageType = ERROR_CLOSE;
                     netBody.dataSize = 0;
@@ -427,34 +428,72 @@ void DataSR::runKeyServerRA()
     ssl* sslRAListen = new ssl(config.getStorageServerIP(), config.getKMServerPort(), SERVERSIDE);
     int sendSize = sizeof(NetworkHeadStruct_t);
     char sendBuffer[sendSize];
-    NetworkHeadStruct_t netHead;
+    NetworkHeadStruct_t netHead, recvHead;
     netHead.messageType = RA_REQUEST;
     netHead.dataSize = 0;
     memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
     while (true) {
     errorRetry:
         SSL* sslRAListenConnection = sslRAListen->sslListen().second;
-        cerr << "DataSR : key server start remote attestation now" << endl;
-        kmServer server(sslRAListen, sslRAListenConnection);
-        powSession* session = server.authkm();
-        if (session != nullptr) {
-            // memcpy(keyExchangeKey_, keyExchangeKey, 16);
-            memcpy(keyExchangeKey_, session->sk, 16);
-            PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, 16);
+        char recvBuffer[sizeof(NetworkHeadStruct_t)];
+        int recvSize;
+        sslRAListen->recv(sslRAListenConnection, recvBuffer, recvSize);
+        memcpy(&recvHead, recvBuffer, sizeof(NetworkHeadStruct_t));
+        if (recvHead.messageType == KEY_SERVER_SESSION_KEY_UPDATE) {
+            cerr << "DataSR : key server start session key update now" << endl;
+            keyRegressionCurrentTimes_--;
+            char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
+            memcpy(currentSessionKey, session->sk, 16);
+            memcpy(currentSessionKey + 16, session->mk, 16);
+            uint8_t* hashDataTemp = (uint8_t*)malloc(32);
+            uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+            memcpy(hashDataTemp, &currentSessionKey, 32);
+            for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+                SHA256(hashDataTemp, 32, hashResultTemp);
+                memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
+            }
+            memcpy(currentSessionKey, hashResultTemp, 32);
+            memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
             keyExchangeKeySetFlag = true;
-            cerr << "KeyClient : keyServer enclave trusted" << endl;
-            delete session;
-            boost::xtime xt;
-            boost::xtime_get(&xt, boost::TIME_UTC_);
-            xt.sec += config.getRASessionKeylifeSpan();
-            boost::thread::sleep(xt);
-            keyExchangeKeySetFlag = false;
-            memset(keyExchangeKey_, 0, 16);
-            ssl* sslRARequest = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), CLIENTSIDE);
-            SSL* sslRARequestConnection = sslRARequest->sslConnect().second;
-            sslRARequest->send(sslRARequestConnection, sendBuffer, sendSize);
-            delete sslRARequest;
             free(sslRARequestConnection);
+        } else if (recvHead.messageType == KEY_SERVER_RA_REQUES) {
+            cerr << "DataSR : key server start remote attestation now" << endl;
+            kmServer server(sslRAListen, sslRAListenConnection);
+            powSession* session = server.authkm();
+            if (session != nullptr) {
+                // memcpy(keyExchangeKey_, keyExchangeKey, 16);
+                char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
+                memcpy(currentSessionKey, session->sk, 16);
+                memcpy(currentSessionKey + 16, session->mk, 16);
+                uint8_t* hashDataTemp = (uint8_t*)malloc(32);
+                uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+                memcpy(hashDataTemp, &currentSessionKey, 32);
+                for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+                    SHA256(hashDataTemp, 32, hashResultTemp);
+                    memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
+                }
+                memcpy(currentSessionKey, hashResultTemp, 32);
+                memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
+
+                PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
+                keyExchangeKeySetFlag = true;
+                cerr << "KeyClient : keyServer enclave trusted" << endl;
+                delete session;
+                boost::xtime xt;
+                boost::xtime_get(&xt, boost::TIME_UTC_);
+                xt.sec += config.getRASessionKeylifeSpan();
+                boost::thread::sleep(xt);
+                keyExchangeKeySetFlag = false;
+                memset(keyExchangeKey_, 0, KEY_SERVER_SESSION_KEY_SIZE);
+                ssl* sslRARequest = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), CLIENTSIDE);
+                SSL* sslRARequestConnection = sslRARequest->sslConnect().second;
+                sslRARequest->send(sslRARequestConnection, sendBuffer, sendSize);
+                // delete sslRARequest;
+                free(sslRARequestConnection);
+            } else {
+                cerr << "KeyClient : keyServer send wrong message, storage try again now" << endl;
+                goto errorRetry;
+            }
         } else {
             delete session;
             cerr << "KeyClient : keyServer enclave not trusted, storage try again now" << endl;
