@@ -44,13 +44,13 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
     string keyd((char*)keydBuffer, lenKeyd / 2);
-    client = new kmClient(keyd);
+    sessionKeyUpdateCount_ = config.getKeyRegressionMaxTimes();
+    client = new kmClient(keyd, sessionKeyUpdateCount_);
     clientThreadCount_ = 0;
     keyGenerateCount_ = 0;
     keyGenLimitPerSessionKey_ = config.getKeyGenLimitPerSessionkeySize();
     raRequestFlag = true;
     keySecurityChannel_ = keyServerSecurityChannelTemp;
-    sessionKeyUpdateCount_ = config.getKeyRegressionMaxTimes();
 }
 
 keyServer::~keyServer()
@@ -132,10 +132,10 @@ void keyServer::runSessionKeyUpdate()
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
-            bool enclaveSessionKeyUpdateStatus = client.sessionKeyUpdate();
+            bool enclaveSessionKeyUpdateStatus = client->sessionKeyUpdate();
             if (enclaveSessionKeyUpdateStatus) {
                 char sendBuffer[sizeof(NetworkHeadStruct_t)];
-                int sendSize;
+                int sendSize = sizeof(NetworkHeadStruct_t);
                 NetworkHeadStruct_t requestHeader;
                 requestHeader.messageType = KEY_SERVER_SESSION_KEY_UPDATE;
                 memcpy(sendBuffer, &requestHeader, sizeof(requestHeader));

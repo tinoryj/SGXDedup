@@ -31,14 +31,14 @@ in the License.
 #include <stdio.h>
 #include <string.h>
 
-#define OPENSSL_V_1_0_2
+// #define OPENSSL_V_1_0_2
 
 #ifdef OPENSSL_V_1_0_2
-typedef enum {big, little} endianess_t;
+typedef enum { big,
+    little } endianess_t;
 
 /* ignore negative */
-static
-int bn2binpad(const BIGNUM *a, unsigned char *to, int tolen, endianess_t endianess)
+static int bn2binpad(const BIGNUM* a, unsigned char* to, int tolen, endianess_t endianess)
 {
     int n;
     size_t i, lasti, j, atop, mask;
@@ -52,7 +52,7 @@ int bn2binpad(const BIGNUM *a, unsigned char *to, int tolen, endianess_t endiane
     n = BN_num_bytes(a);
     if (tolen == -1) {
         tolen = n;
-    } else if (tolen < n) {     /* uncommon/unlike case */
+    } else if (tolen < n) { /* uncommon/unlike case */
         BIGNUM temp = *a;
 
         bn_correct_top(&temp);
@@ -87,24 +87,24 @@ int bn2binpad(const BIGNUM *a, unsigned char *to, int tolen, endianess_t endiane
     return tolen;
 }
 
-int BN_bn2binpad(const BIGNUM *a, unsigned char *to, int tolen)
+int BN_bn2binpad(const BIGNUM* a, unsigned char* to, int tolen)
 {
     if (tolen < 0)
         return -1;
     return bn2binpad(a, to, tolen, big);
 }
 
-int BN_bn2bin(const BIGNUM *a, unsigned char *to)
+int BN_bn2bin(const BIGNUM* a, unsigned char* to)
 {
     return bn2binpad(a, to, -1, big);
 }
 
-BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret)
+BIGNUM* BN_lebin2bn(const unsigned char* s, int len, BIGNUM* ret)
 {
     unsigned int i, m;
     unsigned int n;
     BN_ULONG l;
-    BIGNUM *bn = NULL;
+    BIGNUM* bn = NULL;
 
     if (ret == NULL)
         ret = bn = BN_new();
@@ -113,7 +113,7 @@ BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret)
     bn_check_top(ret);
     s += len;
     /* Skip trailing zeroes. */
-    for ( ; len > 0 && s[-1] == 0; s--, len--)
+    for (; len > 0 && s[-1] == 0; s--, len--)
         continue;
     n = len;
     if (n == 0) {
@@ -146,7 +146,7 @@ BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret)
     return ret;
 }
 
-int BN_bn2lebinpad(const BIGNUM *a, unsigned char *to, int tolen)
+int BN_bn2lebinpad(const BIGNUM* a, unsigned char* to, int tolen)
 {
     if (tolen < 0)
         return -1;
@@ -816,7 +816,7 @@ int ecdsa_sign(unsigned char* msg, size_t mlen, EVP_PKEY* key,
     bnr = sig->r;
     bns = sig->s;
 #else
-        ECDSA_SIG_get0(sig, &bnr, &bns);
+    ECDSA_SIG_get0(sig, &bnr, &bns);
 #endif
     if (!BN_bn2binpad(bnr, r, 32)) {
         error_type = e_crypto;

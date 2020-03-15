@@ -47,7 +47,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     return true;
 }
 
-kmClient::kmClient(string keyd, uint64_t keyRegressionMaxTimes);
+kmClient::kmClient(string keyd, uint64_t keyRegressionMaxTimes)
 {
     _keyd = keyd;
     keyRegressionMaxTimes_ = keyRegressionMaxTimes;
@@ -78,7 +78,7 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                 256);
             if (status == SGX_SUCCESS) {
                 status = ecall_setSessionKey(_eid,
-                    &retval);
+                    &retval, &_ctx);
                 if (status == SGX_SUCCESS) {
                     return true;
                 } else {
@@ -192,7 +192,8 @@ void kmClient::raclose(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx)
 bool kmClient::sessionKeyUpdate()
 {
     sgx_status_t status, retval;
-    if (ecall_setSessionKeyUpdate(_eid, &retval) != SGX_SUCCESS) {
+    _ctx = 0xdeadbeef;
+    if (ecall_setSessionKeyUpdate(_eid, &retval, &_ctx) != SGX_SUCCESS) {
         return false;
     } else {
         return true;

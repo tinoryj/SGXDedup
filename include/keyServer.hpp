@@ -34,6 +34,7 @@ public:
     void run(SSL* connection);
     void runRA();
     void runRAwithSPRequest();
+    void runSessionKeyUpdate();
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
 };
 

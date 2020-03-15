@@ -78,10 +78,10 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
 
 sgx_ra_key_128_t sessionkey;
 sgx_ra_key_128_t macKey;
-sgx_ra_key_256_t currentSessionKey;
+uint8_t currentSessionKey[32];
 uint8_t* serverSecret;
-uint64_t keyRegressionMaxTimes_;
-uint64_t keyRegressionCurrentTimes_;
+uint32_t keyRegressionMaxTimes_;
+uint32_t keyRegressionCurrentTimes_;
 
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
@@ -94,9 +94,10 @@ sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
     return sha256Status;
 }
 
-sgx_status_t ecall_setKeyRegressionCounter(uint64_t keyRegressionMaxTimes)
+sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes)
 {
     keyRegressionMaxTimes_ = keyRegressionMaxTimes;
+    keyRegressionCurrentTimes_ = keyRegressionMaxTimes_;
     return SGX_SUCCESS;
 }
 

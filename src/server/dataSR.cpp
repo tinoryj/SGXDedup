@@ -432,6 +432,7 @@ void DataSR::runKeyServerRA()
     netHead.messageType = RA_REQUEST;
     netHead.dataSize = 0;
     memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
+    powSession* session;
     while (true) {
     errorRetry:
         SSL* sslRAListenConnection = sslRAListen->sslListen().second;
@@ -450,16 +451,16 @@ void DataSR::runKeyServerRA()
             memcpy(hashDataTemp, &currentSessionKey, 32);
             for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                 SHA256(hashDataTemp, 32, hashResultTemp);
-                memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
+                memcpy(hashDataTemp, hashResultTemp, 32);
             }
             memcpy(currentSessionKey, hashResultTemp, 32);
             memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
             keyExchangeKeySetFlag = true;
-            free(sslRARequestConnection);
+            free(sslRAListenConnection);
         } else if (recvHead.messageType == KEY_SERVER_RA_REQUES) {
             cerr << "DataSR : key server start remote attestation now" << endl;
             kmServer server(sslRAListen, sslRAListenConnection);
-            powSession* session = server.authkm();
+            session = server.authkm();
             if (session != nullptr) {
                 // memcpy(keyExchangeKey_, keyExchangeKey, 16);
                 char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
@@ -470,7 +471,7 @@ void DataSR::runKeyServerRA()
                 memcpy(hashDataTemp, &currentSessionKey, 32);
                 for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                     SHA256(hashDataTemp, 32, hashResultTemp);
-                    memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
+                    memcpy(hashDataTemp, hashResultTemp, 32);
                 }
                 memcpy(currentSessionKey, hashResultTemp, 32);
                 memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
