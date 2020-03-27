@@ -15,37 +15,37 @@ in the License.
 
 */
 
-#ifndef __AGENT_H
-#define __AGENT_H
+#include "logfile.h"
+#include "hexutil.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+FILE* fplog = NULL;
+
+FILE* create_logfile(const char* filename)
+{
+    FILE* fp;
 
 #ifdef _WIN32
-#define DEFAULT_CA_BUNDLE DEFAULT_CA_BUNDLE_WIN32
+    if (fopen_s(&fp, filename, "w") != 0) {
+        fprintf(stderr, "fopen_s: ");
 #else
-#define DEFAULT_CA_BUNDLE DEFAULT_CA_BUNDLE_LINUX
+    if ((fp = fopen(filename, "w")) == NULL) {
+        fprintf(stderr, "fopen: ");
 #endif
+        perror(filename);
+        exit(1);
+    }
 
-#include "httpparser/response.h"
-#include "iasrequest.h"
+    return fp;
+}
 
-using namespace httpparser;
-
-using namespace std;
-
-#include <string>
-
-class IAS_Connection;
-
-class Agent {
-protected:
-    IAS_Connection* conn;
-
-public:
-    Agent(IAS_Connection* conn_in) { conn = conn_in; }
-    virtual ~Agent(){};
-
-    virtual int initialize() { return 1; };
-    virtual int request(string const& url, string const& postdata,
-        Response& response) { return 0; };
-};
-
-#endif
+void close_logfile(FILE* fp)
+{
+    if (fp) {
+        fclose(fp);
+        fp = NULL;
+    }
+}

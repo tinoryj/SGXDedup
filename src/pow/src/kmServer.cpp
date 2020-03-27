@@ -45,12 +45,24 @@ kmServer::kmServer(ssl* raSecurityChannel, SSL* sslConnection)
 
     from_hexstring((unsigned char*)&_spid, (const void*)&spid[0], 16);
 
-    _ias = new IAS_Connection(config.getKMIASServerType(), 0);
-    _ias->client_cert(IAS_CERT_FILE, "PEM");
-    _ias->client_key(IAS_CLIENT_KEY, nullptr);
+    _ias = new IAS_Connection(
+        config.getKMIASServerType(),
+        0,
+        (char*)(config.getKMPriSubscriptionKey().c_str()),
+        (char*)(config.getKMSecSubscriptionKey().c_str()));
+    _ias->agent("wget");
+    // _ias->client_cert(IAS_CERT_FILE, "PEM");
+    // _ias->client_key(IAS_CLIENT_KEY, nullptr);
     _ias->proxy_mode(IAS_PROXY_NONE);
     _ias->cert_store(_store);
     _ias->ca_bundle(CA_BUNDLE);
+
+    // _ias = new IAS_Connection(config.getKMIASServerType(), 0);
+    // _ias->client_cert(IAS_CERT_FILE, "PEM");
+    // _ias->client_key(IAS_CLIENT_KEY, nullptr);
+    // _ias->proxy_mode(IAS_PROXY_NONE);
+    // _ias->cert_store(_store);
+    // _ias->ca_bundle(CA_BUNDLE);
 
     _quote_type = config.getKMQuoteType();
     _service_private_key = key_private_from_bytes(def_service_private_key_km);

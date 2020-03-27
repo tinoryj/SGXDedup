@@ -15,28 +15,24 @@ in the License.
 
 */
 
-#ifndef __AGENT__WGET__H
-#define __AGENT__WGET__H
+#ifndef __LOGFILE__H
+#define __LOGFILE__H
 
-#include "agent.h"
-#include "httpparser/response.h"
-#include "iasrequest.h"
+#include <stdio.h>
+#include <sys/types.h>
 
-using namespace httpparser;
-using namespace std;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <string>
+extern FILE* fplog;
 
-class Agent;
-class IAS_Request;
+FILE* create_logfile(const char* filename);
 
-class AgentWget : protected Agent {
-public:
-    static string name;
+void close_logfile(FILE* fp);
 
-    AgentWget(IAS_Connection* conn)
-        : Agent(conn){};
-    int request(string const& url, string const& post, Response& response);
+#ifdef __cplusplus
 };
+#endif
 
 #endif

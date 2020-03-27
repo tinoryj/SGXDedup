@@ -109,6 +109,8 @@ private:
     std::string _POWSPID;
     int _POWIasServerType; //0 for develop; 1 for production
     uint64_t _POWBatchSize;
+    std::string _POWPriSubscriptionKey;
+    std::string _POWSecSubscriptionKey;
 
     //km enclave settings
     int _KMQuoteType; //0x00 linkable; 0x01 unlinkable
@@ -118,6 +120,8 @@ private:
     std::string _KMEnclaveName;
     std::string _KMSPID;
     int _KMIasServerType; //0 for develop; 1 for production
+    std::string _KMPriSubscriptionKey;
+    std::string _KMSecSubscriptionKey;
 
     // storage management settings
     uint64_t _storageServerNumber;
@@ -204,6 +208,8 @@ public:
     std::string getPOWSPID();
     int getPOWIASServerType();
     uint64_t getPOWBatchSize();
+    std::string getPOWPriSubscriptionKey();
+    std::string getPOWSecSubscriptionKey();
 
     //km settings
     int getKMQuoteType();
@@ -213,6 +219,8 @@ public:
     std::string getKMEnclaveName();
     std::string getKMSPID();
     int getKMIASServerType();
+    std::string getKMPriSubscriptionKey();
+    std::string getKMSecSubscriptionKey();
 
     // storage management settings
     uint64_t getStorageServerNumber();

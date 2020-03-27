@@ -27,6 +27,8 @@ int main()
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
+    th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
+    th->detach();
     while (true) {
         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;
         th = new boost::thread(boost::bind(&keyServer::run, server, sslConnection));

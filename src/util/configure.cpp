@@ -77,6 +77,8 @@ void Configure::readConf(std::string path)
     _POWSPID = root.get<std::string>("pow._SPID");
     _POWIasServerType = root.get<int>("pow._iasServerType");
     _POWBatchSize = root.get<uint64_t>("pow._batchSize");
+    _POWPriSubscriptionKey = root.get<std::string>("pow._PriSubscriptionKey");
+    _POWSecSubscriptionKey = root.get<std::string>("pow._SecSubscriptionKey");
 
     //km enclave Configure
     _KMQuoteType = root.get<int>("km._quoteType");
@@ -86,6 +88,8 @@ void Configure::readConf(std::string path)
     _KMEnclaveName = root.get<std::string>("km._enclave_name");
     _KMSPID = root.get<std::string>("km._SPID");
     _KMIasServerType = root.get<int>("km._iasServerType");
+    _KMPriSubscriptionKey = root.get<std::string>("km._PriSubscriptionKey");
+    _KMSecSubscriptionKey = root.get<std::string>("km._SecSubscriptionKey");
 
     //server Configure
     _RecipeRootPath = root.get<std::string>("server._RecipeRootPath");
@@ -411,4 +415,22 @@ int Configure::getStorageCoreThreadLimit()
 int Configure::getSendRecipeBatchSize()
 {
     return _sendRecipeBatchSize;
+}
+
+std::string Configure::getPOWPriSubscriptionKey()
+{
+    return _POWPriSubscriptionKey;
+}
+std::string Configure::getPOWSecSubscriptionKey()
+{
+    return _POWSecSubscriptionKey;
+}
+
+std::string Configure::getKMPriSubscriptionKey()
+{
+    return _KMPriSubscriptionKey;
+}
+std::string Configure::getKMSecSubscriptionKey()
+{
+    return _KMSecSubscriptionKey;
 }

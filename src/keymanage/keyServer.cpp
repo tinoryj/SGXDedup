@@ -99,6 +99,7 @@ void keyServer::runRA()
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            cout << "KeyServer : remote attestation thread connected storage server" << endl;
             int sendSize = sizeof(NetworkHeadStruct_t);
             char sendBuffer[sendSize];
             NetworkHeadStruct_t netHead;

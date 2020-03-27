@@ -32,9 +32,32 @@ extern Configure config;
 
 using namespace std;
 
+
 class powServer {
 private:
     CryptoPrimitive* cryptoObj_;
+
+    typedef struct config_struct {
+        sgx_spid_t spid;
+        unsigned char pri_subscription_key[IAS_SUBSCRIPTION_KEY_SIZE + 1];
+        unsigned char sec_subscription_key[IAS_SUBSCRIPTION_KEY_SIZE + 1];
+        uint16_t quote_type;
+        EVP_PKEY* service_private_key;
+        char* proxy_server;
+        char* ca_bundle;
+        char* user_agent;
+        unsigned int proxy_port;
+        unsigned char kdk[16];
+        X509_STORE* store;
+        X509* signing_ca;
+        unsigned int apiver;
+        int strict_trust;
+        sgx_measurement_t req_mrsigner;
+        sgx_prod_id_t req_isv_product_id;
+        sgx_isv_svn_t min_isvsvn;
+        int allow_debug_enclave;
+    } config_t;
+
     IAS_Connection* _ias;
     X509* _signing_ca;
     X509_STORE* _store;
@@ -42,6 +65,7 @@ private:
     uint16_t _quote_type;
     EVP_PKEY* _service_private_key;
     uint16_t _iasVersion;
+
     bool derive_kdk(EVP_PKEY* Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
     bool get_sigrl(sgx_epid_group_id_t gid, char* sig_rl, uint32_t* sig_rl_size);
     bool get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4);

@@ -436,6 +436,7 @@ void DataSR::runKeyServerRA()
     while (true) {
     errorRetry:
         SSL* sslRAListenConnection = sslRAListen->sslListen().second;
+        cerr << "DataSR : key server connected" << endl;
         char recvBuffer[sizeof(NetworkHeadStruct_t)];
         int recvSize;
         sslRAListen->recv(sslRAListenConnection, recvBuffer, recvSize);
