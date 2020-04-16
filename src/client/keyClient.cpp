@@ -40,6 +40,15 @@ keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     sslConnection_ = keySecurityChannel_->sslConnect().second;
 }
 
+keyClient::keyClient(u_char* keyExchangeKey)
+{
+    cryptoObj_ = new CryptoPrimitive();
+    keyBatchSize_ = (int)config.getKeyBatchSize();
+    memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
+    keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
+    sslConnection_ = keySecurityChannel_->sslConnect().second;
+}
+
 keyClient::~keyClient()
 {
     if (cryptoObj_ != NULL) {
@@ -49,6 +58,44 @@ keyClient::~keyClient()
     delete inputMQ_;
 }
 
+void keyClient::runKeyGenSimulator()
+{
+
+#ifdef BREAK_DOWN
+    double keyExchangeTime = 0;
+    long diff;
+    double second;
+#endif
+    int batchNumber = 0;
+    u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
+    u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
+    bool JobDoneFlag = false;
+    while (true) {
+
+        Data_t tempChunk;
+
+        if (batchNumber == keyBatchSize_ || JobDoneFlag) {
+            int batchedKeySize = 0;
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartKey, NULL);
+#endif
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendKey, NULL);
+            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+            second = diff / 1000000.0;
+            keyExchangeTime += second;
+#endif
+        }
+        if (JobDoneFlag) {
+            break;
+        }
+    }
+#ifdef BREAK_DOWN
+    cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
+#endif
+    return;
+}
 void keyClient::run()
 {
 

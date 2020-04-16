@@ -21,8 +21,10 @@ private:
 public:
     double keyExchangeEncTime = 0;
     keyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
+    keyClient(u_char* keyExchangeKey);
     ~keyClient();
     void run();
+    void runKeyGenSimulator();
     bool encodeChunk(Data_t& newChunk);
     bool insertMQFromChunker(Data_t& newChunk);
     bool extractMQFromChunker(Data_t& newChunk);

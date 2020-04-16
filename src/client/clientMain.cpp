@@ -78,6 +78,21 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 
+    } else if (strcmp("-k", argc[1]) == 0) {
+        int threadNumber = atoi(argc[2]);
+
+        senderObj = new Sender();
+        u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
+        if (!senderObj->getKeyServerSK(sessionKey)) {
+            cerr << "Client : get key server session key failed" << endl;
+            delete senderObj;
+            return 0;
+        }
+        keyClientObj = new keyClient(sessionKey);
+        for (int i = 0; i < threadNumber; i++) {
+            th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj));
+            thList.push_back(th);
+        }
     } else if (strcmp("-s", argc[1]) == 0) {
 
         senderObj = new Sender();
