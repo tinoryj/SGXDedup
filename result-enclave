@@ -1,0 +1,379 @@
+0-1 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 3.10142 s
+0-2 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 3.36141 s
+0-3 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 4.52332 s
+0-4 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 13.2519 s
+0-5 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 2.82815 s
+0-6 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 4.06726 s
+0-7 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 2.8964 s
+0-8 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 3.4398 s
+0-9 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 2.65476 s
+0-10 test: 
+Key Generate Test : target thread number = 1, target key number per thread = 1000000
+System : total work time is 2.7251 s
+5-1 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 9.45219 s
+5-2 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 7.34434 s
+5-3 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 7.83427 s
+5-4 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 7.93286 s
+5-5 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 12.936 s
+5-6 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 10.82 s
+5-7 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 12.5037 s
+5-8 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 9.55129 s
+5-9 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 7.58699 s
+5-10 test: 
+Key Generate Test : target thread number = 5, target key number per thread = 1000000
+System : total work time is 7.60626 s
+10-1 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 14.824 s
+10-2 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 12.2704 s
+10-3 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 14.4827 s
+10-4 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 14.2083 s
+10-5 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 12.2983 s
+10-6 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 13.518 s
+10-7 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 11.7968 s
+10-8 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 13.287 s
+10-9 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 11.7844 s
+10-10 test: 
+Key Generate Test : target thread number = 10, target key number per thread = 1000000
+System : total work time is 11.3089 s
+15-1 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.1404 s
+15-2 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.9836 s
+15-3 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 17.4943 s
+15-4 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.3657 s
+15-5 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 17.1405 s
+15-6 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 17.1439 s
+15-7 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.6783 s
+15-8 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.5156 s
+15-9 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 16.3857 s
+15-10 test: 
+Key Generate Test : target thread number = 15, target key number per thread = 1000000
+System : total work time is 17.3053 s
+20-1 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.0355 s
+20-2 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.981 s
+20-3 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.0036 s
+20-4 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.3215 s
+20-5 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.6256 s
+20-6 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.0811 s
+20-7 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.0985 s
+20-8 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 22.1143 s
+20-9 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 21.1871 s
+20-10 test: 
+Key Generate Test : target thread number = 20, target key number per thread = 1000000
+System : total work time is 22.0951 s
+25-1 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.2038 s
+25-2 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.3885 s
+25-3 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.4539 s
+25-4 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.1326 s
+25-5 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.378 s
+25-6 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.3609 s
+25-7 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 27.0181 s
+25-8 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.1802 s
+25-9 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.2108 s
+25-10 test: 
+Key Generate Test : target thread number = 25, target key number per thread = 1000000
+System : total work time is 26.6532 s
+30-1 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+System : total work time is 31.4643 s
+30-2 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+System : total work time is 32.0478 s
+30-3 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+System : total work time is 31.7565 s
+30-4 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+System : total work time is 33.4601 s
+30-5 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+System : total work time is 32.9896 s
+30-6 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+30-7 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+30-8 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+30-9 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+30-10 test: 
+Key Generate Test : target thread number = 30, target key number per thread = 1000000
+35-1 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-2 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-3 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-4 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-5 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-6 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-7 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-8 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-9 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+35-10 test: 
+Key Generate Test : target thread number = 35, target key number per thread = 1000000
+40-1 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-2 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-3 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-4 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-5 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-6 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-7 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-8 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-9 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+40-10 test: 
+Key Generate Test : target thread number = 40, target key number per thread = 1000000
+45-1 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-2 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-3 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-4 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-5 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-6 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-7 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-8 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-9 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+45-10 test: 
+Key Generate Test : target thread number = 45, target key number per thread = 1000000
+50-1 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-2 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-3 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-4 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-5 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-6 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-7 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-8 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-9 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+50-10 test: 
+Key Generate Test : target thread number = 50, target key number per thread = 1000000
+55-1 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-2 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-3 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-4 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-5 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-6 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-7 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-8 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-9 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+55-10 test: 
+Key Generate Test : target thread number = 55, target key number per thread = 1000000
+60-1 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-2 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-3 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-4 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-5 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-6 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-7 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-8 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-9 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+60-10 test: 
+Key Generate Test : target thread number = 60, target key number per thread = 1000000
+65-1 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-2 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-3 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-4 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-5 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-6 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-7 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-8 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-9 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+65-10 test: 
+Key Generate Test : target thread number = 65, target key number per thread = 1000000
+70-1 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-2 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-3 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-4 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-5 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-6 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-7 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-8 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-9 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+70-10 test: 
+Key Generate Test : target thread number = 70, target key number per thread = 1000000
+75-1 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-2 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-3 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-4 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-5 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-6 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000
+75-7 test: 
+Key Generate Test : target thread number = 75, target key number per thread = 1000000

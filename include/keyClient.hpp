@@ -17,11 +17,12 @@ private:
     ssl* keySecurityChannel_;
     SSL* sslConnection_;
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
+    int keyGenNumber_;
 
 public:
     double keyExchangeEncTime = 0;
     keyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
-    keyClient(u_char* keyExchangeKey);
+    keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
     ~keyClient();
     void run();
     void runKeyGenSimulator();
@@ -32,6 +33,7 @@ public:
     bool editJobDoneFlag();
     bool setJobDoneFlag();
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
+    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection);
 };
 
 #endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP

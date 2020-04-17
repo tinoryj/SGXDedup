@@ -15,7 +15,7 @@ using namespace std;
 
 /* define of key generation method */
 #define SGX_KEY_GEN
-// #define NON_OPRF
+// #define NO_OPRF
 // #define MLE
 // #define SKE
 // #define MinHash

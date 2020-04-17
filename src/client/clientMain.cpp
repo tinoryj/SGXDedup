@@ -56,7 +56,7 @@ int main(int argv, char* argc[])
 
     vector<boost::thread*> thList;
     boost::thread* th;
-    if (argv != 3) {
+    if (argv != 3 && argv != 4) {
         usage();
         return 0;
     }
@@ -80,15 +80,22 @@ int main(int argv, char* argc[])
 
     } else if (strcmp("-k", argc[1]) == 0) {
         int threadNumber = atoi(argc[2]);
-
-        senderObj = new Sender();
+        if (threadNumber == 0) {
+            threadNumber = 1;
+        }
+        int keyGenNumber = atoi(argc[3]);
         u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
+#ifdef SGX_KEY_GEN
+        senderObj = new Sender();
         if (!senderObj->getKeyServerSK(sessionKey)) {
             cerr << "Client : get key server session key failed" << endl;
             delete senderObj;
             return 0;
         }
-        keyClientObj = new keyClient(sessionKey);
+#endif
+        gettimeofday(&timestart, NULL);
+        cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
+        keyClientObj = new keyClient(sessionKey, keyGenNumber);
         for (int i = 0; i < threadNumber; i++) {
             th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj));
             thList.push_back(th);
