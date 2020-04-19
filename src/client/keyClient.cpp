@@ -252,6 +252,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
 }
+
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
@@ -324,6 +325,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
 }
+
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
 {
     if (!securityChannel->send(sslConnection, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
