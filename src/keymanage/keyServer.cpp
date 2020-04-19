@@ -5,9 +5,6 @@
 #endif
 extern Configure config;
 
-struct timeval timestart;
-struct timeval timeend;
-
 void PRINT_BYTE_ARRAY_KEY_SERVER(
     FILE* file, void* mem, uint32_t len)
 {
@@ -158,6 +155,8 @@ void keyServer::runSessionKeyUpdate()
 void keyServer::run(SSL* connection)
 {
 #ifdef BREAK_DOWN
+    struct timeval timestart;
+    struct timeval timeend;
     double keyGenTime = 0;
     long diff;
     double second;
@@ -174,8 +173,10 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
             return;
         }
@@ -186,14 +187,16 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
             return;
         }
 
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
-        cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+        // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         multiThreadMutex_.lock();
 
@@ -216,8 +219,10 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
             return;
         }
@@ -230,6 +235,8 @@ void keyServer::run(SSL* connection)
 void keyServer::run(SSL* connection)
 {
 #ifdef BREAK_DOWN
+    struct timeval timestart;
+    struct timeval timeend;
     double keyGenTime = 0;
     long diff;
     double second;
@@ -246,10 +253,11 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
-            cerr << "KeyServer : thread exit" << endl;
             return;
         }
 
@@ -259,10 +267,11 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
-            cerr << "KeyServer : thread exit" << endl;
             return;
         }
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
@@ -270,7 +279,6 @@ void keyServer::run(SSL* connection)
 
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 
-        multiThreadMutex_.lock();
 #ifdef BREAK_DOWN
         gettimeofday(&timestart, 0);
 #endif
@@ -287,7 +295,6 @@ void keyServer::run(SSL* connection)
         keyGenTime += second;
 #endif
         keyGenerateCount_ += recvNumber;
-        multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
         if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
@@ -295,10 +302,11 @@ void keyServer::run(SSL* connection)
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
+            multiThreadCountMutex_.lock();
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #endif
-            cerr << "KeyServer : thread exit" << endl;
             return;
         }
     }

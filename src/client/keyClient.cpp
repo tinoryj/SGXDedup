@@ -4,12 +4,6 @@
 
 extern Configure config;
 
-struct timeval timestartKey;
-struct timeval timeendKey;
-
-struct timeval timestartKey_enc;
-struct timeval timeendKey_enc;
-
 void PRINT_BYTE_ARRAY_KEY_CLIENT(
     FILE* file, void* mem, uint32_t len)
 {
@@ -56,12 +50,15 @@ keyClient::~keyClient()
     }
     inputMQ_->~messageQueue();
     delete inputMQ_;
+    cout << "KeyClient : key exchange encryption time = " << keyExchangeEncTime << " s" << endl;
 }
 
 void keyClient::runKeyGenSimulator()
 {
 
 #ifdef BREAK_DOWN
+    double keyGenTime = 0;
+    double chunkHashGenerateTime = 0;
     double keyExchangeTime = 0;
     long diff;
     double second;
@@ -83,7 +80,17 @@ void keyClient::runKeyGenSimulator()
             u_char chunkHashTemp[CHUNK_HASH_SIZE];
             u_char chunkTemp[5 * CHUNK_HASH_SIZE];
             memset(chunkTemp, currentKeyGenNumber, 5 * CHUNK_HASH_SIZE);
+#ifdef BREAK_DOWN
+            gettimeofday(&timestartKeySimulator, NULL);
+#endif
             cryptoObj_->generateHash(chunkTemp, 5 * CHUNK_HASH_SIZE, chunkHashTemp);
+#ifdef BREAK_DOWN
+            gettimeofday(&timeendKeySimulator, NULL);
+            diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
+            second = diff / 1000000.0;
+            keyGenTime += second;
+            chunkHashGenerateTime += second;
+#endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, chunkHashTemp, CHUNK_HASH_SIZE);
         } else {
             JobDoneFlag = true;
@@ -100,6 +107,7 @@ void keyClient::runKeyGenSimulator()
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
             second = diff / 1000000.0;
             keyExchangeTime += second;
+            keyGenTime += second;
 #endif
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             memset(chunkKey, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -114,7 +122,8 @@ void keyClient::runKeyGenSimulator()
         }
     }
 #ifdef BREAK_DOWN
-    cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, total key generated is " << currentKeyGenNumber << endl;
+    cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
+    cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
 #endif
     return;
 }
@@ -128,6 +137,8 @@ void keyClient::run()
     double keyExchangeTime = 0;
     long diff;
     double second;
+    struct timeval timestartKey;
+    struct timeval timeendKey;
 #endif
     vector<Data_t> batchList;
     int batchNumber = 0;
@@ -211,6 +222,8 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
 #ifdef BREAK_DOWN
+    struct timeval timestartKey_enc;
+    struct timeval timeendKey_enc;
     gettimeofday(&timestartKey_enc, NULL);
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
 #endif
@@ -257,6 +270,8 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
 #ifdef BREAK_DOWN
+    struct timeval timestartKey_enc;
+    struct timeval timeendKey_enc;
     gettimeofday(&timestartKey_enc, NULL);
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
 #endif
