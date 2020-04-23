@@ -32,6 +32,7 @@ public:
 
     EVP_CIPHER_CTX* cipherctx_;
     EVP_MD_CTX* mdctx_;
+    CMAC_CTX* cmacctx_;
     const EVP_CIPHER* cipher_;
     u_char* iv_;
     u_char* chunkKeyEncryptionKey_;

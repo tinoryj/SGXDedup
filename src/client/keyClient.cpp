@@ -65,6 +65,7 @@ void keyClient::runKeyGenSimulator()
     struct timeval timestartKeySimulator;
     struct timeval timeendKeySimulator;
 #endif
+    CryptoPrimitive* cryptoObj = new CryptoPrimitive();
     ssl* keySecurityChannel = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     SSL* sslConnection = keySecurityChannel->sslConnect().second;
     int batchNumber = 0;
@@ -83,7 +84,7 @@ void keyClient::runKeyGenSimulator()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-            cryptoObj_->generateHash(chunkTemp, 5 * CHUNK_HASH_SIZE, chunkHashTemp);
+            cryptoObj->generateHash(chunkTemp, 5 * CHUNK_HASH_SIZE, chunkHashTemp);
 #ifdef BREAK_DOWN
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
@@ -101,7 +102,7 @@ void keyClient::runKeyGenSimulator()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection);
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
 #ifdef BREAK_DOWN
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
@@ -266,15 +267,15 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
 #ifdef BREAK_DOWN
     struct timeval timestartKey_enc;
     struct timeval timeendKey_enc;
     gettimeofday(&timestartKey_enc, NULL);
-    cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
 #endif
+    cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
 #ifdef BREAK_DOWN
     gettimeofday(&timeendKey_enc, NULL);
     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -300,8 +301,8 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     if (batchkeyNumber == batchNumber) {
 #ifdef BREAK_DOWN
         gettimeofday(&timestartKey_enc, NULL);
-        cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
 #endif
+        cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
 #ifdef BREAK_DOWN
         gettimeofday(&timeendKey_enc, NULL);
         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
