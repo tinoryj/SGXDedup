@@ -190,7 +190,6 @@ sgx_status_t ecall_setCTRMode()
 sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key)
 {
     uint8_t *originhash, *hashTemp, *keySeed, *hash;
-    uint32_t decryptLen, encryptLen;
     hash = (uint8_t*)malloc(32);
     originhash = (uint8_t*)malloc(srcLen);
     keySeed = (uint8_t*)malloc(srcLen);
@@ -200,7 +199,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key)
         originhash[i] = src[i] ^ currentXORBase[i];
     }
 
-    for (uint32_t index = 0; index < (decryptLen / 32); index++) {
+    for (uint32_t index = 0; index < (srcLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
         memcpy_s(hashTemp + 32, 64, serverSecret, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
@@ -218,11 +217,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key)
     free(originhash);
     free(hashTemp);
     free(keySeed);
-    if (srcLen != decryptLen) {
-        return SGX_ERROR_UNEXPECTED;
-    } else {
-        return SGX_SUCCESS;
-    }
+    return SGX_SUCCESS;
 }
 
 sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)

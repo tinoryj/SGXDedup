@@ -57,7 +57,9 @@ keyClient::~keyClient()
     }
     inputMQ_->~messageQueue();
     delete inputMQ_;
+#ifdef BREAK_DOWN
     cout << "KeyClient : key exchange encryption time = " << keyExchangeEncTime << " s" << endl;
+#endif
 }
 
 void keyClient::runKeyGenSimulator()
@@ -225,6 +227,16 @@ void keyClient::run()
     return;
 }
 
+#ifdef SGX_KEY_GEN_CTR
+bool keyClient::keyExchangeXOR(u_char* result, u_char* input, int batchNumber)
+{
+    for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
+        result[i] = input[i] ^ keyExchangeXORBase_[i];
+    }
+    return true;
+}
+#endif
+
 #ifdef SGX_KEY_GEN
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
@@ -234,7 +246,11 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     //     struct timeval timeendKey_enc;
     //     gettimeofday(&timestartKey_enc, NULL);
     // #endif
+#ifdef SGX_KEY_GEN_CTR
+    keyExchangeXOR(sendHash, batchHashList, batchNumber);
+#else
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
+#endif
     // #ifdef BREAK_DOWN
     //     gettimeofday(&timeendKey_enc, NULL);
     //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -260,7 +276,11 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timestartKey_enc, NULL);
         // #endif
+#ifdef SGX_KEY_GEN_CTR
+        keyExchangeXOR(batchKeyList, recvBuffer, batchkeyNumber);
+#else
         cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
+#endif
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timeendKey_enc, NULL);
         //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -272,16 +292,6 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
 }
-
-#ifdef SGX_KEY_GEN_CTR
-bool keyClient::keyExchangeXOR(u_char* result, u_char* input, int batchNumber)
-{
-    for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
-        result[i] = input[i] ^ keyExchangeXORBase_[i];
-    }
-    return true;
-}
-#endif
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {

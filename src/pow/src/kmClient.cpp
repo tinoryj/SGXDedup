@@ -207,7 +207,8 @@ bool kmClient::sessionKeyUpdate()
 {
     sgx_status_t status, retval;
     _ctx = 0xdeadbeef;
-    if (ecall_setSessionKeyUpdate(_eid, &retval, &_ctx) != SGX_SUCCESS) {
+    status = ecall_setSessionKeyUpdate(_eid, &retval, &_ctx);
+    if (status != SGX_SUCCESS) {
         return false;
     } else {
         return true;

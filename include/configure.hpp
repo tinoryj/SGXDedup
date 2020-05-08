@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define BREAK_DOWN
+// #define BREAK_DOWN
 #define HIGH_SECURITY
 // #define STORAGE_SERVER_VERIFY_UPLOAD
 
@@ -15,7 +15,7 @@ using namespace std;
 
 /* define of key generation method */
 #define SGX_KEY_GEN
-// #define SGX_KEY_GEN_CTR
+#define SGX_KEY_GEN_CTR
 // #define NO_OPRF
 // #define MLE
 // #define SKE

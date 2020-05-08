@@ -46,6 +46,10 @@ void usage()
 
 int main(int argv, char* argc[])
 {
+    long diff;
+    double second;
+    gettimeofday(&timestart, NULL);
+
     struct sigaction sa;
     sa.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &sa, 0);
@@ -68,6 +72,11 @@ int main(int argv, char* argc[])
 
         recvDecodeObj = new RecvDecode(fileName);
         retrieverObj = new Retriever(fileName, recvDecodeObj);
+
+        gettimeofday(&timeend, NULL);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        cout << "System : Init time is " << second << " s" << endl;
 
         gettimeofday(&timestart, NULL);
 
@@ -93,9 +102,15 @@ int main(int argv, char* argc[])
             return 0;
         }
 #endif
-        gettimeofday(&timestart, NULL);
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
         keyClientObj = new keyClient(sessionKey, keyGenNumber);
+
+        gettimeofday(&timeend, NULL);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        cout << "System : Init time is " << second << " s" << endl;
+
+        gettimeofday(&timestart, NULL);
         for (int i = 0; i < threadNumber; i++) {
             th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj));
             thList.push_back(th);
@@ -103,14 +118,7 @@ int main(int argv, char* argc[])
     } else if (strcmp("-s", argc[1]) == 0) {
 
         senderObj = new Sender();
-
-        gettimeofday(&timestart, NULL);
         powClientObj = new powClient(senderObj);
-        gettimeofday(&timeend, NULL);
-        long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-        double second = diff / 1000000.0;
-        cout << "System : init time is " << second << " s" << endl;
-        gettimeofday(&timestart, NULL);
 
         u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
         if (!senderObj->getKeyServerSK(sessionKey)) {
@@ -124,6 +132,12 @@ int main(int argv, char* argc[])
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, keyClientObj);
 
+        gettimeofday(&timeend, NULL);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        cout << "System : Init time is " << second << " s" << endl;
+
+        gettimeofday(&timestart, NULL);
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
@@ -152,8 +166,9 @@ int main(int argv, char* argc[])
         it->join();
     }
     gettimeofday(&timeend, NULL);
-    long diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-    double second = diff / 1000000.0;
+    diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+    second = diff / 1000000.0;
+
     delete chunkerObj;
     delete keyClientObj;
     delete senderObj;
@@ -161,6 +176,7 @@ int main(int argv, char* argc[])
     delete retrieverObj;
     delete powClientObj;
     delete encoderObj;
+
     cout << "System : total work time is " << second << " s" << endl;
     return 0;
 }
