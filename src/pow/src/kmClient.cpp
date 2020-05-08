@@ -33,11 +33,19 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     sgx_status_t status;
     uint8_t* ans;
     ans = (uint8_t*)malloc(keySize);
+#ifdef SGX_KEY_GEN_CTR
+    status = ecall_keygen_ctr(_eid,
+        &retval,
+        (uint8_t*)hash,
+        (uint32_t)hashSize,
+        ans);
+#else
     status = ecall_keygen(_eid,
         &retval,
         (uint8_t*)hash,
         (uint32_t)hashSize,
         ans);
+#endif
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : ecall failed" << endl;
         return false;
@@ -80,7 +88,13 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                 status = ecall_setSessionKey(_eid,
                     &retval, &_ctx);
                 if (status == SGX_SUCCESS) {
-                    return true;
+                    status = ecall_setCTRMode(_eid,
+                        &retval);
+                    if (status == SGX_SUCCESS) {
+                        return true;
+                    } else {
+                        return false;
+                    }
                 } else {
                     return false;
                 }

@@ -16,7 +16,11 @@ enclave {
     public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx);
     public sgx_status_t ecall_setSessionKeyUpdate([in]sgx_ra_context_t* ctx);
     public sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes);
+    public sgx_status_t ecall_setCTRMode();
     public sgx_status_t ecall_keygen([user_check] uint8_t *src,
+                                      uint32_t srcLen,
+                                      [user_check] uint8_t *key);
+    public sgx_status_t ecall_keygen_ctr([user_check] uint8_t *src,
                                       uint32_t srcLen,
                                       [user_check] uint8_t *key);
 

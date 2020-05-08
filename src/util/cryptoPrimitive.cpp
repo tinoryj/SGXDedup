@@ -333,6 +333,39 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
     return true;
 }
 
+bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, const int counterNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
+{
+    u_char currentKeyBase[CRYPTO_BLOCK_SZIE];
+    u_char currentKey[CRYPTO_BLOCK_SZIE];
+    int cipherlen, len;
+    for (int i = 0; i < counterNumber; i++) {
+        memcpy(currentKeyBase, &i, sizeof(int));
+        memcpy(currentKeyBase + sizeof(int), nonce, CRYPTO_BLOCK_SZIE - sizeof(int));
+        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ctr(), nullptr, key, iv) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+
+        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, CRYPTO_BLOCK_SZIE) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+
+        if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+        cipherlen += len;
+        if (cipherlen != CRYPTO_BLOCK_SZIE) {
+            cerr << "CryptoPrimitive : encrypt output size not equal to origin size" << endl;
+            return false;
+        } else {
+            memcpy(ctrBaseBuffer + i * CRYPTO_BLOCK_SZIE, currentKey, CRYPTO_BLOCK_SZIE);
+        }
+    }
+    return true;
+}
+
 bool CryptoPrimitive::cmac128(vector<string>& message, string& mac, u_char* key, int keyLen)
 {
     if (CMAC_Init(cmacctx_, key, keyLen, EVP_aes_128_cbc(), nullptr) != 1) {

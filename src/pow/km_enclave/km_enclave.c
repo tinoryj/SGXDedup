@@ -21,7 +21,6 @@
 // }; //little endding/hard coding
 
 #define PSE_RETRIES 5 /* Arbitrary. Not too long, not too short. */
-
 /*
  * quote pow_enclave
  * */
@@ -79,6 +78,7 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
 sgx_ra_key_128_t sessionkey;
 sgx_ra_key_128_t macKey;
 uint8_t currentSessionKey[32];
+uint8_t currentXORBase[32 * 3000];
 uint8_t* serverSecret;
 uint32_t keyRegressionMaxTimes_;
 uint32_t keyRegressionCurrentTimes_;
@@ -148,6 +148,81 @@ sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
     }
     memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
     return SGX_SUCCESS;
+}
+
+sgx_status_t ecall_setCTRMode()
+{
+    EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
+    unsigned char currentKeyBase[16];
+    unsigned char currentKey[16];
+    int cipherlen, len;
+    unsigned char nonce[16 - sizeof(int)];
+    memset(nonce, 1, 16 - sizeof(int));
+    for (int i = 0; i < 2 * 3000; i++) {
+        memcpy(currentKeyBase, &i, sizeof(int));
+        memcpy(currentKeyBase + sizeof(int), nonce, 16 - sizeof(int));
+        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ctr(), NULL, currentSessionKey, currentSessionKey) != 1) {
+            EVP_CIPHER_CTX_cleanup(cipherctx_);
+            return SGX_ERROR_UNEXPECTED;
+        }
+
+        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 16) != 1) {
+            EVP_CIPHER_CTX_cleanup(cipherctx_);
+            return SGX_ERROR_UNEXPECTED;
+        }
+
+        if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+            EVP_CIPHER_CTX_cleanup(cipherctx_);
+            return SGX_ERROR_UNEXPECTED;
+        }
+        cipherlen += len;
+        if (cipherlen != 16) {
+            EVP_CIPHER_CTX_cleanup(cipherctx_);
+            return SGX_ERROR_UNEXPECTED;
+        } else {
+            memcpy(currentXORBase + i * 16, currentKey, 16);
+        }
+    }
+    EVP_CIPHER_CTX_cleanup(cipherctx_);
+    return SGX_SUCCESS;
+}
+
+sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key)
+{
+    uint8_t *originhash, *hashTemp, *keySeed, *hash;
+    uint32_t decryptLen, encryptLen;
+    hash = (uint8_t*)malloc(32);
+    originhash = (uint8_t*)malloc(srcLen);
+    keySeed = (uint8_t*)malloc(srcLen);
+    hashTemp = (uint8_t*)malloc(64);
+
+    for (int i = 0; i < srcLen; i++) {
+        originhash[i] = src[i] ^ currentXORBase[i];
+    }
+
+    for (uint32_t index = 0; index < (decryptLen / 32); index++) {
+        memcpy_s(hashTemp, 64, originhash + index * 32, 32);
+        memcpy_s(hashTemp + 32, 64, serverSecret, 32);
+        sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
+        if (sha256Status != SGX_SUCCESS) {
+            return sha256Status;
+        }
+        memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
+    }
+
+    for (int i = 0; i < srcLen; i++) {
+        key[i] = keySeed[i] ^ currentXORBase[i];
+    }
+
+    free(hash);
+    free(originhash);
+    free(hashTemp);
+    free(keySeed);
+    if (srcLen != decryptLen) {
+        return SGX_ERROR_UNEXPECTED;
+    } else {
+        return SGX_SUCCESS;
+    }
 }
 
 sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)

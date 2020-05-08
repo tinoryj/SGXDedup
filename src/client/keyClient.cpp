@@ -41,6 +41,13 @@ keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
     keyBatchSize_ = (int)config.getKeyBatchSize();
     memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keyGenNumber_ = keyGenNumber;
+#ifdef SGX_KEY_GEN_CTR
+    keyExchangeXORBase_ = (u_char*)malloc(CHUNK_HASH_SIZE * keyBatchSize_ * sizeof(u_char));
+    int ctrModeCounter = keyBatchSize_ * 2;
+    u_char nonce[CRYPTO_BLOCK_SZIE - sizeof(int)];
+    memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(int));
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, ctrModeCounter, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase_);
+#endif
 }
 
 keyClient::~keyClient()
@@ -222,19 +229,18 @@ void keyClient::run()
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-#ifdef BREAK_DOWN
-    struct timeval timestartKey_enc;
-    struct timeval timeendKey_enc;
-    gettimeofday(&timestartKey_enc, NULL);
+    // #ifdef BREAK_DOWN
+    //     struct timeval timestartKey_enc;
+    //     struct timeval timeendKey_enc;
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-#endif
-#ifdef BREAK_DOWN
-    gettimeofday(&timeendKey_enc, NULL);
-    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    double second = diff / 1000000.0;
-    keyExchangeEncTime += second;
-#endif
-
+    // #ifdef BREAK_DOWN
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     double second = diff / 1000000.0;
+    //     keyExchangeEncTime += second;
+    // #endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
@@ -251,37 +257,52 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-#ifdef BREAK_DOWN
-        gettimeofday(&timestartKey_enc, NULL);
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timestartKey_enc, NULL);
+        // #endif
         cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-#endif
-#ifdef BREAK_DOWN
-        gettimeofday(&timeendKey_enc, NULL);
-        diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        second = diff / 1000000.0;
-        keyExchangeEncTime += second;
-#endif
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timeendKey_enc, NULL);
+        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        //         second = diff / 1000000.0;
+        //         keyExchangeEncTime += second;
+        // #endif
         return true;
     } else {
         return false;
     }
 }
 
+#ifdef SGX_KEY_GEN_CTR
+bool keyClient::keyExchangeXOR(u_char* result, u_char* input, int batchNumber)
+{
+    for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
+        result[i] = input[i] ^ keyExchangeXORBase_[i];
+    }
+    return true;
+}
+#endif
+
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-#ifdef BREAK_DOWN
-    struct timeval timestartKey_enc;
-    struct timeval timeendKey_enc;
-    gettimeofday(&timestartKey_enc, NULL);
-#endif
+// #ifdef BREAK_DOWN
+//     struct timeval timestartKey_enc;
+//     struct timeval timeendKey_enc;
+//     gettimeofday(&timestartKey_enc, NULL);
+// #endif
+#ifdef SGX_KEY_GEN_CTR
+    keyExchangeXOR(sendHash, batchHashList, batchNumber);
+#else
     cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-#ifdef BREAK_DOWN
-    gettimeofday(&timeendKey_enc, NULL);
-    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    double second = diff / 1000000.0;
-    keyExchangeEncTime += second;
 #endif
+
+    // #ifdef BREAK_DOWN
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     double second = diff / 1000000.0;
+    //     keyExchangeEncTime += second;
+    // #endif
 
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
@@ -299,16 +320,20 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-#ifdef BREAK_DOWN
-        gettimeofday(&timestartKey_enc, NULL);
-#endif
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timestartKey_enc, NULL);
+        // #endif
+#ifdef SGX_KEY_GEN_CTR
+        keyExchangeXOR(batchKeyList, recvBuffer, batchkeyNumber);
+#else
         cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-#ifdef BREAK_DOWN
-        gettimeofday(&timeendKey_enc, NULL);
-        diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        second = diff / 1000000.0;
-        keyExchangeEncTime += second;
 #endif
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timeendKey_enc, NULL);
+        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        //         second = diff / 1000000.0;
+        //         keyExchangeEncTime += second;
+        // #endif
         return true;
     } else {
         return false;

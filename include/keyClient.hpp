@@ -18,6 +18,9 @@ private:
     SSL* sslConnection_;
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     int keyGenNumber_;
+#ifdef SGX_KEY_GEN_CTR
+    u_char* keyExchangeXORBase_;
+#endif
 
 public:
     double keyExchangeEncTime = 0;
@@ -32,6 +35,7 @@ public:
     bool insertMQToEncoder(Data_t& newChunk);
     bool editJobDoneFlag();
     bool setJobDoneFlag();
+    bool keyExchangeXOR(u_char* result, u_char* input, int batchNumber);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj);
