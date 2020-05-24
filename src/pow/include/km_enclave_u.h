@@ -71,6 +71,7 @@ sgx_status_t ecall_setSessionKey(sgx_enclave_id_t eid, sgx_status_t* retval, sgx
 sgx_status_t ecall_setSessionKeyUpdate(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx);
 sgx_status_t ecall_setKeyRegressionCounter(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t keyRegressionMaxTimes);
 sgx_status_t ecall_setCTRMode(sgx_enclave_id_t eid, sgx_status_t* retval);
+sgx_status_t ecall_setNextEncryptionMask(sgx_enclave_id_t eid, sgx_status_t* retval, int clientID)
 
 #ifdef __cplusplus
 }
