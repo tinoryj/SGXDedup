@@ -27,6 +27,9 @@ private:
     uint64_t sessionKeyUpdateCount_;
     bool raRequestFlag;
     ssl* keySecurityChannel_;
+#ifdef SGX_KEY_GEN_CTR
+    uint32_t clientID_KeyGenerateCounter[100];
+#endif
 
 public:
     keyServer(ssl* keySecurityChannelTemp);

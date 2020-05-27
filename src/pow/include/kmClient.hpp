@@ -42,7 +42,11 @@ public:
     ~kmClient();
     bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();
+#ifdef SGX_KEY_GEN_CTR
+    bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen);
+#else
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
+#endif
     bool doAttestation();
     bool sessionKeyUpdate();
     bool createEnclave(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string enclaveName);

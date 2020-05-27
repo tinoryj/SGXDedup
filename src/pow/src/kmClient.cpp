@@ -21,7 +21,37 @@ void PRINT_BYTE_ARRAY_KM(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
+#ifdef SGX_KEY_GEN_CTR
 
+bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen)
+{
+    sgx_status_t retval;
+    if (!enclave_trusted) {
+        cerr << "kmClient : can't do a request before pow_enclave trusted" << endl;
+        return false;
+    }
+    sgx_status_t status;
+    uint8_t* ans;
+    ans = (uint8_t*)malloc(keySize);
+    status = ecall_keygen_ctr(_eid,
+        &retval,
+        (uint8_t*)hash,
+        (uint32_t)hashSize,
+        ans,
+        clientID,
+        previousCounter,
+        currentCounter,
+        nonce,
+        nonceLen);
+    if (status != SGX_SUCCESS) {
+        cerr << "kmClient : ecall failed" << endl;
+        return false;
+    }
+    memcpy(key, ans, keySize);
+    free(ans);
+    return true;
+}
+#else
 bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
 {
     sgx_status_t retval;
@@ -33,19 +63,12 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     sgx_status_t status;
     uint8_t* ans;
     ans = (uint8_t*)malloc(keySize);
-#ifdef SGX_KEY_GEN_CTR
-    status = ecall_keygen_ctr(_eid,
-        &retval,
-        (uint8_t*)hash,
-        (uint32_t)hashSize,
-        ans);
-#else
+
     status = ecall_keygen(_eid,
         &retval,
         (uint8_t*)hash,
         (uint32_t)hashSize,
         ans);
-#endif
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : ecall failed" << endl;
         return false;
@@ -54,7 +77,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     free(ans);
     return true;
 }
-
+#endif
 kmClient::kmClient(string keyd, uint64_t keyRegressionMaxTimes)
 {
     _keyd = keyd;
