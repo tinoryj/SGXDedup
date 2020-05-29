@@ -44,6 +44,7 @@ public:
     bool trusted();
 #ifdef SGX_KEY_GEN_CTR
     bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen);
+    bool maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen);
 #else
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
 #endif

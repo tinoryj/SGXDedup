@@ -22,12 +22,32 @@ void PRINT_BYTE_ARRAY_KM(
     fprintf(file, "\n}\n");
 }
 #ifdef SGX_KEY_GEN_CTR
+bool kmClient::maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen)
+{
+    sgx_status_t retval;
+    if (!enclave_trusted) {
+        cerr << "kmClient : can't do mask generation before km_enclave trusted" << endl;
+        return false;
+    }
+    sgx_status_t status;
+    status = ecall_setNextEncryptionMask(_eid,
+        &retval,
+        clientID,
+        previousCounter,
+        nonce,
+        nonceLen);
+    if (status != SGX_SUCCESS) {
+        cerr << "kmClient : ecall failed" << endl;
+        return false;
+    }
+    return true;
+}
 
 bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen)
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "kmClient : can't do a request before pow_enclave trusted" << endl;
+        cerr << "kmClient : can't do a request before km_enclave trusted" << endl;
         return false;
     }
     sgx_status_t status;

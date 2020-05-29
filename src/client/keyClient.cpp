@@ -32,6 +32,7 @@ keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     sslConnection_ = keySecurityChannel_->sslConnect().second;
+    clientID_ = config.getClientID();
 }
 
 keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
@@ -41,12 +42,9 @@ keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
     keyBatchSize_ = (int)config.getKeyBatchSize();
     memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keyGenNumber_ = keyGenNumber;
+    clientID_ = config.getClientID();
 #ifdef SGX_KEY_GEN_CTR
-    keyExchangeXORBase_ = (u_char*)malloc(CHUNK_HASH_SIZE * keyBatchSize_ * sizeof(u_char));
-    int ctrModeCounter = keyBatchSize_ * 2;
-    u_char nonce[CRYPTO_BLOCK_SZIE - sizeof(int)];
-    memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(int));
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, ctrModeCounter, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase_);
+    memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
 #endif
 }
 
@@ -82,6 +80,42 @@ void keyClient::runKeyGenSimulator()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
+    uint32_t counter = 0;
+    //read old counter
+    string counterFileName = ".counter";
+    ifstream counterIn;
+    counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
+    if (!counterIn.is_open()) {
+        cerr << "KeyClient : Can not open old counter file : " << counterFileName << endl;
+    } else {
+        counterIn.seekg(0, ios_base::end);
+        int counterFileSize = counterIn.tellg();
+        counterIn.seekg(0, ios_base::beg);
+        if (counterFileSize != sizeof(uint32_t)) {
+            cerr << "KeyClient : stored old counter file size error" << endl;
+        } else {
+            char readBuffer[sizeof(uint32_t)];
+            counterIn.read(readBuffer, sizeof(uint32_t));
+            counterIn.close();
+            if (counterIn.gcount() != sizeof(uint32_t)) {
+                cerr << "KeyClient : read old counter file size error" << endl;
+            } else {
+                memcpy(&counter, readBuffer, sizeof(uint32_t));
+            }
+        }
+    }
+    // done
+    char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
+    memcpy(initInfoBuffer, &clientID_, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + sizeof(int))) {
+        cerr << "keyClient: send init information error" << endl;
+        return;
+    } else {
+        cout << "KeyClient : send init information success, start key generate" << endl;
+    }
+
     while (true) {
 
         if (currentKeyGenNumber < keyGenNumber_) {
@@ -111,7 +145,7 @@ void keyClient::runKeyGenSimulator()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter);
 #ifdef BREAK_DOWN
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
@@ -119,6 +153,7 @@ void keyClient::runKeyGenSimulator()
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
+            counter += batchNumber * 2;
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             memset(chunkKey, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             batchNumber = 0;
@@ -131,6 +166,17 @@ void keyClient::runKeyGenSimulator()
             break;
         }
     }
+    ofstream counterOut;
+    counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
+    if (!counterOut.is_open()) {
+        cerr << "Can not open counter store file : " << counterFileName << endl;
+    } else {
+        char writeBuffer[sizeof(uint32_t)];
+        memcpy(writeBuffer, &counter, sizeof(uint32_t));
+        counterOut.write(writeBuffer, sizeof(uint32_t));
+        counterOut.close();
+    }
+
 #ifdef BREAK_DOWN
     cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
@@ -155,6 +201,43 @@ void keyClient::run()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
+#ifdef SGX_KEY_GEN_CTR
+    uint32_t counter = 0;
+    //read old counter
+    string counterFileName = ".counter";
+    ifstream counterIn;
+    counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
+    if (!counterIn.is_open()) {
+        cerr << "KeyClient : Can not open old counter file : " << counterFileName << endl;
+    } else {
+        counterIn.seekg(0, ios_base::end);
+        int counterFileSize = counterIn.tellg();
+        counterIn.seekg(0, ios_base::beg);
+        if (counterFileSize != sizeof(uint32_t)) {
+            cerr << "KeyClient : stored old counter file size error" << endl;
+        } else {
+            char readBuffer[sizeof(uint32_t)];
+            counterIn.read(readBuffer, sizeof(uint32_t));
+            counterIn.close();
+            if (counterIn.gcount() != sizeof(uint32_t)) {
+                cerr << "KeyClient : read old counter file size error" << endl;
+            } else {
+                memcpy(&counter, readBuffer, sizeof(uint32_t));
+            }
+        }
+    }
+    // done
+    char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
+    memcpy(initInfoBuffer, &clientID_, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, 16 + sizeof(int))) {
+        cerr << "keyClient: send init information error" << endl;
+        return;
+    } else {
+        cout << "KeyClient : send init information success, start key generate" << endl;
+    }
+#endif
     while (true) {
 
         Data_t tempChunk;
@@ -187,7 +270,13 @@ void keyClient::run()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartKey, NULL);
 #endif
+#ifdef SGX_KEY_GEN_CTR
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter);
+            counter += batchNumber * 2;
+#else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
+#endif
+
 #ifdef BREAK_DOWN
             gettimeofday(&timeendKey, NULL);
             diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
@@ -224,18 +313,21 @@ void keyClient::run()
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
 #endif
-    return;
-}
 
 #ifdef SGX_KEY_GEN_CTR
-bool keyClient::keyExchangeXOR(u_char* result, u_char* input, int batchNumber)
-{
-    for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
-        result[i] = input[i] ^ keyExchangeXORBase_[i];
+    ofstream counterOut;
+    counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
+    if (!counterOut.is_open()) {
+        cerr << "Can not open counter store file : " << counterFileName << endl;
+    } else {
+        char writeBuffer[sizeof(uint32_t)];
+        memcpy(writeBuffer, &counter, sizeof(uint32_t));
+        counterOut.write(writeBuffer, sizeof(uint32_t));
+        counterOut.close();
     }
-    return true;
-}
 #endif
+    return;
+}
 
 #ifdef SGX_KEY_GEN
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
@@ -246,11 +338,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     //     struct timeval timeendKey_enc;
     //     gettimeofday(&timestartKey_enc, NULL);
     // #endif
-#ifdef SGX_KEY_GEN_CTR
-    keyExchangeXOR(sendHash, batchHashList, batchNumber);
-#else
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-#endif
     // #ifdef BREAK_DOWN
     //     gettimeofday(&timeendKey_enc, NULL);
     //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -276,11 +364,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timestartKey_enc, NULL);
         // #endif
-#ifdef SGX_KEY_GEN_CTR
-        keyExchangeXOR(batchKeyList, recvBuffer, batchkeyNumber);
-#else
         cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-#endif
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timeendKey_enc, NULL);
         //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -296,16 +380,12 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-// #ifdef BREAK_DOWN
-//     struct timeval timestartKey_enc;
-//     struct timeval timeendKey_enc;
-//     gettimeofday(&timestartKey_enc, NULL);
-// #endif
-#ifdef SGX_KEY_GEN_CTR
-    keyExchangeXOR(sendHash, batchHashList, batchNumber);
-#else
+    // #ifdef BREAK_DOWN
+    //     struct timeval timestartKey_enc;
+    //     struct timeval timeendKey_enc;
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
     cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-#endif
 
     // #ifdef BREAK_DOWN
     //     gettimeofday(&timeendKey_enc, NULL);
@@ -333,11 +413,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timestartKey_enc, NULL);
         // #endif
-#ifdef SGX_KEY_GEN_CTR
-        keyExchangeXOR(batchKeyList, recvBuffer, batchkeyNumber);
-#else
         cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-#endif
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timeendKey_enc, NULL);
         //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -349,6 +425,119 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
 }
+#ifdef SGX_KEY_GEN_CTR
+
+bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
+{
+    for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
+        result[i] = input[i] ^ xorBase[i];
+    }
+    return true;
+}
+
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter)
+{
+    u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
+    // #ifdef BREAK_DOWN
+    //     struct timeval timestartKey_enc;
+    //     struct timeval timeendKey_enc;
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
+
+    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
+
+    // #ifdef BREAK_DOWN
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     double second = diff / 1000000.0;
+    //     keyExchangeEncTime += second;
+    // #endif
+    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
+        cerr << "keyClient: send socket error" << endl;
+        return false;
+    }
+    u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
+    int recvSize;
+    if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
+        cerr << "keyClient: recv socket error" << endl;
+        return false;
+    }
+    if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
+        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        return false;
+    }
+    batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
+    if (batchkeyNumber == batchNumber) {
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timestartKey_enc, NULL);
+        // #endif
+
+        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase, batchkeyNumber);
+
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timeendKey_enc, NULL);
+        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        //         second = diff / 1000000.0;
+        //         keyExchangeEncTime += second;
+        // #endif
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter)
+{
+    u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
+    // #ifdef BREAK_DOWN
+    //     struct timeval timestartKey_enc;
+    //     struct timeval timeendKey_enc;
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
+    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
+    // #ifdef BREAK_DOWN
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     double second = diff / 1000000.0;
+    //     keyExchangeEncTime += second;
+    // #endif
+
+    if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
+        cerr << "keyClient: send socket error" << endl;
+        return false;
+    }
+    u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
+    int recvSize;
+    if (!securityChannel->recv(sslConnection, (char*)recvBuffer, recvSize)) {
+        cerr << "keyClient: recv socket error" << endl;
+        return false;
+    }
+    if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
+        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        return false;
+    }
+    batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
+    if (batchkeyNumber == batchNumber) {
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timestartKey_enc, NULL);
+        // #endif
+        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase, batchkeyNumber);
+        // #ifdef BREAK_DOWN
+        //         gettimeofday(&timeendKey_enc, NULL);
+        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        //         second = diff / 1000000.0;
+        //         keyExchangeEncTime += second;
+        // #endif
+        return true;
+    } else {
+        return false;
+    }
+}
+#endif
 #endif
 
 #ifdef NO_OPRF

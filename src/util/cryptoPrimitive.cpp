@@ -333,15 +333,15 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
     return true;
 }
 
-bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, const int counterNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
+bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
 {
     u_char currentKeyBase[CRYPTO_BLOCK_SZIE];
     u_char currentKey[CRYPTO_BLOCK_SZIE];
     int cipherlen, len;
-    for (int i = 0; i < counterNumber; i++) {
-        memcpy(currentKeyBase, &i, sizeof(int));
-        memcpy(currentKeyBase + sizeof(int), nonce, CRYPTO_BLOCK_SZIE - sizeof(int));
-        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ctr(), nullptr, key, iv) != 1) {
+    for (uint32_t i = counter; i < counter + generateNumber; i++) {
+        memcpy(currentKeyBase, &i, sizeof(uint32_t));
+        memcpy(currentKeyBase + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
+        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), nullptr, key, iv) != 1) {
             cerr << "encrypt error\n";
             return false;
         }
@@ -360,7 +360,7 @@ bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, const int counte
             cerr << "CryptoPrimitive : encrypt output size not equal to origin size" << endl;
             return false;
         } else {
-            memcpy(ctrBaseBuffer + i * CRYPTO_BLOCK_SZIE, currentKey, CRYPTO_BLOCK_SZIE);
+            memcpy(ctrBaseBuffer + (i - counter) * CRYPTO_BLOCK_SZIE, currentKey, CRYPTO_BLOCK_SZIE);
         }
     }
     return true;

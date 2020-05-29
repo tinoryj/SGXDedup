@@ -72,6 +72,28 @@ bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
     return true;
 }
 
+#ifdef SGX_KEY_GEN_CTR
+void keyServer::runCTRModeMaskGenerate()
+{
+    while (true) {
+        if (raRequestFlag == false) {
+            while (!(clientThreadCount_ == 0))
+                ;
+            cout << "KeyServer : start compute session encryption mask offline" << endl;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientList[i].keyGenerateCounter > 0) {
+                    client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
+                }
+            }
+            boost::xtime xt;
+            boost::xtime_get(&xt, boost::TIME_UTC_);
+            xt.sec += 20;
+            boost::thread::sleep(xt);
+        }
+    }
+}
+#endif
+
 void keyServer::runRAwithSPRequest()
 {
     ssl* raSecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), SERVERSIDE);
@@ -165,18 +187,61 @@ void keyServer::run(SSL* connection)
     multiThreadCountMutex_.lock();
     clientThreadCount_++;
     multiThreadCountMutex_.unlock();
+    int recvSize = 0;
     uint64_t currentThreadkeyGenerationNumber = 0;
-    uint8_t nonce[12];
-    memset(nonce, 1, 12);
-    int nonceLen = 12;
+    uint8_t nonce[16 - sizeof(uint32_t)];
+    int nonceLen = 16 - sizeof(uint32_t);
     int clientID = 0;
-    uint32_t currentKeyGenerateCounter = 0; // counter for AES block size, each key increase 2 for the counter
+    uint32_t currentKeyGenerateCount = 0;
+    uint32_t recvedClientCounter = 0;
+    maskInfo currentMaskInfo;
+    // recv init messages
+    char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
+
+    if (keySecurityChannel_->recv(connection, initInfoBuffer, recvSize)) {
+        memcpy(&clientID, initInfoBuffer, sizeof(int));
+        memcpy(&recvedClientCounter, initInfoBuffer + sizeof(int), sizeof(uint32_t));
+        memcpy(nonce, initInfoBuffer + sizeof(int) + sizeof(uint32_t), 16 - sizeof(uint32_t));
+        memcpy(currentMaskInfo.nonce, nonce, 12);
+        currentMaskInfo.clientID = clientID;
+        currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 2 for the counter
+        if (recvedClientCounter != 0) {
+            multiThreadCountMutex_.lock();
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    if (clientList[i].keyGenerateCounter == recvedClientCounter) {
+                        cout << "KeyServer : compared key generate encryption counter success" << endl;
+                        break;
+                    } else {
+                        cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList[i].keyGenerateCounter << endl;
+                        return;
+                    }
+                }
+            }
+            multiThreadCountMutex_.unlock();
+        }
+    } else {
+        cerr << "KeyServer : error recv client init messages" << endl;
+        return;
+    }
+    //done
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
-        int recvSize = 0;
         if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            bool clientIDExistFlag = false;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
+                    clientIDExistFlag = true;
+                    break;
+                }
+            }
+            if (clientIDExistFlag == false) {
+                currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
+                clientList.push_back(currentMaskInfo);
+            }
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
             multiThreadCountMutex_.lock();
@@ -191,6 +256,18 @@ void keyServer::run(SSL* connection)
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            bool clientIDExistFlag = false;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
+                    clientIDExistFlag = true;
+                    break;
+                }
+            }
+            if (clientIDExistFlag == false) {
+                currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
+                clientList.push_back(currentMaskInfo);
+            }
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
             multiThreadCountMutex_.lock();
@@ -202,7 +279,7 @@ void keyServer::run(SSL* connection)
         }
 
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
-        currentKeyGenerateCounter += 2 * recvNumber;
+        currentKeyGenerateCount += 2 * recvNumber;
         // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         multiThreadMutex_.lock();
@@ -210,7 +287,7 @@ void keyServer::run(SSL* connection)
 #ifdef BREAK_DOWN
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientID, clientID_KeyGenerateCounter[clientID], currentKeyGenerateCounter, nonce, nonceLen);
+        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientID, currentMaskInfo.keyGenerateCounter, currentKeyGenerateCount, nonce, nonceLen);
 #ifdef BREAK_DOWN
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -224,6 +301,18 @@ void keyServer::run(SSL* connection)
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            bool clientIDExistFlag = false;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
+                    clientIDExistFlag = true;
+                    break;
+                }
+            }
+            if (clientIDExistFlag == false) {
+                currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
+                clientList.push_back(currentMaskInfo);
+            }
             multiThreadCountMutex_.unlock();
 #ifdef BREAK_DOWN
             multiThreadCountMutex_.lock();

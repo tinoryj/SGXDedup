@@ -30,6 +30,10 @@ int main()
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
     th->detach();
+#ifdef SGX_KEY_GEN_CTR
+    th = new boost::thread(boost::bind(&keyServer::runCTRModeMaskGenerate, server));
+    th->detach();
+#endif
 #endif
     while (true) {
         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;

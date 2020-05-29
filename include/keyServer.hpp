@@ -28,7 +28,12 @@ private:
     bool raRequestFlag;
     ssl* keySecurityChannel_;
 #ifdef SGX_KEY_GEN_CTR
-    uint32_t clientID_KeyGenerateCounter[100];
+    typedef struct {
+        int clientID;
+        uint32_t keyGenerateCounter = 0;
+        u_char nonce[16 - sizeof(uint32_t)];
+    } maskInfo;
+    vector<maskInfo> clientList;
 #endif
 
 public:
@@ -38,6 +43,9 @@ public:
     void runRA();
     void runRAwithSPRequest();
     void runSessionKeyUpdate();
+#ifdef SGX_KEY_GEN_CTR
+    void runCTRModeMaskGenerate();
+#endif
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
 };
 

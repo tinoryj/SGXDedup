@@ -50,7 +50,7 @@ public:
     bool decryptWithKey(u_char* ciphertext, const int dataSize, u_char* key, u_char* dataBuffer);
     bool keyExchangeEncrypt(u_char* dataBuffer, const int dataSize, u_char* key, u_char* iv, u_char* ciphertext);
     bool keyExchangeDecrypt(u_char* ciphertext, const int dataSize, u_char* key, u_char* iv, u_char* dataBuffer);
-    bool keyExchangeCTRBaseGenerate(u_char* nonce, const int counterNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer);
+    bool keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer);
     bool encryptChunk(Chunk_t& chunk);
     bool decryptChunk(Chunk_t& chunk);
     bool decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData);
