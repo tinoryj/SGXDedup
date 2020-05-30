@@ -6,16 +6,18 @@
 extern Configure config;
 
 void PRINT_BYTE_ARRAY_KEY_SERVER(
-    FILE* file, void* mem, uint32_t len)
+    FILE *file, void *mem, uint32_t len)
 {
-    if (!mem || !len) {
+    if (!mem || !len)
+    {
         fprintf(file, "\n( null )\n");
         return;
     }
-    uint8_t* array = (uint8_t*)mem;
+    uint8_t *array = (uint8_t *)mem;
     fprintf(file, "%u bytes:\n{\n", len);
     uint32_t i = 0;
-    for (i = 0; i < len - 1; i++) {
+    for (i = 0; i < len - 1; i++)
+    {
         fprintf(file, "0x%x, ", array[i]);
         if (i % 8 == 7)
             fprintf(file, "\n");
@@ -24,7 +26,7 @@ void PRINT_BYTE_ARRAY_KEY_SERVER(
     fprintf(file, "\n}\n");
 }
 
-keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
+keyServer::keyServer(ssl *keyServerSecurityChannelTemp)
 {
     rsa_ = RSA_new();
     key_ = BIO_new_file(KEYMANGER_PRIVATE_KEY, "r");
@@ -40,7 +42,7 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     u_char keydBuffer[4096];
     int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
-    string keyd((char*)keydBuffer, lenKeyd / 2);
+    string keyd((char *)keydBuffer, lenKeyd / 2);
     sessionKeyUpdateCount_ = config.getKeyRegressionMaxTimes();
     client = new kmClient(keyd, sessionKeyUpdateCount_);
     clientThreadCount_ = 0;
@@ -58,12 +60,15 @@ keyServer::~keyServer()
     delete keySecurityChannel_;
 }
 
-bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
+bool keyServer::doRemoteAttestation(ssl *raSecurityChannel, SSL *sslConnection)
 {
-    if (!client->init(raSecurityChannel, sslConnection)) {
+    if (!client->init(raSecurityChannel, sslConnection))
+    {
         cerr << "keyServer : enclave not truster" << endl;
         return false;
-    } else {
+    }
+    else
+    {
         cout << "KeyServer : enclave trusted" << endl;
     }
     multiThreadCountMutex_.lock();
@@ -75,13 +80,17 @@ bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
 #ifdef SGX_KEY_GEN_CTR
 void keyServer::runCTRModeMaskGenerate()
 {
-    while (true) {
-        if (raRequestFlag == false) {
+    while (true)
+    {
+        if (raRequestFlag == false)
+        {
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start compute session encryption mask offline" << endl;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientList[i].keyGenerateCounter > 0) {
+            for (int i = 0; i < clientList.size(); i++)
+            {
+                if (clientList[i].keyGenerateCounter > 0)
+                {
                     client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
                 }
             }
@@ -96,11 +105,12 @@ void keyServer::runCTRModeMaskGenerate()
 
 void keyServer::runRAwithSPRequest()
 {
-    ssl* raSecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), SERVERSIDE);
+    ssl *raSecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getkeyServerRArequestPort(), SERVERSIDE);
     char recvBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize;
-    while (true) {
-        SSL* sslConnection = raSecurityChannelTemp->sslListen().second;
+    while (true)
+    {
+        SSL *sslConnection = raSecurityChannelTemp->sslListen().second;
         raSecurityChannelTemp->recv(sslConnection, recvBuffer, recvSize);
         raRequestFlag = true;
         cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
@@ -110,14 +120,16 @@ void keyServer::runRAwithSPRequest()
 
 void keyServer::runRA()
 {
-    while (true) {
-        if (raRequestFlag) {
+    while (true)
+    {
+        if (raRequestFlag)
+        {
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start do remote attestation to storage server" << endl;
             keyGenerateCount_ = 0;
-            ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
-            SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            ssl *raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
+            SSL *sslConnection = raSecurityChannelTemp->sslConnect().second;
             cout << "KeyServer : remote attestation thread connected storage server" << endl;
             int sendSize = sizeof(NetworkHeadStruct_t);
             char sendBuffer[sendSize];
@@ -127,12 +139,15 @@ void keyServer::runRA()
             memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
             raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
             bool remoteAttestationStatus = doRemoteAttestation(raSecurityChannelTemp, sslConnection);
-            if (remoteAttestationStatus) {
+            if (remoteAttestationStatus)
+            {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 raRequestFlag = false;
                 cout << "KeyServer : do remote attestation to storage SP done" << endl;
-            } else {
+            }
+            else
+            {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 cerr << "KeyServer : do remote attestation to storage SP error" << endl;
@@ -144,16 +159,19 @@ void keyServer::runRA()
 
 void keyServer::runSessionKeyUpdate()
 {
-    while (true) {
-        if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
+    while (true)
+    {
+        if (keyGenerateCount_ >= keyGenLimitPerSessionKey_)
+        {
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start session key update with storage server" << endl;
             keyGenerateCount_ = 0;
-            ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
-            SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+            ssl *raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
+            SSL *sslConnection = raSecurityChannelTemp->sslConnect().second;
             bool enclaveSessionKeyUpdateStatus = client->sessionKeyUpdate();
-            if (enclaveSessionKeyUpdateStatus) {
+            if (enclaveSessionKeyUpdateStatus)
+            {
                 char sendBuffer[sizeof(NetworkHeadStruct_t)];
                 int sendSize = sizeof(NetworkHeadStruct_t);
                 NetworkHeadStruct_t requestHeader;
@@ -163,7 +181,9 @@ void keyServer::runSessionKeyUpdate()
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 cout << "KeyServer : update session key storage SP done" << endl;
-            } else {
+            }
+            else
+            {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 cerr << "KeyServer : update session key with storage SP error" << endl;
@@ -175,7 +195,7 @@ void keyServer::runSessionKeyUpdate()
 
 #ifdef SGX_KEY_GEN
 #ifdef SGX_KEY_GEN_CTR
-void keyServer::run(SSL* connection)
+void keyServer::run(SSL *connection)
 {
 #ifdef BREAK_DOWN
     struct timeval timestart;
@@ -198,21 +218,28 @@ void keyServer::run(SSL* connection)
     // recv init messages
     char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
 
-    if (keySecurityChannel_->recv(connection, initInfoBuffer, recvSize)) {
+    if (keySecurityChannel_->recv(connection, initInfoBuffer, recvSize))
+    {
         memcpy(&clientID, initInfoBuffer, sizeof(int));
         memcpy(&recvedClientCounter, initInfoBuffer + sizeof(int), sizeof(uint32_t));
         memcpy(nonce, initInfoBuffer + sizeof(int) + sizeof(uint32_t), 16 - sizeof(uint32_t));
         memcpy(currentMaskInfo.nonce, nonce, 12);
         currentMaskInfo.clientID = clientID;
         currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 2 for the counter
-        if (recvedClientCounter != 0) {
+        if (recvedClientCounter != 0)
+        {
             multiThreadCountMutex_.lock();
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientID == clientList[i].clientID) {
-                    if (clientList[i].keyGenerateCounter == recvedClientCounter) {
+            for (int i = 0; i < clientList.size(); i++)
+            {
+                if (clientID == clientList[i].clientID)
+                {
+                    if (clientList[i].keyGenerateCounter == recvedClientCounter)
+                    {
                         cout << "KeyServer : compared key generate encryption counter success" << endl;
                         break;
-                    } else {
+                    }
+                    else
+                    {
                         cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList[i].keyGenerateCounter << endl;
                         return;
                     }
@@ -220,25 +247,32 @@ void keyServer::run(SSL* connection)
             }
             multiThreadCountMutex_.unlock();
         }
-    } else {
+    }
+    else
+    {
         cerr << "KeyServer : error recv client init messages" << endl;
         return;
     }
     //done
-    while (true) {
+    while (true)
+    {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
-        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+        if (!keySecurityChannel_->recv(connection, (char *)hash, recvSize))
+        {
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientID == clientList[i].clientID) {
+            for (int i = 0; i < clientList.size(); i++)
+            {
+                if (clientID == clientList[i].clientID)
+                {
                     clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
-            if (clientIDExistFlag == false) {
+            if (clientIDExistFlag == false)
+            {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
                 clientList.push_back(currentMaskInfo);
             }
@@ -252,19 +286,23 @@ void keyServer::run(SSL* connection)
             return;
         }
 
-        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+        if ((recvSize % CHUNK_HASH_SIZE) != 0)
+        {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientID == clientList[i].clientID) {
+            for (int i = 0; i < clientList.size(); i++)
+            {
+                if (clientID == clientList[i].clientID)
+                {
                     clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
-            if (clientIDExistFlag == false) {
+            if (clientIDExistFlag == false)
+            {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
                 clientList.push_back(currentMaskInfo);
             }
@@ -297,19 +335,23 @@ void keyServer::run(SSL* connection)
         keyGenerateCount_ += recvNumber;
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char *)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE))
+        {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientID == clientList[i].clientID) {
+            for (int i = 0; i < clientList.size(); i++)
+            {
+                if (clientID == clientList[i].clientID)
+                {
                     clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
-            if (clientIDExistFlag == false) {
+            if (clientIDExistFlag == false)
+            {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
                 clientList.push_back(currentMaskInfo);
             }
@@ -325,7 +367,7 @@ void keyServer::run(SSL* connection)
     }
 }
 #else
-void keyServer::run(SSL* connection)
+void keyServer::run(SSL *connection)
 {
 #ifdef BREAK_DOWN
     struct timeval timestart;
@@ -338,10 +380,12 @@ void keyServer::run(SSL* connection)
     clientThreadCount_++;
     multiThreadCountMutex_.unlock();
     uint64_t currentThreadkeyGenerationNumber = 0;
-    while (true) {
+    while (true)
+    {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
-        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+        if (!keySecurityChannel_->recv(connection, (char *)hash, recvSize))
+        {
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
@@ -354,7 +398,8 @@ void keyServer::run(SSL* connection)
             return;
         }
 
-        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+        if ((recvSize % CHUNK_HASH_SIZE) != 0)
+        {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
@@ -386,7 +431,8 @@ void keyServer::run(SSL* connection)
         keyGenerateCount_ += recvNumber;
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char *)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE))
+        {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
@@ -406,7 +452,7 @@ void keyServer::run(SSL* connection)
 
 #ifdef NO_OPRF
 
-void keyServer::run(SSL* connection)
+void keyServer::run(SSL *connection)
 {
 #ifdef BREAK_DOWN
     struct timeval timestart;
@@ -419,10 +465,12 @@ void keyServer::run(SSL* connection)
     clientThreadCount_++;
     multiThreadCountMutex_.unlock();
     uint64_t currentThreadkeyGenerationNumber = 0;
-    while (true) {
+    while (true)
+    {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
-        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+        if (!keySecurityChannel_->recv(connection, (char *)hash, recvSize))
+        {
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             multiThreadCountMutex_.unlock();
@@ -435,7 +483,8 @@ void keyServer::run(SSL* connection)
             return;
         }
 
-        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+        if ((recvSize % CHUNK_HASH_SIZE) != 0)
+        {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
@@ -456,7 +505,8 @@ void keyServer::run(SSL* connection)
 #ifdef BREAK_DOWN
         gettimeofday(&timestart, 0);
 #endif
-        for (int i = 0; i < recvNumber; i++) {
+        for (int i = 0; i < recvNumber; i++)
+        {
             u_char tempKeySeed[CHUNK_HASH_SIZE + 64];
             memset(tempKeySeed, 0, CHUNK_HASH_SIZE + 64);
             memcpy(tempKeySeed, hash + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
@@ -470,7 +520,8 @@ void keyServer::run(SSL* connection)
 #endif
         keyGenerateCount_ += recvNumber;
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char *)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE))
+        {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
