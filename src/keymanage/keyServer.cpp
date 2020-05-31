@@ -317,7 +317,6 @@ void keyServer::run(SSL *connection)
         }
 
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
-        currentKeyGenerateCount += 2 * recvNumber;
         // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         multiThreadMutex_.lock();
@@ -332,6 +331,7 @@ void keyServer::run(SSL *connection)
         second = diff / 1000000.0;
         keyGenTime += second;
 #endif
+        currentKeyGenerateCount += 4 * recvNumber;
         keyGenerateCount_ += recvNumber;
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;

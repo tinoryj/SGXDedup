@@ -8,6 +8,7 @@
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/aes.h>
 #include <openssl/opensslconf.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>

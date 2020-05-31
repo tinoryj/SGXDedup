@@ -80,13 +80,14 @@ void keyClient::runKeyGenSimulator()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
+#ifdef SGX_KEY_GEN_CTR
     uint32_t counter = 0;
     //read old counter
-    string counterFileName = ".counter";
+    string counterFileName = ".CounterStore";
     ifstream counterIn;
     counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
     if (!counterIn.is_open()) {
-        cerr << "KeyClient : Can not open old counter file : " << counterFileName << endl;
+        cerr << "KeyClient : Can not open old counter file : " << counterFileName << ". Directly reset counter to 0" << endl;
     } else {
         counterIn.seekg(0, ios_base::end);
         int counterFileSize = counterIn.tellg();
@@ -104,6 +105,7 @@ void keyClient::runKeyGenSimulator()
             }
         }
     }
+    cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
     char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
     memcpy(initInfoBuffer, &clientID_, sizeof(int));
@@ -115,7 +117,7 @@ void keyClient::runKeyGenSimulator()
     } else {
         cout << "KeyClient : send init information success, start key generate" << endl;
     }
-
+#endif
     while (true) {
 
         if (currentKeyGenNumber < keyGenNumber_) {
@@ -145,7 +147,12 @@ void keyClient::runKeyGenSimulator()
 #ifdef BREAK_DOWN
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
+#ifdef SGX_KEY_GEN_CTR
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter);
+            counter += batchNumber * 4;
+#else
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
+#endif
 #ifdef BREAK_DOWN
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
@@ -153,7 +160,9 @@ void keyClient::runKeyGenSimulator()
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
-            counter += batchNumber * 2;
+#ifdef SGX_KEY_GEN_CTR
+            counter += batchNumber * 4;
+#endif
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             memset(chunkKey, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             batchNumber = 0;
@@ -166,17 +175,19 @@ void keyClient::runKeyGenSimulator()
             break;
         }
     }
+#ifdef SGX_KEY_GEN_CTR
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
-        cerr << "Can not open counter store file : " << counterFileName << endl;
+        cerr << "KeyClient : Can not open counter store file : " << counterFileName << endl;
     } else {
         char writeBuffer[sizeof(uint32_t)];
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
+        cout << "KeyClient : Stored current counter file : " << counterFileName << endl;
     }
-
+#endif
 #ifdef BREAK_DOWN
     cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
@@ -204,11 +215,11 @@ void keyClient::run()
 #ifdef SGX_KEY_GEN_CTR
     uint32_t counter = 0;
     //read old counter
-    string counterFileName = ".counter";
+    string counterFileName = ".CounterStore";
     ifstream counterIn;
     counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
     if (!counterIn.is_open()) {
-        cerr << "KeyClient : Can not open old counter file : " << counterFileName << endl;
+        cerr << "KeyClient : Can not open old counter file : " << counterFileName << ". Directly reset counter to 0" << endl;
     } else {
         counterIn.seekg(0, ios_base::end);
         int counterFileSize = counterIn.tellg();
@@ -226,6 +237,7 @@ void keyClient::run()
             }
         }
     }
+    cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
     char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
     memcpy(initInfoBuffer, &clientID_, sizeof(int));
@@ -256,7 +268,7 @@ void keyClient::run()
 #endif
             cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
 #ifdef BREAK_DOWN
-            gettimeofday(&timeendKey, NULL);
+            gettimeofday(&timeendKey, NULL);recvSize
             diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
             second = diff / 1000000.0;
             keyGenTime += second;
@@ -272,7 +284,7 @@ void keyClient::run()
 #endif
 #ifdef SGX_KEY_GEN_CTR
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter);
-            counter += batchNumber * 2;
+            counter += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
 #endif
@@ -313,17 +325,17 @@ void keyClient::run()
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
 #endif
-
 #ifdef SGX_KEY_GEN_CTR
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
-        cerr << "Can not open counter store file : " << counterFileName << endl;
+        cerr << "KeyClient : Can not open counter store file : " << counterFileName << endl;
     } else {
         char writeBuffer[sizeof(uint32_t)];
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
+        cout << "KeyClient : Stored current counter file : " << counterFileName << endl;
     }
 #endif
     return;
@@ -444,8 +456,8 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     //     gettimeofday(&timestartKey_enc, NULL);
     // #endif
 
-    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
     keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
 
     // #ifdef BREAK_DOWN
@@ -474,7 +486,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         //         gettimeofday(&timestartKey_enc, NULL);
         // #endif
 
-        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase, batchkeyNumber);
+        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchkeyNumber);
 
         // #ifdef BREAK_DOWN
         //         gettimeofday(&timeendKey_enc, NULL);
