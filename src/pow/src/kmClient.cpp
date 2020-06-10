@@ -90,8 +90,10 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
         (uint32_t)hashSize,
         ans);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : ecall failed" << endl;
+        cerr << "kmClient : ecall failed, return ID = " << retval << ", status = " << status << endl;
         return false;
+    } else {
+        cout << "kmClient : ecall success, return ID = " << retval << ", status = " << status << endl;
     }
     memcpy(key, ans, keySize);
     free(ans);
