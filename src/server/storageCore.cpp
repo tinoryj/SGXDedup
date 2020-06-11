@@ -74,7 +74,7 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
     int readSize = sizeof(int);
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;
-#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+#if STORAGE_SERVER_VERIFY_UPLOAD == 1
         u_char oldHash[CHUNK_HASH_SIZE];
         memcpy(oldHash, data + readSize, CHUNK_HASH_SIZE);
 #endif
@@ -84,7 +84,7 @@ bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
         readSize += CHUNK_HASH_SIZE;
         memcpy(&currentChunkSize, data + readSize, sizeof(int));
         readSize += sizeof(int);
-#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+#if STORAGE_SERVER_VERIFY_UPLOAD == 1
         u_char newHash[CHUNK_HASH_SIZE];
         cryptoObj_->generateHash((u_char*)data + readSize, currentChunkSize, newHash);
         if (memcmp(oldHash, newHash, CHUNK_HASH_SIZE) == 0) {
@@ -259,7 +259,7 @@ bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSiz
     string dbValue;
     dbValue.resize(sizeof(keyForChunkHashDB_t));
     memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
-#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+#if STORAGE_SERVER_VERIFY_UPLOAD == 1
     string ans;
     status = fp2ChunkDB.query(chunkHash, ans);
     if (status) {
@@ -367,7 +367,7 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
         memcpy(data, currentContainer_.body_ + key.offset, key.length);
         return true;
     } else {
-#ifdef STORAGE_READ_CACHE
+#if STORAGE_CORE_READ_CACHE == 1
         bool cacheHitStatus = containerCache.existsInCache(containerNameStr);
         if (cacheHitStatus) {
             string containerDataStr = containerCache.getFromCache(containerNameStr);

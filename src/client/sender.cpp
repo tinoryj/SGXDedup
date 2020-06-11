@@ -151,7 +151,7 @@ bool Sender::sendLogInMessage()
     int sendSize = sizeof(NetworkHeadStruct_t);
     char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, set log out error" << endl;
@@ -170,7 +170,7 @@ bool Sender::sendLogOutMessage()
     int sendSize = sizeof(NetworkHeadStruct_t);
     char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    char respondBuffer[sizeof(NetworkHeadStruct_t)];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : peer closed, set log out error" << endl;

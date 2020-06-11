@@ -34,8 +34,6 @@ set(SERVER_OBJ dataSR  dedupCore powServer storage kmServer)
 set(KEYSERVER_OBJ keyServer kmClient)
 
 #-fno-builtin-memset
-# set(CMAKE_C_FLAGS "-g -O3") 
-# set(CMAKE_CXX_FLAGS "-g -O3 -fsanitize=address")
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
 list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
 find_package(SGX REQUIRED)

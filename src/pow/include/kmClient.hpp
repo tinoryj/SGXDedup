@@ -42,7 +42,7 @@ public:
     ~kmClient();
     bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen);
     bool maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen);
 #else

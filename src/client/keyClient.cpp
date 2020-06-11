@@ -43,7 +43,7 @@ keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
     memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keyGenNumber_ = keyGenNumber;
     clientID_ = config.getClientID();
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
 #endif
 }
@@ -55,7 +55,7 @@ keyClient::~keyClient()
     }
     inputMQ_->~messageQueue();
     delete inputMQ_;
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     cout << "KeyClient : key exchange encryption time = " << keyExchangeEncTime << " s" << endl;
 #endif
 }
@@ -63,7 +63,7 @@ keyClient::~keyClient()
 void keyClient::runKeyGenSimulator()
 {
 
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
     double chunkHashGenerateTime = 0;
     double keyExchangeTime = 0;
@@ -80,7 +80,7 @@ void keyClient::runKeyGenSimulator()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     uint32_t counter = 0;
     //read old counter
     string counterFileName = ".CounterStore";
@@ -118,19 +118,19 @@ void keyClient::runKeyGenSimulator()
         cout << "KeyClient : send init information success, start key generate" << endl;
     }
 #endif
+    u_char chunkHashTemp[CHUNK_HASH_SIZE];
+    u_char chunkTemp[5 * CHUNK_HASH_SIZE];
     while (true) {
 
         if (currentKeyGenNumber < keyGenNumber_) {
             batchNumber++;
             currentKeyGenNumber++;
-            u_char chunkHashTemp[CHUNK_HASH_SIZE];
-            u_char chunkTemp[5 * CHUNK_HASH_SIZE];
             memset(chunkTemp, currentKeyGenNumber, 5 * CHUNK_HASH_SIZE);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
             cryptoObj->generateHash(chunkTemp, 5 * CHUNK_HASH_SIZE, chunkHashTemp);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
             second = diff / 1000000.0;
@@ -144,23 +144,23 @@ void keyClient::runKeyGenSimulator()
 
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             int batchedKeySize = 0;
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter);
             counter += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
 #endif
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendKeySimulator, NULL);
             diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
             second = diff / 1000000.0;
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
             counter += batchNumber * 4;
 #endif
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -175,7 +175,7 @@ void keyClient::runKeyGenSimulator()
             break;
         }
     }
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -188,17 +188,19 @@ void keyClient::runKeyGenSimulator()
         cout << "KeyClient : Stored current counter file : " << counterFileName << endl;
     }
 #endif
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
 #endif
+    // delete cryptoObj;
+    // delete keySecurityChannel;
     return;
 }
 
 void keyClient::run()
 {
 
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
     double chunkHashGenerateTime = 0;
     double keyExchangeTime = 0;
@@ -212,7 +214,7 @@ void keyClient::run()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     uint32_t counter = 0;
     //read old counter
     string counterFileName = ".CounterStore";
@@ -263,12 +265,12 @@ void keyClient::run()
                 continue;
             }
             batchList.push_back(tempChunk);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKey, NULL);
 #endif
             cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
-#ifdef BREAK_DOWN
-            gettimeofday(&timeendKey, NULL);recvSize
+#if SGSTEM_BREAK_DOWN == 1
+            gettimeofday(&timeendKey, NULL);
             diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
             second = diff / 1000000.0;
             keyGenTime += second;
@@ -279,17 +281,17 @@ void keyClient::run()
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             int batchedKeySize = 0;
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKey, NULL);
 #endif
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter);
             counter += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
 #endif
 
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendKey, NULL);
             diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
             second = diff / 1000000.0;
@@ -319,13 +321,13 @@ void keyClient::run()
             break;
         }
     }
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
     cout << "KeyClient : chunk hash generate time = " << chunkHashGenerateTime << " s" << endl;
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
 #endif
-#ifdef SGX_KEY_GEN_CTR
+#if SGX_KEY_GEN_CTR == 1
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -341,22 +343,22 @@ void keyClient::run()
     return;
 }
 
-#ifdef SGX_KEY_GEN
+#if KEY_GEN_SGX_CFB == 1
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    // #ifdef BREAK_DOWN
-    //     struct timeval timestartKey_enc;
-    //     struct timeval timeendKey_enc;
-    //     gettimeofday(&timestartKey_enc, NULL);
-    // #endif
+#if SGSTEM_BREAK_DOWN == 1
+    struct timeval timestartKey_enc;
+    struct timeval timeendKey_enc;
+    gettimeofday(&timestartKey_enc, NULL);
+#endif
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-    // #ifdef BREAK_DOWN
-    //     gettimeofday(&timeendKey_enc, NULL);
-    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    //     double second = diff / 1000000.0;
-    //     keyExchangeEncTime += second;
-    // #endif
+#if SGSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKey_enc, NULL);
+    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    double second = diff / 1000000.0;
+    keyExchangeEncTime += second;
+#endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
@@ -373,16 +375,16 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timestartKey_enc, NULL);
-        // #endif
+#if SGSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartKey_enc, NULL);
+#endif
         cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timeendKey_enc, NULL);
-        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        //         second = diff / 1000000.0;
-        //         keyExchangeEncTime += second;
-        // #endif
+#if SGSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendKey_enc, NULL);
+        diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        second = diff / 1000000.0;
+        keyExchangeEncTime += second;
+#endif
         return true;
     } else {
         return false;
@@ -392,20 +394,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    // #ifdef BREAK_DOWN
-    //     struct timeval timestartKey_enc;
-    //     struct timeval timeendKey_enc;
-    //     gettimeofday(&timestartKey_enc, NULL);
-    // #endif
     cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
-
-    // #ifdef BREAK_DOWN
-    //     gettimeofday(&timeendKey_enc, NULL);
-    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    //     double second = diff / 1000000.0;
-    //     keyExchangeEncTime += second;
-    // #endif
-
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
@@ -422,22 +411,14 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timestartKey_enc, NULL);
-        // #endif
         cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timeendKey_enc, NULL);
-        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        //         second = diff / 1000000.0;
-        //         keyExchangeEncTime += second;
-        // #endif
         return true;
     } else {
         return false;
     }
 }
-#ifdef SGX_KEY_GEN_CTR
+
+#elif SGX_KEY_GEN_CTR == 1
 
 bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
 {
@@ -450,22 +431,20 @@ bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, i
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    // #ifdef BREAK_DOWN
-    //     struct timeval timestartKey_enc;
-    //     struct timeval timeendKey_enc;
-    //     gettimeofday(&timestartKey_enc, NULL);
-    // #endif
-
+#if SGSTEM_BREAK_DOWN == 1
+    struct timeval timestartKey_enc;
+    struct timeval timeendKey_enc;
+    gettimeofday(&timestartKey_enc, NULL);
+#endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
     keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
-
-    // #ifdef BREAK_DOWN
-    //     gettimeofday(&timeendKey_enc, NULL);
-    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    //     double second = diff / 1000000.0;
-    //     keyExchangeEncTime += second;
-    // #endif
+#if SGSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKey_enc, NULL);
+    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    double second = diff / 1000000.0;
+    keyExchangeEncTime += second;
+#endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
@@ -482,18 +461,16 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timestartKey_enc, NULL);
-        // #endif
-
+#if SGSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartKey_enc, NULL);
+#endif
         keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchkeyNumber);
-
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timeendKey_enc, NULL);
-        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        //         second = diff / 1000000.0;
-        //         keyExchangeEncTime += second;
-        // #endif
+#if SGSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendKey_enc, NULL);
+        diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+        second = diff / 1000000.0;
+        keyExchangeEncTime += second;
+#endif
         return true;
     } else {
         return false;
@@ -503,20 +480,9 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
-    // #ifdef BREAK_DOWN
-    //     struct timeval timestartKey_enc;
-    //     struct timeval timeendKey_enc;
-    //     gettimeofday(&timestartKey_enc, NULL);
-    // #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
     keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
-    // #ifdef BREAK_DOWN
-    //     gettimeofday(&timeendKey_enc, NULL);
-    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    //     double second = diff / 1000000.0;
-    //     keyExchangeEncTime += second;
-    // #endif
 
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
@@ -534,25 +500,13 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timestartKey_enc, NULL);
-        // #endif
         keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase, batchkeyNumber);
-        // #ifdef BREAK_DOWN
-        //         gettimeofday(&timeendKey_enc, NULL);
-        //         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-        //         second = diff / 1000000.0;
-        //         keyExchangeEncTime += second;
-        // #endif
         return true;
     } else {
         return false;
     }
 }
-#endif
-#endif
-
-#ifdef NO_OPRF
+#elif KEY_GEN_SERVER_MLE_NO_OPRF == 1
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     if (!keySecurityChannel_->send(sslConnection_, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {

@@ -23,17 +23,22 @@ int main()
     ssl* keySecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), SERVERSIDE);
     boost::thread* th;
     server = new keyServer(keySecurityChannelTemp);
-#ifdef SGX_KEY_GEN
+#if KEY_GEN_SGX_CFB == 1
     th = new boost::thread(boost::bind(&keyServer::runRA, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
     th->detach();
-#ifdef SGX_KEY_GEN_CTR
+#elif SGX_KEY_GEN_CTR == 1
+    th = new boost::thread(boost::bind(&keyServer::runRA, server));
+    th->detach();
+    th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
+    th->detach();
+    th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
+    th->detach();
     th = new boost::thread(boost::bind(&keyServer::runCTRModeMaskGenerate, server));
     th->detach();
-#endif
 #endif
     while (true) {
         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;

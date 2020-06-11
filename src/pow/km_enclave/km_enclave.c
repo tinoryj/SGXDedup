@@ -96,6 +96,7 @@ sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
     memcpy_s(secretTemp + 64, 128, keyd, keydLen);
     sgx_status_t sha256Status = sgx_sha256_msg(secretTemp, 64 + keydLen,
         (sgx_sha256_hash_t*)serverSecret);
+    free(secretTemp);
     return sha256Status;
 }
 
@@ -184,12 +185,16 @@ sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
     for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
         sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
         if (sha256Status != SGX_SUCCESS) {
-            return -1;
+            free(hashDataTemp);
+            free(hashResultTemp);
+            return 1;
         }
         memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
     }
     memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
-    return SGX_SUCCESS;
+    free(hashDataTemp);
+    free(hashResultTemp);
+    return 2;
 }
 
 sgx_status_t ecall_setCTRMode()
@@ -213,8 +218,13 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         }
     } else {
         EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
-        if (cipherctx_ == NULL)
+        if (cipherctx_ == NULL) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
+        }
         unsigned char currentKeyBase[srcLen * 2];
         unsigned char currentKey[srcLen * 2];
         int cipherlen, len;
@@ -226,16 +236,32 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             currentCounterTemp++;
         }
         if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey)) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         }
         if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, srcLen) != 1) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         }
         if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         }
         cipherlen += len;
         if (cipherlen != srcLen * 2) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         } else {
             memcpy(mask, currentKey, srcLen * 2);
@@ -250,6 +276,10 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         memcpy_s(hashTemp + 32, 64, serverSecret, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return sha256Status;
         }
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
@@ -291,6 +321,10 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
         memcpy_s(hashTemp + 32, 64, serverSecret, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
+            free(hash);
+            free(originhash);
+            free(hashTemp);
+            free(keySeed);
             return 2;
         }
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
@@ -317,11 +351,10 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
 int encrypt(uint8_t* plaint, uint32_t plaintLen, uint8_t* symKey,
     uint32_t symKeyLen, uint8_t* cipher, uint32_t* cipherLen)
 {
-    // uint8_t iv[16] = { 0 };
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
         return 0;
-
+    }
     if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_cfb(), NULL, symKey, symKey)) {
         goto error;
     }
@@ -337,7 +370,6 @@ int encrypt(uint8_t* plaint, uint32_t plaintLen, uint8_t* symKey,
     cipherLen += len;
     EVP_CIPHER_CTX_cleanup(ctx);
     return 1;
-
 error:
     EVP_CIPHER_CTX_cleanup(ctx);
     return 0;
@@ -346,12 +378,10 @@ error:
 int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
     uint32_t symKeyLen, uint8_t* plaint, uint32_t* plaintLen)
 {
-
-    // uint8_t iv[16] = { 0 };
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
         return 0;
-
+    }
     if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_cfb(), NULL, symKey, symKey)) {
         goto error;
     }

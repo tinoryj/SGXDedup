@@ -42,7 +42,7 @@ void PRINT_BYTE_ARRAY_POW_CLIENT(
 
 void powClient::run()
 {
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     double powEnclaveCaluationTime = 0;
     double powExchangeinofrmationTime = 0;
     long diff;
@@ -93,11 +93,11 @@ void powClient::run()
             string batchChunkLogicData;
             batchChunkLogicData.resize(currentBatchSize);
             memcpy(&batchChunkLogicData[0], batchChunkLogicData_charBuffer, currentBatchSize);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
 #endif
             powRequestStatus = this->request(batchChunkLogicData, request.signature_);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
             second = diff / 1000000.0;
@@ -107,11 +107,11 @@ void powClient::run()
                 cerr << "PowClient : sgx request failed" << endl;
                 break;
             }
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
 #endif
             senderObj->sendEnclaveSignedHash(request, lists, netstatus);
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
             second = diff / 1000000.0;
@@ -148,7 +148,7 @@ void powClient::run()
     } else {
         cerr << "PowClient : pow thread job done, set job done flag for sender done, exit now" << endl;
     }
-#ifdef BREAK_DOWN
+#if SGSTEM_BREAK_DOWN == 1
     cout << "PowClient : enclave compute work time = " << powEnclaveCaluationTime << " s" << endl;
     cout << "PowClient : exchange status to SSP time = " << powExchangeinofrmationTime << " s" << endl;
     cout << "PowClient : Total work time = " << powExchangeinofrmationTime + powEnclaveCaluationTime << " s" << endl;

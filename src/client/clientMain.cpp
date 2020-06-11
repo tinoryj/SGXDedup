@@ -94,7 +94,7 @@ int main(int argv, char* argc[])
         }
         int keyGenNumber = atoi(argc[3]);
         u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
-#ifdef SGX_KEY_GEN
+#if KEY_GEN_SGX_CFB == 1
         senderObj = new Sender();
         if (!senderObj->getKeyServerSK(sessionKey)) {
             cerr << "Client : get key server session key failed" << endl;

@@ -45,7 +45,7 @@ bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
         if (fp2ChunkDBQueryStatus) {
             continue;
         } else {
-#ifdef STORAGE_SERVER_VERIFY_UPLOAD
+#if STORAGE_SERVER_VERIFY_UPLOAD == 1
             string dbValue = "";
             bool status = fp2ChunkDB.insert(in.hash_[i], dbValue);
             if (status) {

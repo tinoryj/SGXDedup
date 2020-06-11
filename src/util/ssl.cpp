@@ -16,7 +16,8 @@ ssl::ssl(std::string ip, int port, int scSwitch)
 
     switch (scSwitch) {
     case SERVERSIDE: {
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
         _ctx = SSL_CTX_new(TLSv1_2_server_method());
 #else
         _ctx = SSL_CTX_new(TLS_server_method());
@@ -38,7 +39,8 @@ ssl::ssl(std::string ip, int port, int scSwitch)
         break;
     }
     case CLIENTSIDE: {
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
         _ctx = SSL_CTX_new(TLSv1_2_client_method());
 #else
         _ctx = SSL_CTX_new(TLS_client_method());

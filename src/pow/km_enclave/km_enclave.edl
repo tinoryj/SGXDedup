@@ -1,37 +1,34 @@
 enclave {
+    include "sgx_key_exchange.h"
+    include "sgx_trts.h"
+    
+    from "sgx_tkey_exchange.edl" import *;
+    from "sgx_tsgxssl.edl" import *;
 
-  include "sgx_key_exchange.h"
-  include "sgx_trts.h"
-
-  from "sgx_tkey_exchange.edl" import *;
-  from "sgx_tsgxssl.edl" import *;
-
-  trusted {
-
-	  public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
-			                            [out] sgx_ra_context_t *ctx,
-			                            [out] sgx_status_t *pse_status);
-    public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
-    public sgx_status_t ecall_setServerSecret([in,size=keydLen]uint8_t* keyd, uint32_t keydLen);
-    public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx);
-    public sgx_status_t ecall_setSessionKeyUpdate([in]sgx_ra_context_t* ctx);
-    public sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes);
-    public sgx_status_t ecall_keygen([user_check] uint8_t *src,
-                                      uint32_t srcLen,
-                                      [user_check] uint8_t *key);
-    public sgx_status_t ecall_keygen_ctr([user_check] uint8_t *src,
-                                      uint32_t srcLen,
-                                      [user_check] uint8_t *key, 
-                                      int clientID, 
-                                      uint32_t previousCounter,
-                                      uint32_t currentCounter,
-                                      [user_check] uint8_t* nonce, 
-                                      uint32_t nonceLen);
-    public sgx_status_t ecall_setNextEncryptionMask(int clientID, 
-                                                    uint32_t previousCountNumber, 
-                                                    [user_check] uint8_t* nonce, 
-                                                    uint32_t nonceLen);
-    public sgx_status_t ecall_setCTRMode();
-  };
-
+    trusted {
+        public sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
+                                            [out] sgx_ra_context_t *ctx,
+                                            [out] sgx_status_t *pse_status);
+        public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
+        public sgx_status_t ecall_setServerSecret([in,size=keydLen]uint8_t* keyd, uint32_t keydLen);
+        public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx);
+        public sgx_status_t ecall_setSessionKeyUpdate([in]sgx_ra_context_t* ctx);
+        public sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes);
+        public sgx_status_t ecall_keygen([user_check] uint8_t *src,
+                                        uint32_t srcLen,
+                                        [user_check] uint8_t *key);
+        public sgx_status_t ecall_keygen_ctr([user_check] uint8_t *src,
+                                            uint32_t srcLen,
+                                            [user_check] uint8_t *key, 
+                                            int clientID, 
+                                            uint32_t previousCounter,
+                                            uint32_t currentCounter,
+                                            [user_check] uint8_t* nonce, 
+                                            uint32_t nonceLen);
+        public sgx_status_t ecall_setNextEncryptionMask(int clientID, 
+                                                        uint32_t previousCountNumber, 
+                                                        [user_check] uint8_t* nonce, 
+                                                        uint32_t nonceLen);
+        public sgx_status_t ecall_setCTRMode();
+    };
 };

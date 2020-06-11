@@ -33,7 +33,8 @@ in the License.
 
 // #define OPENSSL_V_1_0_2
 
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
 typedef enum { big,
     little } endianess_t;
 
@@ -709,7 +710,8 @@ int sha256_digest(const unsigned char* msg, size_t mlen, unsigned char digest[32
     error_type = e_none;
 
     memset(digest, 0, 32);
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     ctx = EVP_MD_CTX_create();
 #else
     ctx = EVP_MD_CTX_new();
@@ -751,7 +753,8 @@ int sha256_verify(const unsigned char* msg, size_t mlen, unsigned char* sig,
 
     error_type = e_none;
 
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     ctx = EVP_MD_CTX_create();
 #else
     ctx = EVP_MD_CTX_new();
@@ -812,7 +815,8 @@ int ecdsa_sign(unsigned char* msg, size_t mlen, EVP_PKEY* key,
         error_type = e_crypto;
         goto cleanup;
     }
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     bnr = sig->r;
     bns = sig->s;
 #else

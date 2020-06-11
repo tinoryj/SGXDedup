@@ -1,7 +1,7 @@
 #ifndef GENERALDEDUPSYSTEM_STORAGECORE_HPP
 #define GENERALDEDUPSYSTEM_STORAGECORE_HPP
 
-#ifdef STORAGE_READ_CACHE
+#if STORAGE_CORE_READ_CACHE == 1
 #include "cache.hpp"
 #endif
 #include "configure.hpp"
@@ -40,7 +40,7 @@ private:
 public:
     StorageCore();
     ~StorageCore();
-#ifdef STORAGE_READ_CACHE
+#if STORAGE_CORE_READ_CACHE == 1
     Cache containerCache;
 #endif
     bool saveChunks(NetworkHeadStruct_t& networkHead, char* data);

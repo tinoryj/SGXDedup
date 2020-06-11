@@ -111,7 +111,8 @@ CryptoPrimitive::CryptoPrimitive()
     if (cmacctx_ == nullptr) {
         cerr << "error initial cmac ctx" << endl;
     }
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     mdctx_ = EVP_MD_CTX_create();
 #else
     mdctx_ = EVP_MD_CTX_new();
@@ -134,13 +135,15 @@ CryptoPrimitive::CryptoPrimitive()
  */
 CryptoPrimitive::~CryptoPrimitive()
 {
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     EVP_MD_CTX_cleanup(mdctx_);
 #else
     EVP_MD_CTX_reset(mdctx_);
 #endif
     EVP_MD_CTX_destroy(mdctx_);
-#ifdef OPENSSL_V_1_0_2
+#if OPENSSL_V_1_0_2 == 1
+
     EVP_CIPHER_CTX_free(cipherctx_);
     EVP_CIPHER_CTX_cleanup(cipherctx_);
 #else
@@ -368,7 +371,6 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
 //     return true;
 // }
 
-
 bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
 {
     u_char currentKeyBase[CRYPTO_BLOCK_SZIE * generateNumber];
@@ -397,7 +399,7 @@ bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter
     //     cerr << "CryptoPrimitive : encrypt output size not equal to origin size, size = " << cipherlen << ", len = " << len << ", generate number = " << generateNumber << endl;
     //     return false;
     // } else {
-        memcpy(ctrBaseBuffer, currentKey, CRYPTO_BLOCK_SZIE * generateNumber);
+    memcpy(ctrBaseBuffer, currentKey, CRYPTO_BLOCK_SZIE * generateNumber);
     // }
     return true;
 }

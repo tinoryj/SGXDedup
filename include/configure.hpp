@@ -7,48 +7,43 @@
 
 using namespace std;
 
-// #define BREAK_DOWN
-#define HIGH_SECURITY
-// #define STORAGE_SERVER_VERIFY_UPLOAD
-
-// #define STORAGE_READ_CACHE
-
-/* define of key generation method */
-#define SGX_KEY_GEN
-#define SGX_KEY_GEN_MULTITHREAD
-// #define SGX_KEY_GEN_CTR
-// #define NO_OPRF
-// #define MLE
-// #define SKE
-// #define MinHash
-// #define OPRF
-// #define OPENSSL_V_1_0_2
-
-#ifdef HIGH_SECURITY
-#define CHUNK_FINGER_PRINT_SIZE 32
-#define CHUNK_HASH_SIZE 32
-#define CHUNK_ENCRYPT_KEY_SIZE 32
-#define FILE_NAME_HASH_SIZE 32
-#else
-#define CHUNK_FINGER_PRINT_SIZE 16
-#define CHUNK_HASH_SIZE 16
-#define CHUNK_ENCRYPT_KEY_SIZE 16
-#define FILE_NAME_HASH_SIZE 16
-#endif
-
+/* System Test Settings: 0-disable; 1-enable */
+#define SYSTEM_BREAK_DOWN 0
+#define OPENSSL_V_1_0_2 0
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
 #define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
 #define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
 #define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
-#define MIN_CHUNK_SIZE 4096 //macro for the min size of variable-size chunker
-#define AVG_CHUNK_SIZE 8192 //macro for the average size of variable-size chunker
-#define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
 
+/* Storage Core Settings: 0-disable; 1-enable */
+#define STORAGE_SERVER_VERIFY_UPLOAD 0
+#define STORAGE_CORE_READ_CACHE 0
+
+/* Key Generation method Settings: 0-disable; 1-enable */
+#define KEY_GEN_SGX_CFB 0
+#define SGX_KEY_GEN_CTR 1
+#define KEY_GEN_SERVER_MLE_NO_OPRF 0
+#define SGX_KEY_GEN_MULTITHREAD_ENCLAVE 1
+
+/* System Infomation Size Settings */
 #define CHUNK_FINGER_PRINT_SIZE 32
 #define CHUNK_HASH_SIZE 32
 #define CHUNK_ENCRYPT_KEY_SIZE 32
 #define FILE_NAME_HASH_SIZE 32
+
+#define MIN_CHUNK_SIZE 4096 //macro for the min size of variable-size chunker
+#define AVG_CHUNK_SIZE 8192 //macro for the average size of variable-size chunker
+#define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
+
+#define NETWORK_MESSAGE_DATA_SIZE 12 * 1000 * 1000
+#define SGX_MESSAGE_MAX_SIZE 1024 * 1024
+#define NETWORK_RESPOND_BUFFER_MAX_SIZE 12 * 1000 * 1000
+#define CRYPTO_BLOCK_SZIE 16
 #define KEY_SERVER_SESSION_KEY_SIZE 32
+
+/* System Infomation Type Settings */
+#define DATA_TYPE_RECIPE 1
+#define DATA_TYPE_CHUNK 2
 
 #define CHUNK_TYPE_ENCRYPTED 0
 #define CHUNK_TYPE_VERIFY_PASSED 1
@@ -58,14 +53,6 @@ using namespace std;
 #define CHUNK_TYPE_DUPLICATE 5
 #define CHUNK_TYPE_INIT 6
 #define CHUNK_TYPE_NEED_UPLOAD 7
-
-#define DATA_TYPE_RECIPE 1
-#define DATA_TYPE_CHUNK 2
-
-#define NETWORK_MESSAGE_DATA_SIZE 12 * 1000 * 1000
-#define SGX_MESSAGE_MAX_SIZE 1024 * 1024
-#define NETWORK_RESPOND_BUFFER_MAX_SIZE 12 * 1000 * 1000
-#define CRYPTO_BLOCK_SZIE 16
 
 class Configure {
 private:
