@@ -21,7 +21,7 @@ void PRINT_BYTE_ARRAY_KM(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
 bool kmClient::maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen)
 {
     sgx_status_t retval;
@@ -101,6 +101,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     return true;
 }
 #endif
+
 kmClient::kmClient(string keyd, uint64_t keyRegressionMaxTimes)
 {
     _keyd = keyd;

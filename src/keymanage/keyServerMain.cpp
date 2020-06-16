@@ -30,7 +30,7 @@ int main()
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
     th->detach();
-#elif SGX_KEY_GEN_CTR == 1
+#elif KEY_GEN_SGX_CTR == 1
     th = new boost::thread(boost::bind(&keyServer::runRA, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));

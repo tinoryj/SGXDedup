@@ -74,9 +74,10 @@ typedef struct {
 typedef struct {
     int fd;
     int epfd;
-    u_char hash[CHUNK_HASH_SIZE];
-    u_char key[CHUNK_ENCRYPT_KEY_SIZE];
-} Message_t;
+    u_char content[CHUNK_HASH_SIZE * 10000];
+    int length = 0;
+    bool keyGenerateFlag = false; // true - key gen done; false - key gen not start
+} KeyServerEpollMessage_t;
 
 typedef struct {
     int messageType;

@@ -43,7 +43,7 @@ keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
     memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
     keyGenNumber_ = keyGenNumber;
     clientID_ = config.getClientID();
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
     memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
 #endif
 }
@@ -80,7 +80,7 @@ void keyClient::runKeyGenSimulator()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
     uint32_t counter = 0;
     //read old counter
     string counterFileName = ".CounterStore";
@@ -147,7 +147,7 @@ void keyClient::runKeyGenSimulator()
 #if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter);
             counter += batchNumber * 4;
 #else
@@ -160,7 +160,7 @@ void keyClient::runKeyGenSimulator()
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
             counter += batchNumber * 4;
 #endif
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -175,7 +175,7 @@ void keyClient::runKeyGenSimulator()
             break;
         }
     }
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -214,7 +214,7 @@ void keyClient::run()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
     uint32_t counter = 0;
     //read old counter
     string counterFileName = ".CounterStore";
@@ -284,7 +284,7 @@ void keyClient::run()
 #if SGSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKey, NULL);
 #endif
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter);
             counter += batchNumber * 4;
 #else
@@ -327,7 +327,7 @@ void keyClient::run()
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
 #endif
-#if SGX_KEY_GEN_CTR == 1
+#if KEY_GEN_SGX_CTR == 1
     ofstream counterOut;
     counterOut.open(counterFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -418,7 +418,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-#elif SGX_KEY_GEN_CTR == 1
+#elif KEY_GEN_SGX_CTR == 1
 
 bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
 {
