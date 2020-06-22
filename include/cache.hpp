@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_CACHE_HPP
-#define GENERALDEDUPSYSTEM_CACHE_HPP
+#ifndef SGXDEDUP_CACHE_HPP
+#define SGXDEDUP_CACHE_HPP
 
 #include "boost/compute/detail/lru_cache.hpp"
 #include "boost/thread.hpp"
@@ -23,4 +23,4 @@ public:
     string getFromCache(string& name);
 };
 
-#endif //GENERALDEDUPSYSTEM_CACHE_HPP
+#endif //SGXDEDUP_CACHE_HPP

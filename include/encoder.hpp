@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_ENCODER_HPP
-#define GENERALDEDUPSYSTEM_ENCODER_HPP
+#ifndef SGXDEDUP_ENCODER_HPP
+#define SGXDEDUP_ENCODER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -27,4 +27,4 @@ public:
     bool setJobDoneFlag();
 };
 
-#endif //GENERALDEDUPSYSTEM_ENCODER_HPP
+#endif //SGXDEDUP_ENCODER_HPP

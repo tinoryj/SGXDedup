@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_SENDER_HPP
-#define GENERALDEDUPSYSTEM_SENDER_HPP
+#ifndef SGXDEDUP_SENDER_HPP
+#define SGXDEDUP_SENDER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -48,4 +48,4 @@ public:
     bool editJobDoneFlag();
 };
 
-#endif //GENERALDEDUPSYSTEM_SENDER_HPP
+#endif //SGXDEDUP_SENDER_HPP

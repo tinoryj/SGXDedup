@@ -2,8 +2,8 @@
 // Created by a on 2/14/19.
 //
 
-#ifndef GENERALDEDUPSYSTEM_POWCLIENT_HPP
-#define GENERALDEDUPSYSTEM_POWCLIENT_HPP
+#ifndef SGXDEDUP_POWCLIENT_HPP
+#define SGXDEDUP_POWCLIENT_HPP
 #include "configure.hpp"
 #include "crypto.h"
 #include "dataStructure.hpp"
@@ -63,4 +63,4 @@ public:
     bool editJobDoneFlag();
 };
 
-#endif //GENERALDEDUPSYSTEM_POWCLIENT_HPP
+#endif //SGXDEDUP_POWCLIENT_HPP

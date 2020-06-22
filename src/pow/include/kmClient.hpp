@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_KMCLIENT_HPP
-#define GENERALDEDUPSYSTEM_KMCLIENT_HPP
+#ifndef SGXDEDUP_KMCLIENT_HPP
+#define SGXDEDUP_KMCLIENT_HPP
 #include "crypto.h"
 #include "km_enclave_u.h"
 #include "messageQueue.hpp"
@@ -56,4 +56,4 @@ public:
     void raclose(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx);
 };
 
-#endif //GENERALDEDUPSYSTEM_KMCLIENT_HPP
+#endif //SGXDEDUP_KMCLIENT_HPP

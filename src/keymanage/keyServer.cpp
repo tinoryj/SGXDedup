@@ -32,7 +32,6 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
 #if OPENSSL_V_1_0_2 == 1
-
     keyD_ = rsa_->d;
     keyN_ = rsa_->n;
 #else
@@ -49,6 +48,10 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     keyGenLimitPerSessionKey_ = config.getKeyGenLimitPerSessionkeySize();
     raRequestFlag = true;
     keySecurityChannel_ = keyServerSecurityChannelTemp;
+#if KEY_GEN_EPOLL_MODE == 1
+    requestMQ_ = new messageQueue<keyServerEpollMesage_t>;
+    responseMQ_ = new messageQueue<keyServerEpollMesage_t>;
+#endif
 }
 
 keyServer::~keyServer()
@@ -57,6 +60,12 @@ keyServer::~keyServer()
     RSA_free(rsa_);
     delete client;
     delete keySecurityChannel_;
+#if KEY_GEN_EPOLL_MODE == 1
+    requestMQ_->~messageQueue();
+    delete requestMQ_;
+    responseMQ_->~messageQueue();
+    delete responseMQ_;
+#endif
 }
 
 bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
@@ -156,12 +165,99 @@ void keyServer::runSessionKeyUpdate()
 
 void runRecvThread()
 {
+    map<int,SSL*>sslconnection;
+    _messageQueue mq(KEYMANGER_SR_TO_KEYGEN,WRITE_MESSAGE);
+    epoll_event ev,event[100];
+    int epfd,fd;
+    message* msg=new message();
+    epfd=epoll_create(20);
+    msg->fd=_keySecurityChannel->listenFd;
+    msg->epfd=epfd;
+    ev.data.ptr=(void*)msg;
+    ev.events=EPOLLET|EPOLLIN;
+    epoll_ctl(epfd,EPOLL_CTL_ADD,_keySecurityChannel->listenFd,&ev);
+
+    while(1){
+        int nfd=epoll_wait(epfd,event,20,-1);
+        for(int i=0;i<nfd;i++){
+
+            //msg 存在耦合，在数据发送后将 msg 删除
+            msg=(message*)event[i].data.ptr;
+            if(msg->fd==_keySecurityChannel->listenFd){
+
+                message* msg1=new message();
+                std::pair<int,SSL*> con=_keySecurityChannel->sslListen();
+                *msg1=*msg;
+                msg1->fd=con.first;
+                sslconnection[con.first]=con.second;
+                ev.data.ptr=(void*)msg1;
+                ev.events=EPOLLET|EPOLLIN;
+                epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->fd,&ev);
+                continue;
+            }
+            if(event[i].events& EPOLLIN){
+                string hash;
+                if(!_keySecurityChannel->sslRead(sslconnection[msg->fd],hash)){
+                    std::cerr<<"client closed\n";
+                    epoll_ctl(msg->epfd,EPOLL_CTL_DEL,msg->fd,&ev);
+                    close(msg->fd);
+                    delete msg;
+                    continue;
+                }
+                memcpy(msg->hash,hash.c_str(),sizeof(msg->hash));
+                mq.push(*msg);
+                delete msg;*
+                continue;
+            }
+            if(event[i].events& EPOLLOUT){
+                _keySecurityChannel->sslWrite(sslconnection[msg->fd],msg->key);
+                ev.events=EPOLLET|EPOLLIN;
+                ev.data.ptr=(void*)msg;
+                epoll_ctl(epfd,EPOLL_CTL_MOD,msg->fd,&ev);
+                continue;
+            }
+        }
+    }
 }
 void runSendThread()
 {
+    std::string key;
+    epoll_event ev;
+    ev.events=EPOLLET|EPOLLOUT;
+    while(1){
+        message* msg = new message();
+        if(!mq.pop(*msg)){
+            continue;
+        }
+        this->workloadProgress(msg->hash,key);
+        memcpy(msg->key,key.c_str(),sizeof(msg->key));
+        ev.data.ptr=(void*)msg;
+        epoll_ctl(msg->epfd,EPOLL_CTL_MOD,msg->fd,&ev);
+    }
+
 }
 void runKeyGenerateRequestThread()
 {
+    while (true) {
+
+    }
+    keyGenerateCount_ += recvNumber;
+
+#elif KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 0
+
+    multiThreadMutex_.lock();
+#if SGSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestart, 0);
+#endif
+    client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+#if SGSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeend, 0);
+    diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+    second = diff / 1000000.0;
+    keyGenTime += second;
+#endif
+    keyGenerateCount_ += recvNumber;
+    multiThreadMutex_.unlock();   
 }
 
 #elif KEY_GEN_MULTI_THREAD_MODE == 1

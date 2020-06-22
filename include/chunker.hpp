@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM__CHUNKER_HPP
-#define GENERALDEDUPSYSTEM__CHUNKER_HPP
+#ifndef SGXDEDUP__CHUNKER_HPP
+#define SGXDEDUP__CHUNKER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -68,4 +68,4 @@ public:
     Recipe_t getRecipeHead();
 };
 
-#endif //GENERALDEDUPSYSTEM_CHUNKER_HPP
+#endif //SGXDEDUP_CHUNKER_HPP

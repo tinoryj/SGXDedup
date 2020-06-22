@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_RETRIEVER_HPP
-#define GENERALDEDUPSYSTEM_RETRIEVER_HPP
+#ifndef SGXDEDUP_RETRIEVER_HPP
+#define SGXDEDUP_RETRIEVER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -31,4 +31,4 @@ public:
     bool extractMQFromRecvDecode(RetrieverData_t& data);
 };
 
-#endif //GENERALDEDUPSYSTEM_RETRIEVER_HPP
+#endif //SGXDEDUP_RETRIEVER_HPP

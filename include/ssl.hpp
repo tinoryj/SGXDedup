@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_SSL_HPP
-#define GENERALDEDUPSYSTEM_SSL_HPP
+#ifndef SGXDEDUP_SSL_HPP
+#define SGXDEDUP_SSL_HPP
 
 #include "configure.hpp"
 #include "openssl/bio.h"
@@ -38,4 +38,4 @@ public:
     bool send(SSL* connection, char* data, int dataSize);
     bool recv(SSL* connection, char* data, int& dataSize);
 };
-#endif //GENERALDEDUPSYSTEM_SSL_HPP
+#endif //SGXDEDUP_SSL_HPP

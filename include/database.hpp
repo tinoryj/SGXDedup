@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_DATABASE_HPP
-#define GENERALDEDUPSYSTEM_DATABASE_HPP
+#ifndef SGXDEDUP_DATABASE_HPP
+#define SGXDEDUP_DATABASE_HPP
 
 #include "dataStructure.hpp"
 #include "leveldb/db.h"
@@ -22,4 +22,4 @@ public:
     bool insert(std::string key, std::string value);
 };
 
-#endif //GENERALDEDUPSYSTEM_DATABASE_HPP
+#endif //SGXDEDUP_DATABASE_HPP

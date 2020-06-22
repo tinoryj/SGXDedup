@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_CHUNK_HPP
-#define GENERALDEDUPSYSTEM_CHUNK_HPP
+#ifndef SGXDEDUP_CHUNK_HPP
+#define SGXDEDUP_CHUNK_HPP
 
 #include "configure.hpp"
 #include <bits/stdc++.h>
@@ -100,4 +100,4 @@ typedef struct {
 
 typedef vector<uint32_t> RequiredChunk_t;
 
-#endif //GENERALDEDUPSYSTEM_CHUNK_HPP
+#endif //SGXDEDUP_CHUNK_HPP

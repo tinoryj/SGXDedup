@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_DEDUPCORE_HPP
-#define GENERALDEDUPSYSTEM_DEDUPCORE_HPP
+#ifndef SGXDEDUP_DEDUPCORE_HPP
+#define SGXDEDUP_DEDUPCORE_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -21,4 +21,4 @@ public:
     bool dedupByHash(powSignedHash_t in, RequiredChunk_t& out);
 };
 
-#endif //GENERALDEDUPSYSTEM_DEDUPCORE_HPP
+#endif //SGXDEDUP_DEDUPCORE_HPP

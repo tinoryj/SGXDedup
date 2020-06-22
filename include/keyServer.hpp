@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_KEYSERVER_HPP
-#define GENERALDEDUPSYSTEM_KEYSERVER_HPP
+#ifndef SGXDEDUP_KEYSERVER_HPP
+#define SGXDEDUP_KEYSERVER_HPP
 
 #include "configure.hpp"
 #include "dataStructure.hpp"
@@ -9,7 +9,7 @@
 #include "ssl.hpp"
 #include <bits/stdc++.h>
 #if KEY_GEN_EPOLL_MODE == 1
-
+#include <sys/epoll.h>
 #endif
 #define KEYMANGER_PRIVATE_KEY "key/sslKeys/server-key.pem"
 
@@ -58,4 +58,4 @@ public:
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
 };
 
-#endif //GENERALDEDUPSYSTEM_KEYSERVER_HPP
+#endif //SGXDEDUP_KEYSERVER_HPP

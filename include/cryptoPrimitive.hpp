@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
-#define GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
+#ifndef SGXDEDUP_CRYPTOPRIMITIVE_HPP
+#define SGXDEDUP_CRYPTOPRIMITIVE_HPP
 #include "configure.hpp"
 #include "dataStructure.hpp"
 #include <bits/stdc++.h>
@@ -76,4 +76,4 @@ public:
     }
 };
 
-#endif //GENERALDEDUPSYSTEM_CRYPTOPRIMITIVE_HPP
+#endif //SGXDEDUP_CRYPTOPRIMITIVE_HPP

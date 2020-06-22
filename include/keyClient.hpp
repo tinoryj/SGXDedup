@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_KEYCLIENT_HPP
-#define GENERALDEDUPSYSTEM_KEYCLIENT_HPP
+#ifndef SGXDEDUP_KEYCLIENT_HPP
+#define SGXDEDUP_KEYCLIENT_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -46,4 +46,4 @@ public:
 #endif
 };
 
-#endif //GENERALDEDUPSYSTEM_KEYCLIENT_HPP
+#endif //SGXDEDUP_KEYCLIENT_HPP

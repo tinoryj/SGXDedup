@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_CONFIGURE_HPP
-#define GENERALDEDUPSYSTEM_CONFIGURE_HPP
+#ifndef SGXDEDUP_CONFIGURE_HPP
+#define SGXDEDUP_CONFIGURE_HPP
 
 #include <bits/stdc++.h>
 #include <boost/property_tree/json_parser.hpp>
@@ -241,4 +241,4 @@ public:
     double getTimeOutScale();
 };
 
-#endif //GENERALDEDUPSYSTEM_CONFIGURE_HPP
+#endif //SGXDEDUP_CONFIGURE_HPP

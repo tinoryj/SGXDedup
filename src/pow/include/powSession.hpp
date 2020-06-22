@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_POWSESSION_HPP
-#define GENERALDEDUPSYSTEM_POWSESSION_HPP
+#ifndef SGXDEDUP_POWSESSION_HPP
+#define SGXDEDUP_POWSESSION_HPP
 
 #include "../../../include/configure.hpp"
 #include "../../../include/cryptoPrimitive.hpp"
@@ -31,4 +31,4 @@ struct powSession {
     sgx_ra_msg1_t msg1;
 };
 
-#endif //GENERALDEDUPSYSTEM_POWSESSION_HPP
+#endif //SGXDEDUP_POWSESSION_HPP

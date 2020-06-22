@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_POWSERVER_HPP
-#define GENERALDEDUPSYSTEM_POWSERVER_HPP
+#ifndef SGXDEDUP_POWSERVER_HPP
+#define SGXDEDUP_POWSERVER_HPP
 
 #include "base64.h"
 #include "byteorder.h"
@@ -80,4 +80,4 @@ public:
     powServer();
 };
 
-#endif //GENERALDEDUPSYSTEM_POWSERVER_HPP
+#endif //SGXDEDUP_POWSERVER_HPP

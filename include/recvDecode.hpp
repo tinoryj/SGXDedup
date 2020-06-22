@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_RECIVER_HPP
-#define GENERALDEDUPSYSTEM_RECIVER_HPP
+#ifndef SGXDEDUP_RECIVER_HPP
+#define SGXDEDUP_RECIVER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
@@ -37,4 +37,4 @@ public:
     bool extractMQToRetriever(RetrieverData_t& newChunk);
 };
 
-#endif //GENERALDEDUPSYSTEM_RECIVER_HPP
+#endif //SGXDEDUP_RECIVER_HPP

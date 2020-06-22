@@ -2,8 +2,8 @@
 // Created by a on 3/19/19.
 //
 
-#ifndef GENERALDEDUPSYSTEM_KMSERVER_HPP
-#define GENERALDEDUPSYSTEM_KMSERVER_HPP
+#ifndef SGXDEDUP_KMSERVER_HPP
+#define SGXDEDUP_KMSERVER_HPP
 
 #include "../../../include/configure.hpp"
 #include "../../../include/cryptoPrimitive.hpp"
@@ -76,4 +76,4 @@ public:
     powSession* authkm();
 };
 
-#endif //GENERALDEDUPSYSTEM_KMSERVER_HPP
+#endif //SGXDEDUP_KMSERVER_HPP

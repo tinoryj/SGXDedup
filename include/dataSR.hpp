@@ -1,5 +1,5 @@
-#ifndef GENERALDEDUPSYSTEM_DATASR_HPP
-#define GENERALDEDUPSYSTEM_DATASR_HPP
+#ifndef SGXDEDUP_DATASR_HPP
+#define SGXDEDUP_DATASR_HPP
 
 #include "../src/pow/include/powServer.hpp"
 #include "boost/bind.hpp"
@@ -38,4 +38,4 @@ public:
     void runKeyServerRA();
 };
 
-#endif //GENERALDEDUPSYSTEM_DATASR_HPP
+#endif //SGXDEDUP_DATASR_HPP
