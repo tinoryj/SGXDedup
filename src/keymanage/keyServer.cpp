@@ -51,6 +51,9 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
 #if KEY_GEN_EPOLL_MODE == 1
     requestMQ_ = new messageQueue<keyServerEpollMesage_t>;
     responseMQ_ = new messageQueue<keyServerEpollMesage_t>;
+    for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
+        perThreadKeyGenerateCount_.push_back(0);
+    }
 #endif
 }
 
@@ -236,31 +239,24 @@ void runSendThread()
     }
 
 }
-void runKeyGenerateRequestThread()
+void runKeyGenerateRequestThread(int threadID)
 {
     while (true) {
-
+        keyServerEpollMesage_t tempEpollMessage;
+        // if (requestMQ_->done_) {
+        //     cerr << "KeyServer : Key generate jobs done, exit now" << endl;
+        //     return;
+        // }
+        if (requestMQ_->pop(tempEpollMessage)) {
+            perThreadKeyGenerateCount_[threadID] += tempEpollMessage.requestNumber;
+            client->request(tempEpollMessage.hashContent, tempEpollMessage.length, tempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+            tempEpollMessage.keyGenerateFlag = true;
+            responesMQ_->push(tempEpollMessage);
+        }
     }
-    keyGenerateCount_ += recvNumber;
-
-#elif KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 0
-
-    multiThreadMutex_.lock();
-#if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestart, 0);
-#endif
-    client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
-#if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeend, 0);
-    diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-    second = diff / 1000000.0;
-    keyGenTime += second;
-#endif
-    keyGenerateCount_ += recvNumber;
-    multiThreadMutex_.unlock();   
 }
 
-#elif KEY_GEN_MULTI_THREAD_MODE == 1
+#else
 
 #if KEY_GEN_SGX_CFB == 1
 

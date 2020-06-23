@@ -30,6 +30,7 @@ void Configure::readConf(std::string path)
 
     //Key Server Congigure
     _keyServerNumber = root.get<uint64_t>("KeyServerConfig._keyServerNumber");
+    _keyEnclaveThreadNumber = root.get<uint64_t>("KeyServerConfig._keyEnclaveThreadNumber");
     _keyBatchSize = root.get<uint64_t>("KeyServerConfig._keyBatchSize");
     _keyCacheSize = root.get<uint64_t>("KeyServerConfig._keyCacheSize");
     _keyGenLimitPerSessionKey = root.get<uint64_t>("KeyServerConfig._keyGenLimitPerSessionKey");
@@ -158,19 +159,21 @@ uint64_t Configure::getReadSize()
 // key management settings
 uint64_t Configure::getKeyServerNumber()
 {
-
     return _keyServerNumber;
+}
+
+uint64_t Configure::getKeyEnclaveThreadNumber()
+{
+    return _keyEnclaveThreadNumber;
 }
 
 int Configure::getKeyBatchSize()
 {
-
     return _keyBatchSize;
 }
 
 int Configure::getkeyServerRArequestPort()
 {
-
     return _keyServerRArequestPort;
 }
 

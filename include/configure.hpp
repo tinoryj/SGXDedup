@@ -74,6 +74,7 @@ private:
 
     // key management settings
     uint64_t _keyServerNumber;
+    uint64_t _keyEnclaveThreadNumber;
     std::vector<std::string> _keyServerIP;
     std::vector<int> _keyServerPort;
     int _keyServerRArequestPort;
@@ -153,21 +154,16 @@ public:
 
     // chunking settings
     uint64_t getChunkingType();
-
     uint64_t getMaxChunkSize();
-
     uint64_t getMinChunkSize();
-
     uint64_t getAverageChunkSize();
-
     uint64_t getSlidingWinSize();
-
     uint64_t getSegmentSize();
-
     uint64_t getReadSize();
 
     // key management settings
     uint64_t getKeyServerNumber();
+    uint64_t getKeyEnclaveThreadNumber();
     std::string getKeyServerIP();
     //std::vector<std::string> getkeyServerIP();
     int getKeyServerPort();

@@ -29,7 +29,7 @@ public:
     keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
     ~keyClient();
     void run();
-    void runKeyGenSimulator();
+    void runKeyGenSimulator(int clientID);
     bool encodeChunk(Data_t& newChunk);
     bool insertMQFromChunker(Data_t& newChunk);
     bool extractMQFromChunker(Data_t& newChunk);

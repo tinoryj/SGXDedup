@@ -37,6 +37,10 @@ private:
     vector<maskInfo> clientList;
 #endif
 
+#if KEY_GEN_EPOLL_MODE == 1
+    vector<uint64_t> perThreadKeyGenerateCount_;
+#endif
+
 public:
     keyServer(ssl* keySecurityChannelTemp);
     ~keyServer();
@@ -51,7 +55,7 @@ public:
     messageQueue<keyServerEpollMesage_t>* responseMQ_;
     void runRecvThread();
     void runSendThread();
-    void runKeyGenerateRequestThread();
+    void runKeyGenerateRequestThread(int threadID);
 #elif KEY_GEN_MULTI_THREAD_MODE == 1
     void runKeyGenerateThread(SSL* connection);
 #endif

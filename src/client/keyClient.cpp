@@ -60,7 +60,7 @@ keyClient::~keyClient()
 #endif
 }
 
-void keyClient::runKeyGenSimulator()
+void keyClient::runKeyGenSimulator(int clientID)
 {
 
 #if SGSTEM_BREAK_DOWN == 1
@@ -83,7 +83,7 @@ void keyClient::runKeyGenSimulator()
 #if KEY_GEN_SGX_CTR == 1
     uint32_t counter = 0;
     //read old counter
-    string counterFileName = ".CounterStore";
+    string counterFileName = ".CounterStore" + to_string(clientID);
     ifstream counterIn;
     counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
     if (!counterIn.is_open()) {
@@ -108,7 +108,7 @@ void keyClient::runKeyGenSimulator()
     cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
     char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
-    memcpy(initInfoBuffer, &clientID_, sizeof(int));
+    memcpy(initInfoBuffer, &clientID, sizeof(int));
     memcpy(initInfoBuffer + sizeof(int), &counter, sizeof(uint32_t));
     memcpy(initInfoBuffer + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
     if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + sizeof(int))) {
@@ -189,6 +189,7 @@ void keyClient::runKeyGenSimulator()
     }
 #endif
 #if SGSTEM_BREAK_DOWN == 1
+    cerr << "keyClient : client ID = " << clientID << endl;
     cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
 #endif

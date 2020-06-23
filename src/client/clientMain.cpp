@@ -112,7 +112,7 @@ int main(int argv, char* argc[])
 
         gettimeofday(&timestart, NULL);
         for (int i = 0; i < threadNumber; i++) {
-            th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj));
+            th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj, i));
             thList.push_back(th);
         }
     } else if (strcmp("-s", argc[1]) == 0) {
