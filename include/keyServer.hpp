@@ -32,7 +32,7 @@ private:
     vector<uint64_t> perThreadKeyGenerateCount_;
 #endif
 #if KEY_GEN_SGX_CTR == 1
-    vector<maskInfo> clientList;
+    vector<maskInfo> clientList_;
 #endif
 public:
     keyServer(ssl* keySecurityChannelTemp);

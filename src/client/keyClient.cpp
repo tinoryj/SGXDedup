@@ -107,11 +107,13 @@ void keyClient::runKeyGenSimulator(int clientID)
     }
     cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
-    char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
-    memcpy(initInfoBuffer, &clientID, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
-    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + sizeof(int))) {
+    char initInfoBuffer[16 + 2 * sizeof(int)]; // clientID & nonce & counter
+    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
+    memcpy(initInfoBuffer, &protocolFlag, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int), &clientID, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(int), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + 2 * sizeof(int))) {
         cerr << "keyClient: send init information error" << endl;
         return;
     } else {
@@ -242,11 +244,13 @@ void keyClient::run()
     }
     cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
-    char initInfoBuffer[16 + sizeof(int)]; // clientID & nonce & counter
-    memcpy(initInfoBuffer, &clientID_, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
-    if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, 16 + sizeof(int))) {
+    char initInfoBuffer[16 + 2 * sizeof(int)]; // clientID & nonce & counter
+    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
+    memcpy(initInfoBuffer, &protocolFlag, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int), &clientID, sizeof(int));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(int), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(int) + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + 2 * sizeof(int))) {
         cerr << "keyClient: send init information error" << endl;
         return;
     } else {
@@ -431,7 +435,9 @@ bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, i
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter)
 {
-    u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
+    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
+    u_char sendHash[sizeof(int) + CHUNK_HASH_SIZE * batchNumber];
+    memcpy(sendHash, &protocolFlag, sizeof(int));
 #if SGSTEM_BREAK_DOWN == 1
     struct timeval timestartKey_enc;
     struct timeval timeendKey_enc;
@@ -439,14 +445,14 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
-    keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
+    keyExchangeXOR(sendHash + sizeof(int), batchHashList, keyExchangeXORBase, batchNumber);
 #if SGSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
     double second = diff / 1000000.0;
     keyExchangeEncTime += second;
 #endif
-    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
+    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash + sizeof(int), CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
@@ -480,12 +486,14 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 
 bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter)
 {
-    u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
+    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
+    u_char sendHash[sizeof(int) + CHUNK_HASH_SIZE * batchNumber];
+    memcpy(sendHash, &protocolFlag, sizeof(int));
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
-    keyExchangeXOR(sendHash, batchHashList, keyExchangeXORBase, batchNumber);
+    keyExchangeXOR(sendHash + sizeof(int), batchHashList, keyExchangeXORBase, batchNumber);
 
-    if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
+    if (!securityChannel->send(sslConnection, (char*)sendHash + sizeof(int), CHUNK_HASH_SIZE * batchNumber)) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
