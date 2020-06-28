@@ -426,6 +426,7 @@ void DataSR::runPow(SSL* sslConnection)
 void DataSR::runKeyServerRA()
 {
     ssl* sslRAListen = new ssl(config.getStorageServerIP(), config.getKMServerPort(), SERVERSIDE);
+    cerr << "DataSR : key server ra request channel setup" << endl;
     int sendSize = sizeof(NetworkHeadStruct_t);
     char sendBuffer[sendSize];
     NetworkHeadStruct_t netHead, recvHead;
@@ -479,7 +480,7 @@ void DataSR::runKeyServerRA()
 
                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
                 keyExchangeKeySetFlag = true;
-                cerr << "KeyClient : keyServer enclave trusted" << endl;
+                cerr << "DataSR : keyServer enclave trusted" << endl;
                 delete session;
                 boost::xtime xt;
                 boost::xtime_get(&xt, boost::TIME_UTC_);
@@ -493,12 +494,12 @@ void DataSR::runKeyServerRA()
                 // delete sslRARequest;
                 free(sslRARequestConnection);
             } else {
-                cerr << "KeyClient : keyServer send wrong message, storage try again now" << endl;
+                cerr << "DataSR : keyServer send wrong message, storage try again now" << endl;
                 goto errorRetry;
             }
         } else {
             delete session;
-            cerr << "KeyClient : keyServer enclave not trusted, storage try again now" << endl;
+            cerr << "DataSR : keyServer enclave not trusted, storage try again now, request type = " << recvHead.messageType << endl;
             goto errorRetry;
         }
     }

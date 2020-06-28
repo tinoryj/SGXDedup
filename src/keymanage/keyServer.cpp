@@ -99,7 +99,6 @@ void keyServer::runRAwithSPRequest()
         cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
         free(sslConnection);
     }
-    delete raSecurityChannelTemp;
 }
 
 void keyServer::runRA()

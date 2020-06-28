@@ -26,6 +26,10 @@ int main()
 #if KEY_GEN_SGX_CFB == 1
     th = new boost::thread(boost::bind(&keyServer::runRA, server));
     th->detach();
+    // boost::xtime xt;
+    // boost::xtime_get(&xt, boost::TIME_UTC_);
+    // xt.sec += 5;
+    // boost::thread::sleep(xt);
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
