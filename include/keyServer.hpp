@@ -11,6 +11,8 @@
 #if KEY_GEN_EPOLL_MODE == 1
 #include <sys/epoll.h>
 #endif
+#define SERVERSIDE 0
+#define CLIENTSIDE 1
 #define KEYMANGER_PRIVATE_KEY "key/sslKeys/server-key.pem"
 
 class keyServer {
@@ -36,7 +38,14 @@ private:
     int epfd_;
 #endif
 #if KEY_GEN_SGX_CTR == 1
-    vector<maskInfo> clientList_;
+    typedef struct {
+        int clientID;
+        uint32_t keyGenerateCounter = 0;
+        uint32_t currentKeyGenerateCounter = 0;
+        u_char nonce[16 - sizeof(uint32_t)];
+        int nonceLen = 16 - sizeof(uint32_t);
+    } maskInfo;
+    vector<maskInfo> clientList;
 #endif
 public:
     keyServer(ssl* keySecurityChannelTemp);

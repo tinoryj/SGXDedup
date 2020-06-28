@@ -32,6 +32,7 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     passwd[4] = '\0';
     PEM_read_bio_RSAPrivateKey(key_, &rsa_, NULL, passwd);
 #if OPENSSL_V_1_0_2 == 1
+
     keyD_ = rsa_->d;
     keyN_ = rsa_->n;
 #else
@@ -98,6 +99,7 @@ void keyServer::runRAwithSPRequest()
         cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
         free(sslConnection);
     }
+    delete raSecurityChannelTemp;
 }
 
 void keyServer::runRA()
@@ -133,6 +135,7 @@ void keyServer::runRA()
         }
     }
 }
+
 void keyServer::runSessionKeyUpdate()
 {
     while (true) {
@@ -172,9 +175,9 @@ void keyServer::runCTRModeMaskGenerate()
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start compute session encryption mask offline" << endl;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientList_[i].keyGenerateCounter > 0) {
-                    client->maskGenerate(clientList_[i].clientID, clientList_[i].keyGenerateCounter, clientList_[i].nonce, 16 - sizeof(uint32_t));
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientList[i].keyGenerateCounter > 0) {
+                    client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
                 }
             }
             boost::xtime xt;
@@ -248,9 +251,9 @@ void keyServer::runRecvThread()
                         memcpy(nonce, hash + sizeof(int) + sizeof(int) + sizeof(uint32_t), 16 - sizeof(uint32_t));
 
                         if (recvedClientCounter != 0) {
-                            for (int i = 0; i < clientList_.size(); i++) {
-                                if (clientID == clientList_[i].clientID) {
-                                    if (clientList_[i].keyGenerateCounter == recvedClientCounter) {
+                            for (int i = 0; i < clientList.size(); i++) {
+                                if (clientID == clientList[i].clientID) {
+                                    if (clientList[i].keyGenerateCounter == recvedClientCounter) {
                                         cout << "KeyServer : compared key generate encryption counter success" << endl;
                                         continue;
                                     } else {
@@ -263,7 +266,7 @@ void keyServer::runRecvThread()
                             memcpy(currentMaskInfo.nonce, nonce, 12);
                             currentMaskInfo.clientID = clientID;
                             currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 2 for the counter
-                            clientList_.push_back(currentMaskInfo);
+                            clientList.push_back(currentMaskInfo);
                         }
                     } else if (requestType == KEY_GEN_UPLOAD_CHUNK_HASH) {
                         memcpy(tempEpollMessage->hashContent, hash + sizeof(int), recvSize - szieof(int));
@@ -357,92 +360,97 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     long diff;
     double second;
 #endif
-    u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
-    int recvSize = 0;
-    int currentThreadkeyGenerationNumber = 0;
-    if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
-        cerr << "keyServer : Thread exit due to client disconnect" << endl;
+    multiThreadCountMutex_.lock();
+    clientThreadCount_++;
+    multiThreadCountMutex_.unlock();
+    uint64_t currentThreadkeyGenerationNumber = 0;
+    while (true) {
+        u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        int recvSize = 0;
+        if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
+            cerr << "keyServer : Thread exit due to client disconnect" << endl;
 #if SGSTEM_BREAK_DOWN == 1
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
-        cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #else
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            multiThreadCountMutex_.unlock();
 #endif
-        return;
-    }
+            return;
+        }
 
-    if ((recvSize % CHUNK_HASH_SIZE) != 0) {
-        cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
+        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
+            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
 #if SGSTEM_BREAK_DOWN == 1
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
-        cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #else
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            multiThreadCountMutex_.unlock();
 #endif
-        return;
-    }
+            return;
+        }
 
-    int recvNumber = recvSize / CHUNK_HASH_SIZE;
-    // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
-    u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        int recvNumber = recvSize / CHUNK_HASH_SIZE;
+        // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+        u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
 
 #if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestart, 0);
+        gettimeofday(&timestart, 0);
 #endif
-    client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeend, 0);
-    diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-    second = diff / 1000000.0;
-    keyGenTime += second;
+        gettimeofday(&timeend, 0);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        keyGenTime += second;
 #endif
-    multiThreadMutex_.lock();
-    keyGenerateCount_ += recvNumber;
-    multiThreadMutex_.unlock();
+        multiThreadMutex_.lock();
+        keyGenerateCount_ += recvNumber;
+        multiThreadMutex_.unlock();
 
 #elif KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 0
 
-    multiThreadMutex_.lock();
+        multiThreadMutex_.lock();
 #if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestart, 0);
+        gettimeofday(&timestart, 0);
 #endif
-    client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #if SGSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeend, 0);
-    diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
-    second = diff / 1000000.0;
-    keyGenTime += second;
+        gettimeofday(&timeend, 0);
+        diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+        second = diff / 1000000.0;
+        keyGenTime += second;
 #endif
-    keyGenerateCount_ += recvNumber;
-    multiThreadMutex_.unlock();
+        keyGenerateCount_ += recvNumber;
+        multiThreadMutex_.unlock();
 
 #endif
-    currentThreadkeyGenerationNumber += recvNumber;
-    if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
-        cerr << "KeyServer : error send back chunk key to client" << endl;
+        currentThreadkeyGenerationNumber += recvNumber;
+        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+            cerr << "KeyServer : error send back chunk key to client" << endl;
 #if SGSTEM_BREAK_DOWN == 1
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
-        cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+            multiThreadCountMutex_.unlock();
 #else
-        multiThreadCountMutex_.lock();
-        clientThreadCount_--;
-        multiThreadCountMutex_.unlock();
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+            multiThreadCountMutex_.unlock();
 #endif
-        return;
+            return;
+        }
     }
 }
 
@@ -497,7 +505,6 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         cerr << "KeyServer : error recv client init messages" << endl;
         return;
     }
-
     //done
     while (true) {
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
@@ -510,16 +517,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -528,16 +535,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             multiThreadCountMutex_.unlock();
 #endif
@@ -550,16 +557,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -568,16 +575,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             multiThreadCountMutex_.unlock();
 #endif
@@ -610,16 +617,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -628,16 +635,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             bool clientIDExistFlag = false;
-            for (int i = 0; i < clientList_.size(); i++) {
-                if (clientID == clientList_[i].clientID) {
-                    clientList_[i].keyGenerateCounter += currentKeyGenerateCount;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientID == clientList[i].clientID) {
+                    clientList[i].keyGenerateCounter += currentKeyGenerateCount;
                     clientIDExistFlag = true;
                     break;
                 }
             }
             if (clientIDExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentKeyGenerateCount;
-                clientList_.push_back(currentMaskInfo);
+                clientList.push_back(currentMaskInfo);
             }
             multiThreadCountMutex_.unlock();
 #endif
@@ -683,7 +690,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         if ((recvSize % CHUNK_HASH_SIZE) != 0) {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
 #if SGSTEM_BREAK_DOWN == 1
-            multiThreadCountMutex_.lockKeyServerEpollMesage_t();
+            multiThreadCountMutex_.lock();
             clientThreadCount_--;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;

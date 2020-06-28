@@ -107,16 +107,4 @@ typedef struct {
 
 typedef vector<uint32_t> RequiredChunk_t;
 
-#if KEY_GEN_SGX_CTR == 1
-
-typedef struct {
-    int clientID;
-    uint32_t keyGenerateCounter = 0;
-    uint32_t currentKeyGenerateCounter = 0;
-    u_char nonce[16 - sizeof(uint32_t)];
-    int nonceLen = 16 - sizeof(uint32_t);
-} maskInfo;
-
-#endif
-
 #endif //SGXDEDUP_CHUNK_HPP
