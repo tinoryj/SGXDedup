@@ -30,6 +30,10 @@ private:
     ssl* keySecurityChannel_;
 #if KEY_GEN_EPOLL_MODE == 1
     vector<uint64_t> perThreadKeyGenerateCount_;
+    unordered_map<int, KeyServerEpollMessage_t> epollSession_;
+    map<int, SSL*> sslConnectionList_;
+    std::mutex epollSessionMutex_;
+    int epfd_;
 #endif
 #if KEY_GEN_SGX_CTR == 1
     vector<maskInfo> clientList_;
@@ -44,12 +48,12 @@ public:
     void runCTRModeMaskGenerate();
 #endif
 #if KEY_GEN_EPOLL_MODE == 1
-    messageQueue<KeyServerEpollMessage_t*>* requestMQ_;
-    messageQueue<KeyServerEpollMessage_t*>* responseMQ_;
+    messageQueue<KeyServerEpollMessage_t>* requestMQ_;
+    messageQueue<KeyServerEpollMessage_t>* responseMQ_;
     void runRecvThread();
     void runSendThread();
     void runKeyGenerateRequestThread(int threadID);
-#elif KEY_GEN_MULTI_THREAD_MODE == 1
+#else
     void runKeyGenerateThread(SSL* connection);
 #endif
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);

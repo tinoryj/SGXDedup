@@ -41,21 +41,21 @@ int main()
     th->detach();
 #endif
 
-#if KEY_GEN_EPOLL_MODE == 1
-    th = new boost::thread(boost::bind(&keyServer::runRecvThread, server));
-    th->detach();
-    th = new boost::thread(boost::bind(&keyServer::runSendThread, server));
-    th->detach();
-    for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++){
-        th = new boost::thread(boost::bind(&keyServer::runKeyGenerateRequestThread, server, i));
-        th->detach();
-    }
-#else
-    while (true) {
-        SSL* sslConnection = keySecurityChannelTemp->sslListen().second;
-        th = new boost::thread(boost::bind(&keyServer::run, server, sslConnection));
-        th->detach();
-    }
-#endif
+    // #if KEY_GEN_EPOLL_MODE == 1
+    //     th = new boost::thread(boost::bind(&keyServer::runRecvThread, server));
+    //     th->detach();
+    //     th = new boost::thread(boost::bind(&keyServer::runSendThread, server));
+    //     th->detach();
+    //     for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
+    //         th = new boost::thread(boost::bind(&keyServer::runKeyGenerateRequestThread, server, i));
+    //         th->detach();
+    //     }
+    // #else
+    //     while (true) {
+    //         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;
+    //         th = new boost::thread(boost::bind(&keyServer::run, server, sslConnection));
+    //         th->detach();
+    //     }
+    // #endif
     return 0;
 }

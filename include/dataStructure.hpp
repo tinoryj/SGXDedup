@@ -114,6 +114,7 @@ typedef struct {
     uint32_t keyGenerateCounter = 0;
     uint32_t currentKeyGenerateCounter = 0;
     u_char nonce[16 - sizeof(uint32_t)];
+    int nonceLen = 16 - sizeof(uint32_t);
 } maskInfo;
 
 #endif

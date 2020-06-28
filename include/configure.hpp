@@ -26,7 +26,7 @@ using namespace std;
 
 #define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
 
-#define KEY_GEN_EPOLL_MODE 1
+#define KEY_GEN_EPOLL_MODE 0
 #define KEY_GEN_MULTI_THREAD_MODE 0
 
 /* System Infomation Size Settings */
