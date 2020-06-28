@@ -28,19 +28,12 @@ private:
     uint64_t sessionKeyUpdateCount_;
     bool raRequestFlag;
     ssl* keySecurityChannel_;
-#if KEY_GEN_SGX_CTR == 1
-    typedef struct {
-        int clientID;
-        uint32_t keyGenerateCounter = 0;
-        u_char nonce[16 - sizeof(uint32_t)];
-    } maskInfo;
-    vector<maskInfo> clientList;
-#endif
-
 #if KEY_GEN_EPOLL_MODE == 1
     vector<uint64_t> perThreadKeyGenerateCount_;
 #endif
-
+#if KEY_GEN_SGX_CTR == 1
+    vector<maskInfo> clientList;
+#endif
 public:
     keyServer(ssl* keySecurityChannelTemp);
     ~keyServer();
@@ -51,8 +44,8 @@ public:
     void runCTRModeMaskGenerate();
 #endif
 #if KEY_GEN_EPOLL_MODE == 1
-    messageQueue<keyServerEpollMesage_t>* requestMQ_;
-    messageQueue<keyServerEpollMesage_t>* responseMQ_;
+    messageQueue<KeyServerEpollMessage_t*>* requestMQ_;
+    messageQueue<KeyServerEpollMessage_t*>* responseMQ_;
     void runRecvThread();
     void runSendThread();
     void runKeyGenerateRequestThread(int threadID);

@@ -49,8 +49,8 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     raRequestFlag = true;
     keySecurityChannel_ = keyServerSecurityChannelTemp;
 #if KEY_GEN_EPOLL_MODE == 1
-    requestMQ_ = new messageQueue<keyServerEpollMesage_t>;
-    responseMQ_ = new messageQueue<keyServerEpollMesage_t>;
+    requestMQ_ = new messageQueue<KeyServerEpollMessage_t*>;
+    responseMQ_ = new messageQueue<KeyServerEpollMessage_t*>;
     for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
         perThreadKeyGenerateCount_.push_back(0);
     }
@@ -132,7 +132,6 @@ void keyServer::runRA()
         }
     }
 }
-
 void keyServer::runSessionKeyUpdate()
 {
     while (true) {
@@ -164,94 +163,108 @@ void keyServer::runSessionKeyUpdate()
     }
 }
 
+#if KEY_GEN_SGX_CTR == 1
+void keyServer::runCTRModeMaskGenerate()
+{
+    while (true) {
+        if (raRequestFlag == false) {
+            while (!(clientThreadCount_ == 0))
+                ;
+            cout << "KeyServer : start compute session encryption mask offline" << endl;
+            for (int i = 0; i < clientList.size(); i++) {
+                if (clientList[i].keyGenerateCounter > 0) {
+                    client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
+                }
+            }
+            boost::xtime xt;
+            boost::xtime_get(&xt, boost::TIME_UTC_);
+            xt.sec += 20;
+            boost::thread::sleep(xt);
+        }
+    }
+}
+#endif
+
 #if KEY_GEN_EPOLL_MODE == 1
 
-void runRecvThread()
+void keyServer::runRecvThread()
 {
-    map<int,SSL*>sslconnection;
-    _messageQueue mq(KEYMANGER_SR_TO_KEYGEN,WRITE_MESSAGE);
-    epoll_event ev,event[100];
-    int epfd,fd;
-    message* msg=new message();
-    epfd=epoll_create(20);
-    msg->fd=_keySecurityChannel->listenFd;
-    msg->epfd=epfd;
-    ev.data.ptr=(void*)msg;
-    ev.events=EPOLLET|EPOLLIN;
-    epoll_ctl(epfd,EPOLL_CTL_ADD,_keySecurityChannel->listenFd,&ev);
+    map<int, SSL*> sslconnection;
+    epoll_event ev, event[100];
+    int epfd, fd;
+    KeyServerEpollMessage_t* tempEpollMessage;
+    epfd = epoll_create(20);
+    tempEpollMessage->fd = keySecurityChannel_->listenFd;
+    tempEpollMessage->epfd = epfd;
+    ev.data.ptr = (void*)tempEpollMessage;
+    ev.events = EPOLLET | EPOLLIN;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, keySecurityChannel_->listenFd, &ev);
+    u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+    int recvSize = 0;
+    while (true) {
+        int nfd = epoll_wait(epfd, event, 20, -1);
+        for (int i = 0; i < nfd; i++) {
 
-    while(1){
-        int nfd=epoll_wait(epfd,event,20,-1);
-        for(int i=0;i<nfd;i++){
+            tempEpollMessage = (KeyServerEpollMessage_t*)event[i].data.ptr;
+            if (tempEpollMessage->fd == keySecurityChannel_->listenFd) {
 
-            //msg 存在耦合，在数据发送后将 msg 删除
-            msg=(message*)event[i].data.ptr;
-            if(msg->fd==_keySecurityChannel->listenFd){
-
-                message* msg1=new message();
-                std::pair<int,SSL*> con=_keySecurityChannel->sslListen();
-                *msg1=*msg;
-                msg1->fd=con.first;
-                sslconnection[con.first]=con.second;
-                ev.data.ptr=(void*)msg1;
-                ev.events=EPOLLET|EPOLLIN;
-                epoll_ctl(epfd,EPOLL_CTL_ADD,msg1->fd,&ev);
+                KeyServerEpollMessage_t* newMsg;
+                std::pair<int, SSL*> con = keySecurityChannel_->sslListen();
+                *newMsg = *tempEpollMessage;
+                newMsg->fd = con.first;
+                sslconnection[con.first] = con.second;
+                ev.data.ptr = (void*)newMsg;
+                ev.events = EPOLLET | EPOLLIN;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, newMsg->fd, &ev);
                 continue;
             }
-            if(event[i].events& EPOLLIN){
-                string hash;
-                if(!_keySecurityChannel->sslRead(sslconnection[msg->fd],hash)){
-                    std::cerr<<"client closed\n";
-                    epoll_ctl(msg->epfd,EPOLL_CTL_DEL,msg->fd,&ev);
-                    close(msg->fd);
-                    delete msg;
+            if (event[i].events & EPOLLIN) {
+                if (!keySecurityChannel_->recv(sslconnection[tempEpollMessage->fd], (char*)hash, recvSize)) {
+                    std::cerr << "client closed\n";
+                    epoll_ctl(tempEpollMessage->epfd, EPOLL_CTL_DEL, tempEpollMessage->fd, &ev);
+                    close(tempEpollMessage->fd);
                     continue;
                 }
-                memcpy(msg->hash,hash.c_str(),sizeof(msg->hash));
-                mq.push(*msg);
-                delete msg;*
+                memcpy(tempEpollMessage->hashContent, hash, recvSize);
+                requestMQ_->push(tempEpollMessage);
                 continue;
             }
-            if(event[i].events& EPOLLOUT){
-                _keySecurityChannel->sslWrite(sslconnection[msg->fd],msg->key);
-                ev.events=EPOLLET|EPOLLIN;
-                ev.data.ptr=(void*)msg;
-                epoll_ctl(epfd,EPOLL_CTL_MOD,msg->fd,&ev);
+            if (event[i].events & EPOLLOUT) {
+                keySecurityChannel_->send(sslconnection[tempEpollMessage->fd], (char*)tempEpollMessage->keyContent, tempEpollMessage->length);
+                ev.events = EPOLLET | EPOLLIN;
+                ev.data.ptr = (void*)tempEpollMessage;
+                epoll_ctl(epfd, EPOLL_CTL_MOD, tempEpollMessage->fd, &ev);
                 continue;
             }
         }
     }
 }
-void runSendThread()
+void keyServer::runSendThread()
 {
     std::string key;
     epoll_event ev;
-    ev.events=EPOLLET|EPOLLOUT;
-    while(1){
-        message* msg = new message();
-        if(!mq.pop(*msg)){
-            continue;
+    ev.events = EPOLLET | EPOLLOUT;
+    KeyServerEpollMessage_t* tempEpollMessage;
+    while (true) {
+        if (responseMQ_->pop(tempEpollMessage)) {
+            epoll_ctl(tempEpollMessage->epfd, EPOLL_CTL_MOD, tempEpollMessage->fd, &ev);
         }
-        this->workloadProgress(msg->hash,key);
-        memcpy(msg->key,key.c_str(),sizeof(msg->key));
-        ev.data.ptr=(void*)msg;
-        epoll_ctl(msg->epfd,EPOLL_CTL_MOD,msg->fd,&ev);
     }
-
 }
-void runKeyGenerateRequestThread(int threadID)
+void keyServer::runKeyGenerateRequestThread(int threadID)
 {
     while (true) {
-        keyServerEpollMesage_t tempEpollMessage;
-        // if (requestMQ_->done_) {
-        //     cerr << "KeyServer : Key generate jobs done, exit now" << endl;
-        //     return;
-        // }
+        KeyServerEpollMessage_t* tempEpollMessage;
         if (requestMQ_->pop(tempEpollMessage)) {
-            perThreadKeyGenerateCount_[threadID] += tempEpollMessage.requestNumber;
-            client->request(tempEpollMessage.hashContent, tempEpollMessage.length, tempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
-            tempEpollMessage.keyGenerateFlag = true;
-            responesMQ_->push(tempEpollMessage);
+            perThreadKeyGenerateCount_[threadID] += tempEpollMessage->requestNumber;
+#if KEY_GEN_SGX_CFB == 1
+            client->request(tempEpollMessage->hashContent, tempEpollMessage->length, tempEpollMessage->keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+#elif KEY_GEN_SGX_CTR == 1
+            maskInfo currentMaskInfo;
+            client->request(tempEpollMessage->hashContent, tempEpollMessage->length, tempEpollMessage->keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE, tempEpollMessage->clientID, currentMaskInfo.keyGenerateCounter, currentMaskInfo.currentKeyGenerateCounter, tempEpollMessage->nonce, tempEpollMessage->nonceLen);
+#endif
+            tempEpollMessage->keyGenerateFlag = true;
+            responseMQ_->push(tempEpollMessage);
         }
     }
 }
@@ -359,26 +372,6 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 }
 
 #elif KEY_GEN_SGX_CTR == 1
-
-void keyServer::runCTRModeMaskGenerate()
-{
-    while (true) {
-        if (raRequestFlag == false) {
-            while (!(clientThreadCount_ == 0))
-                ;
-            cout << "KeyServer : start compute session encryption mask offline" << endl;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientList[i].keyGenerateCounter > 0) {
-                    client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
-                }
-            }
-            boost::xtime xt;
-            boost::xtime_get(&xt, boost::TIME_UTC_);
-            xt.sec += 20;
-            boost::thread::sleep(xt);
-        }
-    }
-}
 
 void keyServer::runKeyGenerateThread(SSL* connection)
 {
@@ -614,7 +607,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         if ((recvSize % CHUNK_HASH_SIZE) != 0) {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
 #if SGSTEM_BREAK_DOWN == 1
-            multiThreadCountMutex_.lock();
+            multiThreadCountMutex_.lockKeyServerEpollMesage_t();
             clientThreadCount_--;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
