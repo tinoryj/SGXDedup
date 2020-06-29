@@ -34,9 +34,9 @@ public:
     bool setJobDoneFlag()
     {
         done_ = true;
-        if(done_==true){
+        if (done_ == true) {
             return true;
-        }else {
+        } else {
             return false;
         }
     }

@@ -80,10 +80,10 @@ typedef struct {
     int requestNumber = 0;
     bool keyGenerateFlag = false; // true - key gen done; false - key gen not start
     int clientID;
-    uint32_t keyGenerateCounter = 0;
-    uint32_t currentKeyGenerateCounter = 0;
-    u_char nonce[16 - sizeof(uint32_t)];
-    int nonceLen = 16 - sizeof(uint32_t);
+    // uint32_t keyGenerateCounter = 0;
+    // uint32_t currentKeyGenerateCounter = 0;
+    // u_char nonce[16 - sizeof(uint32_t)];
+    // int nonceLen = 16 - sizeof(uint32_t);
 } KeyServerEpollMessage_t;
 
 typedef struct {

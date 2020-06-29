@@ -332,6 +332,7 @@ void keyServer::runRecvThread()
                         msgIn.clientID = netHead.clientID;
                     }
 #elif KEY_GEN_SGX_CFB == 1
+                    KeyServerEpollMessage_t msgIn;
                     ev.data.ptr = (void*)&msgIn;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLERR;
@@ -342,6 +343,7 @@ void keyServer::runRecvThread()
                     msgIn.length = recvSize;
                     msgIn.requestNumber = msgIn.length / CHUNK_HASH_SIZE;
                     msgIn.fd = event[i].data.fd;
+                    // msgIn.clientID = netHead.clientID;
 #endif
                     cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << msgIn.length << endl;
                     requestMQ_->push(msgIn);
