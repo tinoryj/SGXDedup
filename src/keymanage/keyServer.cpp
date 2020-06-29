@@ -217,13 +217,15 @@ bool setnonblocking(int sock)
 void keyServer::runRecvThread()
 {
     cout << "KeyServer : start epoll recv thread - 1" << endl;
-    setnonblocking(keySecurityChannel_->listenFd);
+    // setnonblocking(keySecurityChannel_->listenFd);
     epoll_event event[100];
     epoll_event ev;
     ev.data.ptr = nullptr;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
     ev.data.fd = keySecurityChannel_->listenFd;
-    epoll_ctl(epfd_, EPOLL_CTL_ADD, keySecurityChannel_->listenFd, &ev);
+    if (epoll_ctl(epfd_, EPOLL_CTL_ADD, keySecurityChannel_->listenFd, &ev) != 0) {
+        cerr << "KeyServer : epoll init error, fd = " << keySecurityChannel_->listenFd << endl;
+    }
 #if KEY_GEN_SGX_CTR == 1
     u_char hash[sizeof(int) + config.getKeyBatchSize() * CHUNK_HASH_SIZE];
     int requestType;
@@ -236,30 +238,46 @@ void keyServer::runRecvThread()
     int recvSize = 0;
     cout << "KeyServer : start epoll recv thread, listen fd = " << ev.data.fd << ", " << keySecurityChannel_->listenFd << endl;
     while (true) {
-        int nfd = epoll_wait(epfd_, event, 100, 500);
-        // cout << "KeyServer : epoll query start, nfd = " << nfd << endl;
+        int nfd = epoll_wait(epfd_, event, 100, -1);
+        cout << "KeyServer : epoll query start, nfd = " << nfd << ", epfd = " << epfd_ << endl;
+        // for (int i = 0; i < nfd; i++) {
+        //     cout << "KeyServer : nfd = " << nfd << endl;
+        //     if (event[i].events == EPOLLIN | EPOLLET) {
+        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLIN" << endl;
+        //     } else if (event[i].events == EPOLLERR | EPOLLET) {
+        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLERR" << endl;
+        //     } else if (event[i].events == EPOLLOUT | EPOLLET) {
+        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLOUT" << endl;
+        //     }
+        // }
         for (int i = 0; i < nfd; i++) {
             if (event[i].data.fd == keySecurityChannel_->listenFd) {
+                cout << __LINE__ << " fd = " << event[i].data.fd << endl;
                 std::pair<int, SSL*> con = keySecurityChannel_->sslListen();
                 sslConnectionList_.insert(con);
                 KeyServerEpollMessage_t msgTemp;
                 msgTemp.fd = con.first;
                 ev.data.ptr = (void*)&msgTemp;
-                ev.events = EPOLLIN | EPOLLET;
+                ev.events = EPOLLIN;
                 ev.data.fd = con.first;
-                epoll_ctl(epfd_, EPOLL_CTL_ADD, con.first, &ev);
+                if (epoll_ctl(epfd_, EPOLL_CTL_ADD, con.first, &ev) != 0) {
+                    cerr << "KeyServer : epoll set error, fd = " << con.first << endl;
+                }
                 epollSessionMutex_.lock();
                 epollSession_.insert(make_pair(con.first, msgTemp));
                 epollSessionMutex_.unlock();
                 cout << "KeyServer : epoll recved new connection, fd = " << con.first << endl;
-
+                continue;
             } else if (event[i].events & EPOLLIN) {
-                cout << "KeyServer : fd = " << event[i].data.fd << " start recv data" << endl;
+                cout << __LINE__ << " fd = " << event[i].data.fd << endl;
+                // cout << "KeyServer : fd = " << event[i].data.fd << " start recv data" << endl;
                 if (!keySecurityChannel_->recv(sslConnectionList_[event[i].data.fd], (char*)hash, recvSize)) {
                     ev.data.ptr = nullptr;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLERR;
-                    epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev);
+                    if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
+                        cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
+                    }
                     epollSessionMutex_.lock();
                     epollSession_.erase(event[i].data.fd);
                     epollSessionMutex_.unlock();
@@ -304,8 +322,9 @@ void keyServer::runRecvThread()
                     ev.data.ptr = (void*)&msgIn;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLERR;
-                    epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev);
-
+                    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
+                        cerr << "KeyServer : epoll in change mode error, fd = " << event[i].data.fd << endl;
+                    }
                     memcpy(msgIn.hashContent, hash, recvSize);
                     msgIn.length = recvSize;
                     msgIn.requestNumber = msgIn.length / CHUNK_HASH_SIZE;
@@ -316,21 +335,36 @@ void keyServer::runRecvThread()
                     continue;
                 }
             } else if (event[i].events & EPOLLOUT) {
-
+                cout << __LINE__ << " fd = " << event[i].data.fd << endl;
                 KeyServerEpollMessage_t msgOut;
                 epollSessionMutex_.lock();
                 msgOut = epollSession_.at(event[i].data.fd);
                 epollSessionMutex_.unlock();
-                cout << "KeyServer : fd = " << event[i].data.fd << " start send data, size = " << msgOut.length << endl;
+                // cout << "KeyServer : fd = " << event[i].data.fd << " start send data, size = " << msgOut.length << endl;
                 if (msgOut.fd != event[i].data.fd) {
-                    cerr << "epoll event fd not equal to msg-fd " << msgOut.fd << endl;
+                    cerr << "KeyServer : epoll event fd not equal to msg-fd " << msgOut.fd << endl;
                     continue;
                 }
-
-                keySecurityChannel_->send(sslConnectionList_[msgOut.fd], (char*)msgOut.keyContent, msgOut.length);
-                ev.events = EPOLLIN | EPOLLET;
-                epoll_ctl(epfd_, EPOLL_CTL_MOD, msgOut.fd, &ev);
-                cout << "fd = " << msgOut.fd << " send key done, set EPOLLIN" << endl;
+                if (!keySecurityChannel_->send(sslConnectionList_[event[i].data.fd], (char*)msgOut.keyContent, msgOut.length)) {
+                    ev.events = EPOLLHUP;
+                    if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
+                        cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
+                    }
+                    epollSessionMutex_.lock();
+                    epollSession_.erase(event[i].data.fd);
+                    epollSessionMutex_.unlock();
+                    cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
+                    continue;
+                }
+                ev.data.ptr = (void*)&msgOut;
+                ev.data.fd = event[i].data.fd;
+                ev.events = EPOLLIN;
+                if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
+                    cerr << "KeyServer : epoll out change mode error, fd = " << event[i].data.fd << endl;
+                }
+                cout << "KeyServer : fd = " << event[i].data.fd << " send key done, set EPOLLIN" << endl;
+                continue;
+            } else {
                 continue;
             }
         }
@@ -354,8 +388,10 @@ void keyServer::runSendThread()
                 memcpy(epollSession_.at(msgTemp.fd).keyContent, msgTemp.keyContent, msgTemp.length);
                 epollSessionMutex_.unlock();
                 ev.data.fd = msgTemp.fd;
-                ev.events = EPOLLOUT | EPOLLET;
-                epoll_ctl(epfd_, EPOLL_CTL_MOD, msgTemp.fd, &ev);
+                ev.events = EPOLLOUT;
+                if (epoll_ctl(epfd_, EPOLL_CTL_MOD, msgTemp.fd, &ev) != 0) {
+                    cerr << "KeyServer : epoll out change mode error, fd = " << msgTemp.fd << endl;
+                }
                 // cout << "fd = " << msgTemp.fd << " generate key done, set EPOLLOUT" << endl;
             }
         }
