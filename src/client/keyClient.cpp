@@ -105,15 +105,19 @@ void keyClient::runKeyGenSimulator(int clientID)
             }
         }
     }
-    cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
+    // cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
-    char initInfoBuffer[16 + 2 * sizeof(int)]; // clientID & nonce & counter
-    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
-    memcpy(initInfoBuffer, &protocolFlag, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int), &clientID, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(int), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
-    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + 2 * sizeof(int))) {
+    NetworkHeadStruct_t initHead, dataHead;
+    initHead.clientID = clientID;
+    initHead.dataSize = 16;
+    initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
+    dataHead.clientID = clientID;
+    dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
+    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
+    memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
         cerr << "keyClient: send init information error" << endl;
         return;
     } else {
@@ -150,7 +154,8 @@ void keyClient::runKeyGenSimulator(int clientID)
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
 #if KEY_GEN_SGX_CTR == 1
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter);
+            dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, counter, dataHead);
             counter += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
@@ -242,20 +247,25 @@ void keyClient::run()
             }
         }
     }
-    cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
+    // cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
-    char initInfoBuffer[16 + 2 * sizeof(int)]; // clientID & nonce & counter
-    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
-    memcpy(initInfoBuffer, &protocolFlag, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int), &clientID, sizeof(int));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(int), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(int) + sizeof(int) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
-    if (!keySecurityChannel->send(sslConnection, initInfoBuffer, 16 + 2 * sizeof(int))) {
+    NetworkHeadStruct_t initHead, dataHead;
+    initHead.clientID = clientID_;
+    initHead.dataSize = 16;
+    initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
+    dataHead.clientID = clientID_;
+    dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
+    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
+    memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
         cerr << "keyClient: send init information error" << endl;
         return;
     } else {
         cout << "KeyClient : send init information success, start key generate" << endl;
     }
+
 #endif
     while (true) {
 
@@ -290,7 +300,8 @@ void keyClient::run()
             gettimeofday(&timestartKey, NULL);
 #endif
 #if KEY_GEN_SGX_CTR == 1
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter);
+            dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, counter, dataHead);
             counter += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
@@ -433,11 +444,10 @@ bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, i
     return true;
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter)
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter, NetworkHeadStruct_t netHead)
 {
-    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
-    u_char sendHash[sizeof(int) + CHUNK_HASH_SIZE * batchNumber];
-    memcpy(sendHash, &protocolFlag, sizeof(int));
+    u_char sendHash[sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber];
+    memcpy(sendHash, &netHead, sizeof(NetworkHeadStruct_t));
 #if SGSTEM_BREAK_DOWN == 1
     struct timeval timestartKey_enc;
     struct timeval timeendKey_enc;
@@ -445,14 +455,14 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
-    keyExchangeXOR(sendHash + sizeof(int), batchHashList, keyExchangeXORBase, batchNumber);
+    keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
 #if SGSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
     double second = diff / 1000000.0;
     keyExchangeEncTime += second;
 #endif
-    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash + sizeof(int), CHUNK_HASH_SIZE * batchNumber)) {
+    if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + sizeof(NetworkHeadStruct_t))) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
@@ -484,16 +494,15 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter)
+bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter, NetworkHeadStruct_t netHead)
 {
-    int protocolFlag = KEY_GEN_UPLOAD_CLIENT_INFO;
-    u_char sendHash[sizeof(int) + CHUNK_HASH_SIZE * batchNumber];
-    memcpy(sendHash, &protocolFlag, sizeof(int));
-    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE];
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 2, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
-    keyExchangeXOR(sendHash + sizeof(int), batchHashList, keyExchangeXORBase, batchNumber);
+    u_char sendHash[sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber];
+    memcpy(sendHash, &netHead, sizeof(NetworkHeadStruct_t));
+    u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
 
-    if (!securityChannel->send(sslConnection, (char*)sendHash + sizeof(int), CHUNK_HASH_SIZE * batchNumber)) {
+    if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + sizeof(NetworkHeadStruct_t))) {
         cerr << "keyClient: send socket error" << endl;
         return false;
     }
@@ -509,7 +518,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
     if (batchkeyNumber == batchNumber) {
-        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase, batchkeyNumber);
+        keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchkeyNumber);
         return true;
     } else {
         return false;

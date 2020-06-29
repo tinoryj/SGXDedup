@@ -20,13 +20,13 @@ using namespace std;
 #define STORAGE_CORE_READ_CACHE 0
 
 /* Key Generation method Settings: 0-disable; 1-enable */
-#define KEY_GEN_SGX_CFB 1
-#define KEY_GEN_SGX_CTR 0
+#define KEY_GEN_SGX_CFB 0
+#define KEY_GEN_SGX_CTR 1
 #define KEY_GEN_SERVER_MLE_NO_OPRF 0
 
 #define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
 
-#define KEY_GEN_EPOLL_MODE 1
+#define KEY_GEN_EPOLL_MODE 0
 #define KEY_GEN_MULTI_THREAD_MODE 0
 
 /* System Infomation Size Settings */
