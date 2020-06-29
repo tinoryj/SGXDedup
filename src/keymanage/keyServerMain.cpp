@@ -23,13 +23,10 @@ int main()
     ssl* keySecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), SERVERSIDE);
     boost::thread* th;
     server = new keyServer(keySecurityChannelTemp);
+    cout << "KeyServerMain : setup keyserver object done" << endl;
 #if KEY_GEN_SGX_CFB == 1
     th = new boost::thread(boost::bind(&keyServer::runRA, server));
     th->detach();
-    // boost::xtime xt;
-    // boost::xtime_get(&xt, boost::TIME_UTC_);
-    // xt.sec += 5;
-    // boost::thread::sleep(xt);
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
@@ -44,16 +41,26 @@ int main()
     th = new boost::thread(boost::bind(&keyServer::runCTRModeMaskGenerate, server));
     th->detach();
 #endif
-
+    while (true) {
+        if (server->getRASetupFlag()) {
+            break;
+        }
+    }
+    cout << "KeyServerMain : key server remote attestation done, start provide service" << endl;
 #if KEY_GEN_EPOLL_MODE == 1
     th = new boost::thread(boost::bind(&keyServer::runRecvThread, server));
     th->detach();
+    cout << "KeyServerMain : start epoll recv/send thread" << endl;
     th = new boost::thread(boost::bind(&keyServer::runSendThread, server));
     th->detach();
+    cout << "KeyServerMain : start epoll collection thread" << endl;
     for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
         th = new boost::thread(boost::bind(&keyServer::runKeyGenerateRequestThread, server, i));
         th->detach();
+        cout << "KeyServerMain : start epoll key generate thread " << i << endl;
     }
+    while (true)
+        ;
 #else
     while (true) {
         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;

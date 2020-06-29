@@ -1,4 +1,14 @@
 #include "ssl.hpp"
+#include <fcntl.h>
+
+bool IsFileUsed(const char* filePath)
+{
+    bool ret = false;
+    if ((access(filePath, 2)) == -1) {
+        ret = true;
+    }
+    return ret;
+}
 
 ssl::ssl(std::string ip, int port, int scSwitch)
 {
@@ -17,7 +27,6 @@ ssl::ssl(std::string ip, int port, int scSwitch)
     switch (scSwitch) {
     case SERVERSIDE: {
 #if OPENSSL_V_1_0_2 == 1
-
         _ctx = SSL_CTX_new(TLSv1_2_server_method());
 #else
         _ctx = SSL_CTX_new(TLS_server_method());
@@ -40,7 +49,6 @@ ssl::ssl(std::string ip, int port, int scSwitch)
     }
     case CLIENTSIDE: {
 #if OPENSSL_V_1_0_2 == 1
-
         _ctx = SSL_CTX_new(TLSv1_2_client_method());
 #else
         _ctx = SSL_CTX_new(TLS_client_method());
@@ -51,24 +59,32 @@ ssl::ssl(std::string ip, int port, int scSwitch)
         break;
     };
     }
-
+    // while (true) {
+    //     if (!IsFileUsed(CACRT) && !IsFileUsed(crtFile.c_str()) && !IsFileUsed(keyFile.c_str())) {
+    //         cout << "SSL : Key files not in used, Start ssl connection" << endl;
+    //         break;
+    //     } else {
+    //         cout << "SSL : Key files status " << IsFileUsed(CACRT) << IsFileUsed(crtFile.c_str()) << IsFileUsed(keyFile.c_str()) << endl;
+    //     }
+    // }
     SSL_CTX_set_verify(_ctx, SSL_VERIFY_PEER, NULL);
     if (!SSL_CTX_load_verify_locations(_ctx, CACRT, NULL)) {
-        std::cerr << "Wrong CA crt file at ssl.cpp:ssl(ip,port)\n";
+        std::cerr << "SSL : Wrong CA crt file at ssl.cpp:ssl(ip,port)\n";
         exit(1);
     }
     if (!SSL_CTX_use_certificate_file(_ctx, crtFile.c_str(), SSL_FILETYPE_PEM)) {
-        std::cerr << "Wrong crt file at ssl.cpp:ssl(ip,port)\n";
+        std::cerr << "SSL : Wrong crt file at ssl.cpp:ssl(ip,port)\n";
         exit(1);
     }
     if (!SSL_CTX_use_PrivateKey_file(_ctx, keyFile.c_str(), SSL_FILETYPE_PEM)) {
-        std::cerr << "Wrong key file at ssl.cpp:ssl(ip,port)\n";
+        std::cerr << "SSL : Wrong key file at ssl.cpp:ssl(ip,port)\n";
         exit(1);
     }
     if (!SSL_CTX_check_private_key(_ctx)) {
         std::cerr << "1\n";
         exit(1);
     }
+    // cerr << "SSL : ssl connection to " << ip << ":" << port << " setup" << endl;
 }
 
 ssl::~ssl()

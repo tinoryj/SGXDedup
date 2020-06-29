@@ -29,8 +29,11 @@ private:
     uint64_t keyGenLimitPerSessionKey_;
     uint64_t sessionKeyUpdateCount_;
     bool raRequestFlag;
+    bool raSetupFlag;
     ssl* keySecurityChannel_;
 #if KEY_GEN_EPOLL_MODE == 1
+    messageQueue<KeyServerEpollMessage_t>* requestMQ_;
+    messageQueue<KeyServerEpollMessage_t>* responseMQ_;
     vector<uint64_t> perThreadKeyGenerateCount_;
     unordered_map<int, KeyServerEpollMessage_t> epollSession_;
     map<int, SSL*> sslConnectionList_;
@@ -57,15 +60,13 @@ public:
     void runCTRModeMaskGenerate();
 #endif
 #if KEY_GEN_EPOLL_MODE == 1
-    messageQueue<KeyServerEpollMessage_t>* requestMQ_;
-    messageQueue<KeyServerEpollMessage_t>* responseMQ_;
     void runRecvThread();
     void runSendThread();
     void runKeyGenerateRequestThread(int threadID);
-#else
-    void runKeyGenerateThread(SSL* connection);
 #endif
+    void runKeyGenerateThread(SSL* connection);
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
+    bool getRASetupFlag();
 };
 
 #endif //SGXDEDUP_KEYSERVER_HPP

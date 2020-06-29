@@ -66,7 +66,7 @@ void DataSR::run(SSL* sslConnection)
         } else {
             NetworkHeadStruct_t netBody;
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
-            cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+            // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
 #if SGSTEM_BREAK_DOWN == 1
@@ -247,7 +247,7 @@ void DataSR::runPow(SSL* sslConnection)
         } else {
             NetworkHeadStruct_t netBody;
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
-            cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+            // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
 #if SGSTEM_BREAK_DOWN == 1
@@ -498,7 +498,7 @@ void DataSR::runKeyServerRA()
                 goto errorRetry;
             }
         } else {
-            delete session;
+            // delete session;
             cerr << "DataSR : keyServer enclave not trusted, storage try again now, request type = " << recvHead.messageType << endl;
             goto errorRetry;
         }
