@@ -9,6 +9,7 @@
 #include <string.h>
 
 #define MAX_SPECULATIVE_KEY_SIZE 4 * 1024 * 1024
+#define MAX_SPECULATIVE_KEY_NUMBER (MAX_SPECULATIVE_KEY_SIZE / 16)
 #define MAX_SPECULATIVE_CLIENT_SIZE 20
 
 // static const sgx_ec256_public_t def_service_public_key = {
@@ -84,7 +85,7 @@ uint8_t currentSessionKey[32];
 uint8_t* serverSecret;
 uint32_t keyRegressionMaxTimes_;
 uint32_t keyRegressionCurrentTimes_;
-
+int nextEncryptMaskSetupFlag_ = 0;
 uint8_t* nextEncryptionMaskSet_;
 uint8_t currentXORBase[32 * 3000];
 
@@ -138,6 +139,7 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
 
 sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNumber, uint8_t* nonce, uint32_t nonceLen)
 {
+    nextEncryptMaskSetupFlag_ = 0;
     EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
     unsigned char currentKeyBase[16];
     unsigned char currentKey[16];
@@ -170,6 +172,7 @@ sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNum
         }
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
+    nextEncryptMaskSetupFlag_ = 1;
     return SGX_SUCCESS;
 }
 
@@ -212,9 +215,9 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
     hashTemp = (uint8_t*)malloc(64);
     unsigned char mask[srcLen * 2];
 
-    if ((currentCounter + (srcLen / 32) * 2) < MAX_SPECULATIVE_KEY_SIZE) {
+    if ((16 * (currentCounter + (srcLen / 32) * 4)) < MAX_SPECULATIVE_KEY_SIZE && nextEncryptMaskSetupFlag_ == 1) {
         for (int i = 0; i < srcLen; i++) {
-            originhash[i] = src[i] ^ nextEncryptionMaskSet_[clientID * MAX_SPECULATIVE_KEY_SIZE + currentCounter * 32 + i];
+            originhash[i] = src[i] ^ nextEncryptionMaskSet_[clientID * MAX_SPECULATIVE_KEY_SIZE + currentCounter * 16 + i];
         }
     } else {
         EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
@@ -267,9 +270,9 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             memcpy(mask, currentKey, srcLen * 2);
         }
         EVP_CIPHER_CTX_cleanup(cipherctx_);
-        for (int i = 0; i < srcLen; i++) {
-            originhash[i] = src[i] ^ mask[i];
-        }
+    }
+    for (int i = 0; i < srcLen; i++) {
+        originhash[i] = src[i] ^ mask[i];
     }
     for (uint32_t index = 0; index < (srcLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
@@ -284,9 +287,9 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         }
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
-    if ((currentCounter + (srcLen / 32)) < MAX_SPECULATIVE_KEY_SIZE) {
+    if ((currentCounter + (srcLen / 32)) < MAX_SPECULATIVE_KEY_SIZE && nextEncryptMaskSetupFlag_ == 1) {
         for (int i = 0; i < srcLen; i++) {
-            key[i] = keySeed[i] ^ nextEncryptionMaskSet_[clientID * MAX_SPECULATIVE_KEY_SIZE + currentCounter * 32 + srcLen + i];
+            key[i] = keySeed[i] ^ nextEncryptionMaskSet_[clientID * MAX_SPECULATIVE_KEY_SIZE + currentCounter * 16 + srcLen + i];
         }
     } else {
         for (int i = 0; i < srcLen; i++) {

@@ -153,7 +153,7 @@ CryptoPrimitive::~CryptoPrimitive()
     free(iv_);
     free(chunkKeyEncryptionKey_);
     CMAC_CTX_cleanup(cmacctx_);
-    opensslLockCleanup();
+    // opensslLockCleanup();
 }
 
 /*

@@ -226,7 +226,7 @@ void DataSR::runPow(SSL* sslConnection)
     int sendSize = 0;
     char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
-    int clientID;
+    int clientID = -1;
 #if SGSTEM_BREAK_DOWN == 1
     struct timeval timestartDataSR;
     struct timeval timeendDataSR;

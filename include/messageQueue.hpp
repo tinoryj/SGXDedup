@@ -34,6 +34,11 @@ public:
     bool setJobDoneFlag()
     {
         done_ = true;
+        if(done_==true){
+            return true;
+        }else {
+            return false;
+        }
     }
     bool isEmpty()
     {

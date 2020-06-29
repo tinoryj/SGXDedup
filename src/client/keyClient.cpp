@@ -102,6 +102,7 @@ void keyClient::runKeyGenSimulator(int clientID)
                 cerr << "KeyClient : read old counter file size error" << endl;
             } else {
                 memcpy(&counter, readBuffer, sizeof(uint32_t));
+                cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
             }
         }
     }
@@ -167,9 +168,6 @@ void keyClient::runKeyGenSimulator(int clientID)
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
-#if KEY_GEN_SGX_CTR == 1
-            counter += batchNumber * 4;
-#endif
             memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             memset(chunkKey, 0, CHUNK_HASH_SIZE * keyBatchSize_);
             batchNumber = 0;
@@ -192,7 +190,7 @@ void keyClient::runKeyGenSimulator(int clientID)
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
-        cout << "KeyClient : Stored current counter file : " << counterFileName << endl;
+        cout << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
     }
 #endif
 #if SGSTEM_BREAK_DOWN == 1
@@ -244,6 +242,7 @@ void keyClient::run()
                 cerr << "KeyClient : read old counter file size error" << endl;
             } else {
                 memcpy(&counter, readBuffer, sizeof(uint32_t));
+                cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
             }
         }
     }
@@ -353,7 +352,7 @@ void keyClient::run()
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
-        cout << "KeyClient : Stored current counter file : " << counterFileName << endl;
+        cout << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
     }
 #endif
     return;
