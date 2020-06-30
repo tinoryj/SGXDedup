@@ -10,7 +10,7 @@
 
 template <class T>
 class messageQueue {
-    boost::lockfree::queue<T, boost::lockfree::capacity<5000>> lockFreeQueue_;
+    boost::lockfree::queue<T, boost::lockfree::capacity<3000>> lockFreeQueue_;
 
 public:
     boost::atomic<bool> done_;

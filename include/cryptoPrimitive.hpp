@@ -3,12 +3,12 @@
 #include "configure.hpp"
 #include "dataStructure.hpp"
 #include <bits/stdc++.h>
+#include <openssl/aes.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
-#include <openssl/aes.h>
 #include <openssl/opensslconf.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -56,8 +56,7 @@ public:
     bool decryptChunk(Chunk_t& chunk);
     bool decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData);
     bool cmac128(vector<string>& message, string& mac, u_char* key, int keyLen);
-    void PRINT_BYTE_ARRAY(
-        FILE* file, void* mem, uint32_t len)
+    void PRINT_BYTE_ARRAY(FILE* file, void* mem, uint32_t len)
     {
         if (!mem || !len) {
             fprintf(file, "\n( null )\n");

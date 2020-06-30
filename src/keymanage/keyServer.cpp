@@ -182,10 +182,13 @@ void keyServer::runCTRModeMaskGenerate()
             while (!(clientThreadCount_ == 0))
                 ;
             cout << "KeyServer : start compute session encryption mask offline" << endl;
-            for (int i = 0; i < clientList.size(); i++) {
-                if (clientList[i].keyGenerateCounter > 0) {
-                    client->maskGenerate(clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].nonce, 16 - sizeof(uint32_t));
+            auto it = clientList_.begin();
+            while (it != clientList_.end()) {
+                if (it->second.keyGenerateCounter > 0) {
+                    client->maskGenerate(it->second.clientID, it->second.keyGenerateCounter, it->second.nonce, it->second.nonceLen);
+                    cout << "KeyServer : offlien mask generate done for client " << it->first << endl;
                 }
+                ++it;
             }
             boost::xtime xt;
             boost::xtime_get(&xt, boost::TIME_UTC_);
@@ -216,7 +219,7 @@ bool setnonblocking(int sock)
 
 void keyServer::runRecvThread()
 {
-    cout << "KeyServer : start epoll recv thread - 1" << endl;
+    cout << "KeyServer : start epoll recv thread" << endl;
     // setnonblocking(keySecurityChannel_->listenFd);
     epoll_event event[100];
     epoll_event ev;
@@ -239,7 +242,7 @@ void keyServer::runRecvThread()
     cout << "KeyServer : start epoll recv thread, listen fd = " << ev.data.fd << ", " << keySecurityChannel_->listenFd << endl;
     while (true) {
         int nfd = epoll_wait(epfd_, event, 100, -1);
-        cout << "KeyServer : epoll query start, nfd = " << nfd << ", epfd = " << epfd_ << endl;
+        // cout << "KeyServer : epoll query start, nfd = " << nfd << ", epfd = " << epfd_ << endl;
         // for (int i = 0; i < nfd; i++) {
         //     cout << "KeyServer : nfd = " << nfd << endl;
         //     if (event[i].events == EPOLLIN | EPOLLET) {
@@ -295,27 +298,32 @@ void keyServer::runRecvThread()
                         memcpy(&recvedClientCounter, hash + sizeof(NetworkHeadStruct_t), sizeof(uint32_t));
                         memcpy(nonce, hash + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), 16 - sizeof(uint32_t));
                         if (recvedClientCounter != 0) {
-                            bool clientIDExistFlag = false;
-                            for (int i = 0; i < clientList.size(); i++) {
-                                if (clientID == clientList[i].clientID) {
-                                    if (clientList[i].keyGenerateCounter == recvedClientCounter) {
-                                        cout << "KeyServer : compared key generate encryption counter success" << endl;
-                                        clientIDExistFlag = true;
-                                        break;
-                                    } else {
-                                        cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList[i].keyGenerateCounter << endl;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (clientIDExistFlag == false) {
-                                maskInfo currentMaskInfo;
+                            if (clientList_.find(clientID) == clientList_.end()) {
+                                MaskInfo_t currentMaskInfo;
                                 memcpy(currentMaskInfo.nonce, nonce, 12);
                                 currentMaskInfo.clientID = clientID;
                                 currentMaskInfo.keyGenerateCounter = 0;
                                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                                clientList.push_back(currentMaskInfo);
+                                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
+                                cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+                            } else {
+                                if (clientList_.at(clientID).keyGenerateCounter == recvedClientCounter) {
+                                    cout << "KeyServer : compared key generate encryption counter success" << endl;
+                                    continue;
+                                } else {
+                                    cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList_.at(clientID).keyGenerateCounter << endl;
+                                    clientList_.erase(clientID);
+                                    continue;
+                                }
                             }
+                        } else {
+                            MaskInfo_t currentMaskInfo;
+                            memcpy(currentMaskInfo.nonce, nonce, 12);
+                            currentMaskInfo.clientID = clientID;
+                            currentMaskInfo.keyGenerateCounter = 0;
+                            currentMaskInfo.currentKeyGenerateCounter = 0;
+                            clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
+                            cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
                         }
                     } else if (netHead.messageType == KEY_GEN_UPLOAD_CHUNK_HASH) {
                         cerr << "KeyServer : recv data type is chunk hash" << endl;
@@ -347,6 +355,11 @@ void keyServer::runRecvThread()
 #endif
                     cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << msgIn.length << endl;
                     requestMQ_->push(msgIn);
+                    // KeyServerEpollMessage_t tempPopMsg;
+                    // requestMQ_->pop(tempPopMsg);
+                    // cout << "KeyServer : fd = " << tempPopMsg.fd << " pop data size = " << tempPopMsg.length << endl;
+                    // requestMQ_->push(tempPopMsg);
+                    // cout << "KeyServer : fd = " << tempPopMsg.fd << " push data size = " << tempPopMsg.length << endl;
                     continue;
                 }
             } else if (event[i].events & EPOLLOUT) {
@@ -416,25 +429,29 @@ void keyServer::runSendThread()
 void keyServer::runKeyGenerateRequestThread(int threadID)
 {
     cout << "KeyServer : start epoll key generate thread " << threadID << endl;
-    KeyServerEpollMessage_t tempEpollMessage;
     while (true) {
-        if (requestMQ_->pop(tempEpollMessage)) {
-            perThreadKeyGenerateCount_[threadID] += tempEpollMessage.requestNumber;
+        KeyServerEpollMessage_t keyGenTempEpollMessage;
+        if (requestMQ_->pop(keyGenTempEpollMessage)) {
+            perThreadKeyGenerateCount_[threadID] += keyGenTempEpollMessage.requestNumber;
 #if KEY_GEN_SGX_CFB == 1
-            client->request(tempEpollMessage.hashContent, tempEpollMessage.length, tempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+            client->request(keyGenTempEpollMessage.hashContent, keyGenTempEpollMessage.length, keyGenTempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #elif KEY_GEN_SGX_CTR == 1
-            int i;
-            for (i = 0; i < clientList.size(); i++) {
-                if (tempEpollMessage.clientID == clientList[i].clientID) {
-                    break;
+            if (clientList_.find(keyGenTempEpollMessage.clientID) == clientList_.end()) {
+                cerr << "find data in client mask info list failed" << endl;
+                auto it = clientList_.begin();
+                while (it != clientList_.end()) {
+                    cout << "KeyServer : client list containes: " << it->first << ", mask info : user counter = " << it->second.keyGenerateCounter << ", current counter = " << it->second.currentKeyGenerateCounter << endl;
+                    ++it;
                 }
+                // requestMQ_->push(keyGenTempEpollMessage);
+                continue;
+            } else {
+                client->request(keyGenTempEpollMessage.hashContent, keyGenTempEpollMessage.length, keyGenTempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientList_.at(keyGenTempEpollMessage.clientID).clientID, clientList_.at(keyGenTempEpollMessage.clientID).keyGenerateCounter, clientList_.at(keyGenTempEpollMessage.clientID).currentKeyGenerateCounter, clientList_.at(keyGenTempEpollMessage.clientID).nonce, clientList_.at(keyGenTempEpollMessage.clientID).nonceLen);
+                clientList_.at(keyGenTempEpollMessage.clientID).keyGenerateCounter += keyGenTempEpollMessage.requestNumber * 4;
+                clientList_.at(keyGenTempEpollMessage.clientID).currentKeyGenerateCounter += keyGenTempEpollMessage.requestNumber * 4;
             }
-            client->request(tempEpollMessage.hashContent, tempEpollMessage.length, tempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientList[i].clientID, clientList[i].keyGenerateCounter, clientList[i].currentKeyGenerateCounter, clientList[i].nonce, clientList[i].nonceLen);
-            clientList[i].keyGenerateCounter += tempEpollMessage.requestNumber * 4;
-            clientList[i].currentKeyGenerateCounter += tempEpollMessage.requestNumber * 4;
-
 #endif
-            responseMQ_->push(tempEpollMessage);
+            responseMQ_->push(keyGenTempEpollMessage);
         }
     }
 }
@@ -563,8 +580,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     int recvSize = 0;
     uint64_t currentThreadkeyGenerationNumber = 0;
     uint32_t recvedClientCounter = 0;
-    maskInfo currentMaskInfo;
-    int targetMaskInfoIndex = 0;
+    MaskInfo_t currentMaskInfo;
     bool clientInfoExistFlag = false;
     // recv init messages
     NetworkHeadStruct_t netHead;
@@ -575,19 +591,19 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         memcpy(&recvedClientCounter, initInfoBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint32_t));
         memcpy(currentMaskInfo.nonce, initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), 16 - sizeof(uint32_t));
         currentMaskInfo.clientID = netHead.clientID;
-        currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 2 for the counter
+        currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 4 (hash + key) of the counter
         currentMaskInfo.currentKeyGenerateCounter = 0;
         multiThreadCountMutex_.lock();
-        for (targetMaskInfoIndex = 0; targetMaskInfoIndex < clientList.size(); targetMaskInfoIndex++) {
-            if (currentMaskInfo.clientID == clientList[targetMaskInfoIndex].clientID) {
-                if (clientList[targetMaskInfoIndex].keyGenerateCounter == recvedClientCounter) {
-                    cout << "KeyServer : compared key generate encryption counter success" << endl;
-                    clientInfoExistFlag = true;
-                    break;
-                } else {
-                    cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList[targetMaskInfoIndex].keyGenerateCounter << endl;
-                    return;
-                }
+        if (clientList_.find(currentMaskInfo.clientID) == clientList_.end()) {
+            cerr << "KeyServer : find data in client mask info list failed" << endl;
+        } else {
+            if (clientList_.at(currentMaskInfo.clientID).keyGenerateCounter == recvedClientCounter) {
+                cout << "KeyServer : compared key generate encryption counter success" << endl;
+                clientInfoExistFlag = true;
+            } else {
+                cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << endl;
+                clientList_.erase(clientID);
+                return;
             }
         }
         multiThreadCountMutex_.unlock();
@@ -607,10 +623,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -621,10 +637,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             multiThreadCountMutex_.unlock();
 #endif
@@ -639,10 +655,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -653,10 +669,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             multiThreadCountMutex_.unlock();
 #endif
@@ -672,9 +688,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         gettimeofday(&timestart, 0);
 #endif
         if (clientInfoExistFlag == true) {
-            cout << netHead.clientID << ", " << clientList[targetMaskInfoIndex].keyGenerateCounter << ", " << clientList[targetMaskInfoIndex].currentKeyGenerateCounter << ", " << clientList[targetMaskInfoIndex].nonceLen << endl;
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList[targetMaskInfoIndex].keyGenerateCounter, clientList[targetMaskInfoIndex].currentKeyGenerateCounter, clientList[targetMaskInfoIndex].nonce, clientList[targetMaskInfoIndex].nonceLen);
-            clientList[targetMaskInfoIndex].currentKeyGenerateCounter += 4 * recvNumber;
+            cout << netHead.clientID << ", " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).nonceLen << endl;
+            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList_.at(currentMaskInfo.clientID).keyGenerateCounter, clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter, clientList_.at(currentMaskInfo.clientID).nonce, clientList_.at(currentMaskInfo.clientID).nonceLen);
+            clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter += 4 * recvNumber;
         } else {
             cout << netHead.clientID << ", " << currentMaskInfo.keyGenerateCounter << ", " << currentMaskInfo.currentKeyGenerateCounter << ", " << currentMaskInfo.nonceLen << endl;
             client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, currentMaskInfo.keyGenerateCounter, currentMaskInfo.currentKeyGenerateCounter, currentMaskInfo.nonce, currentMaskInfo.nonceLen);
@@ -695,9 +711,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         gettimeofday(&timestart, 0);
 #endif
         if (clientInfoExistFlag == true) {
-            cout << netHead.clientID << ", " << clientList[targetMaskInfoIndex].keyGenerateCounter << ", " << clientList[targetMaskInfoIndex].currentKeyGenerateCounter << ", " << clientList[targetMaskInfoIndex].nonceLen << endl;
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList[targetMaskInfoIndex].keyGenerateCounter, clientList[targetMaskInfoIndex].currentKeyGenerateCounter, clientList[targetMaskInfoIndex].nonce, clientList[targetMaskInfoIndex].nonceLen);
-            clientList[targetMaskInfoIndex].currentKeyGenerateCounter += 4 * recvNumber;
+            cout << netHead.clientID << ", " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).nonceLen << endl;
+            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList_.at(currentMaskInfo.clientID).keyGenerateCounter, clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter, clientList_.at(currentMaskInfo.clientID).nonce, clientList_.at(currentMaskInfo.clientID).nonceLen);
+            clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter += 4 * recvNumber;
         } else {
             cout << netHead.clientID << ", " << currentMaskInfo.keyGenerateCounter << ", " << currentMaskInfo.currentKeyGenerateCounter << ", " << currentMaskInfo.nonceLen << endl;
             client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, currentMaskInfo.keyGenerateCounter, currentMaskInfo.currentKeyGenerateCounter, currentMaskInfo.nonce, currentMaskInfo.nonceLen);
@@ -721,10 +737,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
@@ -735,10 +751,10 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             if (clientInfoExistFlag == false) {
                 currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
                 currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList.push_back(currentMaskInfo);
+                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
             } else {
-                clientList[targetMaskInfoIndex].keyGenerateCounter += clientList[targetMaskInfoIndex].currentKeyGenerateCounter;
-                clientList[targetMaskInfoIndex].currentKeyGenerateCounter = 0;
+                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
+                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
             }
             multiThreadCountMutex_.unlock();
 #endif

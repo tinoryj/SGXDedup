@@ -87,7 +87,7 @@ void keyClient::runKeyGenSimulator(int clientID)
     ifstream counterIn;
     counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
     if (!counterIn.is_open()) {
-        cerr << "KeyClient : Can not open old counter file : " << counterFileName << ". Directly reset counter to 0" << endl;
+        cerr << "KeyClient : Can not open old counter file : \"" << counterFileName << "\", Directly reset counter to 0" << endl;
     } else {
         counterIn.seekg(0, ios_base::end);
         int counterFileSize = counterIn.tellg();
@@ -227,7 +227,7 @@ void keyClient::run()
     ifstream counterIn;
     counterIn.open(counterFileName, std::ifstream::in | std::ifstream::binary);
     if (!counterIn.is_open()) {
-        cerr << "KeyClient : Can not open old counter file : " << counterFileName << ". Directly reset counter to 0" << endl;
+        cerr << "KeyClient : Can not open old counter file : \"" << counterFileName << "\", Directly reset counter to 0" << endl;
     } else {
         counterIn.seekg(0, ios_base::end);
         int counterFileSize = counterIn.tellg();

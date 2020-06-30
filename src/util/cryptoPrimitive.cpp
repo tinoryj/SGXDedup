@@ -49,7 +49,7 @@ bool CryptoPrimitive::opensslLockSetup()
 
     return true;
 #else
-    fprintf(stderr, "Error: OpenSSL was not configured with thread support!\n");
+    cerr << "Error: OpenSSL was not configured with thread support!" << endl;
 
     return false;
 #endif
@@ -73,11 +73,11 @@ bool CryptoPrimitive::opensslLockCleanup()
     OPENSSL_free(opensslLock_->cntList);
     free(opensslLock_);
 
-    fprintf(stderr, "OpenSSL lock cleanup done\n");
+    cerr << "OpenSSL lock cleanup done" << endl;
 
     return true;
 #else
-    fprintf(stderr, "Error: OpenSSL was not configured with thread support!\n");
+    cerr << "Error: OpenSSL was not configured with thread support!" << endl;
 
     return false;
 #endif
@@ -95,7 +95,7 @@ CryptoPrimitive::CryptoPrimitive()
     /*check if opensslLockSetup() has been called to set up OpenSSL locks*/
     opensslLockSetup();
     if (opensslLock_ == NULL) {
-        fprintf(stderr, "Error: opensslLockSetup() was not called before initializing CryptoPrimitive instances\n");
+        cerr << "Error: opensslLockSetup() was not called before initializing CryptoPrimitive instances" << endl;
         exit(1);
     }
 
@@ -126,7 +126,7 @@ CryptoPrimitive::CryptoPrimitive()
     memset(chunkKeyEncryptionKey_, 0, CHUNK_ENCRYPT_KEY_SIZE);
 
 #else
-    fprintf(stderr, "Error: OpenSSL was not configured with thread support!\n");
+    cerr << "Error: OpenSSL was not configured with thread support!" << endl;
     exit(1);
 #endif
 }

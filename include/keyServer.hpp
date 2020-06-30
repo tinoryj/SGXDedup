@@ -36,7 +36,7 @@ private:
     messageQueue<KeyServerEpollMessage_t>* responseMQ_;
     vector<uint64_t> perThreadKeyGenerateCount_;
     unordered_map<int, KeyServerEpollMessage_t> epollSession_;
-    map<int, SSL*> sslConnectionList_;
+    unordered_map<int, SSL*> sslConnectionList_;
     std::mutex epollSessionMutex_;
     int epfd_;
 #endif
@@ -47,8 +47,8 @@ private:
         uint32_t currentKeyGenerateCounter = 0;
         u_char nonce[16 - sizeof(uint32_t)];
         int nonceLen = 16 - sizeof(uint32_t);
-    } maskInfo;
-    vector<maskInfo> clientList;
+    } MaskInfo_t;
+    unordered_map<int, MaskInfo_t> clientList_; //clientID - MaskInfo_t pair
 #endif
 public:
     keyServer(ssl* keySecurityChannelTemp);
@@ -63,8 +63,9 @@ public:
     void runRecvThread();
     void runSendThread();
     void runKeyGenerateRequestThread(int threadID);
-#endif
+#else
     void runKeyGenerateThread(SSL* connection);
+#endif
     bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
     bool getRASetupFlag();
 };
