@@ -87,7 +87,7 @@ bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
         return false;
     } else {
         raSetupFlag = true;
-        cout << "KeyServer : enclave trusted" << endl;
+        cerr << "KeyServer : enclave trusted" << endl;
     }
     multiThreadCountMutex_.lock();
     keyGenerateCount_ = 0;
@@ -104,7 +104,7 @@ void keyServer::runRAwithSPRequest()
         SSL* sslConnection = raSecurityChannelTemp->sslListen().second;
         raSecurityChannelTemp->recv(sslConnection, recvBuffer, recvSize);
         raRequestFlag = true;
-        cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
+        cerr << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
         free(sslConnection);
     }
 }
@@ -115,11 +115,13 @@ void keyServer::runRA()
         if (raRequestFlag) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cout << "KeyServer : start do remote attestation to storage server" << endl;
+            cerr << "KeyServer : start do remote attestation to storage server" << endl;
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
+#if SYSTEM_DEBUG_FLAG == 1
             cout << "KeyServer : remote attestation thread connected storage server" << endl;
+#endif
             int sendSize = sizeof(NetworkHeadStruct_t);
             char sendBuffer[sendSize];
             NetworkHeadStruct_t netHead;
@@ -132,7 +134,7 @@ void keyServer::runRA()
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 raRequestFlag = false;
-                cout << "KeyServer : do remote attestation to storage SP done" << endl;
+                cerr << "KeyServer : do remote attestation to storage SP done" << endl;
             } else {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
@@ -149,7 +151,7 @@ void keyServer::runSessionKeyUpdate()
         if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cout << "KeyServer : start session key update with storage server" << endl;
+            cerr << "KeyServer : start session key update with storage server" << endl;
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
@@ -163,7 +165,7 @@ void keyServer::runSessionKeyUpdate()
                 raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
                 delete raSecurityChannelTemp;
                 free(sslConnection);
-                cout << "KeyServer : update session key storage SP done" << endl;
+                cerr << "KeyServer : update session key storage SP done" << endl;
             } else {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
@@ -181,15 +183,18 @@ void keyServer::runCTRModeMaskGenerate()
         if (raRequestFlag == false) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cout << "KeyServer : start compute session encryption mask offline" << endl;
+            cerr << "KeyServer : start compute session encryption mask offline" << endl;
             auto it = clientList_.begin();
             while (it != clientList_.end()) {
                 if (it->second.keyGenerateCounter > 0) {
                     client->maskGenerate(it->second.clientID, it->second.keyGenerateCounter, it->second.nonce, it->second.nonceLen);
+#if SYSTEM_DEBUG_FLAG == 1
                     cout << "KeyServer : offlien mask generate done for client " << it->first << endl;
+#endif
                 }
                 ++it;
             }
+            cerr << "KeyServer : offlien mask generate done " << endl;
             boost::xtime xt;
             boost::xtime_get(&xt, boost::TIME_UTC_);
             xt.sec += 20;
@@ -242,20 +247,24 @@ void keyServer::runRecvThread()
     cout << "KeyServer : start epoll recv thread, listen fd = " << ev.data.fd << ", " << keySecurityChannel_->listenFd << endl;
     while (true) {
         int nfd = epoll_wait(epfd_, event, 100, -1);
-        // cout << "KeyServer : epoll query start, nfd = " << nfd << ", epfd = " << epfd_ << endl;
-        // for (int i = 0; i < nfd; i++) {
-        //     cout << "KeyServer : nfd = " << nfd << endl;
-        //     if (event[i].events == EPOLLIN | EPOLLET) {
-        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLIN" << endl;
-        //     } else if (event[i].events == EPOLLERR | EPOLLET) {
-        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLERR" << endl;
-        //     } else if (event[i].events == EPOLLOUT | EPOLLET) {
-        //         cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLOUT" << endl;
-        //     }
-        // }
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "KeyServer : epoll query start, nfd = " << nfd << ", epfd = " << epfd_ << endl;
+        for (int i = 0; i < nfd; i++) {
+            cout << "KeyServer : nfd = " << nfd << endl;
+            if (event[i].events == EPOLLIN | EPOLLET) {
+                cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLIN" << endl;
+            } else if (event[i].events == EPOLLERR | EPOLLET) {
+                cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLERR" << endl;
+            } else if (event[i].events == EPOLLOUT | EPOLLET) {
+                cout << "KeyServer : fd = " << event[i].data.fd << ", status = EPOLLOUT" << endl;
+            }
+        }
+#endif
         for (int i = 0; i < nfd; i++) {
             if (event[i].data.fd == keySecurityChannel_->listenFd) {
+#if SYSTEM_DEBUG_FLAG == 1
                 cout << __LINE__ << " fd = " << event[i].data.fd << endl;
+#endif
                 std::pair<int, SSL*> con = keySecurityChannel_->sslListen();
                 sslConnectionList_.insert(con);
                 KeyServerEpollMessage_t msgTemp;
@@ -266,14 +275,19 @@ void keyServer::runRecvThread()
                 if (epoll_ctl(epfd_, EPOLL_CTL_ADD, con.first, &ev) != 0) {
                     cerr << "KeyServer : epoll set error, fd = " << con.first << endl;
                 }
-                epollSessionMutex_.lock();
+                // epollSessionMutex_.lock();
                 epollSession_.insert(make_pair(con.first, msgTemp));
-                epollSessionMutex_.unlock();
+                // epollSessionMutex_.unlock();
                 cout << "KeyServer : epoll recved new connection, fd = " << con.first << endl;
+                multiThreadCountMutex_.lock();
+                clientThreadCount_++;
+                multiThreadCountMutex_.unlock();
                 continue;
             } else if (event[i].events & EPOLLIN) {
+#if SYSTEM_DEBUG_FLAG == 1
                 cout << __LINE__ << " fd = " << event[i].data.fd << endl;
-                // cout << "KeyServer : fd = " << event[i].data.fd << " start recv data" << endl;
+                cout << "KeyServer : fd = " << event[i].data.fd << " start recv data" << endl;
+#endif
                 if (!keySecurityChannel_->recv(sslConnectionList_[event[i].data.fd], (char*)hash, recvSize)) {
                     ev.data.ptr = nullptr;
                     ev.data.fd = event[i].data.fd;
@@ -281,17 +295,22 @@ void keyServer::runRecvThread()
                     if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
                         cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
                     }
-                    epollSessionMutex_.lock();
+                    // epollSessionMutex_.lock();
                     epollSession_.erase(event[i].data.fd);
-                    epollSessionMutex_.unlock();
+                    // epollSessionMutex_.unlock();
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
+                    multiThreadCountMutex_.lock();
+                    clientThreadCount_--;
+                    multiThreadCountMutex_.unlock();
                     continue;
                 } else {
 #if KEY_GEN_SGX_CTR == 1
                     memcpy(&netHead, hash, sizeof(NetworkHeadStruct_t));
                     KeyServerEpollMessage_t msgIn;
                     if (netHead.messageType == KEY_GEN_UPLOAD_CLIENT_INFO) {
+#if SYSTEM_DEBUG_FLAG == 1
                         cerr << "KeyServer : recv data type is mask info" << endl;
+#endif
                         uint32_t recvedClientCounter = 0;
                         int clientID = netHead.clientID;
                         char nonce[16 - sizeof(uint32_t)];
@@ -305,10 +324,10 @@ void keyServer::runRecvThread()
                                 currentMaskInfo.keyGenerateCounter = 0;
                                 currentMaskInfo.currentKeyGenerateCounter = 0;
                                 clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                                cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+                                cerr << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
                             } else {
                                 if (clientList_.at(clientID).keyGenerateCounter == recvedClientCounter) {
-                                    cout << "KeyServer : compared key generate encryption counter success" << endl;
+                                    cerr << "KeyServer : compared key generate encryption counter success" << endl;
                                     continue;
                                 } else {
                                     cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList_.at(clientID).keyGenerateCounter << endl;
@@ -323,10 +342,12 @@ void keyServer::runRecvThread()
                             currentMaskInfo.keyGenerateCounter = 0;
                             currentMaskInfo.currentKeyGenerateCounter = 0;
                             clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                            cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+                            cerr << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
                         }
                     } else if (netHead.messageType == KEY_GEN_UPLOAD_CHUNK_HASH) {
+#if SYSTEM_DEBUG_FLAG == 1
                         cerr << "KeyServer : recv data type is chunk hash" << endl;
+#endif
                         ev.data.ptr = (void*)&msgIn;
                         ev.data.fd = event[i].data.fd;
                         ev.events = EPOLLERR;
@@ -353,21 +374,25 @@ void keyServer::runRecvThread()
                     msgIn.fd = event[i].data.fd;
                     // msgIn.clientID = netHead.clientID;
 #endif
-                    cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << msgIn.length << endl;
                     requestMQ_->push(msgIn);
+#if SYSTEM_DEBUG_FLAG == 1
+                    cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << msgIn.length << endl;
                     // KeyServerEpollMessage_t tempPopMsg;
                     // requestMQ_->pop(tempPopMsg);
                     // cout << "KeyServer : fd = " << tempPopMsg.fd << " pop data size = " << tempPopMsg.length << endl;
                     // requestMQ_->push(tempPopMsg);
                     // cout << "KeyServer : fd = " << tempPopMsg.fd << " push data size = " << tempPopMsg.length << endl;
+#endif
                     continue;
                 }
             } else if (event[i].events & EPOLLOUT) {
+#if SYSTEM_DEBUG_FLAG == 1
                 cout << __LINE__ << " fd = " << event[i].data.fd << endl;
+#endif
                 KeyServerEpollMessage_t msgOut;
-                epollSessionMutex_.lock();
+                // epollSessionMutex_.lock();
                 msgOut = epollSession_.at(event[i].data.fd);
-                epollSessionMutex_.unlock();
+                // epollSessionMutex_.unlock();
                 // cout << "KeyServer : fd = " << event[i].data.fd << " start send data, size = " << msgOut.length << endl;
                 if (msgOut.fd != event[i].data.fd) {
                     cerr << "KeyServer : epoll event fd not equal to msg-fd " << msgOut.fd << endl;
@@ -378,10 +403,13 @@ void keyServer::runRecvThread()
                     if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
                         cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
                     }
-                    epollSessionMutex_.lock();
+                    // epollSessionMutex_.lock();
                     epollSession_.erase(event[i].data.fd);
-                    epollSessionMutex_.unlock();
+                    // epollSessionMutex_.unlock();
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
+                    multiThreadCountMutex_.lock();
+                    clientThreadCount_--;
+                    multiThreadCountMutex_.unlock();
                     continue;
                 }
                 ev.data.ptr = (void*)&msgOut;
@@ -390,7 +418,9 @@ void keyServer::runRecvThread()
                 if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
                     cerr << "KeyServer : epoll out change mode error, fd = " << event[i].data.fd << endl;
                 }
+#if SYSTEM_DEBUG_FLAG == 1
                 cout << "KeyServer : fd = " << event[i].data.fd << " send key done, set EPOLLIN" << endl;
+#endif
                 continue;
             } else {
                 continue;
@@ -410,11 +440,11 @@ void keyServer::runSendThread()
                 cerr << "find data in epoll session failed" << endl;
                 continue;
             } else {
-                epollSessionMutex_.lock();
+                // epollSessionMutex_.lock();
                 epollSession_.at(msgTemp.fd).length = msgTemp.length;
                 epollSession_.at(msgTemp.fd).keyGenerateFlag = true;
                 memcpy(epollSession_.at(msgTemp.fd).keyContent, msgTemp.keyContent, msgTemp.length);
-                epollSessionMutex_.unlock();
+                // epollSessionMutex_.unlock();
                 ev.data.fd = msgTemp.fd;
                 ev.events = EPOLLOUT;
                 if (epoll_ctl(epfd_, EPOLL_CTL_MOD, msgTemp.fd, &ev) != 0) {
@@ -593,7 +623,6 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         currentMaskInfo.clientID = netHead.clientID;
         currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 4 (hash + key) of the counter
         currentMaskInfo.currentKeyGenerateCounter = 0;
-        multiThreadCountMutex_.lock();
         if (clientList_.find(currentMaskInfo.clientID) == clientList_.end()) {
             cerr << "KeyServer : find data in client mask info list failed" << endl;
         } else {
@@ -606,7 +635,6 @@ void keyServer::runKeyGenerateThread(SSL* connection)
                 return;
             }
         }
-        multiThreadCountMutex_.unlock();
 
     } else {
         cerr << "KeyServer : error recv client init messages" << endl;

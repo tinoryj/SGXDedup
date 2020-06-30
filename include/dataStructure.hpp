@@ -74,16 +74,12 @@ typedef struct {
 typedef struct {
     int fd;
     int epfd;
-    u_char hashContent[CHUNK_HASH_SIZE * 10000];
-    u_char keyContent[CHUNK_HASH_SIZE * 10000];
+    u_char hashContent[CHUNK_HASH_SIZE * 3000];
+    u_char keyContent[CHUNK_HASH_SIZE * 3000];
     int length = 0;
     int requestNumber = 0;
     bool keyGenerateFlag = false; // true - key gen done; false - key gen not start
     int clientID;
-    // uint32_t keyGenerateCounter = 0;
-    // uint32_t currentKeyGenerateCounter = 0;
-    // u_char nonce[16 - sizeof(uint32_t)];
-    // int nonceLen = 16 - sizeof(uint32_t);
 } KeyServerEpollMessage_t;
 
 typedef struct {
