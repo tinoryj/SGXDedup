@@ -32,12 +32,11 @@ private:
     bool raSetupFlag;
     ssl* keySecurityChannel_;
 #if KEY_GEN_EPOLL_MODE == 1
-    messageQueue<KeyServerEpollMessage_t>* requestMQ_;
-    messageQueue<KeyServerEpollMessage_t>* responseMQ_;
+    messageQueue<int>* requestMQ_; // only transmit fd
+    messageQueue<int>* responseMQ_; // only transmit fd
     vector<uint64_t> perThreadKeyGenerateCount_;
     unordered_map<int, KeyServerEpollMessage_t> epollSession_;
     unordered_map<int, SSL*> sslConnectionList_;
-    std::mutex epollSessionMutex_;
     int epfd_;
 #endif
 #if KEY_GEN_SGX_CTR == 1

@@ -53,8 +53,8 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     keySecurityChannel_ = keyServerSecurityChannelTemp;
 #if KEY_GEN_EPOLL_MODE == 1
     epfd_ = epoll_create(100);
-    requestMQ_ = new messageQueue<KeyServerEpollMessage_t>;
-    responseMQ_ = new messageQueue<KeyServerEpollMessage_t>;
+    requestMQ_ = new messageQueue<int>;
+    responseMQ_ = new messageQueue<int>;
     for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
         perThreadKeyGenerateCount_.push_back(0);
     }
@@ -275,9 +275,9 @@ void keyServer::runRecvThread()
                 if (epoll_ctl(epfd_, EPOLL_CTL_ADD, con.first, &ev) != 0) {
                     cerr << "KeyServer : epoll set error, fd = " << con.first << endl;
                 }
-                // epollSessionMutex_.lock();
+
                 epollSession_.insert(make_pair(con.first, msgTemp));
-                // epollSessionMutex_.unlock();
+
                 cout << "KeyServer : epoll recved new connection, fd = " << con.first << endl;
                 multiThreadCountMutex_.lock();
                 clientThreadCount_++;
@@ -295,9 +295,9 @@ void keyServer::runRecvThread()
                     if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
                         cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
                     }
-                    // epollSessionMutex_.lock();
+
                     epollSession_.erase(event[i].data.fd);
-                    // epollSessionMutex_.unlock();
+
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
                     multiThreadCountMutex_.lock();
                     clientThreadCount_--;
@@ -306,7 +306,6 @@ void keyServer::runRecvThread()
                 } else {
 #if KEY_GEN_SGX_CTR == 1
                     memcpy(&netHead, hash, sizeof(NetworkHeadStruct_t));
-                    KeyServerEpollMessage_t msgIn;
                     if (netHead.messageType == KEY_GEN_UPLOAD_CLIENT_INFO) {
 #if SYSTEM_DEBUG_FLAG == 1
                         cerr << "KeyServer : recv data type is mask info" << endl;
@@ -348,35 +347,33 @@ void keyServer::runRecvThread()
 #if SYSTEM_DEBUG_FLAG == 1
                         cerr << "KeyServer : recv data type is chunk hash" << endl;
 #endif
-                        ev.data.ptr = (void*)&msgIn;
+                        epollSession_.at(event[i].data.fd).length = netHead.dataSize;
+                        epollSession_.at(event[i].data.fd).requestNumber = epollSession_.at(event[i].data.fd).length / CHUNK_HASH_SIZE;
+                        epollSession_.at(event[i].data.fd).fd = event[i].data.fd;
+                        epollSession_.at(event[i].data.fd).clientID = netHead.clientID;
+                        ev.data.ptr = event[i].data.ptr;
                         ev.data.fd = event[i].data.fd;
                         ev.events = EPOLLERR;
                         if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
                             cerr << "KeyServer : epoll in change mode error, fd = " << event[i].data.fd << endl;
                         }
-                        memcpy(msgIn.hashContent, hash + sizeof(NetworkHeadStruct_t), netHead.dataSize);
-                        msgIn.length = netHead.dataSize;
-                        msgIn.requestNumber = msgIn.length / CHUNK_HASH_SIZE;
-                        msgIn.fd = event[i].data.fd;
-                        msgIn.clientID = netHead.clientID;
                     }
 #elif KEY_GEN_SGX_CFB == 1
-                    KeyServerEpollMessage_t msgIn;
-                    ev.data.ptr = (void*)&msgIn;
+                    memcpy(epollSession_.at(event[i].data.fd).hashContent, hash, recvSize);
+                    epollSession_.at(event[i].data.fd).length = recvSize;
+                    epollSession_.at(event[i].data.fd).requestNumber = epollSession_.at(event[i].data.fd).length / CHUNK_HASH_SIZE;
+                    epollSession_.at(event[i].data.fd).fd = event[i].data.fd;
+                    ev.data.ptr = event[i].data.ptr;
                     ev.data.fd = event[i].data.fd;
                     ev.events = EPOLLERR;
                     if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
                         cerr << "KeyServer : epoll in change mode error, fd = " << event[i].data.fd << endl;
                     }
-                    memcpy(msgIn.hashContent, hash, recvSize);
-                    msgIn.length = recvSize;
-                    msgIn.requestNumber = msgIn.length / CHUNK_HASH_SIZE;
-                    msgIn.fd = event[i].data.fd;
-                    // msgIn.clientID = netHead.clientID;
 #endif
-                    requestMQ_->push(msgIn);
+                    int tmpfd = event[i].data.fd;
+                    requestMQ_->push(tmpfd);
 #if SYSTEM_DEBUG_FLAG == 1
-                    cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << msgIn.length << endl;
+                    cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << epollSession_.at(event[i].data.fd).length << endl;
                     // KeyServerEpollMessage_t tempPopMsg;
                     // requestMQ_->pop(tempPopMsg);
                     // cout << "KeyServer : fd = " << tempPopMsg.fd << " pop data size = " << tempPopMsg.length << endl;
@@ -389,30 +386,25 @@ void keyServer::runRecvThread()
 #if SYSTEM_DEBUG_FLAG == 1
                 cout << __LINE__ << " fd = " << event[i].data.fd << endl;
 #endif
-                KeyServerEpollMessage_t msgOut;
-                // epollSessionMutex_.lock();
-                msgOut = epollSession_.at(event[i].data.fd);
-                // epollSessionMutex_.unlock();
-                // cout << "KeyServer : fd = " << event[i].data.fd << " start send data, size = " << msgOut.length << endl;
-                if (msgOut.fd != event[i].data.fd) {
-                    cerr << "KeyServer : epoll event fd not equal to msg-fd " << msgOut.fd << endl;
+                if (epollSession_.at(event[i].data.fd).fd != event[i].data.fd) {
+                    cerr << "KeyServer : epoll event fd not equal to msg-fd " << epollSession_.at(event[i].data.fd).fd << endl;
                     continue;
                 }
-                if (!keySecurityChannel_->send(sslConnectionList_[event[i].data.fd], (char*)msgOut.keyContent, msgOut.length)) {
+                if (!keySecurityChannel_->send(sslConnectionList_[event[i].data.fd], (char*)epollSession_.at(event[i].data.fd).keyContent, epollSession_.at(event[i].data.fd).length)) {
                     ev.events = EPOLLHUP;
                     if (epoll_ctl(epfd_, EPOLL_CTL_DEL, event[i].data.fd, &ev) != 0) {
                         cerr << "KeyServer : epoll delete error, fd = " << event[i].data.fd << endl;
                     }
-                    // epollSessionMutex_.lock();
+
                     epollSession_.erase(event[i].data.fd);
-                    // epollSessionMutex_.unlock();
+
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
                     multiThreadCountMutex_.lock();
                     clientThreadCount_--;
                     multiThreadCountMutex_.unlock();
                     continue;
                 }
-                ev.data.ptr = (void*)&msgOut;
+                ev.data.ptr = event[i].data.ptr;
                 ev.data.fd = event[i].data.fd;
                 ev.events = EPOLLIN;
                 if (epoll_ctl(epfd_, EPOLL_CTL_MOD, event[i].data.fd, &ev) != 0) {
@@ -432,25 +424,23 @@ void keyServer::runRecvThread()
 void keyServer::runSendThread()
 {
     cout << "KeyServer : start epoll collection thread" << endl;
-    KeyServerEpollMessage_t msgTemp;
+    int fd;
     epoll_event ev;
     while (true) {
-        if (responseMQ_->pop(msgTemp)) {
-            if (epollSession_.find(msgTemp.fd) == epollSession_.end()) {
+        if (responseMQ_->pop(fd)) {
+            if (epollSession_.find(fd) == epollSession_.end()) {
                 cerr << "find data in epoll session failed" << endl;
                 continue;
             } else {
-                // epollSessionMutex_.lock();
-                epollSession_.at(msgTemp.fd).length = msgTemp.length;
-                epollSession_.at(msgTemp.fd).keyGenerateFlag = true;
-                memcpy(epollSession_.at(msgTemp.fd).keyContent, msgTemp.keyContent, msgTemp.length);
-                // epollSessionMutex_.unlock();
-                ev.data.fd = msgTemp.fd;
-                ev.events = EPOLLOUT;
-                if (epoll_ctl(epfd_, EPOLL_CTL_MOD, msgTemp.fd, &ev) != 0) {
-                    cerr << "KeyServer : epoll out change mode error, fd = " << msgTemp.fd << endl;
+                if (epollSession_.at(fd).keyGenerateFlag == true) {
+                    ev.data.fd = fd;
+                    ev.events = EPOLLOUT;
+                    if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev) != 0) {
+                        cerr << "KeyServer : epoll out change mode error, fd = " << fd << endl;
+                    }
+                } else {
+                    cerr << "KeyServer : key generate error, flag == false" << endl;
                 }
-                // cout << "fd = " << msgTemp.fd << " generate key done, set EPOLLOUT" << endl;
             }
         }
     }
@@ -460,28 +450,28 @@ void keyServer::runKeyGenerateRequestThread(int threadID)
 {
     cout << "KeyServer : start epoll key generate thread " << threadID << endl;
     while (true) {
-        KeyServerEpollMessage_t keyGenTempEpollMessage;
-        if (requestMQ_->pop(keyGenTempEpollMessage)) {
-            perThreadKeyGenerateCount_[threadID] += keyGenTempEpollMessage.requestNumber;
+        int fd;
+        if (requestMQ_->pop(fd)) {
+            perThreadKeyGenerateCount_[threadID] += epollSession_.at(fd).requestNumber;
 #if KEY_GEN_SGX_CFB == 1
-            client->request(keyGenTempEpollMessage.hashContent, keyGenTempEpollMessage.length, keyGenTempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+            client->request(epollSession_.at(fd).hashContent, epollSession_.at(fd).length, epollSession_.at(fd).keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #elif KEY_GEN_SGX_CTR == 1
-            if (clientList_.find(keyGenTempEpollMessage.clientID) == clientList_.end()) {
+            if (clientList_.find(epollSession_.at(fd).clientID) == clientList_.end()) {
                 cerr << "find data in client mask info list failed" << endl;
                 auto it = clientList_.begin();
                 while (it != clientList_.end()) {
                     cout << "KeyServer : client list containes: " << it->first << ", mask info : user counter = " << it->second.keyGenerateCounter << ", current counter = " << it->second.currentKeyGenerateCounter << endl;
                     ++it;
                 }
-                // requestMQ_->push(keyGenTempEpollMessage);
                 continue;
             } else {
-                client->request(keyGenTempEpollMessage.hashContent, keyGenTempEpollMessage.length, keyGenTempEpollMessage.keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientList_.at(keyGenTempEpollMessage.clientID).clientID, clientList_.at(keyGenTempEpollMessage.clientID).keyGenerateCounter, clientList_.at(keyGenTempEpollMessage.clientID).currentKeyGenerateCounter, clientList_.at(keyGenTempEpollMessage.clientID).nonce, clientList_.at(keyGenTempEpollMessage.clientID).nonceLen);
-                clientList_.at(keyGenTempEpollMessage.clientID).keyGenerateCounter += keyGenTempEpollMessage.requestNumber * 4;
-                clientList_.at(keyGenTempEpollMessage.clientID).currentKeyGenerateCounter += keyGenTempEpollMessage.requestNumber * 4;
+                client->request(epollSession_.at(fd).hashContent, epollSession_.at(fd).length, epollSession_.at(fd).keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE, clientList_.at(epollSession_.at(fd).clientID).clientID, clientList_.at(epollSession_.at(fd).clientID).keyGenerateCounter, clientList_.at(epollSession_.at(fd).clientID).currentKeyGenerateCounter, clientList_.at(epollSession_.at(fd).clientID).nonce, clientList_.at(epollSession_.at(fd).clientID).nonceLen);
+                clientList_.at(epollSession_.at(fd).clientID).keyGenerateCounter += epollSession_.at(fd).requestNumber * 4;
+                clientList_.at(epollSession_.at(fd).clientID).currentKeyGenerateCounter += epollSession_.at(fd).requestNumber * 4;
             }
 #endif
-            responseMQ_->push(keyGenTempEpollMessage);
+            epollSession_.at(fd).keyGenerateFlag = true;
+            responseMQ_->push(fd);
         }
     }
 }
