@@ -45,7 +45,7 @@ Encoder::~Encoder()
 void Encoder::run()
 {
 
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
     double encryptionTime = 0;
     long diff;
     double second;
@@ -64,11 +64,11 @@ void Encoder::run()
                 continue;
             }
 
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartEncoder, NULL);
 #endif
             bool encodeChunkStatus = encodeChunk(tempChunk);
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendEncoder, NULL);
             diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
             second = diff / 1000000.0;
@@ -90,7 +90,7 @@ void Encoder::run()
             break;
         }
     }
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
     cout << "Encoder : chunk encryption work time = " << encryptionTime << " s" << endl;
 #endif
     return;

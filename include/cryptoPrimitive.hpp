@@ -32,7 +32,7 @@ public:
     int blockSize_;
 
     EVP_CIPHER_CTX* cipherctx_;
-    EVP_MD_CTX* mdctx_;
+    // EVP_MD_CTX* mdctx_;
     CMAC_CTX* cmacctx_;
     const EVP_CIPHER* cipher_;
     u_char* iv_;

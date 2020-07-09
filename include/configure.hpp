@@ -8,7 +8,7 @@
 using namespace std;
 
 /* System Test Settings: 0-disable; 1-enable */
-#define SYSTEM_BREAK_DOWN 0
+#define SYSTEM_BREAK_DOWN 1
 #define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
@@ -22,11 +22,11 @@ using namespace std;
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 1
-#define KEY_GEN_SGX_CTR 2
+#define KEY_GEN_SGX_CTR 0
 #define KEY_GEN_SERVER_MLE_NO_OPRF 0
 
 #define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
-#define KEY_GEN_EPOLL_MODE 1
+#define KEY_GEN_EPOLL_MODE 0
 
 /* System Infomation Size Settings */
 #define CHUNK_FINGER_PRINT_SIZE 32

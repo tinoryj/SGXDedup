@@ -111,13 +111,13 @@ CryptoPrimitive::CryptoPrimitive()
     if (cmacctx_ == nullptr) {
         cerr << "error initial cmac ctx" << endl;
     }
-#if OPENSSL_V_1_0_2 == 1
+    // #if OPENSSL_V_1_0_2 == 1
 
-    mdctx_ = EVP_MD_CTX_create();
-#else
-    mdctx_ = EVP_MD_CTX_new();
-#endif
-    EVP_MD_CTX_init(mdctx_);
+    //     mdctx_ = EVP_MD_CTX_create();
+    // #else
+    //     mdctx_ = EVP_MD_CTX_new();
+    // #endif
+    //     EVP_MD_CTX_init(mdctx_);
     EVP_CIPHER_CTX_init(cipherctx_);
     cipher_ = EVP_aes_256_cfb();
     iv_ = (u_char*)malloc(sizeof(u_char) * blockSize_);
@@ -135,15 +135,13 @@ CryptoPrimitive::CryptoPrimitive()
  */
 CryptoPrimitive::~CryptoPrimitive()
 {
+// #if OPENSSL_V_1_0_2 == 1
+//     EVP_MD_CTX_cleanup(mdctx_);
+// #else
+//     EVP_MD_CTX_reset(mdctx_);
+// #endif
+//     EVP_MD_CTX_destroy(mdctx_);
 #if OPENSSL_V_1_0_2 == 1
-
-    EVP_MD_CTX_cleanup(mdctx_);
-#else
-    EVP_MD_CTX_reset(mdctx_);
-#endif
-    EVP_MD_CTX_destroy(mdctx_);
-#if OPENSSL_V_1_0_2 == 1
-
     EVP_CIPHER_CTX_free(cipherctx_);
     EVP_CIPHER_CTX_cleanup(cipherctx_);
 #else
@@ -167,19 +165,31 @@ CryptoPrimitive::~CryptoPrimitive()
  */
 bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_char* hash)
 {
-    if (EVP_DigestInit_ex(mdctx_, EVP_sha256(), nullptr) != 1) {
+    EVP_MD_CTX* mdctx;
+#if OPENSSL_V_1_0_2 == 1
+    mdctx = EVP_MD_CTX_create();
+#else
+    mdctx = EVP_MD_CTX_new();
+#endif
+    EVP_MD_CTX_init(mdctx);
+    // if (mdctx_ == nullptr) {
+    //     cerr << "CryptoPrimitive : mdctx == nullptr" << endl;
+    //     return false;
+    // }
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1) {
         cerr << "hash error\n";
         return false;
     }
-    if (EVP_DigestUpdate(mdctx_, dataBuffer, dataSize) != 1) {
+    if (EVP_DigestUpdate(mdctx, dataBuffer, dataSize) != 1) {
         cerr << "hash error\n";
         return false;
     }
     int hashSize;
-    if (EVP_DigestFinal_ex(mdctx_, hash, (unsigned int*)&hashSize) != 1) {
+    if (EVP_DigestFinal_ex(mdctx, hash, (unsigned int*)&hashSize) != 1) {
         cerr << "hash error\n";
         return false;
     }
+    // SHA256(dataBuffer, dataSize, hash);
     return true;
 }
 

@@ -12,7 +12,7 @@
 	"KeyServerConfig": {
 		"_keyBatchSize": 2000,
 		"_keyServerNumber": 1,
-		"_keyEnclaveThreadNumber": 4,
+		"_keyEnclaveThreadNumber": 1,
 		"_keyCacheSize": 10000,
 		"_keyGenLimitPerSessionKey": 10000000,
 		"_keyServerRArequestPort": 1559,

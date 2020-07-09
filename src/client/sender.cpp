@@ -42,9 +42,7 @@ Sender::~Sender()
 {
     delete dataSecurityChannel_;
     delete powSecurityChannel_;
-    if (cryptoObj_ != NULL) {
-        delete cryptoObj_;
-    }
+    delete cryptoObj_;
     inputMQ_->~messageQueue();
     delete inputMQ_;
 }

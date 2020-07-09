@@ -47,7 +47,7 @@ void DataSR::run(SSL* sslConnection)
     uint32_t endID = 0;
     Recipe_t restoredFileRecipe;
     uint32_t totalRestoredChunkNumber = 0;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartDataSR;
     struct timeval timeendDataSR;
     double saveChunkTime = 0;
@@ -58,7 +58,7 @@ void DataSR::run(SSL* sslConnection)
     while (true) {
         if (!dataSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, thread exit now" << endl;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
             cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
             cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
@@ -69,7 +69,7 @@ void DataSR::run(SSL* sslConnection)
             // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                 cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
@@ -77,11 +77,11 @@ void DataSR::run(SSL* sslConnection)
                 return;
             }
             case CLIENT_UPLOAD_CHUNK: {
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartDataSR, NULL);
 #endif
                 bool saveChunkStatus = storageObj_->saveChunks(netBody, (char*)recvBuffer + sizeof(NetworkHeadStruct_t));
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendDataSR, NULL);
                 diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                 second = diff / 1000000.0;
@@ -89,7 +89,7 @@ void DataSR::run(SSL* sslConnection)
 #endif
                 if (!saveChunkStatus) {
                     cerr << "DedupCore : save chunks report error" << endl;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                     cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                     cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
@@ -108,11 +108,11 @@ void DataSR::run(SSL* sslConnection)
                     tempRecipeEntryList.push_back(tempRecipeEntry);
                 }
                 cerr << "StorageCore : recv Recipe from client " << netBody.clientID << endl;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartDataSR, NULL);
 #endif
                 bool saveRecipeStatus = storageObj_->checkRecipeStatus(tempRecipeHead, tempRecipeEntryList);
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendDataSR, NULL);
                 diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                 second = diff / 1000000.0;
@@ -227,7 +227,7 @@ void DataSR::runPow(SSL* sslConnection)
     char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int clientID = -1;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartDataSR;
     struct timeval timeendDataSR;
     double verifyTime = 0;
@@ -239,7 +239,7 @@ void DataSR::runPow(SSL* sslConnection)
 
         if (!powSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
             cerr << "DataSR : client closed socket connect, Client ID = " << clientID << " Thread exit now" << endl;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
             cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
             cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
 #endif
@@ -250,7 +250,7 @@ void DataSR::runPow(SSL* sslConnection)
             // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                 cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
                 cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
 #endif
@@ -365,11 +365,11 @@ void DataSR::runPow(SSL* sslConnection)
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         sendSize = sizeof(NetworkHeadStruct_t);
                     } else {
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                         gettimeofday(&timestartDataSR, NULL);
 #endif
                         bool powVerifyStatus = powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq);
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                         gettimeofday(&timeendDataSR, NULL);
                         diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                         second = diff / 1000000.0;
@@ -377,11 +377,11 @@ void DataSR::runPow(SSL* sslConnection)
 #endif
                         if (powVerifyStatus) {
                             RequiredChunk_t requiredChunkTemp;
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                             gettimeofday(&timestartDataSR, NULL);
 #endif
                             bool dedupQueryStatus = dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp);
-#if SGSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
                             gettimeofday(&timeendDataSR, NULL);
                             diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                             second = diff / 1000000.0;
