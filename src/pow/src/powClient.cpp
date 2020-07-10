@@ -187,7 +187,7 @@ bool powClient::loadSealedData()
     }
     sealDataFile.open("pow-enclave.sealed", std::ios::binary);
     if (!sealDataFile.is_open()) {
-        cerr << "PowClient : sealed init not success, sealed data not exist" << endl;
+        cerr << "PowClient : sealed init not success, sealed data not exist, start creating pow enclave" << endl;
         return false;
     } else {
         sealDataFile.seekg(0, ios_base::end);
@@ -285,7 +285,7 @@ powClient::powClient(Sender* senderObjTemp)
     senderObj = senderObjTemp;
     cryptoObj = new CryptoPrimitive();
     sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
-    cout << "PowClient : sealed size = " << sealed_len << endl;
+    // cout << "PowClient : sealed size = " << sealed_len << endl;
     sealed_buf = (char*)malloc(sealed_len);
     memset(sealed_buf, -1, sealed_len);
     if (loadSealedData() == true) {
