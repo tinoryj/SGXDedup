@@ -365,6 +365,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     gettimeofday(&timestartKey_enc, NULL);
 #endif
     cryptoObj_->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
+    memcpy(sendHash, batchHashList, batchNumber * CHUNK_HASH_SIZE);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
@@ -391,6 +392,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         gettimeofday(&timestartKey_enc, NULL);
 #endif
         cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
+        memcpy(batchKeyList, recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeendKey_enc, NULL);
         diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
