@@ -24,7 +24,7 @@ typedef struct {
 } opensslLock_t;
 
 class CryptoPrimitive {
-public:
+private:
     const EVP_MD* md_;
 
     int hashSize_;
@@ -36,11 +36,13 @@ public:
     CMAC_CTX* cmacctx_;
     const EVP_CIPHER* cipher_;
     u_char* iv_;
-    u_char* chunkKeyEncryptionKey_;
 
     static opensslLock_t* opensslLock_;
     static void opensslLockingCallback_(int mode, int type, const char* file, int line);
     static void opensslThreadID_(CRYPTO_THREADID* id);
+
+public:
+    u_char* chunkKeyEncryptionKey_;
 
     CryptoPrimitive();
     ~CryptoPrimitive();

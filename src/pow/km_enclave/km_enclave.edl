@@ -30,5 +30,6 @@ enclave {
                                                         [user_check] uint8_t* nonce, 
                                                         uint32_t nonceLen);
         public sgx_status_t ecall_setCTRMode();
+        public sgx_status_t ecall_getCurrentSessionKey([user_check] char* currentSessionKeyResult);
     };
 };

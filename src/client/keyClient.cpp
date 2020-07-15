@@ -316,6 +316,7 @@ void keyClient::run()
             } else {
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
+                    // memcpy(batchList[i].chunk.encryptKey, batchList[i].chunk.chunkHash, CHUNK_ENCRYPT_KEY_SIZE);
                     insertMQToEncoder(batchList[i]);
                 }
                 batchList.clear();

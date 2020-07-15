@@ -12,18 +12,22 @@ private:
     CryptoPrimitive* cryptoObj;
     keyClient* keyClientObj;
 
-    //Chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
+    // Chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
     int ChunkerType;
-    //chunk size setting
+    /*chunk size setting*/
     int avgChunkSize;
     int minChunkSize;
     int maxChunkSize;
-    //sliding window size
-    int slidingWinSize;
 
     u_char *waitingForChunkingBuffer, *chunkBuffer;
     uint64_t ReadSize;
+    uint64_t totalSize;
+    Data_t fileRecipe;
+    std::ifstream chunkingFile;
 
+    /*VarSize chunking*/
+    /*sliding window size*/
+    int slidingWinSize;
     uint32_t polyBase;
     /*the modulus for limiting the value of the polynomial in rolling hash*/
     uint32_t polyMOD;
@@ -38,27 +42,14 @@ private:
     /*the value for determining an anchor*/
     uint32_t anchorValue;
 
-    uint64_t totalSize;
-
-    Data_t recipe;
-    std::ifstream chunkingFile;
-
     void fixSizeChunking();
-
     void varSizeChunking();
-
     void traceDrivenChunkingFSL();
-
     void traceDrivenChunkingUBC();
-
     void ChunkerInit(string path);
-
     bool insertMQToKeyClient(Data_t& newData);
-
     bool setJobDoneFlag();
-
     void loadChunkFile(string path);
-
     std::ifstream& getChunkingFile();
 
 public:

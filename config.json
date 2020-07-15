@@ -1,16 +1,15 @@
 {
 	"ChunkerConfig": {
-		"_runningType": 0,
 		"_chunkingType": 1,
 		"_minChunkSize": 4096,
 		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
 		"_slidingWinSize": 256,
-		"_ReadSize": 256,
+		"_ReadSize": 128,
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 2000,
+		"_keyBatchSize": 3000,
 		"_keyServerNumber": 1,
 		"_keyEnclaveThreadNumber": 1,
 		"_keyCacheSize": 10000,
@@ -32,26 +31,12 @@
 		"_storageServerPort": [
 			6668
 		],
-		"_maxContainerSize": 16384
-	},
-	"mutiThread": {
-		"_encodeThreadLimit": 1,
-		"_keyClientThreadLimit": 1,
-		"_keyServerThreadLimit": 1,
-		"_senderThreadLimit": 1,
-		"_receiverThreadLimit": 1,
-		"_decoderThreadLimit": 1,
-		"_dataSRThreadLimit": 1,
-		"_retriverThreadLimit": 1,
-		"_dedupCoreThreadLimit": 1,
-		"_storageCoreThreadLimit": 1,
-		"_recvDecodeThreadLimit": 1
+		"_maxContainerSize": 8388608
 	},
 	"pow": {
 		"_quoteType": 0,
 		"_iasVersion": 3,
-		"_ServerIp": "127.0.0.1",
-		"_ServerPort": 6698,
+		"_ServerPort": 6669,
 		"_enclave_name": "pow_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
 		"_iasServerType": 0,
@@ -62,7 +47,6 @@
 	"km": {
 		"_quoteType": 0,
 		"_iasVersion": 3,
-		"_ServerIp": "127.0.0.1",
 		"_ServerPort": 6676,
 		"_enclave_name": "km_enclave.signed.so",
 		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
@@ -81,8 +65,5 @@
 		"_clientID": 1,
 		"_sendChunkBatchSize": 1000,
 		"_sendRecipeBatchSize": 100000
-	},
-	"timer": {
-		"_timeScale": 5
 	}
 }

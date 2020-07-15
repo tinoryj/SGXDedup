@@ -82,21 +82,9 @@ private:
     uint64_t _keyGenLimitPerSessionKey;
     uint32_t _keyRegressionMaxTimes;
 
-    //muti thread settings
-    int _encodeThreadLimit;
-    int _keyClientThreadLimit;
-    int _keyServerThreadLimit;
-    int _senderThreadLimit;
-    int _recvDecodeThreadLimit;
-    int _dataSRThreadLimit;
-    int _retriverThreadLimit;
-    int _dedupCoreThreadLimit;
-    int _storageCoreThreadLimit;
-
     //POW settings
     int _POWQuoteType; //0x00 linkable; 0x01 unlinkable
     int _POWIasVersion;
-    std::string _POWServerIp;
     int _POWServerPort;
     std::string _POWEnclaveName;
     std::string _POWSPID;
@@ -108,7 +96,6 @@ private:
     //km enclave settings
     int _KMQuoteType; //0x00 linkable; 0x01 unlinkable
     int _KMIasVersion;
-    std::string _KMServerIp;
     int _KMServerPort;
     std::string _KMEnclaveName;
     std::string _KMSPID;
@@ -134,9 +121,6 @@ private:
     int _sendChunkBatchSize;
     int _sendRecipeBatchSize;
 
-    //timer settings
-    double _timeOutScale;
-
     // any additional settings
 
 public:
@@ -148,8 +132,6 @@ public:
     ~Configure();
 
     void readConf(std::string path);
-
-    uint64_t getRunningType();
 
     // chunking settings
     uint64_t getChunkingType();
@@ -173,24 +155,9 @@ public:
     uint64_t getKeyGenLimitPerSessionkeySize();
     uint32_t getKeyRegressionMaxTimes();
 
-    //muti thread settings
-    int
-    getEncoderThreadLimit();
-    int getKeyClientThreadLimit();
-    int getKeyServerThreadLimit();
-
-    int getSenderThreadLimit();
-    int getRecvDecodeThreadLimit();
-    int getDecoderThreadLimit();
-    int getDataSRThreadLimit();
-    int getRetriverThreadLimit();
-    int getDedupCoreThreadLimit();
-    int getStorageCoreThreadLimit();
-
     //pow settings
     int getPOWQuoteType();
     int getPOWIASVersion();
-    std::string getPOWServerIP();
     int getPOWServerPort();
     std::string getPOWEnclaveName();
     std::string getPOWSPID();
@@ -202,7 +169,6 @@ public:
     //km settings
     int getKMQuoteType();
     int getKMIASVersion();
-    std::string getKMServerIP();
     int getKMServerPort();
     std::string getKMEnclaveName();
     std::string getKMSPID();
@@ -231,9 +197,6 @@ public:
     int getClientID();
     int getSendChunkBatchSize();
     int getSendRecipeBatchSize();
-
-    //timer settings
-    double getTimeOutScale();
 };
 
 #endif //SGXDEDUP_CONFIGURE_HPP

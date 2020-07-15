@@ -31,6 +31,7 @@
 #define KEY_SERVER_RA_REQUES 25
 #define KEY_GEN_UPLOAD_CLIENT_INFO 26
 #define KEY_GEN_UPLOAD_CHUNK_HASH 27
+#define SERVER_JOB_DONE_EXIT_PERMIT 28
 
 //dupCore-storageCore protocol
 #define SAVE_CHUNK

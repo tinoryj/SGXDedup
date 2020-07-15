@@ -46,7 +46,9 @@ void Encoder::run()
 {
 
 #if SYSTEM_BREAK_DOWN == 1
-    double encryptionTime = 0;
+    double encryptChunkContentTime = 0;
+    double encryptChunkKeyTime = 0;
+    double generateCipherChunkHashTime = 0;
     long diff;
     double second;
 #endif
@@ -55,60 +57,83 @@ void Encoder::run()
 
         Data_t tempChunk;
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
-            cerr << "Encoder : Key Client jobs done, queue is empty" << endl;
             JobDoneFlag = true;
         }
         if (extractMQFromKeyClient(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
                 insertMQToPOW(tempChunk);
                 continue;
-            }
+            } else {
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartEncoder, NULL);
+#endif
+                u_char ciphertext[tempChunk.chunk.logicDataSize];
+                bool encryptChunkContentStatus = cryptoObj_->encryptWithKey(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.encryptKey, ciphertext);
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendEncoder, NULL);
+                diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
+                second = diff / 1000000.0;
+                encryptChunkContentTime += second;
+#endif
+                if (!encryptChunkContentStatus) {
+                    cerr << "Encoder : cryptoPrimitive error, encrypt chunk logic data error" << endl;
+                    return;
+                } else {
+                    memcpy(tempChunk.chunk.logicData, ciphertext, tempChunk.chunk.logicDataSize);
 
 #if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timestartEncoder, NULL);
+                    gettimeofday(&timestartEncoder, NULL);
 #endif
-            bool encodeChunkStatus = encodeChunk(tempChunk);
+                    u_char cipherKey[CHUNK_ENCRYPT_KEY_SIZE];
+                    bool encryptChunkKeyStatus = cryptoObj_->encryptWithKey(tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, cryptoObj_->chunkKeyEncryptionKey_, cipherKey);
 #if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timeendEncoder, NULL);
-            diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
-            second = diff / 1000000.0;
-            encryptionTime += second;
+                    gettimeofday(&timeendEncoder, NULL);
+                    diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
+                    second = diff / 1000000.0;
+                    encryptChunkKeyTime += second;
 #endif
-            if (encodeChunkStatus) {
-                insertMQToPOW(tempChunk);
-            } else {
-                cerr << "Encoder : encode chunk error, exiting" << endl;
-                return;
+                    if (!encryptChunkKeyStatus) {
+                        cerr << "Encoder : cryptoPrimitive error, encrypt chunk key error" << endl;
+                        return;
+                    } else {
+                        memcpy(tempChunk.chunk.encryptKey, cipherKey, CHUNK_ENCRYPT_KEY_SIZE);
+#if SYSTEM_BREAK_DOWN == 1
+                        gettimeofday(&timestartEncoder, NULL);
+#endif
+                        bool generateCipherChunkHashStatus = cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
+#if SYSTEM_BREAK_DOWN == 1
+                        gettimeofday(&timeendEncoder, NULL);
+                        diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
+                        second = diff / 1000000.0;
+                        generateCipherChunkHashTime += second;
+#endif
+                        if (generateCipherChunkHashStatus) {
+                            insertMQToPOW(tempChunk);
+                        } else {
+                            cerr << "Encoder : generate cipher chunk hash error, exiting" << endl;
+                            return;
+                        }
+                    }
+                }
             }
         }
         if (JobDoneFlag) {
             if (!powObj_->editJobDoneFlag()) {
                 cerr << "Encoder : error to set job done flag for encoder" << endl;
             } else {
-                cerr << "Encoder : encode chunk thread job done, set job done flag for encoder done, exit now" << endl;
+#if SYSTEM_BREAK_DOWN == 1
+                cerr << "Encoder : encode chunk thread job done, exit now" << endl;
+#endif
             }
             break;
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cout << "Encoder : chunk encryption work time = " << encryptionTime << " s" << endl;
+    cout << "Encoder : chunk content encryption work time = " << encryptChunkContentTime << " s" << endl;
+    cout << "Encoder : chunk key encryption work time = " << encryptChunkKeyTime << " s" << endl;
+    cout << "Encoder : cipher chunk crypto hash generate work time = " << generateCipherChunkHashTime << " s" << endl;
 #endif
     return;
-}
-
-bool Encoder::encodeChunk(Data_t& newChunk)
-{
-    bool statusChunk = cryptoObj_->encryptChunk(newChunk.chunk);
-    bool statusHash = cryptoObj_->generateHash(newChunk.chunk.logicData, newChunk.chunk.logicDataSize, newChunk.chunk.chunkHash);
-    if (!statusChunk) {
-        cerr << "Encoder : error encrypt chunk" << endl;
-        return false;
-    } else if (!statusHash) {
-        cerr << "Encoder : error compute hash" << endl;
-        return false;
-    } else {
-        return true;
-    }
 }
 
 bool Encoder::insertMQFromKeyClient(Data_t& newChunk)

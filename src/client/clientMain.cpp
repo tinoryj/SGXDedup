@@ -46,10 +46,6 @@ void usage()
 
 int main(int argv, char* argc[])
 {
-    long diff;
-    double second;
-    gettimeofday(&timestart, NULL);
-
     struct sigaction sa;
     sa.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &sa, 0);
@@ -58,6 +54,9 @@ int main(int argv, char* argc[])
     sigaction(SIGKILL, &sa, 0);
     sigaction(SIGINT, &sa, 0);
 
+    long diff;
+    double second;
+    gettimeofday(&timestart, NULL);
     vector<boost::thread*> thList;
     boost::thread* th;
     if (argv != 3 && argv != 4) {
@@ -80,10 +79,9 @@ int main(int argv, char* argc[])
 
         gettimeofday(&timestart, NULL);
 
-        for (int i = 0; i < config.getRecvDecodeThreadLimit(); i++) {
-            th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
-            thList.push_back(th);
-        }
+        th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
+        thList.push_back(th);
+
         th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
         thList.push_back(th);
 

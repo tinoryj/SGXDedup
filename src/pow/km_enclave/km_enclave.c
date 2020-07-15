@@ -119,8 +119,8 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
         if (ret_status != SGX_SUCCESS) {
             return ret_status;
         } else {
-            memcpy(&currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
-            memcpy(&currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
+            memcpy(currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
+            memcpy(currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
             uint8_t* hashDataTemp = (uint8_t*)malloc(32);
             uint8_t* hashResultTemp = (uint8_t*)malloc(32);
             memcpy_s(hashDataTemp, 32, &currentSessionKey, 32);
@@ -131,7 +131,7 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
                 }
                 memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
             }
-            memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
+            memcpy_s(currentSessionKey, 32, hashResultTemp, 32);
             return SGX_SUCCESS;
         }
     }
@@ -198,6 +198,12 @@ sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
     free(hashDataTemp);
     free(hashResultTemp);
     return 2;
+}
+
+sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)
+{
+    memcpy(currentSessionKeyResult, currentSessionKey, 32);
+    return SGX_SUCCESS;
 }
 
 sgx_status_t ecall_setCTRMode()

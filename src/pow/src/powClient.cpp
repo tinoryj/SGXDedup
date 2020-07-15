@@ -44,7 +44,7 @@ void powClient::run()
 {
 #if SYSTEM_BREAK_DOWN == 1
     double powEnclaveCaluationTime = 0;
-    double powExchangeinofrmationTime = 0;
+    double powExchangeInofrmationTime = 0;
     long diff;
     double second;
 #endif
@@ -115,7 +115,7 @@ void powClient::run()
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
             second = diff / 1000000.0;
-            powExchangeinofrmationTime += second;
+            powExchangeInofrmationTime += second;
 #endif
             if (netstatus != SUCCESS) {
                 cerr << "PowClient : send pow signed hash error" << endl;
@@ -150,8 +150,8 @@ void powClient::run()
     }
 #if SYSTEM_BREAK_DOWN == 1
     cout << "PowClient : enclave compute work time = " << powEnclaveCaluationTime << " s" << endl;
-    cout << "PowClient : exchange status to SSP time = " << powExchangeinofrmationTime << " s" << endl;
-    cout << "PowClient : Total work time = " << powExchangeinofrmationTime + powEnclaveCaluationTime << " s" << endl;
+    cout << "PowClient : exchange status to SSP time = " << powExchangeInofrmationTime << " s" << endl;
+    cout << "PowClient : Total work time = " << powExchangeInofrmationTime + powEnclaveCaluationTime << " s" << endl;
 #endif
     free(batchChunkLogicData_charBuffer);
     return;

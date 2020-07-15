@@ -4,8 +4,8 @@
 
 #include "configure.hpp"
 
-Configure::~Configure() {}
-Configure::Configure() {}
+Configure::~Configure() { }
+Configure::Configure() { }
 Configure::Configure(std::string path)
 {
     this->readConf(path);
@@ -19,7 +19,6 @@ void Configure::readConf(std::string path)
     read_json<ptree>(path, root);
 
     //Chunker Configure
-    _runningType = root.get<uint64_t>("ChunkerConfig._runningType");
     _chunkingType = root.get<uint64_t>("ChunkerConfig._chunkingType");
     _maxChunkSize = root.get<uint64_t>("ChunkerConfig._maxChunkSize");
     _minChunkSize = root.get<uint64_t>("ChunkerConfig._minChunkSize");
@@ -58,21 +57,9 @@ void Configure::readConf(std::string path)
         _storageServerPort.push_back(it.second.get_value<int>());
     }
 
-    //muti thread settings;
-    _encodeThreadLimit = root.get<int>("mutiThread._encodeThreadLimit");
-    _keyClientThreadLimit = root.get<int>("mutiThread._keyClientThreadLimit");
-    _keyServerThreadLimit = root.get<int>("mutiThread._keyServerThreadLimit");
-    _senderThreadLimit = root.get<int>("mutiThread._senderThreadLimit");
-    _recvDecodeThreadLimit = root.get<int>("mutiThread._recvDecodeThreadLimit");
-    _dataSRThreadLimit = root.get<int>("mutiThread._dataSRThreadLimit");
-    _retriverThreadLimit = root.get<int>("mutiThread._retriverThreadLimit");
-    _dedupCoreThreadLimit = root.get<int>("mutiThread._dedupCoreThreadLimit");
-    _storageCoreThreadLimit = root.get<int>("mutiThread._storageCoreThreadLimit");
-
     //pow Configure
     _POWQuoteType = root.get<int>("pow._quoteType");
     _POWIasVersion = root.get<int>("pow._iasVersion");
-    _POWServerIp = root.get<std::string>("pow._ServerIp");
     _POWServerPort = root.get<int>("pow._ServerPort");
     _POWEnclaveName = root.get<std::string>("pow._enclave_name");
     _POWSPID = root.get<std::string>("pow._SPID");
@@ -84,7 +71,6 @@ void Configure::readConf(std::string path)
     //km enclave Configure
     _KMQuoteType = root.get<int>("km._quoteType");
     _KMIasVersion = root.get<int>("km._iasVersion");
-    _KMServerIp = root.get<std::string>("km._ServerIp");
     _KMServerPort = root.get<int>("km._ServerPort");
     _KMEnclaveName = root.get<std::string>("km._enclave_name");
     _KMSPID = root.get<std::string>("km._SPID");
@@ -103,15 +89,6 @@ void Configure::readConf(std::string path)
     _clientID = root.get<int>("client._clientID");
     _sendChunkBatchSize = root.get<int>("client._sendChunkBatchSize");
     _sendRecipeBatchSize = root.get<int>("client._sendRecipeBatchSize");
-
-    //timer Configure
-    _timeOutScale = root.get<double>("timer._timeScale");
-}
-
-uint64_t Configure::getRunningType()
-{
-
-    return _runningType;
 }
 
 // chunking settings
@@ -215,22 +192,6 @@ uint32_t Configure::getKeyRegressionMaxTimes()
     return _keyRegressionMaxTimes;
 }
 
-//muti thread settings
-int Configure::getEncoderThreadLimit()
-{
-    return _encodeThreadLimit;
-}
-
-int Configure::getKeyClientThreadLimit()
-{
-    return _keyClientThreadLimit;
-}
-
-int Configure::getKeyServerThreadLimit()
-{
-    return _keyServerThreadLimit;
-}
-
 // storage management settings
 uint64_t Configure::getStorageServerNumber()
 {
@@ -279,11 +240,6 @@ int Configure::getPOWIASVersion()
     return _POWIasVersion;
 }
 
-std::string Configure::getPOWServerIP()
-{
-    return _POWServerIp;
-}
-
 int Configure::getPOWServerPort()
 {
     return _POWServerPort;
@@ -319,11 +275,6 @@ int Configure::getKMIASVersion()
     return _KMIasVersion;
 }
 
-std::string Configure::getKMServerIP()
-{
-    return _KMServerIp;
-}
-
 int Configure::getKMServerPort()
 {
     return _KMServerPort;
@@ -355,11 +306,6 @@ int Configure::getSendChunkBatchSize()
     return _sendChunkBatchSize;
 }
 
-double Configure::getTimeOutScale()
-{
-    return _timeOutScale;
-}
-
 std::string Configure::getRecipeRootPath()
 {
     return _RecipeRootPath;
@@ -383,36 +329,6 @@ std::string Configure::getFp2MetaDBame()
 uint64_t Configure::getRASessionKeylifeSpan()
 {
     return _raSessionKeylifeSpan;
-}
-
-int Configure::getSenderThreadLimit()
-{
-    return _senderThreadLimit;
-}
-
-int Configure::getRecvDecodeThreadLimit()
-{
-    return _recvDecodeThreadLimit;
-}
-
-int Configure::getDataSRThreadLimit()
-{
-    return _dataSRThreadLimit;
-}
-
-int Configure::getRetriverThreadLimit()
-{
-    return _retriverThreadLimit;
-}
-
-int Configure::getDedupCoreThreadLimit()
-{
-    return _dedupCoreThreadLimit;
-}
-
-int Configure::getStorageCoreThreadLimit()
-{
-    return _storageCoreThreadLimit;
 }
 
 int Configure::getSendRecipeBatchSize()

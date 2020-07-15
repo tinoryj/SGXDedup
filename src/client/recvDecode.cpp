@@ -2,6 +2,9 @@
 
 extern Configure config;
 
+struct timeval timestartRecvDecode;
+struct timeval timeendRecvDecode;
+
 void PRINT_BYTE_ARRAY_RECV(
     FILE* file, void* mem, uint32_t len)
 {
@@ -30,8 +33,19 @@ RecvDecode::RecvDecode(string fileName)
     powSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getPOWServerPort(), CLIENTSIDE);
     sslConnectionData_ = dataSecurityChannel_->sslConnect().second;
     sslConnectionPow_ = powSecurityChannel_->sslConnect().second;
+#if SYSTEM_BREAK_DOWN == 1
+    long diff;
+    double second;
+    gettimeofday(&timestartRecvDecode, NULL);
+#endif
     cryptoObj_->generateHash((u_char*)&fileName[0], fileName.length(), fileNameHash_);
     recvFileHead(fileRecipe_, fileNameHash_);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendRecvDecode, NULL);
+    diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
+    second = diff / 1000000.0;
+    cerr << "RecvDecode : recv file head infomation time = " << second << " s" << endl;
+#endif
     cerr << "RecvDecode : recv file recipe head, file size = " << fileRecipe_.fileRecipeHead.fileSize << ", total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
 }
 
@@ -125,6 +139,12 @@ bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
 
 void RecvDecode::run()
 {
+#if SYSTEM_BREAK_DOWN == 1
+    long diff;
+    double second;
+    double decryptChunkKeyTime = 0;
+    double decryptChunkContentTime = 0;
+#endif
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
     request.dataSize = FILE_NAME_HASH_SIZE + 2 * sizeof(uint32_t);
@@ -162,12 +182,32 @@ void RecvDecode::run()
             u_char chunkPlaintData[MAX_CHUNK_SIZE];
             memcpy(&chunkNumber, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int));
             for (int i = 0; i < chunkNumber; i++) {
+
                 memcpy(&chunkID, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(uint32_t));
                 totalRecvSize += sizeof(uint32_t);
                 memcpy(&chunkSize, respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, sizeof(int));
                 totalRecvSize += sizeof(int);
-                cryptoObj_->decryptChunk((u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, (u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, chunkPlaintData);
-
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartRecvDecode, NULL);
+#endif
+                u_char plaintKey[CHUNK_ENCRYPT_KEY_SIZE];
+                cryptoObj_->decryptWithKey((u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize + chunkSize, CHUNK_ENCRYPT_KEY_SIZE, cryptoObj_->chunkKeyEncryptionKey_, plaintKey);
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendRecvDecode, NULL);
+                diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
+                second = diff / 1000000.0;
+                decryptChunkKeyTime += second;
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartRecvDecode, NULL);
+#endif
+                cryptoObj_->decryptWithKey((u_char*)respondBuffer + sizeof(NetworkHeadStruct_t) + totalRecvSize, chunkSize, plaintKey, chunkPlaintData);
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendRecvDecode, NULL);
+                diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
+                second = diff / 1000000.0;
+                decryptChunkContentTime += second;
+#endif
                 RetrieverData_t newData;
                 newData.ID = chunkID;
                 newData.logicDataSize = chunkSize;
@@ -181,5 +221,9 @@ void RecvDecode::run()
         }
     }
     cerr << "RecvDecode : download job done, exit now" << endl;
+#if SYSTEM_BREAK_DOWN == 1
+    cerr << "RecvDecode : chunk key decrypt time = " << decryptChunkKeyTime << " s" << endl;
+    cerr << "RecvDecode : chunk content decrypt time = " << decryptChunkContentTime << " s" << endl;
+#endif
     return;
 }

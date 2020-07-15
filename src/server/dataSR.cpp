@@ -69,6 +69,13 @@ void DataSR::run(SSL* sslConnection)
             // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
+                cerr << "DataSR : client send job done check flag, data server side job over, thread exit now" << endl;
+                netBody.messageType = SERVER_JOB_DONE_EXIT_PERMIT;
+                netBody.dataSize = 0;
+                sendSize = sizeof(NetworkHeadStruct_t);
+                memset(sendBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
 #if SYSTEM_BREAK_DOWN == 1
                 cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                 cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
@@ -250,6 +257,13 @@ void DataSR::runPow(SSL* sslConnection)
             // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
+                cerr << "DataSR : client send job done check flag, pow server side job over, thread exit now" << endl;
+                netBody.messageType = SERVER_JOB_DONE_EXIT_PERMIT;
+                netBody.dataSize = 0;
+                sendSize = sizeof(NetworkHeadStruct_t);
+                memset(sendBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
+                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
 #if SYSTEM_BREAK_DOWN == 1
                 cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
                 cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;

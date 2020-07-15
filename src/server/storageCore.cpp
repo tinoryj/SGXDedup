@@ -31,6 +31,7 @@ StorageCore::StorageCore()
 {
     RecipeNamePrefix_ = config.getRecipeRootPath();
     containerNamePrefix_ = config.getContainerRootPath();
+    maxContainerSize_ = config.getMaxContainerSize();
     RecipeNameTail_ = ".recipe";
     containerNameTail_ = ".container";
     ifstream fin;
@@ -342,7 +343,7 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
 
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
-    if (key.length + currentContainer_.used_ < (2 << 23)) {
+    if (key.length + currentContainer_.used_ < maxContainerSize_) {
         memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
     } else {

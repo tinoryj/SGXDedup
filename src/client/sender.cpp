@@ -90,7 +90,7 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
         } else {
             memcpy(&respondBody, respondBuffer, recvSize);
             if (respondBody.messageType == SUCCESS) {
-                cout << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
+                // cout << "Sender : send file reipce number = " << currentSendRecipeNumber << " done" << endl;
                 sendRecipeNumber += currentSendRecipeNumber;
                 currentSendRecipeNumber = 0;
             } else {
@@ -307,21 +307,45 @@ bool Sender::sendDataPow(char* request, int requestSize, char* respond, int& res
 
 bool Sender::sendEndFlag()
 {
-    NetworkHeadStruct_t requestBody;
+    NetworkHeadStruct_t requestBody, responseBody;
     requestBody.messageType = CLIENT_EXIT;
     requestBody.clientID = clientID_;
     int sendSize = sizeof(NetworkHeadStruct_t);
+    int recvSize;
     requestBody.dataSize = 0;
     char requestBuffer[sendSize];
+    char responseBuffer[sizeof(NetworkHeadStruct_t)];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
     if (!powSecurityChannel_->send(sslConnectionPow_, requestBuffer, sendSize)) {
-        cerr << "Sender : send data error peer closed" << endl;
+        cerr << "Sender : send end flag to pow server error peer closed" << endl;
         return false;
     }
-    if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
-        cerr << "Sender : send data error peer closed" << endl;
+    if (!powSecurityChannel_->recv(sslConnectionPow_, responseBuffer, recvSize)) {
+        cerr << "Sender : recv end flag from pow server error peer closed" << endl;
         return false;
+    } else {
+        memcpy(&responseBody, responseBuffer, sizeof(NetworkHeadStruct_t));
+        if (responseBody.messageType == SERVER_JOB_DONE_EXIT_PERMIT) {
+            if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
+                cerr << "Sender : send end flag to data server error peer closed" << endl;
+                return false;
+            }
+            if (!dataSecurityChannel_->recv(sslConnectionData_, responseBuffer, recvSize)) {
+                cerr << "Sender : recv end flag from data server error peer closed" << endl;
+                return false;
+            } else {
+                memcpy(&responseBody, responseBuffer, sizeof(NetworkHeadStruct_t));
+                if (responseBody.messageType == SERVER_JOB_DONE_EXIT_PERMIT) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
     }
+
     return true;
 }
 
@@ -338,26 +362,18 @@ void Sender::run()
     int currentSendRecipeNumber = 0;
     int currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
 #if SYSTEM_BREAK_DOWN == 1
-    double totalSendTime = 0;
-    double totalExtractMQTime = 0;
+    double totalSendChunkTime = 0;
+    double totalChunkAssembleTime = 0;
+    double totalSendRecipeTime = 0;
+    double totalRecipeAssembleTime = 0;
     long diff;
     double second;
-    gettimeofday(&timestartSender, NULL);
 #endif
     while (!jobDoneFlag) {
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
             jobDoneFlag = true;
         }
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timestartSenderReadMQ, NULL);
-#endif
         bool extractChunkStatus = extractMQFromPow(tempChunk);
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendSenderReadMQ, NULL);
-        diff = 1000000 * (timeendSenderReadMQ.tv_sec - timestartSenderReadMQ.tv_sec) + timeendSenderReadMQ.tv_usec - timestartSenderReadMQ.tv_usec;
-        second = diff / 1000000.0;
-        totalExtractMQTime += second;
-#endif
         if (extractChunkStatus) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
                 // cout << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
@@ -366,6 +382,9 @@ void Sender::run()
                 continue;
             } else {
                 if (tempChunk.chunk.type == CHUNK_TYPE_NEED_UPLOAD) {
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timestartSender, NULL);
+#endif
                     memcpy(sendChunkBatchBuffer + currentSendChunkBatchBufferSize, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                     currentSendChunkBatchBufferSize += CHUNK_HASH_SIZE;
                     memcpy(sendChunkBatchBuffer + currentSendChunkBatchBufferSize, &tempChunk.chunk.logicDataSize, sizeof(int));
@@ -374,11 +393,19 @@ void Sender::run()
                     currentSendChunkBatchBufferSize += tempChunk.chunk.logicDataSize;
                     currentChunkNumber++;
                     // cout << "Sender : Chunk ID = " << tempChunk.chunk.ID << " size = " << tempChunk.chunk.logicDataSize << endl;
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timeendSender, NULL);
+                    diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+                    second = diff / 1000000.0;
+                    totalChunkAssembleTime += second;
+#endif
                     // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
                     // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                     // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
                 }
-
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartSender, NULL);
+#endif
                 RecipeEntry_t newRecipeEntry;
                 newRecipeEntry.chunkID = tempChunk.chunk.ID;
                 newRecipeEntry.chunkSize = tempChunk.chunk.logicDataSize;
@@ -386,49 +413,77 @@ void Sender::run()
                 memcpy(newRecipeEntry.chunkKey, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
                 recipeList.push_back(newRecipeEntry);
                 currentSendRecipeNumber++;
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendSender, NULL);
+                diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+                second = diff / 1000000.0;
+                totalRecipeAssembleTime += second;
+#endif
             }
         }
         if (currentChunkNumber == sendBatchSize || jobDoneFlag) {
             // cout << "Sender : run -> start send " << setbase(10) << currentChunkNumber << " chunks to server, size = " << setbase(10) << currentSendChunkBatchBufferSize << endl;
-            // gettimeofday(&timestartSenderRecipe, NULL);
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timestartSender, NULL);
+#endif
             if (this->sendChunkList(sendChunkBatchBuffer, currentSendChunkBatchBufferSize, currentChunkNumber, status)) {
                 // cout << "Sender : sent " << setbase(10) << currentChunkNumber << " chunk" << endl;
                 currentSendChunkBatchBufferSize = sizeof(NetworkHeadStruct_t) + sizeof(int);
                 memset(sendChunkBatchBuffer, 0, sizeof(NetworkHeadStruct_t) + sizeof(int) + sizeof(char) * sendBatchSize * (CHUNK_HASH_SIZE + MAX_CHUNK_SIZE + sizeof(int)));
                 currentChunkNumber = 0;
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendSender, NULL);
+                diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+                second = diff / 1000000.0;
+                totalSendChunkTime += second;
+#endif
             } else {
                 cerr << "Sender : send " << setbase(10) << currentChunkNumber << " chunk error" << endl;
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendSender, NULL);
+                diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+                second = diff / 1000000.0;
+                totalSendChunkTime += second;
+#endif
                 break;
             }
-            // gettimeofday(&timeendSenderRecipe, NULL);
-            // long diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-            // double second = diff / 1000000.0;
-            // totalSendTime += second;
         }
     }
-    // printf("Sender send chunk list time is %lf s\n", totalSendTime);
-
+#if SYSTEM_BREAK_DOWN == 1
+    cerr << "Sender : assemble chunk list time = " << totalChunkAssembleTime << " s" << endl;
+    cerr << "Sender : chunk upload and storage service time = " << totalSendChunkTime << " s" << endl;
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartSender, NULL);
+#endif
+    // cerr << "Sender : start send file recipes" << endl;
+    if (!this->sendRecipe(fileRecipe, recipeList, status)) {
+        cerr << "Sender : send recipe list error, upload fail " << endl;
+        free(sendChunkBatchBuffer);
+        bool serverJobDoneFlag = sendEndFlag();
+        if (serverJobDoneFlag) {
+            return;
+        } else {
+            cerr << "Sender : server job done flag error, server may shutdown, upload may faild" << endl;
+            return;
+        }
+    }
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendSender, NULL);
     diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
     second = diff / 1000000.0;
-    cerr << "Sender : send chunk time = " << second - totalExtractMQTime << " s" << endl;
-#endif
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestartSenderRecipe, NULL);
-#endif
-    if (this->sendRecipe(fileRecipe, recipeList, status)) {
-        cout << "Sender : send recipe list success" << endl;
-    }
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendSenderRecipe, NULL);
-    diff = 1000000 * (timeendSenderRecipe.tv_sec - timestartSenderRecipe.tv_sec) + timeendSenderRecipe.tv_usec - timestartSenderRecipe.tv_usec;
-    second = diff / 1000000.0;
-    cerr << "Sender : send recipe list time = " << second << " s" << endl;
+    totalSendRecipeTime += second;
+    cerr << "Sender : assemble recipe list time = " << totalRecipeAssembleTime << " s" << endl;
+    cerr << "Sender : send recipe list time = " << totalSendRecipeTime << " s" << endl;
 #endif
     free(sendChunkBatchBuffer);
-    sendEndFlag();
-    return;
+    bool serverJobDoneFlag = sendEndFlag();
+    if (serverJobDoneFlag) {
+        return;
+    } else {
+        cerr << "Sender : server job done flag error, server may shutdown, upload may faild" << endl;
+        return;
+    }
 }
 
 bool Sender::insertMQFromPow(Data_t& newChunk)

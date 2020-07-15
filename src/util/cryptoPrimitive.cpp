@@ -241,59 +241,6 @@ bool CryptoPrimitive::decryptWithKey(u_char* ciphertext, const int dataSize, u_c
     return true;
 }
 
-bool CryptoPrimitive::encryptChunk(Chunk_t& chunk)
-{
-    u_char ciphertext[chunk.logicDataSize];
-    u_char cipherKey[CHUNK_ENCRYPT_KEY_SIZE];
-    if (!encryptWithKey(chunk.logicData, chunk.logicDataSize, chunk.encryptKey, ciphertext)) {
-        cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-        return false;
-    } else {
-        memcpy(chunk.logicData, ciphertext, chunk.logicDataSize);
-        if (!encryptWithKey(chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, chunkKeyEncryptionKey_, cipherKey)) {
-            cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-            return false;
-        } else {
-            memcpy(chunk.encryptKey, cipherKey, CHUNK_ENCRYPT_KEY_SIZE);
-            return true;
-        }
-    }
-}
-
-bool CryptoPrimitive::decryptChunk(Chunk_t& chunk)
-{
-    u_char plaintData[chunk.logicDataSize];
-    u_char plaintKey[CHUNK_ENCRYPT_KEY_SIZE];
-    if (!decryptWithKey(chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, chunkKeyEncryptionKey_, plaintKey)) {
-        cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-        return false;
-    } else {
-        if (!decryptWithKey(chunk.logicData, chunk.logicDataSize, plaintKey, plaintData)) {
-            cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-            return false;
-        } else {
-            memcpy(chunk.logicData, plaintData, chunk.logicDataSize);
-            return true;
-        }
-    }
-}
-
-bool CryptoPrimitive::decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData)
-{
-    u_char plaintKey[CHUNK_ENCRYPT_KEY_SIZE];
-    if (!decryptWithKey(key, CHUNK_ENCRYPT_KEY_SIZE, chunkKeyEncryptionKey_, plaintKey)) {
-        cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-        return false;
-    } else {
-        if (!decryptWithKey(chunkData, chunkSize, plaintKey, plaintData)) {
-            cerr << "CryptoPrimitive Error: encrypt chunk logic data error" << endl;
-            return false;
-        } else {
-            return true;
-        }
-    }
-}
-
 bool CryptoPrimitive::keyExchangeDecrypt(u_char* ciphertext, const int dataSize, u_char* key, u_char* iv, u_char* dataBuffer)
 {
     int plaintlen, len;
@@ -346,41 +293,6 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
     }
     return true;
 }
-
-// bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
-// {
-//     u_char currentKeyBase[CRYPTO_BLOCK_SZIE];
-//     u_char currentKey[CRYPTO_BLOCK_SZIE];
-//     int cipherlen, len;
-//     uint32_t currentCounter = counter;
-//     for (uint32_t i = 0; i < generateNumber; i++) {
-//         memcpy(currentKeyBase, &currentCounter, sizeof(uint32_t));
-//         memcpy(currentKeyBase + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
-//         currentCounter++;
-//         if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, key, iv) != 1) {
-//             cerr << "encrypt error\n";
-//             return false;
-//         }
-
-//         if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, CRYPTO_BLOCK_SZIE) != 1) {
-//             cerr << "encrypt error\n";
-//             return false;
-//         }
-
-//         if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
-//             cerr << "encrypt error\n";
-//             return false;
-//         }
-//         cipherlen += len;
-//         if (cipherlen != CRYPTO_BLOCK_SZIE) {
-//             cerr << "CryptoPrimitive : encrypt output size not equal to origin size, size = " << cipherlen << endl;
-//             return false;
-//         } else {
-//             memcpy(ctrBaseBuffer + i * CRYPTO_BLOCK_SZIE, currentKey, CRYPTO_BLOCK_SZIE);
-//         }
-//     }
-//     return true;
-// }
 
 bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
 {

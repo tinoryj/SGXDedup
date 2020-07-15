@@ -135,6 +135,9 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                 status = ecall_setSessionKey(_eid,
                     &retval, &_ctx);
                 if (status == SGX_SUCCESS) {
+                    char currentSessionKey[32];
+                    status = ecall_getCurrentSessionKey(_eid, &retval, currentSessionKey);
+                    PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey, 32);
                     status = ecall_setCTRMode(_eid,
                         &retval);
                     if (status == SGX_SUCCESS) {
@@ -258,6 +261,9 @@ bool kmClient::sessionKeyUpdate()
     if (status != SGX_SUCCESS) {
         return false;
     } else {
+        char currentSessionKey[32];
+        status = ecall_getCurrentSessionKey(_eid, &retval, currentSessionKey);
+        PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey, 32);
         return true;
     }
 }
