@@ -39,14 +39,21 @@ list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
 find_package(SGX REQUIRED)
 
 set (CMAKE_SYSTEM_NAME Linux )
+if (NOT CMAKE_BUILD_TYPE)
+   set (CMAKE_BUILD_TYPE "Release")
+   message (
+      STATUS "No CMAKE_BUILD_TYPE selected, defaulting to ${CMAKE_BUILD_TYPE}"
+   )
+endif ()
+
+set(CMAKE_C_FLAGS_DEBUG "-Wall -std=c1x -g -ggdb -g2") 
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -std=c++17 -g -ggdb -g2 -fsanitize=leak -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -std=c1x") 
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -std=c++11")
+set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
+
 SET (CMAKE_C_COMPILER             "/usr/bin/clang")
 SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
-# SET (CMAKE_C_FLAGS                "-Wall -std=c1x -g")
-# SET (CMAKE_CXX_FLAGS                "-Wall -std=c++17 -g -ggdb -fsanitize=address")
-# SET (CMAKE_C_FLAGS                "-O3 -g -g2 -ggdb -Wall")
-# SET (CMAKE_CXX_FLAGS                "-O3 -g -g2 -ggdb -std=c++17 -Wall")
-SET (CMAKE_C_FLAGS                "-O3 -Wall")
-SET (CMAKE_CXX_FLAGS                "-O3 -std=c++17 -Wall")
 SET (CMAKE_AR      "/usr/bin/llvm-ar")
 SET (CMAKE_LINKER  "/usr/bin/llvm-ld")
 SET (CMAKE_NM      "/usr/bin/llvm-nm")

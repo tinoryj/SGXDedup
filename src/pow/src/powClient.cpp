@@ -329,8 +329,10 @@ powClient::powClient(Sender* senderObjTemp)
 
 powClient::~powClient()
 {
+#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
+#endif
     delete cryptoObj;
     if (startMethod == 2) {
         if (powEnclaveSealedColse() == true) {

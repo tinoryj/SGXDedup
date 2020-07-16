@@ -34,7 +34,8 @@ using namespace httpparser;
 
 static vector<string> wget_args;
 
-extern int debug, verbose;
+char verbose_agent = 0;
+char debug_agent = 0;
 
 #define CHUNK_SZ 8192
 #define WGET_NO_ERROR 0
@@ -100,7 +101,7 @@ int AgentWget::request(string const& url, string const& post,
 
         // Output options
 
-        if (!verbose)
+        if (!verbose_agent)
             wget_args.push_back("--quiet");
         wget_args.push_back("--output-document=-");
         wget_args.push_back("--save-headers");
@@ -169,7 +170,7 @@ int AgentWget::request(string const& url, string const& post,
 
         // Create the argument list
 
-        if (debug)
+        if (debug_agent)
             eprintf("+++ Exec:");
         argv = (char**)malloc(sizeof(char*) * (sz + 1));
         if (argv == NULL) {
@@ -182,11 +183,11 @@ int AgentWget::request(string const& url, string const& post,
                 perror("strdup");
                 exit(1);
             }
-            if (debug)
+            if (debug_agent)
                 eprintf(" %s", argv[i]);
         }
         argv[sz] = 0;
-        if (debug)
+        if (debug_agent)
             eprintf("\n");
 
     retry_dup:

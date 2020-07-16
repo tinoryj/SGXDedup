@@ -16,6 +16,13 @@ using namespace std;
 #define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
 #define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
 
+/* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/
+#define QUEUE_TYPE_LOCKFREE_SPSC_QUEUE 0
+#define QUEUE_TYPE_LOCKFREE_QUEUE 1
+#define QUEUE_TYPE_READ_WRITE_QUEUE 2
+#define QUEUE_TYPE_CONCURRENT_QUEUE 3
+#define QUEUE_TYPE QUEUE_TYPE_CONCURRENT_QUEUE
+
 /* Storage Core Settings: 0-disable; 1-enable */
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
 #define STORAGE_CORE_READ_CACHE 0
