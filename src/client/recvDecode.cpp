@@ -66,8 +66,8 @@ RecvDecode::~RecvDecode()
         delete cryptoObj_;
     }
 #if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
-    inputMQ_->~messageQueue();
-    delete inputMQ_;
+    outPutMQ_->~messageQueue();
+    delete outPutMQ_;
 #endif
 }
 
