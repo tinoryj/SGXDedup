@@ -2,6 +2,7 @@
 #define SGXDEDUP_PROTOCOL_HPP
 
 #include <bits/stdc++.h>
+
 //client-server network protocol
 #define SGX_RA_MSG01 0
 #define SGX_RA_MSG2 1
@@ -32,10 +33,11 @@
 #define KEY_GEN_UPLOAD_CLIENT_INFO 26
 #define KEY_GEN_UPLOAD_CHUNK_HASH 27
 #define SERVER_JOB_DONE_EXIT_PERMIT 28
+#define CLIENT_UPLOAD_DECRYPTED_RECIPE 29
+#define CLIENT_DOWNLOAD_RECIPE_SIZE 30
+#define CLIENT_UPLOAD_ENCRYPTED_RECIPE 31
+#define CLIENT_DOWNLOAD_ENCRYPTED_RECIPE 32
 
-//dupCore-storageCore protocol
-#define SAVE_CHUNK
-#define SAVE_RECIPE
 using namespace std;
 
 typedef struct _ra_msg4_struct {

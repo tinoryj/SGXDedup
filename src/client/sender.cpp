@@ -51,6 +51,7 @@ Sender::~Sender()
 #endif
 }
 
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
 bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
 {
     int totalRecipeNumber = recipeList.size();
@@ -102,6 +103,45 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
     }
     return true;
 }
+#elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
+bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
+{
+    int totalRecipeNumber = recipeList.size();
+    int totalRecipeSize = totalRecipeNumber * sizeof(RecipeEntry_t) + sizeof(Recipe_t);
+    u_char* recipeBuffer = (u_char*)malloc(sizeof(u_char) * totalRecipeNumber * sizeof(RecipeEntry_t));
+    for (int i = 0; i < totalRecipeNumber; i++) {
+        memcpy(recipeBuffer + i * sizeof(RecipeEntry_t), &recipeList[i], sizeof(RecipeEntry_t));
+    }
+
+    NetworkHeadStruct_t requestBody, respondBody;
+    requestBody.clientID = clientID_;
+    requestBody.messageType = CLIENT_UPLOAD_ENCRYPTED_RECIPE;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    requestBody.dataSize = totalRecipeSize;
+    char* requestBufferFirst = (char*)malloc(sizeof(char) * sendSize);
+    memcpy(requestBufferFirst, &requestBody, sizeof(NetworkHeadStruct_t));
+    if (!dataSecurityChannel_->send(sslConnectionData_, requestBufferFirst, sendSize)) {
+        free(requestBufferFirst);
+        cerr << "Sender : error sending file resipces size, peer may close" << endl;
+        return false;
+    } else {
+        free(requestBufferFirst);
+        sendSize = sizeof(NetworkHeadStruct_t) + totalRecipeSize;
+        requestBody.dataSize = totalRecipeSize;
+        char* requestBuffer = (char*)malloc(sizeof(char) * sendSize);
+        memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
+        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
+        cryptoObj_->encryptWithKey(recipeBuffer, totalRecipeNumber * sizeof(RecipeEntry_t), cryptoObj_->chunkKeyEncryptionKey_, (u_char*)requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t));
+        if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
+            free(requestBuffer);
+            cerr << "Sender : error sending file resipces, peer may close" << endl;
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+#endif
 
 bool Sender::getKeyServerSK(u_char* SK)
 {

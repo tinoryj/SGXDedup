@@ -31,6 +31,10 @@ public:
     ~RecvDecode();
     void run();
     bool recvFileHead(Recipe_t& FileRecipe, u_char* fileNameHash);
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
+    RecipeList_t fileRecipeList_;
+    bool processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u_char* fileNameHash);
+#endif
     bool recvChunks(ChunkList_t& recvChunk, int& chunkNumber, uint32_t& startID, uint32_t& endID);
     Recipe_t getFileRecipeHead();
     bool insertMQToRetriever(RetrieverData_t& newChunk);

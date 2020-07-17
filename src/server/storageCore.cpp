@@ -66,7 +66,7 @@ StorageCore::~StorageCore()
 
     delete cryptoObj_;
 }
-
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
 bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
 {
     // gettimeofday(&timestartStorage, NULL);
@@ -340,7 +340,228 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
     cerr << "StorageCore : save recipe number = " << recipeList.size() << endl;
     return true;
 }
+#elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
+bool StorageCore::storeChunks(NetworkHeadStruct_t& networkHead, char* data)
+{
+    // gettimeofday(&timestartStorage, NULL);
+    int chunkNumber;
+    memcpy(&chunkNumber, data, sizeof(int));
+    int readSize = sizeof(int);
+    u_char hash[CHUNK_HASH_SIZE];
+    string tmpdata;
+    for (int i = 0; i < chunkNumber; i++) {
+        int currentChunkSize;
+        string originHash(data + readSize, CHUNK_HASH_SIZE);
+        readSize += CHUNK_HASH_SIZE;
+        memcpy(&currentChunkSize, data + readSize, sizeof(int));
+        readSize += sizeof(int);
+        if (fp2ChunkDB.query(originHash, tmpdata)) {
+            continue;
+        } else {
+            if (!storeChunk(originHash, data + readSize, currentChunkSize)) {
+                return false;
+            }
+        }
+        readSize += currentChunkSize;
+    }
 
+    return true;
+}
+
+bool StorageCore::restoreRecipesSize(char* fileNameHash, uint64_t& recipeSize)
+{
+    string recipeName;
+    string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        ifstream RecipeIn;
+        string readRecipeName;
+        readRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+        RecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
+        if (!RecipeIn.is_open()) {
+            std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
+            return false;
+        } else {
+            RecipeIn.seekg(0, std::ios::end);
+            recipeSize = RecipeIn.tellg();
+            RecipeIn.seekg(0, std::ios::beg);
+            RecipeIn.close();
+            return true;
+        }
+    } else {
+        std::cerr << "StorageCore : file recipe not exist" << endl;
+        return false;
+    }
+    return true;
+}
+
+bool StorageCore::restoreRecipes(char* fileNameHash, u_char* recipeContent, uint64_t& recipeSize)
+{
+    string recipeName;
+    string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        ifstream RecipeIn;
+        string readRecipeName;
+        readRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+        RecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
+        if (!RecipeIn.is_open()) {
+            std::cerr << "StorageCore : Can not open Recipe file : " << readRecipeName;
+            return false;
+        } else {
+            RecipeIn.seekg(0, std::ios::end);
+            recipeSize = RecipeIn.tellg();
+            RecipeIn.seekg(0, std::ios::beg);
+            RecipeIn.read((char*)recipeContent, recipeSize);
+            RecipeIn.close();
+            return true;
+        }
+    } else {
+        std::cerr << "StorageCore : file recipe not exist" << endl;
+        return false;
+    }
+    return true;
+}
+
+bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64_t recipeSize)
+{
+
+    ofstream RecipeOut;
+    string writeRecipeName, buffer, recipeName;
+
+    string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
+    if (fileName2metaDB.query(DBKey, recipeName)) {
+        cerr << "StorageCore : current file's recipe exist, modify it now" << recipeName << endl;
+        writeRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
+        RecipeOut.open(writeRecipeName, ios::app | ios::binary);
+        if (!RecipeOut.is_open()) {
+            std::cerr << "Can not open Recipe file: " << writeRecipeName << endl;
+            return false;
+        }
+        RecipeOut.write((char*)recipeContent, recipeSize);
+        RecipeOut.close();
+        return true;
+    } else {
+        char recipeNameBuffer[FILE_NAME_HASH_SIZE * 2 + 1];
+        for (int i = 0; i < FILE_NAME_HASH_SIZE; i++) {
+            sprintf(recipeNameBuffer + 2 * i, "%02X", fileNameHash[i]);
+        }
+        cerr << "StorageCore : current file's recipe not exist\nnew recipe file name = " << recipeNameBuffer << endl;
+        string recipeNameNew(recipeNameBuffer, FILE_NAME_HASH_SIZE * 2);
+        fileName2metaDB.insert(DBKey, recipeNameNew);
+        writeRecipeName = RecipeNamePrefix_ + recipeNameNew + RecipeNameTail_;
+        RecipeOut.open(writeRecipeName, ios::app | ios::binary);
+        if (!RecipeOut.is_open()) {
+            std::cerr << "Can not open Recipe file: " << writeRecipeName << endl;
+            return false;
+        }
+        RecipeOut.write((char*)recipeContent, recipeSize);
+        RecipeOut.close();
+        return true;
+    }
+}
+
+bool StorageCore::restoreRecipeAndChunk(RecipeList_t recipeList, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList)
+{
+
+    for (int i = 0; i < (endID - startID); i++) {
+        string chunkHash((char*)recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+        string chunkData;
+        if (restoreChunk(chunkHash, chunkData)) {
+            if (chunkData.length() != recipeList[startID + i].chunkSize) {
+                cerr << "StorageCore : restore chunk logic data size error" << endl;
+                return false;
+            } else {
+                Chunk_t newChunk;
+                newChunk.ID = recipeList[startID + i].chunkID;
+                newChunk.logicDataSize = recipeList[startID + i].chunkSize;
+                memcpy(newChunk.chunkHash, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+                memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
+                restoredChunkList.push_back(newChunk);
+            }
+        } else {
+            cerr << "StorageCore : can not restore chunk" << endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool StorageCore::storeChunk(std::string chunkHash, char* chunkData, int chunkSize)
+{
+    keyForChunkHashDB_t key;
+    key.length = chunkSize;
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartStorage, NULL);
+#endif
+    bool status = writeContainer(key, chunkData);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendStorage, NULL);
+    writeContainerTime += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
+#endif
+    if (!status) {
+        std::cerr << "StorageCore : Error write container" << endl;
+        return status;
+    }
+
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartStorage, NULL);
+#endif
+    string dbValue;
+    dbValue.resize(sizeof(keyForChunkHashDB_t));
+    memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
+    status = fp2ChunkDB.insert(chunkHash, dbValue);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendStorage, NULL);
+    insertDBTimeUpload += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
+#endif
+    if (!status) {
+        std::cerr << "StorageCore : Can't insert chunk to database" << endl;
+        return false;
+    } else {
+        currentContainer_.used_ += key.length;
+        return true;
+    }
+}
+
+bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
+{
+    keyForChunkHashDB_t key;
+    string ans;
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartStorage, NULL);
+#endif
+    bool status = fp2ChunkDB.query(chunkHash, ans);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendStorage, NULL);
+    int diff = 1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec;
+    double second = diff / 1000000.0;
+    queryDBTime += second;
+#endif
+    if (status) {
+        memcpy(&key, &ans[0], sizeof(keyForChunkHashDB_t));
+        char chunkData[key.length];
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartStorage, NULL);
+#endif
+
+        bool readContainerStatus = readContainer(key, chunkData);
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendStorage, NULL);
+        readContainerTime += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
+#endif
+        if (readContainerStatus) {
+            chunkDataStr.resize(key.length);
+            memcpy(&chunkDataStr[0], chunkData, key.length);
+            return true;
+        } else {
+            cerr << "StorageCore : can not read container for chunk" << endl;
+            return false;
+        }
+    } else {
+        cerr << "StorageCore : chunk not in database" << endl;
+        return false;
+    }
+}
+#endif
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
     if (key.length + currentContainer_.used_ < maxContainerSize_) {

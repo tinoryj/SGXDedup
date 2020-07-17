@@ -86,6 +86,7 @@ void Encoder::run()
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartEncoder, NULL);
 #endif
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
                     u_char cipherKey[CHUNK_ENCRYPT_KEY_SIZE];
                     bool encryptChunkKeyStatus = cryptoObj_->encryptWithKey(tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, cryptoObj_->chunkKeyEncryptionKey_, cipherKey);
 #if SYSTEM_BREAK_DOWN == 1
@@ -99,6 +100,7 @@ void Encoder::run()
                         return;
                     } else {
                         memcpy(tempChunk.chunk.encryptKey, cipherKey, CHUNK_ENCRYPT_KEY_SIZE);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
                         gettimeofday(&timestartEncoder, NULL);
 #endif
@@ -115,7 +117,9 @@ void Encoder::run()
                             cerr << "Encoder : generate cipher chunk hash error, exiting" << endl;
                             return;
                         }
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
                     }
+#endif
                 }
             }
         }

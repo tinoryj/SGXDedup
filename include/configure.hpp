@@ -23,6 +23,11 @@ using namespace std;
 #define QUEUE_TYPE_CONCURRENT_QUEUE 3
 #define QUEUE_TYPE QUEUE_TYPE_CONCURRENT_QUEUE
 
+/* Recipe Management Settings: 0-disable; 1-enable */
+#define ENCRYPT_WHOLE_RECIPE_FILE 0
+#define ENCRYPT_ONLY_KEY_RECIPE_FILE 1
+#define RECIPE_MANAGEMENT_METHOD ENCRYPT_WHOLE_RECIPE_FILE
+
 /* Storage Core Settings: 0-disable; 1-enable */
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
 #define STORAGE_CORE_READ_CACHE 0
