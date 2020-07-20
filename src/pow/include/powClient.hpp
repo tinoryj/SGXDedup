@@ -34,18 +34,18 @@ static const sgx_ec256_public_t def_service_public_key = {
 
 class powClient {
 private:
-    bool enclave_trusted;
+    bool enclaveIsTrusted_;
     messageQueue<Data_t>* inputMQ_;
-    Sender* senderObj;
+    Sender* senderObj_;
     bool request(string& logicDataBatch, uint8_t cmac[16]);
-    CryptoPrimitive* cryptoObj;
-    uint32_t sealed_len;
-    uint32_t startMethod;
+    CryptoPrimitive* cryptoObj_;
+    uint32_t sealedLen_;
+    uint32_t startMethod_;
 
 public:
-    sgx_enclave_id_t _eid;
-    sgx_ra_context_t _ctx;
-    char* sealed_buf;
+    sgx_enclave_id_t eid_;
+    sgx_ra_context_t ctx_;
+    char* sealedBuffer_;
 
     bool powEnclaveSealedInit();
     bool powEnclaveSealedColse();
@@ -57,9 +57,8 @@ public:
     bool do_attestation();
     void run();
 
-    bool insertMQFromEncoder(Data_t& newChunk);
-    bool extractMQFromEncoder(Data_t& newChunk);
-    bool insertMQToSender(Data_t& newChunk);
+    bool insertMQ(Data_t& newChunk);
+    bool extractMQ(Data_t& newChunk);
     bool editJobDoneFlag();
 };
 

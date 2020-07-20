@@ -40,15 +40,6 @@ public:
     ~messageQueue()
     {
     }
-    bool setJobDoneFlag()
-    {
-        done_ = true;
-        if (done_ == true) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 #if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     bool push(T& data)
     {

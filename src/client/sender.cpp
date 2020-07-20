@@ -415,7 +415,7 @@ void Sender::run()
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
             jobDoneFlag = true;
         }
-        bool extractChunkStatus = extractMQFromPow(tempChunk);
+        bool extractChunkStatus = extractMQ(tempChunk);
         if (extractChunkStatus) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
                 // cout << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
@@ -528,12 +528,12 @@ void Sender::run()
     }
 }
 
-bool Sender::insertMQFromPow(Data_t& newChunk)
+bool Sender::insertMQ(Data_t& newChunk)
 {
     return inputMQ_->push(newChunk);
 }
 
-bool Sender::extractMQFromPow(Data_t& newChunk)
+bool Sender::extractMQ(Data_t& newChunk)
 {
     return inputMQ_->pop(newChunk);
 }

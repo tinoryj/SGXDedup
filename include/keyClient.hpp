@@ -8,7 +8,7 @@
 #include "messageQueue.hpp"
 #include "ssl.hpp"
 
-class keyClient {
+class KeyClient {
 private:
     messageQueue<Data_t>* inputMQ_;
     Encoder* encoderObj_;
@@ -25,17 +25,14 @@ private:
 
 public:
     double keyExchangeEncTime = 0;
-    keyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
-    keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
-    ~keyClient();
+    KeyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
+    KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
+    ~KeyClient();
     void run();
     void runKeyGenSimulator(int clientID);
-    bool encodeChunk(Data_t& newChunk);
-    bool insertMQFromChunker(Data_t& newChunk);
-    bool extractMQFromChunker(Data_t& newChunk);
-    bool insertMQToEncoder(Data_t& newChunk);
+    bool insertMQ(Data_t& newChunk);
+    bool extractMQ(Data_t& newChunk);
     bool editJobDoneFlag();
-    bool setJobDoneFlag();
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj);

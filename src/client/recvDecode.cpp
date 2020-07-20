@@ -139,11 +139,11 @@ Recipe_t RecvDecode::getFileRecipeHead()
     return fileRecipe_;
 }
 
-bool RecvDecode::insertMQToRetriever(RetrieverData_t& newData)
+bool RecvDecode::insertMQ(RetrieverData_t& newData)
 {
     return outPutMQ_->push(newData);
 }
-bool RecvDecode::extractMQToRetriever(RetrieverData_t& newData)
+bool RecvDecode::extractMQ(RetrieverData_t& newData)
 {
     return outPutMQ_->pop(newData);
 }
@@ -173,6 +173,7 @@ void RecvDecode::run()
         cerr << "RecvDecode : storage server closed" << endl;
         return;
     }
+    uint32_t totalRecvChunks = 0;
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
 
         if (!dataSecurityChannel_->recv(sslConnectionData_, respondBuffer, recvSize)) {
@@ -224,7 +225,7 @@ void RecvDecode::run()
                 newData.ID = chunkID;
                 newData.logicDataSize = chunkSize;
                 memcpy(newData.logicData, chunkPlaintData, chunkSize);
-                if (!insertMQToRetriever(newData)) {
+                if (!insertMQ(newData)) {
                     cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
                 }
                 totalRecvSize = totalRecvSize + chunkSize + CHUNK_ENCRYPT_KEY_SIZE;
@@ -367,6 +368,7 @@ void RecvDecode::run()
         cerr << "RecvDecode : storage server closed" << endl;
         return;
     }
+    uint32_t totalRecvChunks = 0;
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
         memset(respondBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
         if (!dataSecurityChannel_->recv(sslConnectionData_, (char*)respondBuffer, recvSize)) {
@@ -406,7 +408,7 @@ void RecvDecode::run()
                 second = diff / 1000000.0;
                 decryptChunkTime += second;
 #endif
-                if (!insertMQToRetriever(newData)) {
+                if (!insertMQ(newData)) {
                     cerr << "RecvDecode : Error insert chunk data into retriever" << endl;
                 }
                 totalRecvSize = totalRecvSize + chunkSize;

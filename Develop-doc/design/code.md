@@ -1,4 +1,4 @@
-* keyClient::decoration&&keyClient::elimination
+* KeyClient::decoration&&KeyClient::elimination
 
   由keyClient::run调用，decoration->network->elimination，run为多线程函数，因为RSA盲签名中存在状态信息（随机数 - r）,所以存在一致性问题
 

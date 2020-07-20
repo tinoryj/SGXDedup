@@ -2,6 +2,7 @@
 #include "chunker.hpp"
 #include "configure.hpp"
 #include "encoder.hpp"
+#include "fingerprinter.hpp"
 #include "keyClient.hpp"
 #include "recvDecode.hpp"
 #include "retriever.hpp"
@@ -15,7 +16,8 @@ using namespace std;
 
 Configure config("config.json");
 Chunker* chunkerObj;
-keyClient* keyClientObj;
+Fingerprinter* fingerprinterObj;
+KeyClient* keyClientObj;
 Sender* senderObj;
 RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
@@ -29,6 +31,7 @@ void CTRLC(int s)
 {
     cerr << "Client close" << endl;
     delete chunkerObj;
+    delete fingerprinterObj;
     delete keyClientObj;
     delete senderObj;
     delete recvDecodeObj;
@@ -82,7 +85,7 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&RecvDecode::run, recvDecodeObj));
         thList.push_back(th);
 
-        th = new boost::thread(attrs, boost::bind(&Retriever::recvThread, retrieverObj));
+        th = new boost::thread(attrs, boost::bind(&Retriever::run, retrieverObj));
         thList.push_back(th);
 
     } else if (strcmp("-k", argc[1]) == 0) {
@@ -101,7 +104,7 @@ int main(int argv, char* argc[])
         }
 #endif
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
-        keyClientObj = new keyClient(sessionKey, keyGenNumber);
+        keyClientObj = new KeyClient(sessionKey, keyGenNumber);
 
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -110,7 +113,7 @@ int main(int argv, char* argc[])
 
         gettimeofday(&timestart, NULL);
         for (int i = 0; i < threadNumber; i++) {
-            th = new boost::thread(attrs, boost::bind(&keyClient::runKeyGenSimulator, keyClientObj, i));
+            th = new boost::thread(attrs, boost::bind(&KeyClient::runKeyGenSimulator, keyClientObj, i));
             thList.push_back(th);
         }
     } else if (strcmp("-s", argc[1]) == 0) {
@@ -126,9 +129,10 @@ int main(int argv, char* argc[])
             return 0;
         }
         encoderObj = new Encoder(powClientObj);
-        keyClientObj = new keyClient(encoderObj, sessionKey);
+        keyClientObj = new KeyClient(encoderObj, sessionKey);
+        fingerprinterObj = new Fingerprinter(keyClientObj);
         string inputFile(argc[2]);
-        chunkerObj = new Chunker(inputFile, keyClientObj);
+        chunkerObj = new Chunker(inputFile, fingerprinterObj);
 
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -141,7 +145,7 @@ int main(int argv, char* argc[])
         thList.push_back(th);
 
         //start key client thread
-        th = new boost::thread(attrs, boost::bind(&keyClient::run, keyClientObj));
+        th = new boost::thread(attrs, boost::bind(&KeyClient::run, keyClientObj));
         thList.push_back(th);
 
         //start encoder thread
@@ -168,6 +172,7 @@ int main(int argv, char* argc[])
     second = diff / 1000000.0;
 
     delete chunkerObj;
+    delete fingerprinterObj;
     delete keyClientObj;
     delete senderObj;
     delete recvDecodeObj;

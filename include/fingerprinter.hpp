@@ -1,28 +1,25 @@
-#ifndef SGXDEDUP_ENCODER_HPP
-#define SGXDEDUP_ENCODER_HPP
+#ifndef SGXDEDUP_FINGERPRINTER_HPP
+#define SGXDEDUP_FINGERPRINTER_HPP
 
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
+#include "keyClient.hpp"
 #include "messageQueue.hpp"
-#include "powClient.hpp"
-#include "powSession.hpp"
-#include "ssl.hpp"
 
-class Encoder {
+class Fingerprinter {
 private:
     messageQueue<Data_t>* inputMQ_;
-    powClient* powObj_;
+    KeyClient* keyClientObj_;
     CryptoPrimitive* cryptoObj_;
 
 public:
-    Encoder(powClient* powObjTemp);
-    ~Encoder();
+    Fingerprinter(KeyClient* keyClientObjTemp);
+    ~Fingerprinter();
     void run();
-    bool encodeChunk(Data_t& newChunk);
     bool insertMQ(Data_t& newChunk);
     bool extractMQ(Data_t& newChunk);
     bool editJobDoneFlag();
 };
 
-#endif //SGXDEDUP_ENCODER_HPP
+#endif //SGXDEDUP_FINGERPRINTER_HPP

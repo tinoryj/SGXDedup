@@ -1,5 +1,5 @@
 * input: chunking file path
-* output: message queue (chunker to keyClient) 
+* output: message queue (chunker to KeyClient) 
 
 * SimpleChunking
 

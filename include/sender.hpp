@@ -43,8 +43,8 @@ public:
     //general send data
     bool sendDataPow(char* request, int requestSize, char* respond, int& respondSize);
     bool sendEndFlag();
-    bool insertMQFromPow(Data_t& newChunk);
-    bool extractMQFromPow(Data_t& newChunk);
+    bool insertMQ(Data_t& newChunk);
+    bool extractMQ(Data_t& newChunk);
     bool editJobDoneFlag();
 };
 

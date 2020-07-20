@@ -23,7 +23,7 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "\n}\n");
 }
 
-keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
+KeyClient::KeyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
 {
     inputMQ_ = new messageQueue<Data_t>;
     encoderObj_ = encoderobjTemp;
@@ -35,7 +35,7 @@ keyClient::keyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     clientID_ = config.getClientID();
 }
 
-keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
+KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 {
     inputMQ_ = new messageQueue<Data_t>;
     cryptoObj_ = new CryptoPrimitive();
@@ -48,7 +48,7 @@ keyClient::keyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 #endif
 }
 
-keyClient::~keyClient()
+KeyClient::~KeyClient()
 {
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
@@ -59,7 +59,7 @@ keyClient::~keyClient()
 #endif
 }
 
-void keyClient::runKeyGenSimulator(int clientID)
+void KeyClient::runKeyGenSimulator(int clientID)
 {
 
 #if SYSTEM_BREAK_DOWN == 1
@@ -118,7 +118,7 @@ void keyClient::runKeyGenSimulator(int clientID)
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
     if (!keySecurityChannel->send(sslConnection, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
-        cerr << "keyClient: send init information error" << endl;
+        cerr << "KeyClient: send init information error" << endl;
         return;
     } else {
         cout << "KeyClient : send init information success, start key generate" << endl;
@@ -193,7 +193,7 @@ void keyClient::runKeyGenSimulator(int clientID)
     }
 #endif
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "keyClient : client ID = " << clientID << endl;
+    cerr << "KeyClient : client ID = " << clientID << endl;
     cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
 #endif
@@ -202,12 +202,11 @@ void keyClient::runKeyGenSimulator(int clientID)
     return;
 }
 
-void keyClient::run()
+void KeyClient::run()
 {
 
 #if SYSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
-    double chunkHashGenerateTime = 0;
     double keyExchangeTime = 0;
     long diff;
     double second;
@@ -258,7 +257,7 @@ void keyClient::run()
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
     if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
-        cerr << "keyClient: send init information error" << endl;
+        cerr << "KeyClient: send init information error" << endl;
         return;
     } else {
         cout << "KeyClient : send init information success, start key generate" << endl;
@@ -272,23 +271,12 @@ void keyClient::run()
             cerr << "KeyClient : Chunker jobs done, queue is empty" << endl;
             JobDoneFlag = true;
         }
-        if (extractMQFromChunker(tempChunk)) {
+        if (extractMQ(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                insertMQToEncoder(tempChunk);
+                encoderObj_->insertMQ(tempChunk);
                 continue;
             }
             batchList.push_back(tempChunk);
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timestartKey, NULL);
-#endif
-            cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timeendKey, NULL);
-            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-            second = diff / 1000000.0;
-            keyGenTime += second;
-            chunkHashGenerateTime += second;
-#endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             batchNumber++;
         }
@@ -319,7 +307,7 @@ void keyClient::run()
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
                     // memcpy(batchList[i].chunk.encryptKey, batchList[i].chunk.chunkHash, CHUNK_ENCRYPT_KEY_SIZE);
-                    insertMQToEncoder(batchList[i]);
+                    encoderObj_->insertMQ(batchList[i]);
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -337,10 +325,9 @@ void keyClient::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
-    cout << "KeyClient : chunk hash generate time = " << chunkHashGenerateTime << " s" << endl;
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
-    cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s" << endl;
+    cout << "KeyClient : key exchange total work time = " << keyExchangeTime << " s" << endl;
+    cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
 #endif
 #if KEY_GEN_SGX_CTR == 1
     ofstream counterOut;
@@ -359,7 +346,7 @@ void keyClient::run()
 }
 
 #if KEY_GEN_SGX_CFB == 1
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
 #if SYSTEM_BREAK_DOWN == 1
@@ -376,17 +363,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     keyExchangeEncTime += second;
 #endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -408,22 +395,22 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber];
     cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!securityChannel->recv(sslConnection, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -437,7 +424,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 
 #elif KEY_GEN_SGX_CTR == 1
 
-bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
+bool KeyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
 {
     for (int i = 0; i < batchNumber * CHUNK_HASH_SIZE; i++) {
         result[i] = input[i] ^ xorBase[i];
@@ -445,7 +432,7 @@ bool keyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, i
     return true;
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter, NetworkHeadStruct_t netHead)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter, NetworkHeadStruct_t netHead)
 {
     u_char sendHash[sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber];
     memcpy(sendHash, &netHead, sizeof(NetworkHeadStruct_t));
@@ -464,17 +451,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     keyExchangeEncTime += second;
 #endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + sizeof(NetworkHeadStruct_t))) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -495,7 +482,7 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter, NetworkHeadStruct_t netHead)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter, NetworkHeadStruct_t netHead)
 {
     u_char sendHash[sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber];
     memcpy(sendHash, &netHead, sizeof(NetworkHeadStruct_t));
@@ -504,17 +491,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
 
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + sizeof(NetworkHeadStruct_t))) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!securityChannel->recv(sslConnection, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -526,20 +513,20 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 #elif KEY_GEN_SERVER_MLE_NO_OPRF == 1
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     if (!keySecurityChannel_->send(sslConnection_, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -551,20 +538,20 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     }
 }
 
-bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
 {
     if (!securityChannel->send(sslConnection, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "keyClient: send socket error" << endl;
+        cerr << "KeyClient: send socket error" << endl;
         return false;
     }
     u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
     int recvSize;
     if (!securityChannel->recv(sslConnection, (char*)recvBuffer, recvSize)) {
-        cerr << "keyClient: recv socket error" << endl;
+        cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
     if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "keyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
+        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
         return false;
     }
     batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
@@ -577,22 +564,17 @@ bool keyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 }
 #endif
 
-bool keyClient::insertMQFromChunker(Data_t& newChunk)
+bool KeyClient::insertMQ(Data_t& newChunk)
 {
     return inputMQ_->push(newChunk);
 }
 
-bool keyClient::extractMQFromChunker(Data_t& newChunk)
+bool KeyClient::extractMQ(Data_t& newChunk)
 {
     return inputMQ_->pop(newChunk);
 }
 
-bool keyClient::insertMQToEncoder(Data_t& newChunk)
-{
-    return encoderObj_->insertMQFromKeyClient(newChunk);
-}
-
-bool keyClient::editJobDoneFlag()
+bool KeyClient::editJobDoneFlag()
 {
     inputMQ_->done_ = true;
     if (inputMQ_->done_) {

@@ -28,52 +28,52 @@ void PRINT_BYTE_ARRAY_CHUNKER(
     fprintf(file, "\n}\n");
 }
 
-Chunker::Chunker(std::string path, keyClient* keyClientObjTemp)
+Chunker::Chunker(std::string path, Fingerprinter* FingerprinterObjTemp)
 {
     loadChunkFile(path);
     ChunkerInit(path);
-    cryptoObj = new CryptoPrimitive();
-    keyClientObj = keyClientObjTemp;
+    cryptoObj_ = new CryptoPrimitive();
+    FingerprinterObj_ = FingerprinterObjTemp;
 }
 
 Chunker::~Chunker()
 {
-    if (powerLUT != NULL) {
-        delete powerLUT;
+    if (powerLUT_ != NULL) {
+        delete powerLUT_;
     }
-    if (removeLUT != NULL) {
-        delete removeLUT;
+    if (removeLUT_ != NULL) {
+        delete removeLUT_;
     }
-    if (waitingForChunkingBuffer != NULL) {
-        delete waitingForChunkingBuffer;
+    if (waitingForChunkingBuffer_ != NULL) {
+        delete waitingForChunkingBuffer_;
     }
-    if (chunkBuffer != NULL) {
-        delete chunkBuffer;
+    if (chunkBuffer_ != NULL) {
+        delete chunkBuffer_;
     }
-    if (cryptoObj != NULL) {
-        delete cryptoObj;
+    if (cryptoObj_ != NULL) {
+        delete cryptoObj_;
     }
-    if (chunkingFile.is_open()) {
-        chunkingFile.close();
+    if (chunkingFile_.is_open()) {
+        chunkingFile_.close();
     }
 }
 
 std::ifstream& Chunker::getChunkingFile()
 {
-    if (!chunkingFile.is_open()) {
+    if (!chunkingFile_.is_open()) {
         cerr << "Chunker : chunking file open failed" << endl;
         exit(1);
     }
-    return chunkingFile;
+    return chunkingFile_;
 }
 
 void Chunker::loadChunkFile(std::string path)
 {
-    if (chunkingFile.is_open()) {
-        chunkingFile.close();
+    if (chunkingFile_.is_open()) {
+        chunkingFile_.close();
     }
-    chunkingFile.open(path, std::ios::binary);
-    if (!chunkingFile.is_open()) {
+    chunkingFile_.open(path, std::ios::binary);
+    if (!chunkingFile_.is_open()) {
         cerr << "Chunker : open file: " << path << "error, client exit now" << endl;
         exit(1);
     }
@@ -82,138 +82,138 @@ void Chunker::loadChunkFile(std::string path)
 void Chunker::ChunkerInit(string path)
 {
     u_char filePathHash[FILE_NAME_HASH_SIZE];
-    cryptoObj->generateHash((u_char*)&path[0], path.length(), filePathHash);
-    memcpy(fileRecipe.recipe.fileRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
-    memcpy(fileRecipe.recipe.keyRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
+    cryptoObj_->generateHash((u_char*)&path[0], path.length(), filePathHash);
+    memcpy(fileRecipe_.recipe.fileRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
+    memcpy(fileRecipe_.recipe.keyRecipeHead.fileNameHash, filePathHash, FILE_NAME_HASH_SIZE);
 
-    ChunkerType = (int)config.getChunkingType();
+    ChunkerType_ = (int)config.getChunkingType();
 
-    if (ChunkerType == CHUNKER_VAR_SIZE_TYPE) {
-        int numOfMaskBits;
-        avgChunkSize = (int)config.getAverageChunkSize();
-        minChunkSize = (int)config.getMinChunkSize();
-        maxChunkSize = (int)config.getMaxChunkSize();
-        slidingWinSize = (int)config.getSlidingWinSize();
-        ReadSize = config.getReadSize();
-        ReadSize = ReadSize * 1024 * 1024;
-        waitingForChunkingBuffer = new u_char[ReadSize];
-        chunkBuffer = new u_char[maxChunkSize];
+    if (ChunkerType_ == CHUNKER_VAR_SIZE_TYPE) {
+        int numOfMaskBits_;
+        avgChunkSize_ = (int)config.getAverageChunkSize();
+        minChunkSize_ = (int)config.getMinChunkSize();
+        maxChunkSize_ = (int)config.getMaxChunkSize();
+        slidingWinSize_ = (int)config.getSlidingWinSize();
+        ReadSize_ = config.getReadSize();
+        ReadSize_ = ReadSize_ * 1024 * 1024;
+        waitingForChunkingBuffer_ = new u_char[ReadSize_];
+        chunkBuffer_ = new u_char[maxChunkSize_];
 
-        if (waitingForChunkingBuffer == NULL || chunkBuffer == NULL) {
+        if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
             cerr << "Chunker : Memory malloc error" << endl;
             exit(1);
         }
-        if (minChunkSize >= avgChunkSize) {
-            cerr << "Chunker : minChunkSize should be smaller than avgChunkSize!" << endl;
+        if (minChunkSize_ >= avgChunkSize_) {
+            cerr << "Chunker : minChunkSize_ should be smaller than avgChunkSize_!" << endl;
             exit(1);
         }
-        if (maxChunkSize <= avgChunkSize) {
-            cerr << "Chunker : maxChunkSize should be larger than avgChunkSize!" << endl;
+        if (maxChunkSize_ <= avgChunkSize_) {
+            cerr << "Chunker : maxChunkSize_ should be larger than avgChunkSize_!" << endl;
             exit(1);
         }
 
         /*initialize the base and modulus for calculating the fingerprint of a window*/
         /*these two values were employed in open-vcdiff: "http://code.google.com/p/open-vcdiff/"*/
-        polyBase = 257; /*a prime larger than 255, the max value of "unsigned char"*/
-        polyMOD = (1 << 23) - 1; /*polyMOD - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
+        polyBase_ = 257; /*a prime larger than 255, the max value of "unsigned char"*/
+        polyMOD_ = (1 << 23) - 1; /*polyMOD_ - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
         /*initialize the lookup table for accelerating the power calculation in rolling hash*/
-        powerLUT = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize);
-        /*powerLUT[i] = power(polyBase, i) mod polyMOD*/
-        powerLUT[0] = 1;
-        for (int i = 1; i < slidingWinSize; i++) {
-            /*powerLUT[i] = (powerLUT[i-1] * polyBase) mod polyMOD*/
-            powerLUT[i] = (powerLUT[i - 1] * polyBase) & polyMOD;
+        powerLUT_ = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize_);
+        /*powerLUT_[i] = power(polyBase_, i) mod polyMOD_*/
+        powerLUT_[0] = 1;
+        for (int i = 1; i < slidingWinSize_; i++) {
+            /*powerLUT_[i] = (powerLUT_[i-1] * polyBase_) mod polyMOD_*/
+            powerLUT_[i] = (powerLUT_[i - 1] * polyBase_) & polyMOD_;
         }
         /*initialize the lookup table for accelerating the byte remove in rolling hash*/
-        removeLUT = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
+        removeLUT_ = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
         for (int i = 0; i < 256; i++) {
-            /*removeLUT[i] = (- i * powerLUT[_slidingWinSize-1]) mod polyMOD*/
-            removeLUT[i] = (i * powerLUT[slidingWinSize - 1]) & polyMOD;
-            if (removeLUT[i] != 0) {
+            /*removeLUT_[i] = (- i * powerLUT_[_slidingWinSize-1]) mod polyMOD_*/
+            removeLUT_[i] = (i * powerLUT_[slidingWinSize_ - 1]) & polyMOD_;
+            if (removeLUT_[i] != 0) {
 
-                removeLUT[i] = (polyMOD - removeLUT[i] + 1) & polyMOD;
+                removeLUT_[i] = (polyMOD_ - removeLUT_[i] + 1) & polyMOD_;
             }
             /*note: % is a remainder (rather than modulus) operator*/
-            /*      if a < 0,  -polyMOD < a % polyMOD <= 0       */
+            /*      if a < 0,  -polyMOD_ < a % polyMOD_ <= 0       */
         }
 
-        /*initialize the anchorMask for depolytermining an anchor*/
-        /*note: power(2, numOfanchorMaskBits) = avgChunkSize*/
-        numOfMaskBits = 1;
-        while ((avgChunkSize >> numOfMaskBits) != 1) {
+        /*initialize the anchorMask_ for depolytermining an anchor*/
+        /*note: power(2, numOfanchorMaskBits) = avgChunkSize_*/
+        numOfMaskBits_ = 1;
+        while ((avgChunkSize_ >> numOfMaskBits_) != 1) {
 
-            numOfMaskBits++;
+            numOfMaskBits_++;
         }
-        anchorMask = (1 << numOfMaskBits) - 1;
+        anchorMask_ = (1 << numOfMaskBits_) - 1;
         /*initialize the value for depolytermining an anchor*/
-        anchorValue = 0;
-    } else if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
+        anchorValue_ = 0;
+    } else if (ChunkerType_ == CHUNKER_FIX_SIZE_TYPE) {
 
-        avgChunkSize = (int)config.getAverageChunkSize();
-        minChunkSize = (int)config.getMinChunkSize();
-        maxChunkSize = (int)config.getMaxChunkSize();
-        ReadSize = config.getReadSize();
-        ReadSize = ReadSize * 1024 * 1024;
-        waitingForChunkingBuffer = new u_char[ReadSize];
-        chunkBuffer = new u_char[avgChunkSize];
+        avgChunkSize_ = (int)config.getAverageChunkSize();
+        minChunkSize_ = (int)config.getMinChunkSize();
+        maxChunkSize_ = (int)config.getMaxChunkSize();
+        ReadSize_ = config.getReadSize();
+        ReadSize_ = ReadSize_ * 1024 * 1024;
+        waitingForChunkingBuffer_ = new u_char[ReadSize_];
+        chunkBuffer_ = new u_char[avgChunkSize_];
 
-        if (waitingForChunkingBuffer == NULL || chunkBuffer == NULL) {
+        if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
             cerr << "Chunker : Memory Error" << endl;
             exit(1);
         }
-        if (minChunkSize != avgChunkSize || maxChunkSize != avgChunkSize) {
-            cerr << "Chunker : Error: minChunkSize and maxChunkSize should be same in fixed size mode!" << endl;
+        if (minChunkSize_ != avgChunkSize_ || maxChunkSize_ != avgChunkSize_) {
+            cerr << "Chunker : Error: minChunkSize_ and maxChunkSize_ should be same in fixed size mode!" << endl;
             exit(1);
         }
-        if (ReadSize % avgChunkSize != 0) {
-            cerr << "Chunker : Setting fixed size chunking error : ReadSize not compat with average chunk size" << endl;
+        if (ReadSize_ % avgChunkSize_ != 0) {
+            cerr << "Chunker : Setting fixed size chunking error : ReadSize_ not compat with average chunk size" << endl;
         }
-    } else if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
+    } else if (ChunkerType_ == CHUNKER_FIX_SIZE_TYPE) {
 
-        avgChunkSize = (int)config.getAverageChunkSize();
-        minChunkSize = (int)config.getMinChunkSize();
-        maxChunkSize = (int)config.getMaxChunkSize();
-        ReadSize = config.getReadSize();
-        ReadSize = ReadSize * 1024 * 1024;
-        waitingForChunkingBuffer = new u_char[ReadSize];
-        chunkBuffer = new u_char[avgChunkSize];
+        avgChunkSize_ = (int)config.getAverageChunkSize();
+        minChunkSize_ = (int)config.getMinChunkSize();
+        maxChunkSize_ = (int)config.getMaxChunkSize();
+        ReadSize_ = config.getReadSize();
+        ReadSize_ = ReadSize_ * 1024 * 1024;
+        waitingForChunkingBuffer_ = new u_char[ReadSize_];
+        chunkBuffer_ = new u_char[avgChunkSize_];
 
-        if (waitingForChunkingBuffer == NULL || chunkBuffer == NULL) {
+        if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
             cerr << "Chunker : Memory Error" << endl;
             exit(1);
         }
-        if (minChunkSize != avgChunkSize || maxChunkSize != avgChunkSize) {
-            cerr << "Chunker : Error: minChunkSize and maxChunkSize should be same in fixed size mode!" << endl;
+        if (minChunkSize_ != avgChunkSize_ || maxChunkSize_ != avgChunkSize_) {
+            cerr << "Chunker : Error: minChunkSize_ and maxChunkSize_ should be same in fixed size mode!" << endl;
             exit(1);
         }
-        if (ReadSize % avgChunkSize != 0) {
-            cerr << "Chunker : Setting fixed size chunking error : ReadSize not compat with average chunk size" << endl;
+        if (ReadSize_ % avgChunkSize_ != 0) {
+            cerr << "Chunker : Setting fixed size chunking error : ReadSize_ not compat with average chunk size" << endl;
         }
-    } else if (ChunkerType == CHUNKER_TRACE_DRIVEN_TYPE_FSL) {
-        maxChunkSize = (int)config.getMaxChunkSize();
-        chunkBuffer = new u_char[maxChunkSize + 6];
-    } else if (ChunkerType == CHUNKER_TRACE_DRIVEN_TYPE_UBC) {
-        maxChunkSize = (int)config.getMaxChunkSize();
-        chunkBuffer = new u_char[maxChunkSize + 5];
+    } else if (ChunkerType_ == CHUNKER_TRACE_DRIVEN_TYPE_FSL) {
+        maxChunkSize_ = (int)config.getMaxChunkSize();
+        chunkBuffer_ = new u_char[maxChunkSize_ + 6];
+    } else if (ChunkerType_ == CHUNKER_TRACE_DRIVEN_TYPE_UBC) {
+        maxChunkSize_ = (int)config.getMaxChunkSize();
+        chunkBuffer_ = new u_char[maxChunkSize_ + 5];
     }
 }
 
 bool Chunker::chunking()
 {
     /*fixed-size Chunker*/
-    if (ChunkerType == CHUNKER_FIX_SIZE_TYPE) {
+    if (ChunkerType_ == CHUNKER_FIX_SIZE_TYPE) {
         fixSizeChunking();
     }
     /*variable-size Chunker*/
-    if (ChunkerType == CHUNKER_VAR_SIZE_TYPE) {
+    if (ChunkerType_ == CHUNKER_VAR_SIZE_TYPE) {
         varSizeChunking();
     }
 
-    if (ChunkerType == CHUNKER_TRACE_DRIVEN_TYPE_FSL) {
+    if (ChunkerType_ == CHUNKER_TRACE_DRIVEN_TYPE_FSL) {
         traceDrivenChunkingFSL();
     }
 
-    if (ChunkerType == CHUNKER_TRACE_DRIVEN_TYPE_UBC) {
+    if (ChunkerType_ == CHUNKER_TRACE_DRIVEN_TYPE_UBC) {
         traceDrivenChunkingUBC();
     }
 
@@ -230,7 +230,7 @@ void Chunker::fixSizeChunking()
 #endif
     std::ifstream& fin = getChunkingFile();
     uint64_t chunkIDCounter = 0;
-    memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
+    memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
     uint64_t fileSize = 0;
     u_char hash[CHUNK_HASH_SIZE];
     /*start chunking*/
@@ -241,8 +241,8 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerReadFile, NULL);
 #endif
-        memset((char*)waitingForChunkingBuffer, 0, sizeof(unsigned char) * ReadSize);
-        fin.read((char*)waitingForChunkingBuffer, sizeof(char) * ReadSize);
+        memset((char*)waitingForChunkingBuffer_, 0, sizeof(unsigned char) * ReadSize_);
+        fin.read((char*)waitingForChunkingBuffer_, sizeof(char) * ReadSize_);
         uint64_t totalReadSize = fin.gcount();
         fileSize += totalReadSize;
 #if SYSTEM_BREAK_DOWN == 1
@@ -252,20 +252,20 @@ void Chunker::fixSizeChunking()
         readFileTime += second;
 #endif
         uint64_t chunkedSize = 0;
-        if (totalReadSize == ReadSize) {
+        if (totalReadSize == ReadSize_) {
             while (chunkedSize < totalReadSize) {
-                memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
-                memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, avgChunkSize);
+                memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
+                memcpy(chunkBuffer_, waitingForChunkingBuffer_ + chunkedSize, avgChunkSize_);
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCounter;
-                tempChunk.chunk.logicDataSize = avgChunkSize;
-                memcpy(tempChunk.chunk.logicData, chunkBuffer, avgChunkSize);
+                tempChunk.chunk.logicDataSize = avgChunkSize_;
+                memcpy(tempChunk.chunk.logicData, chunkBuffer_, avgChunkSize_);
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                insertMQToKeyClient(tempChunk);
+                FingerprinterObj_->insertMQ(tempChunk);
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -273,28 +273,28 @@ void Chunker::fixSizeChunking()
                 insertTime += second;
 #endif
                 chunkIDCounter++;
-                chunkedSize += avgChunkSize;
+                chunkedSize += avgChunkSize_;
             }
         } else {
             uint64_t retSize = 0;
             while (chunkedSize < totalReadSize) {
-                memset(chunkBuffer, 0, sizeof(char) * avgChunkSize);
+                memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
                 Data_t tempChunk;
-                if (retSize > avgChunkSize) {
+                if (retSize > avgChunkSize_) {
 
-                    memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, avgChunkSize);
+                    memcpy(chunkBuffer_, waitingForChunkingBuffer_ + chunkedSize, avgChunkSize_);
 
                     tempChunk.chunk.ID = chunkIDCounter;
-                    tempChunk.chunk.logicDataSize = avgChunkSize;
-                    memcpy(tempChunk.chunk.logicData, chunkBuffer, avgChunkSize);
+                    tempChunk.chunk.logicDataSize = avgChunkSize_;
+                    memcpy(tempChunk.chunk.logicData, chunkBuffer_, avgChunkSize_);
                     memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 } else {
 
-                    memcpy(chunkBuffer, waitingForChunkingBuffer + chunkedSize, retSize);
+                    memcpy(chunkBuffer_, waitingForChunkingBuffer_ + chunkedSize, retSize);
 
                     tempChunk.chunk.ID = chunkIDCounter;
                     tempChunk.chunk.logicDataSize = retSize;
-                    memcpy(tempChunk.chunk.logicData, chunkBuffer, retSize);
+                    memcpy(tempChunk.chunk.logicData, chunkBuffer_, retSize);
                     memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 }
                 retSize = totalReadSize - chunkedSize;
@@ -302,7 +302,7 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                insertMQToKeyClient(tempChunk);
+                FingerprinterObj_->insertMQ(tempChunk);
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -310,23 +310,23 @@ void Chunker::fixSizeChunking()
                 insertTime += second;
 #endif
                 chunkIDCounter++;
-                chunkedSize += avgChunkSize;
+                chunkedSize += avgChunkSize_;
             }
         }
         if (fin.eof()) {
             break;
         }
     }
-    fileRecipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
-    fileRecipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
-    fileRecipe.recipe.fileRecipeHead.fileSize = fileSize;
-    fileRecipe.recipe.keyRecipeHead.fileSize = fileRecipe.recipe.fileRecipeHead.fileSize;
-    fileRecipe.dataType = DATA_TYPE_RECIPE;
+    fileRecipe_.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
+    fileRecipe_.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
+    fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
+    fileRecipe_.dataType = DATA_TYPE_RECIPE;
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-    if (!insertMQToKeyClient(fileRecipe)) {
-        cerr << "Chunker : error insert recipe head to keyClient message queue" << endl;
+    if (!FingerprinterObj_->insertMQ(fileRecipe_)) {
+        cerr << "Chunker : error insert recipe head to KeyClient message queue" << endl;
         return;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -335,7 +335,7 @@ void Chunker::fixSizeChunking()
     second = diff / 1000000.0;
     insertTime += second;
 #endif
-    if (setJobDoneFlag() == false) {
+    if (FingerprinterObj_->editJobDoneFlag() == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -345,7 +345,7 @@ void Chunker::fixSizeChunking()
     cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
     cerr << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
 #endif
-    cerr << "Chunker : Fixed chunking over:\n\t  Total file size = " << fileRecipe.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cerr << "Chunker : Fixed chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }
 
 void Chunker::varSizeChunking()
@@ -369,8 +369,8 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerReadFile, NULL);
 #endif
-        memset((char*)waitingForChunkingBuffer, 0, sizeof(unsigned char) * ReadSize);
-        fin.read((char*)waitingForChunkingBuffer, sizeof(unsigned char) * ReadSize);
+        memset((char*)waitingForChunkingBuffer_, 0, sizeof(unsigned char) * ReadSize_);
+        fin.read((char*)waitingForChunkingBuffer_, sizeof(unsigned char) * ReadSize_);
         int len = fin.gcount();
         fileSize += len;
 #if SYSTEM_BREAK_DOWN == 1
@@ -381,38 +381,38 @@ void Chunker::varSizeChunking()
 #endif
         for (int i = 0; i < len; i++) {
 
-            chunkBuffer[chunkBufferCnt] = waitingForChunkingBuffer[i];
+            chunkBuffer_[chunkBufferCnt] = waitingForChunkingBuffer_[i];
 
             /*full fill sliding window*/
-            if (chunkBufferCnt < slidingWinSize) {
-                winFp = winFp + (chunkBuffer[chunkBufferCnt] * powerLUT[slidingWinSize - chunkBufferCnt - 1]) & polyMOD; //Refer to doc/Chunking.md hash function:RabinChunker
+            if (chunkBufferCnt < slidingWinSize_) {
+                winFp = winFp + (chunkBuffer_[chunkBufferCnt] * powerLUT_[slidingWinSize_ - chunkBufferCnt - 1]) & polyMOD_; //Refer to doc/Chunking.md hash function:RabinChunker
                 chunkBufferCnt++;
                 continue;
             }
-            winFp &= (polyMOD);
+            winFp &= (polyMOD_);
 
             /*slide window*/
-            unsigned short int v = chunkBuffer[chunkBufferCnt - slidingWinSize]; //queue
-            winFp = ((winFp + removeLUT[v]) * polyBase + chunkBuffer[chunkBufferCnt]) & polyMOD; //remove queue front and add queue tail
+            unsigned short int v = chunkBuffer_[chunkBufferCnt - slidingWinSize_]; //queue
+            winFp = ((winFp + removeLUT_[v]) * polyBase_ + chunkBuffer_[chunkBufferCnt]) & polyMOD_; //remove queue front and add queue tail
             chunkBufferCnt++;
 
-            /*chunk's size less than minChunkSize*/
-            if (chunkBufferCnt < minChunkSize)
+            /*chunk's size less than minChunkSize_*/
+            if (chunkBufferCnt < minChunkSize_)
                 continue;
 
             /*find chunk pattern*/
-            if ((winFp & anchorMask) == anchorValue) {
+            if ((winFp & anchorMask_) == anchorValue_) {
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
-                memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+                memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                if (!insertMQToKeyClient(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to keyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
+                if (!FingerprinterObj_->insertMQ(tempChunk)) {
+                    cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
                     return;
                 }
 #if SYSTEM_BREAK_DOWN == 1
@@ -425,19 +425,19 @@ void Chunker::varSizeChunking()
                 chunkBufferCnt = winFp = 0;
             }
 
-            /*chunk's size exceed maxChunkSize*/
-            if (chunkBufferCnt >= maxChunkSize) {
+            /*chunk's size exceed maxChunkSize_*/
+            if (chunkBufferCnt >= maxChunkSize_) {
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
-                memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+                memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                if (!insertMQToKeyClient(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to keyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
+                if (!FingerprinterObj_->insertMQ(tempChunk)) {
+                    cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
                     return;
                 }
 #if SYSTEM_BREAK_DOWN == 1
@@ -460,14 +460,14 @@ void Chunker::varSizeChunking()
         Data_t tempChunk;
         tempChunk.chunk.ID = chunkIDCnt;
         tempChunk.chunk.logicDataSize = chunkBufferCnt;
-        memcpy(tempChunk.chunk.logicData, chunkBuffer, chunkBufferCnt);
+        memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-        if (!insertMQToKeyClient(tempChunk)) {
-            cerr << "Chunker : error insert chunk to keyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
+        if (!FingerprinterObj_->insertMQ(tempChunk)) {
+            cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
             return;
         }
 #if SYSTEM_BREAK_DOWN == 1
@@ -479,16 +479,16 @@ void Chunker::varSizeChunking()
         chunkIDCnt++;
         chunkBufferCnt = winFp = 0;
     }
-    fileRecipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
-    fileRecipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
-    fileRecipe.recipe.fileRecipeHead.fileSize = fileSize;
-    fileRecipe.recipe.keyRecipeHead.fileSize = fileRecipe.recipe.fileRecipeHead.fileSize;
-    fileRecipe.dataType = DATA_TYPE_RECIPE;
+    fileRecipe_.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
+    fileRecipe_.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;
+    fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
+    fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
+    fileRecipe_.dataType = DATA_TYPE_RECIPE;
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-    if (!insertMQToKeyClient(fileRecipe)) {
-        cerr << "Chunker : error insert recipe head to keyClient message queue" << endl;
+    if (!FingerprinterObj_->insertMQ(fileRecipe_)) {
+        cerr << "Chunker : error insert recipe head to KeyClient message queue" << endl;
         return;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -497,7 +497,7 @@ void Chunker::varSizeChunking()
     second = diff / 1000000.0;
     insertTime += second;
 #endif
-    if (setJobDoneFlag() == false) {
+    if (FingerprinterObj_->editJobDoneFlag() == false) {
         cerr << "Chunker: set chunking done flag error" << endl;
         return;
     }
@@ -508,7 +508,7 @@ void Chunker::varSizeChunking()
     cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
     cerr << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
 #endif
-    cerr << "Chunker : variable size chunking over:\n\t  Total file size = " << fileRecipe.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cerr << "Chunker : variable size chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
     return;
 }
 
@@ -559,12 +559,12 @@ void Chunker::traceDrivenChunkingFSL()
         chunkFp[6] = '\0';
         auto size = atoi(item);
         int copySize = 0;
-        memset(chunkBuffer, 0, sizeof(char) * maxChunkSize + 6);
-        if (size > maxChunkSize) {
+        memset(chunkBuffer_, 0, sizeof(char) * maxChunkSize_ + 6);
+        if (size > maxChunkSize_) {
             continue;
         }
         while (copySize < size) {
-            memcpy(chunkBuffer + copySize, chunkFp, 6);
+            memcpy(chunkBuffer_ + copySize, chunkFp, 6);
             copySize += 6;
         }
 #if SYSTEM_BREAK_DOWN == 1
@@ -576,28 +576,28 @@ void Chunker::traceDrivenChunkingFSL()
         Data_t tempChunk;
         tempChunk.chunk.ID = chunkIDCounter;
         tempChunk.chunk.logicDataSize = size;
-        memcpy(tempChunk.chunk.logicData, chunkBuffer, size);
+        memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
 
-        insertMQToKeyClient(tempChunk);
+        FingerprinterObj_->insertMQ(tempChunk);
         chunkIDCounter++;
         fileSize += size;
     }
-    fileRecipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
-    fileRecipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
-    fileRecipe.recipe.fileRecipeHead.fileSize = fileSize;
-    fileRecipe.recipe.keyRecipeHead.fileSize = fileRecipe.recipe.fileRecipeHead.fileSize;
-    fileRecipe.dataType = DATA_TYPE_RECIPE;
-    insertMQToKeyClient(fileRecipe);
-    if (setJobDoneFlag() == false) {
+    fileRecipe_.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
+    fileRecipe_.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
+    fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
+    fileRecipe_.dataType = DATA_TYPE_RECIPE;
+    FingerprinterObj_->insertMQ(fileRecipe_);
+    if (FingerprinterObj_->editJobDoneFlag() == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
     cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
     cerr << "Chunker : total chunking time = " << chunkTime << " s" << endl;
 #endif
-    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }
 
 void Chunker::traceDrivenChunkingUBC()
@@ -648,12 +648,12 @@ void Chunker::traceDrivenChunkingUBC()
         chunkFp[5] = '\0';
         auto size = atoi(item);
         int copySize = 0;
-        memset(chunkBuffer, 0, sizeof(char) * maxChunkSize + 5);
-        if (size > maxChunkSize) {
+        memset(chunkBuffer_, 0, sizeof(char) * maxChunkSize_ + 5);
+        if (size > maxChunkSize_) {
             continue;
         }
         while (copySize < size) {
-            memcpy(chunkBuffer + copySize, chunkFp, 5);
+            memcpy(chunkBuffer_ + copySize, chunkFp, 5);
             copySize += 5;
         }
 #if SYSTEM_BREAK_DOWN == 1
@@ -665,36 +665,26 @@ void Chunker::traceDrivenChunkingUBC()
         Data_t tempChunk;
         tempChunk.chunk.ID = chunkIDCounter;
         tempChunk.chunk.logicDataSize = size;
-        memcpy(tempChunk.chunk.logicData, chunkBuffer, size);
+        memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
 
-        insertMQToKeyClient(tempChunk);
+        FingerprinterObj_->insertMQ(tempChunk);
         chunkIDCounter++;
         fileSize += size;
     }
-    fileRecipe.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
-    fileRecipe.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
-    fileRecipe.recipe.fileRecipeHead.fileSize = fileSize;
-    fileRecipe.recipe.keyRecipeHead.fileSize = fileRecipe.recipe.fileRecipeHead.fileSize;
-    fileRecipe.dataType = DATA_TYPE_RECIPE;
-    insertMQToKeyClient(fileRecipe);
-    if (setJobDoneFlag() == false) {
+    fileRecipe_.recipe.fileRecipeHead.totalChunkNumber = chunkIDCounter;
+    fileRecipe_.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCounter;
+    fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
+    fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
+    fileRecipe_.dataType = DATA_TYPE_RECIPE;
+    FingerprinterObj_->insertMQ(fileRecipe_);
+    if (FingerprinterObj_->editJobDoneFlag() == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
     cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
     cerr << "Chunker : total chunking time is" << chunkTime << " s" << endl;
 #endif
-    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe.recipe.fileRecipeHead.totalChunkNumber << endl;
-}
-
-bool Chunker::insertMQToKeyClient(Data_t& newData)
-{
-    return keyClientObj->insertMQFromChunker(newData);
-}
-
-bool Chunker::setJobDoneFlag()
-{
-    return keyClientObj->editJobDoneFlag();
+    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }

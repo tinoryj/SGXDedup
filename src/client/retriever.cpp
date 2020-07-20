@@ -18,7 +18,7 @@ Retriever::~Retriever()
     retrieveFile_.close();
 }
 
-void Retriever::recvThread()
+void Retriever::run()
 {
 #if SYSTEM_BREAK_DOWN == 1
     long diff;
@@ -26,8 +26,9 @@ void Retriever::recvThread()
     double writeFileTime = 0;
 #endif
     RetrieverData_t newData;
+    uint32_t totalRecvNumber_ = 0;
     while (totalRecvNumber_ < totalChunkNumber_) {
-        if (extractMQFromRecvDecode(newData)) {
+        if (recvDecodeObj_->extractMQ(newData)) {
 #if SYSTEM_BREAK_DOWN == 1
             long diff;
             double second;
@@ -48,9 +49,4 @@ void Retriever::recvThread()
 #endif
     cerr << "Retriever : job done, thread exit now" << endl;
     return;
-}
-
-bool Retriever::extractMQFromRecvDecode(RetrieverData_t& newData)
-{
-    return recvDecodeObj_->extractMQToRetriever(newData);
 }

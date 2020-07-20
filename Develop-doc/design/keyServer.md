@@ -7,7 +7,7 @@ output: messge queue (receiver to workload)
   
     * if event "in": create message and push to workload
    
-    * if event "out": send message(key receipt) to keyClient
+    * if event "out": send message(key receipt) to KeyClient
         
    * worlload(runkeyGen):
     * collect message from receiver

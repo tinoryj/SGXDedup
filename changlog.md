@@ -72,7 +72,7 @@ branch : SGX_final_debug
     * -O3 optimization with clang compiler, without gdb flag.
     * upload avg 30s, download avg 17s (3 times run). 
 
-* merge keyClient & encoder to decrease thread number & message queue overhead
+* merge KeyClient & encoder to decrease thread number & message queue overhead
 
 * basic test for 1G file upload & download passed :
     * single machine, 6C6T i5 9600K.

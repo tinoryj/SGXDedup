@@ -32,7 +32,7 @@ private:
 
 public:
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp);
-    ~DataSR(){};
+    ~DataSR() {};
     void run(SSL* sslConnection);
     void runPow(SSL* sslConnection);
     void runKeyServerRA();
