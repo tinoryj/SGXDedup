@@ -84,14 +84,14 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
 /*
  * work load pow_enclave
  * */
-sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac)
+sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t* chunkHashList)
 {
     sgx_sha256_hash_t chunkHash;
     sgx_cmac_state_handle_t cmac_ctx;
     sgx_status_t ret_status;
 
     sgx_cmac128_init(&powSessionKey, &cmac_ctx);
-    uint32_t it, sz = 0;
+    uint32_t it, sz = 0, index = 0;
     for (it = 0; it < srcLen; it = it + sz) {
         if (srcLen - sizeof(int) < it) {
             memset(cmac, 0, 16);
@@ -108,6 +108,8 @@ sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac)
             return ret_status;
         }
         sgx_cmac128_update((uint8_t*)&chunkHash, 32, cmac_ctx);
+        memcpy(chunkHashList + index * 32, chunkHash, 32);
+        index++;
     }
 
     sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t*)cmac);

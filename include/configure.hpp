@@ -11,6 +11,8 @@ using namespace std;
 #define SYSTEM_BREAK_DOWN 1
 #define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
+#define ENCODER_MODULE_ENABLED 0
+/* System Running Type Settings */
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
 #define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
 #define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2

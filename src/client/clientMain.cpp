@@ -128,8 +128,12 @@ int main(int argv, char* argc[])
             delete powClientObj;
             return 0;
         }
+#if ENCODER_MODULE_ENABLED == 1
         encoderObj = new Encoder(powClientObj);
         keyClientObj = new KeyClient(encoderObj, sessionKey);
+#else
+        keyClientObj = new KeyClient(powClientObj, sessionKey);
+#endif
         fingerprinterObj = new Fingerprinter(keyClientObj);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, fingerprinterObj);

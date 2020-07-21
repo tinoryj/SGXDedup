@@ -1,17 +1,26 @@
 #ifndef SGXDEDUP_KEYCLIENT_HPP
 #define SGXDEDUP_KEYCLIENT_HPP
 
+#if ENCODER_MODULE_ENABLED == 1
+#include "encoder.hpp"
+#else
+#include "powClient.hpp"
+#include "powSession.hpp"
+#endif
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
-#include "encoder.hpp"
 #include "messageQueue.hpp"
 #include "ssl.hpp"
 
 class KeyClient {
 private:
     messageQueue<Data_t>* inputMQ_;
+#if ENCODER_MODULE_ENABLED == 1
     Encoder* encoderObj_;
+#else
+    powClient* powObj_;
+#endif
     CryptoPrimitive* cryptoObj_;
     int keyBatchSize_;
     ssl* keySecurityChannel_;
@@ -25,7 +34,11 @@ private:
 
 public:
     double keyExchangeEncTime = 0;
+#if ENCODER_MODULE_ENABLED == 1
     KeyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
+#else
+    KeyClient(powClient* powObjTemp, u_char* keyExchangeKey);
+#endif
     KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
     ~KeyClient();
     void run();

@@ -4,6 +4,11 @@
 
 extern Configure config;
 
+struct timeval timestartKey;
+struct timeval timeendKey;
+struct timeval timestartKeySimulator;
+struct timeval timeendKeySimulator;
+
 void PRINT_BYTE_ARRAY_KEY_CLIENT(
     FILE* file, void* mem, uint32_t len)
 {
@@ -22,6 +27,7 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
+#if ENCODER_MODULE_ENABLED == 1
 
 KeyClient::KeyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
 {
@@ -34,6 +40,21 @@ KeyClient::KeyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     sslConnection_ = keySecurityChannel_->sslConnect().second;
     clientID_ = config.getClientID();
 }
+
+#else
+
+KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
+{
+    inputMQ_ = new messageQueue<Data_t>;
+    powObj_ = powObjTemp;
+    cryptoObj_ = new CryptoPrimitive();
+    keyBatchSize_ = (int)config.getKeyBatchSize();
+    memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
+    keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
+    sslConnection_ = keySecurityChannel_->sslConnect().second;
+    clientID_ = config.getClientID();
+}
+#endif
 
 KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 {
@@ -68,8 +89,6 @@ void KeyClient::runKeyGenSimulator(int clientID)
     double keyExchangeTime = 0;
     long diff;
     double second;
-    struct timeval timestartKeySimulator;
-    struct timeval timeendKeySimulator;
 #endif
     CryptoPrimitive* cryptoObj = new CryptoPrimitive();
     ssl* keySecurityChannel = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
@@ -208,10 +227,9 @@ void KeyClient::run()
 #if SYSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
     double keyExchangeTime = 0;
+    double chunkContentEncryptionTime = 0;
     long diff;
     double second;
-    struct timeval timestartKey;
-    struct timeval timeendKey;
 #endif
     vector<Data_t> batchList;
     int batchNumber = 0;
@@ -273,7 +291,11 @@ void KeyClient::run()
         }
         if (extractMQ(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
+#if ENCODER_MODULE_ENABLED == 1
                 encoderObj_->insertMQ(tempChunk);
+#else
+                powObj_->insertMQ(tempChunk);
+#endif
                 continue;
             }
             batchList.push_back(tempChunk);
@@ -307,7 +329,28 @@ void KeyClient::run()
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
                     // memcpy(batchList[i].chunk.encryptKey, batchList[i].chunk.chunkHash, CHUNK_ENCRYPT_KEY_SIZE);
+#if ENCODER_MODULE_ENABLED == 1
                     encoderObj_->insertMQ(batchList[i]);
+#else
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timestartKey, NULL);
+#endif
+                    u_char ciphertext[batchList[i].chunk.logicDataSize];
+                    bool encryptChunkContentStatus = cryptoObj_->encryptWithKey(batchList[i].chunk.logicData, batchList[i].chunk.logicDataSize, batchList[i].chunk.encryptKey, ciphertext);
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timeendKey, NULL);
+                    diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+                    second = diff / 1000000.0;
+                    chunkContentEncryptionTime += second;
+#endif
+                    if (!encryptChunkContentStatus) {
+                        cerr << "KeyClient : cryptoPrimitive error, encrypt chunk logic data error" << endl;
+                        return;
+                    } else {
+                        memcpy(batchList[i].chunk.logicData, ciphertext, batchList[i].chunk.logicDataSize);
+                    }
+                    powObj_->insertMQ(batchList[i]);
+#endif
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -316,7 +359,12 @@ void KeyClient::run()
             }
         }
         if (JobDoneFlag) {
-            if (!encoderObj_->editJobDoneFlag()) {
+#if ENCODER_MODULE_ENABLED == 1
+            bool editJobDoneFlagStatus = encoderObj_->editJobDoneFlag();
+#else
+            bool editJobDoneFlagStatus = powObj_->editJobDoneFlag();
+#endif
+            if (!editJobDoneFlagStatus) {
                 cerr << "KeyClient : error to set job done flag for encoder" << endl;
             } else {
                 cerr << "KeyClient : key exchange thread job done, set job done flag for encoder done, exit now" << endl;
@@ -327,6 +375,9 @@ void KeyClient::run()
 #if SYSTEM_BREAK_DOWN == 1
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange total work time = " << keyExchangeTime << " s" << endl;
+#if ENCODER_MODULE_ENABLED == 0
+    cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
+#endif
     cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
 #endif
 #if KEY_GEN_SGX_CTR == 1

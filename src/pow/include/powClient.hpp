@@ -37,12 +37,15 @@ private:
     bool enclaveIsTrusted_;
     messageQueue<Data_t>* inputMQ_;
     Sender* senderObj_;
-    bool request(string& logicDataBatch, uint8_t cmac[16]);
+    bool request(u_char* logicDataBatchBuffer, uint64_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList);
     CryptoPrimitive* cryptoObj_;
     uint32_t sealedLen_;
     uint32_t startMethod_;
 
 public:
+    powClient(Sender* senderObjTemp);
+    ~powClient();
+
     sgx_enclave_id_t eid_;
     sgx_ra_context_t ctx_;
     char* sealedBuffer_;
@@ -52,8 +55,6 @@ public:
     bool loadSealedData();
     bool outputSealedData();
 
-    powClient(Sender* senderObjTemp);
-    ~powClient();
     bool do_attestation();
     void run();
 

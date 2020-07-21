@@ -50,7 +50,6 @@ void Encoder::run()
 #if SYSTEM_BREAK_DOWN == 1
     double encryptChunkContentTime = 0;
     double encryptChunkKeyTime = 0;
-    double generateCipherChunkHashTime = 0;
     long diff;
     double second;
 #endif
@@ -100,44 +99,24 @@ void Encoder::run()
                         return;
                     } else {
                         memcpy(tempChunk.chunk.encryptKey, cipherKey, CHUNK_ENCRYPT_KEY_SIZE);
-#endif
-#if SYSTEM_BREAK_DOWN == 1
-                        gettimeofday(&timestartEncoder, NULL);
-#endif
-                        bool generateCipherChunkHashStatus = cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
-#if SYSTEM_BREAK_DOWN == 1
-                        gettimeofday(&timeendEncoder, NULL);
-                        diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
-                        second = diff / 1000000.0;
-                        generateCipherChunkHashTime += second;
-#endif
-                        if (generateCipherChunkHashStatus) {
-                            powObj_->insertMQ(tempChunk);
-                        } else {
-                            cerr << "Encoder : generate cipher chunk hash error, exiting" << endl;
-                            return;
-                        }
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
                     }
 #endif
+                    powObj_->insertMQ(tempChunk);
                 }
             }
         }
         if (JobDoneFlag) {
             if (!powObj_->editJobDoneFlag()) {
                 cerr << "Encoder : error to set job done flag for encoder" << endl;
-            } else {
-#if SYSTEM_BREAK_DOWN == 1
-                cerr << "Encoder : encode chunk thread job done, exit now" << endl;
-#endif
             }
             break;
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
     cout << "Encoder : chunk content encryption work time = " << encryptChunkContentTime << " s" << endl;
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
     cout << "Encoder : chunk key encryption work time = " << encryptChunkKeyTime << " s" << endl;
-    cout << "Encoder : cipher chunk crypto hash generate work time = " << generateCipherChunkHashTime << " s" << endl;
+#endif
 #endif
     return;
 }

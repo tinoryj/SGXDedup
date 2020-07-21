@@ -45,15 +45,15 @@ void powClient::run()
 #if SYSTEM_BREAK_DOWN == 1
     double powEnclaveCaluationTime = 0;
     double powExchangeInofrmationTime = 0;
+    double powBuildHashListTime = 0;
     long diff;
     double second;
 #endif
     vector<Data_t> batchChunk;
-    vector<string> batchHash;
     uint64_t powBatchSize = config.getPOWBatchSize();
-    u_char* batchChunkLogicData_charBuffer;
-    batchChunkLogicData_charBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
-    memset(batchChunkLogicData_charBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
+    u_char* batchChunkLogicDataCharBuffer;
+    batchChunkLogicDataCharBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
+    memset(batchChunkLogicDataCharBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
     powSignedHash_t request;
     RequiredChunk_t lists;
     Data_t tempChunk;
@@ -62,7 +62,6 @@ void powClient::run()
     bool jobDoneFlag = false;
     uint64_t currentBatchSize = 0;
     batchChunk.clear();
-    batchHash.clear();
     request.hash_.clear();
     bool powRequestStatus = false;
 
@@ -76,27 +75,20 @@ void powClient::run()
                 senderObj_->insertMQ(tempChunk);
                 continue;
             } else {
-                string tempChunkHash;
-                tempChunkHash.resize(CHUNK_HASH_SIZE);
-                memcpy(&tempChunkHash[0], tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                request.hash_.push_back(tempChunkHash);
                 batchChunk.push_back(tempChunk);
-                batchHash.push_back(tempChunkHash);
-                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, &tempChunk.chunk.logicDataSize, sizeof(int));
+                memcpy(batchChunkLogicDataCharBuffer + currentBatchSize, &tempChunk.chunk.logicDataSize, sizeof(int));
                 currentBatchSize += sizeof(int);
-                memcpy(batchChunkLogicData_charBuffer + currentBatchSize, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+                memcpy(batchChunkLogicDataCharBuffer + currentBatchSize, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
                 currentBatchSize += tempChunk.chunk.logicDataSize;
                 currentBatchChunkNumber++;
             }
         }
         if (currentBatchChunkNumber == powBatchSize || jobDoneFlag) {
-            string batchChunkLogicData;
-            batchChunkLogicData.resize(currentBatchSize);
-            memcpy(&batchChunkLogicData[0], batchChunkLogicData_charBuffer, currentBatchSize);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
 #endif
-            powRequestStatus = this->request(batchChunkLogicData, request.signature_);
+            uint8_t chunkHashList[currentBatchChunkNumber * CHUNK_HASH_SIZE];
+            powRequestStatus = this->request(batchChunkLogicDataCharBuffer, currentBatchSize, request.signature_, chunkHashList);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
@@ -106,6 +98,23 @@ void powClient::run()
             if (!powRequestStatus) {
                 cerr << "PowClient : sgx request failed" << endl;
                 break;
+            } else {
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartPowClient, NULL);
+#endif
+                for (int i = 0; i < currentBatchChunkNumber; i++) {
+                    string tempChunkHash;
+                    tempChunkHash.resize(CHUNK_HASH_SIZE);
+                    memcpy(&tempChunkHash[0], chunkHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                    memcpy(batchChunk[i].chunk.chunkHash, chunkHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                    request.hash_.push_back(tempChunkHash);
+                }
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendPowClient, NULL);
+                diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
+                second = diff / 1000000.0;
+                powBuildHashListTime += second;
+#endif
             }
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
@@ -136,7 +145,6 @@ void powClient::run()
             currentBatchChunkNumber = 0;
             currentBatchSize = 0;
             batchChunk.clear();
-            batchHash.clear();
             request.hash_.clear();
         }
         if (jobDoneFlag) {
@@ -150,28 +158,18 @@ void powClient::run()
     }
 #if SYSTEM_BREAK_DOWN == 1
     cout << "PowClient : enclave compute work time = " << powEnclaveCaluationTime << " s" << endl;
+    cout << "PowClient : build hash list and insert hash to chunk time = " << powBuildHashListTime << " s" << endl;
     cout << "PowClient : exchange status to SSP time = " << powExchangeInofrmationTime << " s" << endl;
-    cout << "PowClient : Total work time = " << powExchangeInofrmationTime + powEnclaveCaluationTime << " s" << endl;
+    cout << "PowClient : Total work time = " << powExchangeInofrmationTime + powEnclaveCaluationTime + powBuildHashListTime << " s" << endl;
 #endif
-    free(batchChunkLogicData_charBuffer);
+    free(batchChunkLogicDataCharBuffer);
     return;
 }
 
-bool powClient::request(string& logicDataBatch, uint8_t cmac[16])
+bool powClient::request(u_char* logicDataBatchBuffer, uint64_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList)
 {
-    sgx_status_t retval;
-    uint32_t srcLen = logicDataBatch.length();
-    sgx_status_t status;
-    uint8_t* src = new uint8_t[logicDataBatch.length()];
-
-    if (src == nullptr) {
-        cerr << "PowClient : mem error at request -> create ecall src buffer" << endl;
-        return false;
-    }
-    memcpy(src, &logicDataBatch[0], logicDataBatch.length());
-
-    status = ecall_calcmac(eid_, &retval, src, srcLen, cmac);
-    delete[] src;
+    sgx_status_t status, retval;
+    status = ecall_calcmac(eid_, &retval, (uint8_t*)logicDataBatchBuffer, bufferSize, cmac, chunkHashList);
     if (retval != SGX_SUCCESS) {
         cerr << "PowClient : ecall failed" << endl;
         return false;
