@@ -286,7 +286,6 @@ void KeyClient::run()
 
         Data_t tempChunk;
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
-            cerr << "KeyClient : Chunker jobs done, queue is empty" << endl;
             JobDoneFlag = true;
         }
         if (extractMQ(tempChunk)) {
@@ -366,8 +365,6 @@ void KeyClient::run()
 #endif
             if (!editJobDoneFlagStatus) {
                 cerr << "KeyClient : error to set job done flag for encoder" << endl;
-            } else {
-                cerr << "KeyClient : key exchange thread job done, set job done flag for encoder done, exit now" << endl;
             }
             break;
         }
@@ -375,10 +372,10 @@ void KeyClient::run()
 #if SYSTEM_BREAK_DOWN == 1
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key exchange total work time = " << keyExchangeTime << " s" << endl;
+    cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
 #if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
 #endif
-    cout << "KeyClient : keyGen total work time = " << keyGenTime << " s" << endl;
 #endif
 #if KEY_GEN_SGX_CTR == 1
     ofstream counterOut;

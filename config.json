@@ -5,7 +5,7 @@
 		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
 		"_slidingWinSize": 256,
-		"_ReadSize": 128,
+		"_ReadSize": 256,
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {

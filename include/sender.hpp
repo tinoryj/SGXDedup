@@ -36,7 +36,7 @@ public:
     bool sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t sz, ra_msg4_t*& msg4, int& status);
     bool sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& respond, int& status);
     bool sendLogOutMessage();
-    bool sendLogInMessage();
+    bool sendLogInMessage(int loginType);
     //send chunk when socket free
     void run();
 

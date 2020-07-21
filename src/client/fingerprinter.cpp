@@ -85,10 +85,6 @@ void Fingerprinter::run()
         if (JobDoneFlag) {
             if (!keyClientObj_->editJobDoneFlag()) {
                 cerr << "Fingerprinter : error to set job done flag for encoder" << endl;
-            } else {
-#if SYSTEM_BREAK_DOWN == 1
-                cerr << "Fingerprinter : encode chunk thread job done, exit now" << endl;
-#endif
             }
             break;
         }

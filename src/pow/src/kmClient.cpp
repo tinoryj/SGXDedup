@@ -138,8 +138,7 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                     char currentSessionKey[32];
                     status = ecall_getCurrentSessionKey(_eid, &retval, currentSessionKey);
                     PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey, 32);
-                    status = ecall_setCTRMode(_eid,
-                        &retval);
+                    status = ecall_setCTRMode(_eid, &retval);
                     if (status == SGX_SUCCESS) {
                         return true;
                     } else {

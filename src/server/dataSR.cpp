@@ -374,6 +374,7 @@ void DataSR::runPow(SSL* sslConnection)
     char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int clientID = -1;
+    powSession* currentSession;
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartDataSR;
     struct timeval timeendDataSR;
@@ -419,6 +420,36 @@ void DataSR::runPow(SSL* sslConnection)
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                 sendSize = sizeof(NetworkHeadStruct_t);
+                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+                continue;
+            }
+            case CLIENT_SET_LOGIN_WITH_SEAL: {
+                cerr << "DataSR : client send login message, loading session" << endl;
+                clientID = netBody.clientID;
+                cerr << "DataSR : set client ID = " << clientID << endl;
+                if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
+                    cerr << "PowServer : client not trusted yet" << endl;
+                    netBody.messageType = ERROR_CLOSE;
+                    netBody.dataSize = 0;
+                    memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                    sendSize = sizeof(NetworkHeadStruct_t);
+                } else {
+                    if (!powServerObj_->sessions.at(clientID)->enclaveTrusted) {
+                        cerr << "PowServer : client not trusted yet, client ID exist but not passed" << endl;
+                        netBody.messageType = ERROR_CLOSE;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    } else {
+                        currentSession = powServerObj_->sessions.at(clientID);
+                        cerr << "DataSR : client sealed login success, session key = " << endl;
+                        PRINT_BYTE_ARRAY_DATA_SR(stderr, currentSession->sk, 16);
+                        netBody.messageType = SUCCESS;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    }
+                }
                 powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 continue;
             }
@@ -484,6 +515,9 @@ void DataSR::runPow(SSL* sslConnection)
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &msg4, sizeof(ra_msg4_t));
                         sendSize = sizeof(NetworkHeadStruct_t) + sizeof(ra_msg4_t);
+                        currentSession = powServerObj_->sessions[clientID];
+                        cout << "PoWServer : client remote attestation passed, session key = " << endl;
+                        PRINT_BYTE_ARRAY_DATA_SR(stderr, currentSession->sk, 16);
                     } else {
                         cerr << "PowServer : sgx process msg3 & get msg4 error" << endl;
                         netBody.messageType = ERROR_CLOSE;
@@ -505,69 +539,61 @@ void DataSR::runPow(SSL* sslConnection)
                     memcpy(&hash[0], recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                     clientReq.hash_.push_back(hash);
                 }
-                if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
+                if (currentSession == nullptr || !currentSession->enclaveTrusted) {
                     cerr << "PowServer : client not trusted yet" << endl;
                     netBody.messageType = ERROR_CLOSE;
                     netBody.dataSize = 0;
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 } else {
-                    if (!powServerObj_->sessions.at(clientID)->enclaveTrusted) {
-                        cerr << "PowServer : client not trusted yet, client ID exist but not passed" << endl;
-                        netBody.messageType = ERROR_CLOSE;
-                        netBody.dataSize = 0;
-                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                        sendSize = sizeof(NetworkHeadStruct_t);
-                    } else {
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timestartDataSR, NULL);
+#endif
+                    bool powVerifyStatus = powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq);
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timeendDataSR, NULL);
+                    diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
+                    second = diff / 1000000.0;
+                    verifyTime += second;
+#endif
+                    if (powVerifyStatus) {
+                        RequiredChunk_t requiredChunkTemp;
 #if SYSTEM_BREAK_DOWN == 1
                         gettimeofday(&timestartDataSR, NULL);
 #endif
-                        bool powVerifyStatus = powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientReq);
+                        bool dedupQueryStatus = dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp);
 #if SYSTEM_BREAK_DOWN == 1
                         gettimeofday(&timeendDataSR, NULL);
                         diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
                         second = diff / 1000000.0;
-                        verifyTime += second;
+                        dedupTime += second;
 #endif
-                        if (powVerifyStatus) {
-                            RequiredChunk_t requiredChunkTemp;
-#if SYSTEM_BREAK_DOWN == 1
-                            gettimeofday(&timestartDataSR, NULL);
-#endif
-                            bool dedupQueryStatus = dedupCoreObj_->dedupByHash(clientReq, requiredChunkTemp);
-#if SYSTEM_BREAK_DOWN == 1
-                            gettimeofday(&timeendDataSR, NULL);
-                            diff = 1000000 * (timeendDataSR.tv_sec - timestartDataSR.tv_sec) + timeendDataSR.tv_usec - timestartDataSR.tv_usec;
-                            second = diff / 1000000.0;
-                            dedupTime += second;
-#endif
-                            if (dedupQueryStatus) {
-                                netBody.messageType = SUCCESS;
-                                netBody.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
-                                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                                int requiredChunkNumber = requiredChunkTemp.size();
-                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &requiredChunkNumber, sizeof(int));
-                                for (int i = 0; i < requiredChunkNumber; i++) {
-                                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
-                                }
-                                sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + requiredChunkNumber * sizeof(uint32_t);
-                            } else {
-                                cerr << "DedupCore : recv sgx signed hash success, dedup stage report error" << endl;
-                                netBody.messageType = ERROR_RESEND;
-                                netBody.dataSize = 0;
-                                memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                                sendSize = sizeof(NetworkHeadStruct_t);
+                        if (dedupQueryStatus) {
+                            netBody.messageType = SUCCESS;
+                            netBody.dataSize = sizeof(int) + requiredChunkTemp.size() * sizeof(uint32_t);
+                            memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                            int requiredChunkNumber = requiredChunkTemp.size();
+                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &requiredChunkNumber, sizeof(int));
+                            for (int i = 0; i < requiredChunkNumber; i++) {
+                                memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + i * sizeof(uint32_t), &requiredChunkTemp[i], sizeof(uint32_t));
                             }
+                            sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + requiredChunkNumber * sizeof(uint32_t);
                         } else {
+                            cerr << "DedupCore : recv sgx signed hash success, dedup stage report error" << endl;
                             netBody.messageType = ERROR_RESEND;
                             netBody.dataSize = 0;
                             memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                             sendSize = sizeof(NetworkHeadStruct_t);
                         }
+                    } else {
+                        netBody.messageType = ERROR_RESEND;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
                     }
+                    powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+                    break;
                 }
-                powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
-                break;
             }
             default:
                 continue;

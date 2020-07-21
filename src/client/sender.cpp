@@ -184,11 +184,11 @@ bool Sender::sendChunkList(char* requestBufferIn, int sendBufferSize, int sendCh
     }
 }
 
-bool Sender::sendLogInMessage()
+bool Sender::sendLogInMessage(int loginType)
 {
     NetworkHeadStruct_t requestBody;
     requestBody.clientID = clientID_;
-    requestBody.messageType = CLIENT_SET_LOGIN;
+    requestBody.messageType = loginType;
     requestBody.dataSize = 0;
     int sendSize = sizeof(NetworkHeadStruct_t);
     char requestBuffer[sendSize];
@@ -517,6 +517,7 @@ void Sender::run()
     totalSendRecipeTime += second;
     cerr << "Sender : assemble recipe list time = " << totalRecipeAssembleTime << " s" << endl;
     cerr << "Sender : send recipe list time = " << totalSendRecipeTime << " s" << endl;
+    cerr << "Sender : total work time = " << totalRecipeAssembleTime + totalSendRecipeTime + totalChunkAssembleTime + totalSendChunkTime << " s" << endl;
 #endif
     free(sendChunkBatchBuffer);
     bool serverJobDoneFlag = sendEndFlag();

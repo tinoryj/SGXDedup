@@ -47,6 +47,5 @@ void Retriever::run()
 #if SYSTEM_BREAK_DOWN == 1
     cerr << "Retriever : write file time = " << writeFileTime << " s" << endl;
 #endif
-    cerr << "Retriever : job done, thread exit now" << endl;
     return;
 }

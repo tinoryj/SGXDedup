@@ -117,6 +117,12 @@ sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t
     return ret_status;
 }
 
+sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)
+{
+    memcpy(currentSessionKeyResult, powSessionKey, 16);
+    return SGX_SUCCESS;
+}
+
 sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
 {
     uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));

@@ -18,14 +18,35 @@ Configure config("config.json");
 Chunker* chunkerObj;
 Fingerprinter* fingerprinterObj;
 KeyClient* keyClientObj;
+#if ENCODER_MODULE_ENABLED == 1
+Encoder* encoderObj;
+#endif
+powClient* powClientObj;
 Sender* senderObj;
 RecvDecode* recvDecodeObj;
 Retriever* retrieverObj;
-powClient* powClientObj;
-Encoder* encoderObj;
 
 struct timeval timestart;
 struct timeval timeend;
+
+void PRINT_BYTE_ARRAY_CLIENT_MAIN(
+    FILE* file, void* mem, uint32_t len)
+{
+    if (!mem || !len) {
+        fprintf(file, "\n( null )\n");
+        return;
+    }
+    uint8_t* array = (uint8_t*)mem;
+    fprintf(file, "%u bytes:\n{\n", len);
+    uint32_t i = 0;
+    for (i = 0; i < len - 1; i++) {
+        fprintf(file, "0x%x, ", array[i]);
+        if (i % 8 == 7)
+            fprintf(file, "\n");
+    }
+    fprintf(file, "0x%x ", array[i]);
+    fprintf(file, "\n}\n");
+}
 
 void CTRLC(int s)
 {
@@ -33,11 +54,13 @@ void CTRLC(int s)
     delete chunkerObj;
     delete fingerprinterObj;
     delete keyClientObj;
+#if ENCODER_MODULE_ENABLED == 1
+    delete encoderObj;
+#endif
+    delete powClientObj;
     delete senderObj;
     delete recvDecodeObj;
     delete retrieverObj;
-    delete powClientObj;
-    delete encoderObj;
     exit(0);
 }
 
@@ -103,6 +126,8 @@ int main(int argv, char* argc[])
             return 0;
         }
 #endif
+        cout << "System : recved key enclave session key = " << endl;
+        PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
         keyClientObj = new KeyClient(sessionKey, keyGenNumber);
 
@@ -128,6 +153,8 @@ int main(int argv, char* argc[])
             delete powClientObj;
             return 0;
         }
+        cout << "System : recved key enclave session key = " << endl;
+        PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #if ENCODER_MODULE_ENABLED == 1
         encoderObj = new Encoder(powClientObj);
         keyClientObj = new KeyClient(encoderObj, sessionKey);
@@ -148,13 +175,18 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
 
+        //start fingerprinting thread
+        th = new boost::thread(attrs, boost::bind(&Fingerprinter::run, fingerprinterObj));
+        thList.push_back(th);
+
         //start key client thread
         th = new boost::thread(attrs, boost::bind(&KeyClient::run, keyClientObj));
         thList.push_back(th);
-
+#if ENCODER_MODULE_ENABLED == 1
         //start encoder thread
         th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
         thList.push_back(th);
+#endif
         //start pow thread
         th = new boost::thread(attrs, boost::bind(&powClient::run, powClientObj));
         thList.push_back(th);
@@ -178,11 +210,13 @@ int main(int argv, char* argc[])
     delete chunkerObj;
     delete fingerprinterObj;
     delete keyClientObj;
+#if ENCODER_MODULE_ENABLED == 1
+    delete encoderObj;
+#endif
+    delete powClientObj;
     delete senderObj;
     delete recvDecodeObj;
     delete retrieverObj;
-    delete powClientObj;
-    delete encoderObj;
 
     cout << "System : total work time is " << second << " s" << endl;
     return 0;

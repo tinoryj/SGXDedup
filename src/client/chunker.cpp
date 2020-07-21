@@ -54,6 +54,7 @@ Chunker::~Chunker()
         delete cryptoObj_;
     }
     if (chunkingFile_.is_open()) {
+        chunkingFile_.seekg(0, ios::beg);
         chunkingFile_.close();
     }
 }
@@ -63,6 +64,8 @@ std::ifstream& Chunker::getChunkingFile()
     if (!chunkingFile_.is_open()) {
         cerr << "Chunker : chunking file open failed" << endl;
         exit(1);
+    } else {
+        chunkingFile_.seekg(0, ios::beg);
     }
     return chunkingFile_;
 }
@@ -98,6 +101,8 @@ void Chunker::ChunkerInit(string path)
         ReadSize_ = ReadSize_ * 1024 * 1024;
         waitingForChunkingBuffer_ = new u_char[ReadSize_];
         chunkBuffer_ = new u_char[maxChunkSize_];
+        memset(waitingForChunkingBuffer_, 0, ReadSize_);
+        memset(chunkBuffer_, 0, maxChunkSize_);
 
         if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
             cerr << "Chunker : Memory malloc error" << endl;
@@ -118,6 +123,7 @@ void Chunker::ChunkerInit(string path)
         polyMOD_ = (1 << 23) - 1; /*polyMOD_ - 1 = 0x7fffff: use the last 23 bits of a polynomial as its hash*/
         /*initialize the lookup table for accelerating the power calculation in rolling hash*/
         powerLUT_ = (uint32_t*)malloc(sizeof(uint32_t) * slidingWinSize_);
+        memset(powerLUT_, 0, sizeof(uint32_t) * slidingWinSize_);
         /*powerLUT_[i] = power(polyBase_, i) mod polyMOD_*/
         powerLUT_[0] = 1;
         for (int i = 1; i < slidingWinSize_; i++) {
@@ -126,6 +132,7 @@ void Chunker::ChunkerInit(string path)
         }
         /*initialize the lookup table for accelerating the byte remove in rolling hash*/
         removeLUT_ = (uint32_t*)malloc(sizeof(uint32_t) * 256); /*256 for unsigned char*/
+        memset(removeLUT_, 0, sizeof(uint32_t) * 256);
         for (int i = 0; i < 256; i++) {
             /*removeLUT_[i] = (- i * powerLUT_[_slidingWinSize-1]) mod polyMOD_*/
             removeLUT_[i] = (i * powerLUT_[slidingWinSize_ - 1]) & polyMOD_;
@@ -156,34 +163,11 @@ void Chunker::ChunkerInit(string path)
         ReadSize_ = ReadSize_ * 1024 * 1024;
         waitingForChunkingBuffer_ = new u_char[ReadSize_];
         chunkBuffer_ = new u_char[avgChunkSize_];
+        memset(waitingForChunkingBuffer_, 0, ReadSize_);
+        memset(chunkBuffer_, 0, avgChunkSize_);
 
         if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
             cerr << "Chunker : Memory Error" << endl;
-            exit(1);
-        }
-        if (minChunkSize_ != avgChunkSize_ || maxChunkSize_ != avgChunkSize_) {
-            cerr << "Chunker : Error: minChunkSize_ and maxChunkSize_ should be same in fixed size mode!" << endl;
-            exit(1);
-        }
-        if (ReadSize_ % avgChunkSize_ != 0) {
-            cerr << "Chunker : Setting fixed size chunking error : ReadSize_ not compat with average chunk size" << endl;
-        }
-    } else if (ChunkerType_ == CHUNKER_FIX_SIZE_TYPE) {
-
-        avgChunkSize_ = (int)config.getAverageChunkSize();
-        minChunkSize_ = (int)config.getMinChunkSize();
-        maxChunkSize_ = (int)config.getMaxChunkSize();
-        ReadSize_ = config.getReadSize();
-        ReadSize_ = ReadSize_ * 1024 * 1024;
-        waitingForChunkingBuffer_ = new u_char[ReadSize_];
-        chunkBuffer_ = new u_char[avgChunkSize_];
-
-        if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
-            cerr << "Chunker : Memory Error" << endl;
-            exit(1);
-        }
-        if (minChunkSize_ != avgChunkSize_ || maxChunkSize_ != avgChunkSize_) {
-            cerr << "Chunker : Error: minChunkSize_ and maxChunkSize_ should be same in fixed size mode!" << endl;
             exit(1);
         }
         if (ReadSize_ % avgChunkSize_ != 0) {
@@ -230,7 +214,7 @@ void Chunker::fixSizeChunking()
 #endif
     std::ifstream& fin = getChunkingFile();
     uint64_t chunkIDCounter = 0;
-    memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
+    memset(chunkBuffer_, 0, sizeof(u_char) * avgChunkSize_);
     uint64_t fileSize = 0;
     u_char hash[CHUNK_HASH_SIZE];
     /*start chunking*/
@@ -241,8 +225,8 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerReadFile, NULL);
 #endif
-        memset((char*)waitingForChunkingBuffer_, 0, sizeof(unsigned char) * ReadSize_);
-        fin.read((char*)waitingForChunkingBuffer_, sizeof(char) * ReadSize_);
+        memset((char*)waitingForChunkingBuffer_, 0, sizeof(u_char) * ReadSize_);
+        fin.read((char*)waitingForChunkingBuffer_, sizeof(u_char) * ReadSize_);
         uint64_t totalReadSize = fin.gcount();
         fileSize += totalReadSize;
 #if SYSTEM_BREAK_DOWN == 1
@@ -254,7 +238,7 @@ void Chunker::fixSizeChunking()
         uint64_t chunkedSize = 0;
         if (totalReadSize == ReadSize_) {
             while (chunkedSize < totalReadSize) {
-                memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
+                memset(chunkBuffer_, 0, sizeof(u_char) * avgChunkSize_);
                 memcpy(chunkBuffer_, waitingForChunkingBuffer_ + chunkedSize, avgChunkSize_);
                 Data_t tempChunk;
                 tempChunk.chunk.ID = chunkIDCounter;
@@ -278,7 +262,7 @@ void Chunker::fixSizeChunking()
         } else {
             uint64_t retSize = 0;
             while (chunkedSize < totalReadSize) {
-                memset(chunkBuffer_, 0, sizeof(char) * avgChunkSize_);
+                memset(chunkBuffer_, 0, sizeof(u_char) * avgChunkSize_);
                 Data_t tempChunk;
                 if (retSize > avgChunkSize_) {
 
@@ -356,7 +340,7 @@ void Chunker::varSizeChunking()
     long diff;
     double second;
 #endif
-    uint16_t winFp;
+    uint16_t winFp = 0;
     uint64_t chunkBufferCnt = 0, chunkIDCnt = 0;
     ifstream& fin = getChunkingFile();
     uint64_t fileSize = 0;
@@ -369,8 +353,8 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerReadFile, NULL);
 #endif
-        memset((char*)waitingForChunkingBuffer_, 0, sizeof(unsigned char) * ReadSize_);
-        fin.read((char*)waitingForChunkingBuffer_, sizeof(unsigned char) * ReadSize_);
+        memset((char*)waitingForChunkingBuffer_, 0, sizeof(u_char) * ReadSize_);
+        fin.read((char*)waitingForChunkingBuffer_, sizeof(u_char) * ReadSize_);
         int len = fin.gcount();
         fileSize += len;
 #if SYSTEM_BREAK_DOWN == 1
@@ -379,6 +363,7 @@ void Chunker::varSizeChunking()
         second = diff / 1000000.0;
         readFileTime += second;
 #endif
+        memset(chunkBuffer_, 0, sizeof(u_char) * maxChunkSize_);
         for (int i = 0; i < len; i++) {
 
             chunkBuffer_[chunkBufferCnt] = waitingForChunkingBuffer_[i];
@@ -397,8 +382,9 @@ void Chunker::varSizeChunking()
             chunkBufferCnt++;
 
             /*chunk's size less than minChunkSize_*/
-            if (chunkBufferCnt < minChunkSize_)
+            if (chunkBufferCnt < minChunkSize_) {
                 continue;
+            }
 
             /*find chunk pattern*/
             if ((winFp & anchorMask_) == anchorValue_) {
@@ -406,6 +392,7 @@ void Chunker::varSizeChunking()
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
                 memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
+                memset(chunkBuffer_, 0, sizeof(u_char) * maxChunkSize_);
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
@@ -422,7 +409,8 @@ void Chunker::varSizeChunking()
                 insertTime += second;
 #endif
                 chunkIDCnt++;
-                chunkBufferCnt = winFp = 0;
+                chunkBufferCnt = 0;
+                winFp = 0;
             }
 
             /*chunk's size exceed maxChunkSize_*/
@@ -431,6 +419,7 @@ void Chunker::varSizeChunking()
                 tempChunk.chunk.ID = chunkIDCnt;
                 tempChunk.chunk.logicDataSize = chunkBufferCnt;
                 memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
+                memset(chunkBuffer_, 0, sizeof(u_char) * maxChunkSize_);
                 memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
                 tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
@@ -447,7 +436,8 @@ void Chunker::varSizeChunking()
                 insertTime += second;
 #endif
                 chunkIDCnt++;
-                chunkBufferCnt = winFp = 0;
+                chunkBufferCnt = 0;
+                winFp = 0;
             }
         }
         if (fin.eof()) {
@@ -461,6 +451,7 @@ void Chunker::varSizeChunking()
         tempChunk.chunk.ID = chunkIDCnt;
         tempChunk.chunk.logicDataSize = chunkBufferCnt;
         memcpy(tempChunk.chunk.logicData, chunkBuffer_, chunkBufferCnt);
+        memset(chunkBuffer_, 0, sizeof(u_char) * maxChunkSize_);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
 #if SYSTEM_BREAK_DOWN == 1
@@ -477,7 +468,8 @@ void Chunker::varSizeChunking()
         insertTime += second;
 #endif
         chunkIDCnt++;
-        chunkBufferCnt = winFp = 0;
+        chunkBufferCnt = 0;
+        winFp = 0;
     }
     fileRecipe_.recipe.fileRecipeHead.totalChunkNumber = chunkIDCnt;
     fileRecipe_.recipe.keyRecipeHead.totalChunkKeyNumber = chunkIDCnt;

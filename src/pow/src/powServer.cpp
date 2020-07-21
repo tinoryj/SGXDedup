@@ -176,8 +176,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
-    if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a,
-            sizeof(sgx_ec256_public_t))) {
+    if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a, sizeof(sgx_ec256_public_t))) {
         cerr << "msg1.ga != msg3.ga\n";
         return false;
     }
@@ -243,8 +242,8 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->sk);
 
             current->enclaveTrusted = true;
-            cerr << "PowServer : Client trusted, set session key = " << endl;
-            PRINT_BYTE_ARRAY_POW_SERVER(stdout, current->sk, sizeof(current->sk));
+            // cerr << "PowServer : Client trusted, set session key = " << endl;
+            // PRINT_BYTE_ARRAY_POW_SERVER(stdout, current->sk, sizeof(current->sk));
             return true;
         } else {
             cerr << "PowServer : set client session key" << endl;

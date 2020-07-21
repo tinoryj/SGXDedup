@@ -47,7 +47,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 set(CMAKE_C_FLAGS_DEBUG "-Wall -std=c1x -g -ggdb -g2") 
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -std=c++17 -g -ggdb -g2 -fsanitize=leak -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -std=c++17 -g -ggdb -g2 -fno-omit-frame-pointer") #-fsanitize=leak 
 set(CMAKE_C_FLAGS_RELEASE "-O3 -std=c1x") 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -std=c++11")
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
