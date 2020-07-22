@@ -327,26 +327,23 @@ bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter
     return true;
 }
 
-bool CryptoPrimitive::cmac128(vector<string>& message, string& mac, u_char* key, int keyLen)
+bool CryptoPrimitive::cmac128(u_char* hashList, uint32_t chunkNumber, u_char* mac, u_char* key, int keyLen)
 {
     if (CMAC_Init(cmacctx_, key, keyLen, EVP_aes_128_cbc(), nullptr) != 1) {
         cerr << "cmac error\n";
         return false;
     }
+    // u_char currentHash[CHUNK_HASH_SIZE];
 
-    for (auto it : message) {
-        CMAC_Update(cmacctx_, (void*)&it[0], it.length());
+    for (int i = 0; i < chunkNumber; i++) {
+        // memcpy(currentHash, hashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+        CMAC_Update(cmacctx_, (void*)(hashList + i * CHUNK_HASH_SIZE), CHUNK_HASH_SIZE);
     }
-
-    mac.clear();
-    mac.resize(16);
     size_t maclen;
-
-    if (CMAC_Final(cmacctx_, (unsigned char*)&mac[0], &maclen) != 1) {
+    if (CMAC_Final(cmacctx_, mac, &maclen) != 1) {
         cerr << "cmac error" << endl;
         return false;
+    } else {
+        return true;
     }
-
-    mac.resize(maclen);
-    return true;
 }

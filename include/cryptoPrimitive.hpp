@@ -57,7 +57,7 @@ public:
     bool encryptChunk(Chunk_t& chunk);
     bool decryptChunk(Chunk_t& chunk);
     bool decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData);
-    bool cmac128(vector<string>& message, string& mac, u_char* key, int keyLen);
+    bool cmac128(u_char* hashList, uint32_t chunkNumber, u_char* mac, u_char* key, int keyLen);
     void PRINT_BYTE_ARRAY(FILE* file, void* mem, uint32_t len)
     {
         if (!mem || !len) {

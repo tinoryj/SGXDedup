@@ -54,15 +54,12 @@ void powClient::run()
     u_char* batchChunkLogicDataCharBuffer;
     batchChunkLogicDataCharBuffer = (u_char*)malloc(sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
     memset(batchChunkLogicDataCharBuffer, 0, sizeof(u_char) * (MAX_CHUNK_SIZE + sizeof(int)) * powBatchSize);
-    powSignedHash_t request;
-    RequiredChunk_t lists;
     Data_t tempChunk;
     int netstatus;
     int currentBatchChunkNumber = 0;
     bool jobDoneFlag = false;
     uint64_t currentBatchSize = 0;
     batchChunk.clear();
-    request.hash_.clear();
     bool powRequestStatus = false;
 
     while (true) {
@@ -87,8 +84,9 @@ void powClient::run()
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
 #endif
+            uint8_t clientMac[16];
             uint8_t chunkHashList[currentBatchChunkNumber * CHUNK_HASH_SIZE];
-            powRequestStatus = this->request(batchChunkLogicDataCharBuffer, currentBatchSize, request.signature_, chunkHashList);
+            powRequestStatus = this->request(batchChunkLogicDataCharBuffer, currentBatchSize, clientMac, chunkHashList);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
@@ -103,11 +101,7 @@ void powClient::run()
                 gettimeofday(&timestartPowClient, NULL);
 #endif
                 for (int i = 0; i < currentBatchChunkNumber; i++) {
-                    string tempChunkHash;
-                    tempChunkHash.resize(CHUNK_HASH_SIZE);
-                    memcpy(&tempChunkHash[0], chunkHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
                     memcpy(batchChunk[i].chunk.chunkHash, chunkHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
-                    request.hash_.push_back(tempChunkHash);
                 }
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendPowClient, NULL);
@@ -119,7 +113,13 @@ void powClient::run()
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartPowClient, NULL);
 #endif
-            senderObj_->sendEnclaveSignedHash(request, lists, netstatus);
+            u_char serverResponse[sizeof(int) + sizeof(bool) * currentBatchChunkNumber];
+            senderObj_->sendEnclaveSignedHash(clientMac, chunkHashList, currentBatchChunkNumber, serverResponse, netstatus);
+#if SYSTEM_DEBUG_FLAG == 1
+// cout <<"PowClient : send signed hash list data = "<<endl;
+// PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
+// PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, currentBatchChunkNumber * CHUNK_HASH_SIZE);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
             diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
@@ -131,12 +131,16 @@ void powClient::run()
                 break;
             } else {
                 // cerr << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
-                int totalNeedChunkNumber = lists.size();
-                // cout << "PowClient : Server need " << lists.size() << " over all " << batchChunk.size() << endl;
+                int totalNeedChunkNumber;
+                memcpy(&totalNeedChunkNumber, serverResponse, sizeof(int));
+                bool requiredChunksList[currentBatchChunkNumber];
+                memcpy(requiredChunksList, serverResponse + sizeof(int), sizeof(bool) * currentBatchChunkNumber);
+                // cout << "PowClient : Server need " << serverResponse.size() << " over all " << batchChunk.size() << endl;
                 for (int i = 0; i < totalNeedChunkNumber; i++) {
-                    batchChunk[lists[i]].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
+                    if (requiredChunksList[i] == true) {
+                        batchChunk[i].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
+                    }
                 }
-                lists.clear();
                 int batchChunkSize = batchChunk.size();
                 for (int i = 0; i < batchChunkSize; i++) {
                     senderObj_->insertMQ(batchChunk[i]);
@@ -145,7 +149,6 @@ void powClient::run()
             currentBatchChunkNumber = 0;
             currentBatchSize = 0;
             batchChunk.clear();
-            request.hash_.clear();
         }
         if (jobDoneFlag) {
             break;
@@ -298,11 +301,13 @@ powClient::powClient(Sender* senderObjTemp)
             } else {
                 cerr << "PowClient : login to storage service provider error" << endl;
             }
+#if SYSTEM_DEBUG_FLAG == 1
             sgx_status_t status, retval;
             cerr << "PowClient : ecall get session key success, key = " << endl;
             char currentSessionKey[16];
             status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
             PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
+#endif
         } else {
             cerr << "PowClient : enclave init via sealed data error" << endl;
             sgx_destroy_enclave(eid_);
@@ -326,10 +331,12 @@ powClient::powClient(Sender* senderObjTemp)
                 exit(0);
             } else {
                 startMethod_ = 2;
+#if SYSTEM_DEBUG_FLAG == 1
                 cerr << "PowClient : ecall set session key success, key = " << endl;
                 char currentSessionKey[16];
                 status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
                 PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
+#endif
             }
         }
     }
@@ -351,10 +358,12 @@ powClient::powClient(Sender* senderObjTemp)
             exit(0);
         } else {
             startMethod_ = 2;
+#if SYSTEM_DEBUG_FLAG == 1
             cerr << "PowClient : ecall set session key success, key = " << endl;
             char currentSessionKey[16];
             status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
             PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
+#endif
         }
     }
 #endif

@@ -46,9 +46,4 @@ typedef struct _ra_msg4_struct {
     //sgx_platform_info_t platformInfoBlob;
 } ra_msg4_t;
 
-typedef struct {
-    uint8_t signature_[16];
-    vector<string> hash_;
-} powSignedHash_t;
-
 #endif //SGXDEDUP_PROTOCOL_HPP

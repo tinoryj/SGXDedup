@@ -18,7 +18,7 @@ private:
 public:
     DedupCore();
     ~DedupCore();
-    bool dedupByHash(powSignedHash_t in, RequiredChunk_t& out);
+    bool dedupByHash(u_char* inputHashList, int chunkNumber, bool* out, int& requiredChunkNumber);
 };
 
 #endif //SGXDEDUP_DEDUPCORE_HPP

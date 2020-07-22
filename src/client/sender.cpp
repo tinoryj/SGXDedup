@@ -292,7 +292,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
     return false;
 }
 
-bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& respond, int& status)
+bool Sender::sendEnclaveSignedHash(u_char* clientMac, u_char* hashList, int requestNumber, u_char* respond, int& status)
 {
     NetworkHeadStruct_t requestBody, respondBody;
     requestBody.messageType = SGX_SIGNED_HASH;
@@ -301,33 +301,22 @@ bool Sender::sendEnclaveSignedHash(powSignedHash_t& request, RequiredChunk_t& re
     respondBody.clientID = 0;
     respondBody.dataSize = 0;
 
-    int signedHashNumber = request.hash_.size();
-    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
-    requestBody.dataSize = sizeof(uint8_t) * 16 + signedHashNumber * CHUNK_HASH_SIZE;
+    int sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16 + requestNumber * CHUNK_HASH_SIZE;
+    requestBody.dataSize = sizeof(uint8_t) * 16 + requestNumber * CHUNK_HASH_SIZE;
     char requestBuffer[sendSize];
     memcpy(requestBuffer, &requestBody, sizeof(NetworkHeadStruct_t));
-    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request.signature_, 16 * sizeof(uint8_t));
-    for (int i = 0; i < signedHashNumber; i++) {
-        memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + 16 * sizeof(uint8_t) + i * CHUNK_HASH_SIZE, &request.hash_[i][0], CHUNK_HASH_SIZE);
-    }
-
-    char respondBuffer[SGX_MESSAGE_MAX_SIZE];
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), clientMac, sizeof(uint8_t) * 16);
+    memcpy(requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint8_t) * 16, hashList, requestNumber * CHUNK_HASH_SIZE);
+    char respondBuffer[sizeof(NetworkHeadStruct_t) + sizeof(bool) * requestNumber + sizeof(int)];
     int recvSize = 0;
     if (!this->sendDataPow(requestBuffer, sendSize, respondBuffer, recvSize)) {
         cerr << "Sender : send enclave signed hash to server & get back required chunk list error" << endl;
         return false;
     }
-
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
-    int requiredChunkNumber;
-    memcpy(&requiredChunkNumber, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int));
     if (status == SUCCESS) {
-        for (int i = 0; i < requiredChunkNumber; i++) {
-            uint32_t tempID;
-            memcpy(&tempID, respondBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int) + i * sizeof(uint32_t), sizeof(uint32_t));
-            respond.push_back(tempID);
-        }
+        memcpy(respond, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int) + sizeof(bool) * requestNumber);
         return true;
     } else {
         return false;
@@ -418,8 +407,10 @@ void Sender::run()
         bool extractChunkStatus = extractMQ(tempChunk);
         if (extractChunkStatus) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-                // cout << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
-                // PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+#if SYSTEM_DEBUG_FLAG == 1
+// cout << "Sender : get file recipe head, file size = " << tempChunk.recipe.fileRecipeHead.fileSize << " file chunk number = " << tempChunk.recipe.fileRecipeHead.totalChunkNumber << endl;
+// PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.recipe.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+#endif
                 memcpy(&fileRecipe, &tempChunk.recipe, sizeof(Recipe_t));
                 continue;
             } else {
@@ -441,9 +432,11 @@ void Sender::run()
                     second = diff / 1000000.0;
                     totalChunkAssembleTime += second;
 #endif
-                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    // PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+#if SYSTEM_DEBUG_FLAG == 1
+// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+#endif
                 }
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartSender, NULL);

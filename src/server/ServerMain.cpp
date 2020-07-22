@@ -73,7 +73,7 @@ int main()
 
     while (true) {
         SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;
-        th = new boost::thread(attrs, boost::bind(&DataSR::run, dataSRObj, sslConnectionData));
+        th = new boost::thread(attrs, boost::bind(&DataSR::runData, dataSRObj, sslConnectionData));
         thList.push_back(th);
         SSL* sslConnectionPow = powSecurityChannelTemp->sslListen().second;
         th = new boost::thread(attrs, boost::bind(&DataSR::runPow, dataSRObj, sslConnectionPow));

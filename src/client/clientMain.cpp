@@ -126,8 +126,10 @@ int main(int argv, char* argc[])
             return 0;
         }
 #endif
+#if SYSTEM_DEBUG_FLAG == 1
         cout << "System : recved key enclave session key = " << endl;
         PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
+#endif
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
         keyClientObj = new KeyClient(sessionKey, keyGenNumber);
 
@@ -153,8 +155,10 @@ int main(int argv, char* argc[])
             delete powClientObj;
             return 0;
         }
+#if SYSTEM_DEBUG_FLAG == 1
         cout << "System : recved key enclave session key = " << endl;
         PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
+#endif
 #if ENCODER_MODULE_ENABLED == 1
         encoderObj = new Encoder(powClientObj);
         keyClientObj = new KeyClient(encoderObj, sessionKey);

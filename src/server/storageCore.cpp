@@ -429,7 +429,8 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
 
     string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
     if (fileName2metaDB.query(DBKey, recipeName)) {
-        cerr << "StorageCore : current file's recipe exist, modify it now" << recipeName << endl;
+        cerr << "StorageCore : current file's recipe exist, modify it now, recipe name = \n\t"
+             << recipeName << endl;
         writeRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
         RecipeOut.open(writeRecipeName, ios::app | ios::binary);
         if (!RecipeOut.is_open()) {
@@ -444,7 +445,8 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
         for (int i = 0; i < FILE_NAME_HASH_SIZE; i++) {
             sprintf(recipeNameBuffer + 2 * i, "%02X", fileNameHash[i]);
         }
-        cerr << "StorageCore : current file's recipe not exist\nnew recipe file name = " << recipeNameBuffer << endl;
+        cerr << "StorageCore : current file's recipe not exist, new recipe file name = \n\t"
+             << recipeNameBuffer << endl;
         string recipeNameNew(recipeNameBuffer, FILE_NAME_HASH_SIZE * 2);
         fileName2metaDB.insert(DBKey, recipeNameNew);
         writeRecipeName = RecipeNamePrefix_ + recipeNameNew + RecipeNameTail_;

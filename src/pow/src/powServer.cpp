@@ -242,8 +242,6 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
                 6, current->sk);
 
             current->enclaveTrusted = true;
-            // cerr << "PowServer : Client trusted, set session key = " << endl;
-            // PRINT_BYTE_ARRAY_POW_SERVER(stdout, current->sk, sizeof(current->sk));
             return true;
         } else {
             cerr << "PowServer : set client session key" << endl;
@@ -306,13 +304,18 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
     return true;
 }
 
-bool powServer::process_signedHash(powSession* session, powSignedHash_t req)
+bool powServer::process_signedHash(powSession* session, u_char* mac, u_char* hashList, int chunkNumber)
 {
-    string Mac, signature((char*)req.signature_, 16);
-    cryptoObj_->cmac128(req.hash_, Mac, session->sk, 16);
-    if (Mac.compare(signature)) {
+    u_char serverMac[16];
+    cryptoObj_->cmac128(hashList, chunkNumber, serverMac, session->sk, 16);
+    if (memcmp(mac, serverMac, 16) == 0) {
+        return true;
+    } else {
         cerr << "PowServer : client signature unvalid\n";
+#if SYSTEM_DEBUG_FLAG == 1
+        PRINT_BYTE_ARRAY_POW_SERVER(stderr, mac, 16);
+        PRINT_BYTE_ARRAY_POW_SERVER(stderr, serverMac, 16);
+#endif
         return false;
     }
-    return true;
 }

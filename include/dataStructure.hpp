@@ -101,6 +101,8 @@ typedef struct {
     uint32_t version;
 } keyForFilenameDB_t;
 
-typedef vector<uint32_t> RequiredChunk_t;
+typedef struct {
+    u_char hash_[CHUNK_HASH_SIZE];
+} chunkHash_t;
 
 #endif //SGXDEDUP_CHUNK_HPP

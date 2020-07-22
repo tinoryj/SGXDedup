@@ -33,15 +33,12 @@ DedupCore::~DedupCore()
         delete cryptoObj_;
 }
 
-bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
+bool DedupCore::dedupByHash(u_char* inputHashList, int chunkNumber, bool* out, int& requiredChunkNumber)
 {
-    out.clear();
     string tmpdata;
-    int size = in.hash_.size();
-    for (int i = 0; i < size; i++) {
-        // cout << "query chunk hash" << endl;
-        // PRINT_BYTE_ARRAY_DEDUP_CORE(stdout, &in.hash_[i][0], CHUNK_HASH_SIZE);
-        bool fp2ChunkDBQueryStatus = fp2ChunkDB.query(in.hash_[i], tmpdata);
+    for (int i = 0; i < chunkNumber; i++) {
+        string queryKey((char*)(inputHashList + i * CHUNK_HASH_SIZE), CHUNK_HASH_SIZE);
+        bool fp2ChunkDBQueryStatus = fp2ChunkDB.query(queryKey, tmpdata);
         if (fp2ChunkDBQueryStatus) {
             continue;
         } else {
@@ -49,13 +46,14 @@ bool DedupCore::dedupByHash(powSignedHash_t in, RequiredChunk_t& out)
             string dbValue = "";
             bool status = fp2ChunkDB.insert(in.hash_[i], dbValue);
             if (status) {
-                out.push_back(i);
+                out[i] = true;
             } else {
                 cerr << "DedupCore : dedup by hash error at chunk " << i << endl;
                 return false;
             }
 #else
-            out.push_back(i);
+            out[i] = true;
+            requiredChunkNumber++;
 #endif
         }
     }
