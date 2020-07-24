@@ -5,7 +5,7 @@ Configure config("config.json");
 keyServer* server;
 void CTRLC(int s)
 {
-    cerr << "Key Manager close" << endl;
+    cerr << "KeyManager exit with keyboard interrupt" << endl;
     delete server;
     exit(0);
 }

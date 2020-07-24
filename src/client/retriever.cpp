@@ -45,7 +45,7 @@ void Retriever::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "Retriever : write file time = " << writeFileTime << " s" << endl;
+    cout << "Retriever : write file time = " << writeFileTime << " s" << endl;
 #endif
     return;
 }

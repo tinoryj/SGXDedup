@@ -485,13 +485,15 @@ void Sender::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "Sender : assemble chunk list time = " << totalChunkAssembleTime << " s" << endl;
-    cerr << "Sender : chunk upload and storage service time = " << totalSendChunkTime << " s" << endl;
+    cout << "Sender : assemble chunk list time = " << totalChunkAssembleTime << " s" << endl;
+    cout << "Sender : chunk upload and storage service time = " << totalSendChunkTime << " s" << endl;
 #endif
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartSender, NULL);
 #endif
-    // cerr << "Sender : start send file recipes" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << "Sender : start send file recipes" << endl;
+#endif
     if (!this->sendRecipe(fileRecipe, recipeList, status)) {
         cerr << "Sender : send recipe list error, upload fail " << endl;
         free(sendChunkBatchBuffer);
@@ -508,9 +510,9 @@ void Sender::run()
     diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
     second = diff / 1000000.0;
     totalSendRecipeTime += second;
-    cerr << "Sender : assemble recipe list time = " << totalRecipeAssembleTime << " s" << endl;
-    cerr << "Sender : send recipe list time = " << totalSendRecipeTime << " s" << endl;
-    cerr << "Sender : total work time = " << totalRecipeAssembleTime + totalSendRecipeTime + totalChunkAssembleTime + totalSendChunkTime << " s" << endl;
+    cout << "Sender : assemble recipe list time = " << totalRecipeAssembleTime << " s" << endl;
+    cout << "Sender : send recipe list time = " << totalSendRecipeTime << " s" << endl;
+    cout << "Sender : total work time = " << totalRecipeAssembleTime + totalSendRecipeTime + totalChunkAssembleTime + totalSendChunkTime << " s" << endl;
 #endif
     free(sendChunkBatchBuffer);
     bool serverJobDoneFlag = sendEndFlag();

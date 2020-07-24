@@ -44,14 +44,14 @@ RecvDecode::RecvDecode(string fileName)
 #elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
     bool initDownloadStatus = processRecipe(fileRecipe_, fileRecipeList_, fileNameHash_);
     if (initDownloadStatus) {
-        cerr << "RecvDecode : init download infomation success, file size = " << fileRecipe_.fileRecipeHead.fileSize << ", total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
+        cout << "RecvDecode : init download infomation success, file size = " << fileRecipe_.fileRecipeHead.fileSize << " Byte, total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
     } else {
         cerr << "RecvDecode : recv file recipe error" << endl;
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeendRecvDecode, NULL);
         diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
         second = diff / 1000000.0;
-        cerr << "RecvDecode : init download time = " << second << " s" << endl;
+        cout << "RecvDecode : init download time = " << second << " s" << endl;
 #endif
         exit(0);
     }
@@ -60,7 +60,7 @@ RecvDecode::RecvDecode(string fileName)
     gettimeofday(&timeendRecvDecode, NULL);
     diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
     second = diff / 1000000.0;
-    cerr << "RecvDecode : init download time = " << second << " s" << endl;
+    cout << "RecvDecode : init download time = " << second << " s" << endl;
 #endif
 }
 
@@ -240,8 +240,8 @@ void RecvDecode::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "RecvDecode : chunk key decrypt time = " << decryptChunkKeyTime << " s" << endl;
-    cerr << "RecvDecode : chunk content decrypt time = " << decryptChunkContentTime << " s" << endl;
+    cout << "RecvDecode : chunk key decrypt time = " << decryptChunkKeyTime << " s" << endl;
+    cout << "RecvDecode : chunk content decrypt time = " << decryptChunkContentTime << " s" << endl;
 #endif
     return;
 }
@@ -287,7 +287,7 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
     }
     if (respond.messageType == SUCCESS) {
         uint64_t recipeLength = respond.dataSize;
-        cerr << "RecvDecode : recv encrypted recipe size = " << recipeLength << endl;
+        cout << "RecvDecode : recv encrypted recipe size = " << recipeLength << endl;
         u_char* encryptedRecipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeLength + sizeof(NetworkHeadStruct_t));
         u_char* decryptedRecipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeLength);
 
@@ -300,9 +300,7 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
             cerr << "RecvDecode : recv encrypted file recipe size error" << endl;
             return false;
         } else {
-            // cerr << "RecvDecode : recv encrypted file recipe size =" << respond.dataSize << endl;
             memcpy(&recipeHead, encryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
-            // cerr << "RecvDecode : recv encrypted file recipes done, file size = " << recipeHead.fileRecipeHead.fileSize << endl;
             cryptoObj_->decryptWithKey(encryptedRecipeBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t), recipeLength - sizeof(Recipe_t), cryptoObj_->chunkKeyEncryptionKey_, decryptedRecipeBuffer);
             u_char* requestChunkList = (u_char*)malloc(sizeof(u_char) * sizeof(RecipeEntry_t) * recipeHead.fileRecipeHead.totalChunkNumber + sizeof(NetworkHeadStruct_t));
             for (uint64_t i = 0; i < recipeHead.fileRecipeHead.totalChunkNumber; i++) {
@@ -311,7 +309,6 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
                 recipeList.push_back(newRecipeEntry);
                 memset(newRecipeEntry.chunkKey, 0, CHUNK_ENCRYPT_KEY_SIZE);
                 memcpy(requestChunkList + sizeof(NetworkHeadStruct_t) + i * sizeof(RecipeEntry_t), &newRecipeEntry, sizeof(RecipeEntry_t));
-                // cerr << "RecvDecode : recv chunk id = " << newRecipeEntry.chunkID << ", chunk size = " << newRecipeEntry.chunkSize << endl;
             }
             free(encryptedRecipeBuffer);
             free(decryptedRecipeBuffer);
@@ -327,7 +324,6 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
                 cerr << "RecvDecode : storage server closed" << endl;
                 return false;
             } else {
-                // cerr << "RecvDecode : process recipe done, send recipe size = " << recipeListSize << " to server" << endl;
                 request.messageType = CLIENT_UPLOAD_DECRYPTED_RECIPE;
                 request.dataSize = recipeHead.fileRecipeHead.totalChunkNumber * sizeof(RecipeEntry_t);
                 sendSize = recipeHead.fileRecipeHead.totalChunkNumber * sizeof(RecipeEntry_t) + sizeof(NetworkHeadStruct_t);
@@ -338,7 +334,9 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
                     return false;
                 } else {
                     free(requestChunkList);
-                    // cerr << "RecvDecode : process recipe done, send to server done, send size = " << sendSize << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                    cout << "RecvDecode : process recipe done, send to server done, send size = " << sendSize << endl;
+#endif
                     return true;
                 }
             }
@@ -421,7 +419,7 @@ void RecvDecode::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "RecvDecode : chunk decrypt time = " << decryptChunkTime << " s" << endl;
+    cout << "RecvDecode : chunk decrypt time = " << decryptChunkTime << " s" << endl;
 #endif
     return;
 }

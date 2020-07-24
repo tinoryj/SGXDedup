@@ -65,7 +65,7 @@ int AgentWget::request(string const& url, string const& post,
         size_t bwritten, rem;
         const char* bp = post.c_str();
 
-        fprintf(stderr, "+++ POST data written to %s\n", tmpfile);
+        // fprintf(stdout, "+++ POST data written to %s\n", tmpfile);
 
         postdata = 1;
 

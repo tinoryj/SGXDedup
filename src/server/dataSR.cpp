@@ -64,7 +64,7 @@ void DataSR::runData(SSL* sslConnection)
 #endif
     while (true) {
         if (!dataSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
-            cerr << "DataSR : client closed socket connect, thread exit now" << endl;
+            cout << "DataSR : client closed socket connect, thread exit now" << endl;
 #if SYSTEM_BREAK_DOWN == 1
             cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
             cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
@@ -73,7 +73,9 @@ void DataSR::runData(SSL* sslConnection)
         } else {
             NetworkHeadStruct_t netBody;
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
-            // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+            cout << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+#endif
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
                 netBody.messageType = SERVER_JOB_DONE_EXIT_PERMIT;
@@ -86,7 +88,7 @@ void DataSR::runData(SSL* sslConnection)
                 cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                 cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
-                cerr << "DataSR : data thread recv exit flag, thread exit now" << endl;
+                cout << "DataSR : data thread recv exit flag, thread exit now" << endl;
                 return;
             }
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
@@ -121,7 +123,7 @@ void DataSR::runData(SSL* sslConnection)
                     memcpy(&tempRecipeEntry, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
                     tempRecipeEntryList.push_back(tempRecipeEntry);
                 }
-                cerr << "StorageCore : recv Recipe from client " << netBody.clientID << endl;
+                cout << "StorageCore : recv Recipe from client " << netBody.clientID << endl;
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartDataSR, NULL);
 #endif
@@ -133,7 +135,7 @@ void DataSR::runData(SSL* sslConnection)
                 saveRecipeTime += second;
 #endif
                 if (saveRecipeStatus) {
-                    cerr << "StorageCore : verify Recipe succes" << endl;
+                    cout << "StorageCore : verify Recipe succes" << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = 0;
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -151,7 +153,7 @@ void DataSR::runData(SSL* sslConnection)
             case CLIENT_DOWNLOAD_FILEHEAD: {
 
                 if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe)) {
-                    cerr << "StorageCore : restore file size = " << restoredFileRecipe.fileRecipeHead.fileSize << " chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+                    cout << "StorageCore : restore file size = " << restoredFileRecipe.fileRecipeHead.fileSize << " chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = sizeof(Recipe_t);
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -174,11 +176,11 @@ void DataSR::runData(SSL* sslConnection)
                 char* recipeList = (char*)malloc(restoreRecipeListSize);
                 bool restoreRecipeListStatus = storageObj_->restoreRecipeList((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeList, restoreRecipeListSize);
                 if (restoreRecipeListStatus) {
-                    cerr << "DataSR : restore recipes list done" << endl;
+                    cout << "DataSR : restore recipes list done" << endl;
                     while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
                         ChunkList_t restoredChunkList;
                         if (storageObj_->restoreChunks(recipeList, restoreRecipeListSize, startID, endID, restoredChunkList)) {
-                            cerr << "DataSR : restore chunks from " << startID << " to " << endID << " done" << endl;
+                            cout << "DataSR : restore chunks from " << startID << " to " << endID << " done" << endl;
                             netBody.messageType = SUCCESS;
                             int currentChunkNumber = restoredChunkList.size();
                             int totalSendSize = sizeof(int);
@@ -242,10 +244,10 @@ void DataSR::runData(SSL* sslConnection)
             }
             case CLIENT_UPLOAD_ENCRYPTED_RECIPE: {
                 int recipeListSize = netBody.dataSize;
-                cerr << "DataSR : recv file recipe size = " << recipeListSize << endl;
+                cout << "DataSR : recv file recipe size = " << recipeListSize << endl;
                 char* recipeListBuffer = (char*)malloc(sizeof(char) * recipeListSize + sizeof(NetworkHeadStruct_t));
                 if (!dataSecurityChannel_->recv(sslConnection, recipeListBuffer, recvSize)) {
-                    cerr << "DataSR : client closed socket connect, recipe store failed, Thread exit now" << endl;
+                    cout << "DataSR : client closed socket connect, recipe store failed, Thread exit now" << endl;
                     return;
                 }
                 Recipe_t newFileRecipe;
@@ -264,42 +266,40 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_UPLOAD_DECRYPTED_RECIPE: {
-                // cerr << "DataSR : current recipe size = " << recipeSize << ", toatl chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+                // cout << "DataSR : current recipe size = " << recipeSize << ", toatl chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
                 uint64_t decryptedRecipeListSize = 0;
                 memcpy(&decryptedRecipeListSize, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint64_t));
-                // cerr << "DataSR : process recipe list size = " << decryptedRecipeListSize << endl;
+                // cout << "DataSR : process recipe list size = " << decryptedRecipeListSize << endl;
                 char* recvDecryptedRecipeBuffer = (char*)malloc(sizeof(char) * decryptedRecipeListSize + sizeof(NetworkHeadStruct_t));
                 if (dataSecurityChannel_->recv(sslConnection, recvDecryptedRecipeBuffer, recvSize)) {
                     NetworkHeadStruct_t tempHeader;
                     memcpy(&tempHeader, recvDecryptedRecipeBuffer, sizeof(NetworkHeadStruct_t));
-                    // cerr << "DataSR : CLIENT_UPLOAD_DECRYPTED_RECIPE, recv message type " << tempHeader.messageType << ", message size = " << tempHeader.dataSize << endl;
+                    // cout << "DataSR : CLIENT_UPLOAD_DECRYPTED_RECIPE, recv message type " << tempHeader.messageType << ", message size = " << tempHeader.dataSize << endl;
                 } else {
                     cerr << "DataSR : recv decrypted file recipe error " << endl;
                 }
                 int restoreChunkNumber = restoredFileRecipe.fileRecipeHead.totalChunkNumber;
-                // cerr << "DataSR : target restore chunk number = " << restoreChunkNumber << endl;
+                // cout << "DataSR : target restore chunk number = " << restoreChunkNumber << endl;
                 // memcpy(&restoredFileRecipe, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
                 for (int i = 0; i < restoreChunkNumber; i++) {
                     RecipeEntry_t newRecipeEntry;
                     memcpy(&newRecipeEntry, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
-                    // cerr << "DataSR : recv chunk id = " << newRecipeEntry.chunkID << ", chunk size = " << newRecipeEntry.chunkSize << endl;
+                    // cout << "DataSR : recv chunk id = " << newRecipeEntry.chunkID << ", chunk size = " << newRecipeEntry.chunkSize << endl;
                     restoredRecipeList.push_back(newRecipeEntry);
                 }
                 free(recvDecryptedRecipeBuffer);
-                cerr << "DataSR : process recipe list done" << endl;
+                cout << "DataSR : process recipe list done" << endl;
                 break;
             }
             case CLIENT_DOWNLOAD_ENCRYPTED_RECIPE: {
 
                 if (storageObj_->restoreRecipesSize((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeSize)) {
-                    // cerr << "StorageCore : restore file size = " << recipeSize << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = recipeSize;
                     sendSize = sizeof(NetworkHeadStruct_t);
                     memset(sendBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
-                    // cerr << "StorageCore : send recipe size done" << endl;
                     u_char* recipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeSize);
                     storageObj_->restoreRecipes((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeBuffer, recipeSize);
                     char* sendRecipeBuffer = (char*)malloc(sizeof(char) * recipeSize + sizeof(NetworkHeadStruct_t));
@@ -308,7 +308,9 @@ void DataSR::runData(SSL* sslConnection)
                     sendSize = sizeof(NetworkHeadStruct_t) + recipeSize;
                     dataSecurityChannel_->send(sslConnection, sendRecipeBuffer, sendSize);
                     memcpy(&restoredFileRecipe, recipeBuffer, sizeof(Recipe_t));
-                    // cerr << "StorageCore : send recipe list done, file size = " << restoredFileRecipe.fileRecipeHead.fileSize << ", total chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                    cout << "StorageCore : send encrypted recipe list done, file size = " << restoredFileRecipe.fileRecipeHead.fileSize << ", total chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+#endif
                     free(sendRecipeBuffer);
                     free(recipeBuffer);
                 } else {
@@ -321,7 +323,7 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                cerr << "DataSR : start retrive chunks " << endl;
+                cout << "DataSR : start retrive chunks " << endl;
                 if (restoredFileRecipe.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
                     endID = restoredFileRecipe.fileRecipeHead.totalChunkNumber - 1;
                 }
@@ -403,7 +405,7 @@ void DataSR::runPow(SSL* sslConnection)
     while (true) {
 
         if (!powSecurityChannel_->recv(sslConnection, recvBuffer, recvSize)) {
-            cerr << "DataSR : client closed socket connect, Client ID = " << clientID << endl;
+            cout << "DataSR : client closed socket connect, Client ID = " << clientID << endl;
 #if SYSTEM_BREAK_DOWN == 1
             cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
             cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
@@ -412,7 +414,9 @@ void DataSR::runPow(SSL* sslConnection)
         } else {
             NetworkHeadStruct_t netBody;
             memcpy(&netBody, recvBuffer, sizeof(NetworkHeadStruct_t));
-            // cerr << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+            cout << "DataSR : recv message type " << netBody.messageType << ", message size = " << netBody.dataSize << endl;
+#endif
             switch (netBody.messageType) {
             case CLIENT_EXIT: {
                 netBody.messageType = SERVER_JOB_DONE_EXIT_PERMIT;
@@ -425,13 +429,13 @@ void DataSR::runPow(SSL* sslConnection)
                 cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
                 cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
 #endif
-                cerr << "DataSR : pow thread recv exit flag, exit now" << endl;
+                cout << "DataSR : pow thread recv exit flag, exit now" << endl;
                 return;
             }
             case CLIENT_SET_LOGIN: {
-                cerr << "DataSR : client send login message, init session" << endl;
+                cout << "DataSR : client send login message, init session" << endl;
                 clientID = netBody.clientID;
-                cerr << "DataSR : set client ID = " << clientID << endl;
+                cout << "DataSR : set client ID = " << clientID << endl;
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -440,9 +444,9 @@ void DataSR::runPow(SSL* sslConnection)
                 continue;
             }
             case CLIENT_SET_LOGIN_WITH_SEAL: {
-                cerr << "DataSR : client send login message, loading session" << endl;
+                cout << "DataSR : client send login message, loading session" << endl;
                 clientID = netBody.clientID;
-                cerr << "DataSR : set client ID = " << clientID << endl;
+                cout << "DataSR : set client ID = " << clientID << endl;
                 if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
                     cerr << "PowServer : client not trusted yet" << endl;
                     netBody.messageType = ERROR_CLOSE;
@@ -459,7 +463,7 @@ void DataSR::runPow(SSL* sslConnection)
                     } else {
                         currentSession = powServerObj_->sessions.at(clientID);
 #if SYSTEM_DEBUG_FLAG == 1
-                        cerr << "DataSR : client sealed login success, session key = " << endl;
+                        cout << "DataSR : client sealed login success, session key = " << endl;
                         PRINT_BYTE_ARRAY_DATA_SR(stderr, currentSession->sk, 16);
 #endif
                         netBody.messageType = SUCCESS;
@@ -472,7 +476,7 @@ void DataSR::runPow(SSL* sslConnection)
                 continue;
             }
             case CLIENT_SET_LOGOUT: {
-                cerr << "DataSR : client send logout message, clean up loged session" << endl;
+                cout << "DataSR : client send logout message, clean up loged session" << endl;
                 powServerObj_->closeSession(netBody.clientID);
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
@@ -526,7 +530,6 @@ void DataSR::runPow(SSL* sslConnection)
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     sendSize = sizeof(NetworkHeadStruct_t);
                 } else {
-                    // cerr << "PowServer : msg.datasize = " << netBody.dataSize << " sgx_ra_msg3_t size = " << sizeof(sgx_ra_msg3_t) << endl;
                     if (powServerObj_->process_msg3(powServerObj_->sessions[clientID], msg3, msg4, netBody.dataSize - sizeof(sgx_ra_msg3_t))) {
                         netBody.messageType = SUCCESS;
                         netBody.dataSize = sizeof(ra_msg4_t);
@@ -621,7 +624,7 @@ void DataSR::runPow(SSL* sslConnection)
 void DataSR::runKeyServerRA()
 {
     ssl* sslRAListen = new ssl(config.getStorageServerIP(), config.getKMServerPort(), SERVERSIDE);
-    cerr << "DataSR : key server ra request channel setup" << endl;
+    cout << "DataSR : key server ra request channel setup" << endl;
     int sendSize = sizeof(NetworkHeadStruct_t);
     char sendBuffer[sendSize];
     NetworkHeadStruct_t netHead, recvHead;
@@ -632,13 +635,13 @@ void DataSR::runKeyServerRA()
     while (true) {
     errorRetry:
         SSL* sslRAListenConnection = sslRAListen->sslListen().second;
-        cerr << "DataSR : key server connected" << endl;
+        cout << "DataSR : key server connected" << endl;
         char recvBuffer[sizeof(NetworkHeadStruct_t)];
         int recvSize;
         sslRAListen->recv(sslRAListenConnection, recvBuffer, recvSize);
         memcpy(&recvHead, recvBuffer, sizeof(NetworkHeadStruct_t));
         if (recvHead.messageType == KEY_SERVER_SESSION_KEY_UPDATE) {
-            cerr << "DataSR : key server start session key update now" << endl;
+            cout << "DataSR : key server start session key update now" << endl;
             keyRegressionCurrentTimes_--;
             char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
             memcpy(currentSessionKey, session->sk, 16);
@@ -655,7 +658,7 @@ void DataSR::runKeyServerRA()
             keyExchangeKeySetFlag = true;
             free(sslRAListenConnection);
         } else if (recvHead.messageType == KEY_SERVER_RA_REQUES) {
-            cerr << "DataSR : key server start remote attestation now" << endl;
+            cout << "DataSR : key server start remote attestation now" << endl;
             kmServer server(sslRAListen, sslRAListenConnection);
             session = server.authkm();
             if (session != nullptr) {
@@ -677,7 +680,7 @@ void DataSR::runKeyServerRA()
                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
 #endif
                 keyExchangeKeySetFlag = true;
-                cerr << "DataSR : keyServer enclave trusted" << endl;
+                cout << "DataSR : keyServer enclave trusted" << endl;
                 delete session;
                 boost::xtime xt;
                 boost::xtime_get(&xt, boost::TIME_UTC_);

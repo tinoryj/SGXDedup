@@ -332,7 +332,7 @@ powSession* kmServer::authkm()
     char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg01RecvSize;
     if (!raSecurityChannel_->recv(sslConnection_, msg01Buffer, msg01RecvSize)) {
-        cerr << "KmServer : error socket reading" << endl;
+        cerr << "KmServer : error socket reading msg01" << endl;
         return nullptr;
     }
     memcpy(&msg01, msg01Buffer, sizeof(msg01));
@@ -345,7 +345,7 @@ powSession* kmServer::authkm()
     char msg2Buffer[msg2SendSize];
     memcpy(msg2Buffer, &msg2, sizeof(msg2) + msg2.sig_rl_size);
     if (!raSecurityChannel_->send(sslConnection_, msg2Buffer, msg2SendSize)) {
-        cerr << "KmServer : error socket reading" << endl;
+        cerr << "KmServer : error socket writing msg2" << endl;
         return nullptr;
     }
 
@@ -366,7 +366,7 @@ powSession* kmServer::authkm()
     char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     memcpy(msg4Buffer, &msg4, sizeof(msg4));
     if (!raSecurityChannel_->send(sslConnection_, msg4Buffer, msg4SendSize)) {
-        cerr << "KmServer : error socket reading" << endl;
+        cerr << "KmServer : error socket writing msg4" << endl;
         return nullptr;
     }
 

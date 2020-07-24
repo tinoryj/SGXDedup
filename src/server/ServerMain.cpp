@@ -21,7 +21,7 @@ vector<boost::thread*> thList;
 
 void CTRLC(int s)
 {
-    cerr << "server close" << endl;
+    cerr << "Server exit with keyboard interrupt" << endl;
 
     if (storageObj != nullptr)
         delete storageObj;
@@ -66,10 +66,9 @@ int main()
     th = new boost::thread(boost::bind(&DataSR::runKeyServerRA, dataSRObj));
     thList.push_back(th);
     th->detach();
+
     boost::thread::attributes attrs;
-    //cerr << attrs.get_stack_size() << endl;
     attrs.set_stack_size(1000 * 1024 * 1024);
-    //cerr << attrs.get_stack_size() << endl;
 
     while (true) {
         SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;

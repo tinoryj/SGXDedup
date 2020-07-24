@@ -10,7 +10,6 @@ struct timeval timeendPowClient;
 
 void print(const char* str, uint32_t len)
 {
-    cerr << str << endl;
     uint8_t* array = (uint8_t*)str;
     for (int i = 0; i < len - 1; i++) {
         printf("0x%x, ", array[i]);
@@ -130,7 +129,9 @@ void powClient::run()
                 cerr << "PowClient : send pow signed hash error" << endl;
                 break;
             } else {
-                // cerr << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                cout << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
+#endif
                 int totalNeedChunkNumber;
                 memcpy(&totalNeedChunkNumber, serverResponse, sizeof(int));
                 bool requiredChunksList[currentBatchChunkNumber];
@@ -186,7 +187,7 @@ bool powClient::loadSealedData()
     }
     sealDataFile.open("pow-enclave.sealed", std::ios::binary);
     if (!sealDataFile.is_open()) {
-        cerr << "PowClient : no sealed infomation, start remote attestation login" << endl;
+        cout << "PowClient : no sealed infomation, start remote attestation login" << endl;
         return false;
     } else {
         sealDataFile.seekg(0, ios_base::end);
@@ -217,14 +218,14 @@ bool powClient::powEnclaveSealedInit()
         sgxErrorReport(ret);
         return false;
     } else {
-        cerr << "PowClient : create enclave done" << endl;
+        cout << "PowClient : create enclave done" << endl;
         ret = enclave_sealed_init(eid_, &retval, (uint8_t*)sealedBuffer_);
 #if SYSTEM_DEBUG_FLAG == 1
-        cerr << "PowClient : unseal data size = " << sealedLen_ << "\t retval = " << retval << "\t status = " << ret << endl;
+        cout << "PowClient : unseal data size = " << sealedLen_ << "\t retval = " << retval << "\t status = " << ret << endl;
 #endif
         if (ret == SGX_SUCCESS) {
 #if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : unseal data ecall success, status = " << ret << endl;
+            cout << "PowClient : unseal data ecall success, status = " << ret << endl;
 #endif
             if (retval != 0) {
                 cerr << "PowClient : unseal data error, retval = " << retval << endl;
@@ -316,7 +317,7 @@ powClient::powClient(Sender* senderObjTemp)
     } else {
         senderObj_->sendLogOutMessage();
         if (senderObj_->sendLogInMessage(CLIENT_SET_LOGIN)) {
-            cerr << "PowClient : login to storage service provider success" << endl;
+            cout << "PowClient : login to storage service provider success" << endl;
         } else {
             cerr << "PowClient : login to storage service provider error" << endl;
         }
@@ -332,7 +333,7 @@ powClient::powClient(Sender* senderObjTemp)
             } else {
                 startMethod_ = 2;
 #if SYSTEM_DEBUG_FLAG == 1
-                cerr << "PowClient : ecall set session key success, key = " << endl;
+                cout << "PowClient : ecall set session key success, key = " << endl;
                 char currentSessionKey[16];
                 status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
                 PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
@@ -343,7 +344,7 @@ powClient::powClient(Sender* senderObjTemp)
 #else
     senderObj_->sendLogOutMessage();
     if (senderObj_->sendLogInMessage(CLIENT_SET_LOGIN)) {
-        cerr << "PowClient : login to storage service provider success" << endl;
+        cout << "PowClient : login to storage service provider success" << endl;
     } else {
         cerr << "PowClient : login to storage service provider error" << endl;
     }
@@ -359,7 +360,7 @@ powClient::powClient(Sender* senderObjTemp)
         } else {
             startMethod_ = 2;
 #if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : ecall set session key success, key = " << endl;
+            cout << "PowClient : ecall set session key success, key = " << endl;
             char currentSessionKey[16];
             status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
             PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
@@ -409,7 +410,7 @@ bool powClient::do_attestation()
 
     string enclaveName = config.getPOWEnclaveName();
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &eid_, NULL);
-    cerr << "PowClient : create pow enclave done" << endl;
+    cout << "PowClient : create pow enclave done" << endl;
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : Can not launch pow_enclave : " << enclaveName << endl;
         printf("%08x", status);

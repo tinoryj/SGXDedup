@@ -73,7 +73,7 @@ bool CryptoPrimitive::opensslLockCleanup()
     OPENSSL_free(opensslLock_->cntList);
     free(opensslLock_);
 
-    cerr << "OpenSSL lock cleanup done" << endl;
+    cout << "OpenSSL lock cleanup done" << endl;
 
     return true;
 #else
@@ -172,10 +172,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
     mdctx = EVP_MD_CTX_new();
 #endif
     EVP_MD_CTX_init(mdctx);
-    // if (mdctx_ == nullptr) {
-    //     cerr << "CryptoPrimitive : mdctx == nullptr" << endl;
-    //     return false;
-    // }
+
     if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1) {
         cerr << "hash error\n";
         return false;
@@ -189,7 +186,7 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
         cerr << "hash error\n";
         return false;
     }
-    // SHA256(dataBuffer, dataSize, hash);
+
     return true;
 }
 

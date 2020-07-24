@@ -212,9 +212,9 @@ void KeyClient::runKeyGenSimulator(int clientID)
     }
 #endif
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "KeyClient : client ID = " << clientID << endl;
-    cerr << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
-    cerr << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
+    cout << "KeyClient : client ID = " << clientID << endl;
+    cout << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
+    cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
 #endif
     // delete cryptoObj;
     // delete keySecurityChannel;

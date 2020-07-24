@@ -167,7 +167,7 @@ void Chunker::ChunkerInit(string path)
         memset(chunkBuffer_, 0, avgChunkSize_);
 
         if (waitingForChunkingBuffer_ == NULL || chunkBuffer_ == NULL) {
-            cerr << "Chunker : Memory Error" << endl;
+            cerr << "Chunker : Memory malloc error" << endl;
             exit(1);
         }
         if (ReadSize_ % avgChunkSize_ != 0) {
@@ -326,10 +326,10 @@ void Chunker::fixSizeChunking()
     gettimeofday(&timeendChunker, NULL);
     diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
     second = diff / 1000000.0;
-    cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
-    cerr << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
+    cout << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
+    cout << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
 #endif
-    cerr << "Chunker : Fixed chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cout << "Chunker : Fixed chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }
 
 void Chunker::varSizeChunking()
@@ -497,10 +497,10 @@ void Chunker::varSizeChunking()
     gettimeofday(&timeendChunker, NULL);
     diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
     second = diff / 1000000.0;
-    cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
-    cerr << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
+    cout << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
+    cout << "Chunker : total chunking time = " << setbase(10) << second - (insertTime + readFileTime) << " s" << endl;
 #endif
-    cerr << "Chunker : variable size chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cout << "Chunker : variable size chunking over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
     return;
 }
 
@@ -586,10 +586,10 @@ void Chunker::traceDrivenChunkingFSL()
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
-    cerr << "Chunker : total chunking time = " << chunkTime << " s" << endl;
+    cout << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
+    cout << "Chunker : total chunking time = " << chunkTime << " s" << endl;
 #endif
-    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cout << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }
 
 void Chunker::traceDrivenChunkingUBC()
@@ -675,8 +675,8 @@ void Chunker::traceDrivenChunkingUBC()
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
-    cerr << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
-    cerr << "Chunker : total chunking time is" << chunkTime << " s" << endl;
+    cout << "Chunker : total read file time = " << setbase(10) << readFileTime << " s" << endl;
+    cout << "Chunker : total chunking time is" << chunkTime << " s" << endl;
 #endif
-    cerr << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
+    cout << "Chunker : trace gen over:\n\t  Total file size = " << fileRecipe_.recipe.fileRecipeHead.fileSize << " Byte;\n\t  Total chunk number = " << fileRecipe_.recipe.fileRecipeHead.totalChunkNumber << endl;
 }

@@ -87,7 +87,7 @@ bool keyServer::doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
         return false;
     } else {
         raSetupFlag = true;
-        cerr << "KeyServer : enclave trusted" << endl;
+        cout << "KeyServer : enclave trusted" << endl;
     }
     multiThreadCountMutex_.lock();
     keyGenerateCount_ = 0;
@@ -104,7 +104,7 @@ void keyServer::runRAwithSPRequest()
         SSL* sslConnection = raSecurityChannelTemp->sslListen().second;
         raSecurityChannelTemp->recv(sslConnection, recvBuffer, recvSize);
         raRequestFlag = true;
-        cerr << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
+        cout << "KeyServer : recv storage server ra request, waiting for ra now" << endl;
         free(sslConnection);
     }
 }
@@ -115,7 +115,7 @@ void keyServer::runRA()
         if (raRequestFlag) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cerr << "KeyServer : start do remote attestation to storage server" << endl;
+            cout << "KeyServer : start do remote attestation to storage server" << endl;
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
@@ -134,7 +134,7 @@ void keyServer::runRA()
                 delete raSecurityChannelTemp;
                 free(sslConnection);
                 raRequestFlag = false;
-                cerr << "KeyServer : do remote attestation to storage SP done" << endl;
+                cout << "KeyServer : do remote attestation to storage SP done" << endl;
             } else {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
@@ -151,7 +151,7 @@ void keyServer::runSessionKeyUpdate()
         if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cerr << "KeyServer : start session key update with storage server" << endl;
+            cout << "KeyServer : start session key update with storage server" << endl;
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
@@ -165,7 +165,7 @@ void keyServer::runSessionKeyUpdate()
                 raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
                 delete raSecurityChannelTemp;
                 free(sslConnection);
-                cerr << "KeyServer : update session key storage SP done" << endl;
+                cout << "KeyServer : update session key storage SP done" << endl;
             } else {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
@@ -183,7 +183,7 @@ void keyServer::runCTRModeMaskGenerate()
         if (raRequestFlag == false) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cerr << "KeyServer : start compute session encryption mask offline" << endl;
+            cout << "KeyServer : start compute session encryption mask offline" << endl;
             auto it = clientList_.begin();
             while (it != clientList_.end()) {
                 if (it->second.keyGenerateCounter > 0) {
@@ -194,7 +194,7 @@ void keyServer::runCTRModeMaskGenerate()
                 }
                 ++it;
             }
-            cerr << "KeyServer : offlien mask generate done " << endl;
+            cout << "KeyServer : offlien mask generate done " << endl;
             boost::xtime xt;
             boost::xtime_get(&xt, boost::TIME_UTC_);
             xt.sec += 20;
@@ -308,7 +308,7 @@ void keyServer::runRecvThread()
                     memcpy(&netHead, hash, sizeof(NetworkHeadStruct_t));
                     if (netHead.messageType == KEY_GEN_UPLOAD_CLIENT_INFO) {
 #if SYSTEM_DEBUG_FLAG == 1
-                        cerr << "KeyServer : recv data type is mask info" << endl;
+                        cout << "KeyServer : recv data type is mask info" << endl;
 #endif
                         uint32_t recvedClientCounter = 0;
                         int clientID = netHead.clientID;
@@ -323,10 +323,14 @@ void keyServer::runRecvThread()
                                 currentMaskInfo.keyGenerateCounter = 0;
                                 currentMaskInfo.currentKeyGenerateCounter = 0;
                                 clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                                cerr << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                                cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+#endif
                             } else {
                                 if (clientList_.at(clientID).keyGenerateCounter == recvedClientCounter) {
-                                    cerr << "KeyServer : compared key generate encryption counter success" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                                    cout << "KeyServer : compared key generate encryption counter success" << endl;
+#endif
                                     continue;
                                 } else {
                                     cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList_.at(clientID).keyGenerateCounter << endl;
@@ -341,11 +345,11 @@ void keyServer::runRecvThread()
                             currentMaskInfo.keyGenerateCounter = 0;
                             currentMaskInfo.currentKeyGenerateCounter = 0;
                             clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                            cerr << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
+                            cout << "KeyServer : insert new client mask info into list, client ID = " << currentMaskInfo.clientID << ", current clientList_ size = " << clientList_.size() << endl;
                         }
                     } else if (netHead.messageType == KEY_GEN_UPLOAD_CHUNK_HASH) {
 #if SYSTEM_DEBUG_FLAG == 1
-                        cerr << "KeyServer : recv data type is chunk hash" << endl;
+                        cout << "KeyServer : recv data type is chunk hash" << endl;
 #endif
                         epollSession_.at(event[i].data.fd).length = netHead.dataSize;
                         epollSession_.at(event[i].data.fd).requestNumber = epollSession_.at(event[i].data.fd).length / CHUNK_HASH_SIZE;
@@ -429,7 +433,7 @@ void keyServer::runSendThread()
     while (true) {
         if (responseMQ_->pop(fd)) {
             if (epollSession_.find(fd) == epollSession_.end()) {
-                cerr << "find data in epoll session failed" << endl;
+                cerr << "KeyServer : find data in epoll session failed" << endl;
                 continue;
             } else {
                 if (epollSession_.at(fd).keyGenerateFlag == true) {
@@ -457,7 +461,7 @@ void keyServer::runKeyGenerateRequestThread(int threadID)
             client->request(epollSession_.at(fd).hashContent, epollSession_.at(fd).length, epollSession_.at(fd).keyContent, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
 #elif KEY_GEN_SGX_CTR == 1
             if (clientList_.find(epollSession_.at(fd).clientID) == clientList_.end()) {
-                cerr << "find data in client mask info list failed" << endl;
+                cerr << "KeyServer : find data in client mask info list failed" << endl;
                 auto it = clientList_.begin();
                 while (it != clientList_.end()) {
                     cout << "KeyServer : client list containes: " << it->first << ", mask info : user counter = " << it->second.keyGenerateCounter << ", current counter = " << it->second.currentKeyGenerateCounter << endl;
@@ -529,7 +533,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         }
 
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
-        // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "KeyServer : recv hash number = " << recvNumber << endl;
+#endif
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
 
@@ -698,7 +704,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         }
 
         int recvNumber = netHead.dataSize / CHUNK_HASH_SIZE;
-        // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "KeyServer : recv hash number = " << recvNumber << endl;
+#endif
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
 
@@ -831,8 +839,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             return;
         }
         int recvNumber = recvSize / CHUNK_HASH_SIZE;
-        // cerr << "KeyServer : recv hash number = " << recvNumber << endl;
-
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "KeyServer : recv hash number = " << recvNumber << endl;
+#endif
         u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
 
 #if SYSTEM_BREAK_DOWN == 1

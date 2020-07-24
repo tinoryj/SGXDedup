@@ -50,7 +50,7 @@ void PRINT_BYTE_ARRAY_CLIENT_MAIN(
 
 void CTRLC(int s)
 {
-    cerr << "Client close" << endl;
+    cerr << "Client exit with keyboard interrupt" << endl;
     delete chunkerObj;
     delete fingerprinterObj;
     delete keyClientObj;

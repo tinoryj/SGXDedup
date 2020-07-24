@@ -125,7 +125,7 @@ bool Socket::Recv(u_char* buffer, int& recvSize)
         return false;
     }
     if (recvedSize < 0) {
-        cerr << "Socket: error recvSize = " << setbase(10) << recvedSize << endl;
+        cerr << "Socket : error recvSize = " << setbase(10) << recvedSize << endl;
         return false;
     }
 

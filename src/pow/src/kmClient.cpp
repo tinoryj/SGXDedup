@@ -283,7 +283,7 @@ bool kmClient::doAttestation()
     uint32_t msg3_sz;
 
     string enclaveName = config.getKMEnclaveName();
-    cerr << "kmClient : start to create enclave" << endl;
+    cout << "kmClient : start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "kmClient : Can not launch km_enclave : " << enclaveName << endl;
@@ -326,19 +326,20 @@ bool kmClient::doAttestation()
     char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg2RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg01Buffer, sizeof(msg01))) {
-        cerr << "kmClient: socket error" << endl;
+        cerr << "kmClient : msg01 send socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     if (!raSecurityChannel_->recv(sslConnection_, msg2Buffer, msg2RecvSize)) {
-        cerr << "kmClient: socket error" << endl;
+        cerr << "kmClient : msg2 recv socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     msg2 = (sgx_ra_msg2_t*)new uint8_t[msg2RecvSize];
     memcpy(msg2, msg2Buffer, msg2RecvSize);
-    cerr << "kmClient : Send msg01 and Recv msg2 success" << endl;
-
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << "kmClient : Send msg01 and Recv msg2 success" << endl;
+#endif
     /* Process Msg2, Get Msg3  */
     /* object msg3 is malloc'd by SGX SDK, so remember to free when finished */
 
@@ -349,37 +350,44 @@ bool kmClient::doAttestation()
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "kmClient : sgx_ra_proc_msg2 : " << status << endl;
+        cerr << "kmClient : sgx_ra_proc_msg2 error, status = " << status << endl;
         if (msg2 != nullptr) {
             free(msg2);
         }
         return false;
     }
-    cerr << "kmClient : process msg2 success" << endl;
+
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << "kmClient : process msg2 success" << endl;
+#endif
 
     char msg3Buffer[msg3_sz];
     memcpy(msg3Buffer, msg3, msg3_sz);
     char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg4RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg3Buffer, msg3_sz)) {
-        cerr << "kmClient: socket error" << endl;
+        cerr << "kmClient : msg3 send socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
     if (!raSecurityChannel_->recv(sslConnection_, msg4Buffer, msg4RecvSize)) {
-        cerr << "kmClient: socket error" << endl;
+        cerr << "kmClient : msg4 recv socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     msg4 = (ra_msg4_t*)new uint8_t[msg4RecvSize];
     memcpy(msg4, msg4Buffer, msg4RecvSize);
-    cerr << "kmClient : send msg3 and Recv msg4 success" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << "kmClient : send msg3 and Recv msg4 success" << endl;
+#endif
     if (msg3 != nullptr) {
         free(msg3);
     }
     if (msg4->status) {
-        cerr << "kmClient : Enclave TRUSTED" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "kmClient : Enclave TRUSTED" << endl;
+#endif
     } else if (!msg4->status) {
         cerr << "kmClient : Enclave NOT TRUSTED" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);

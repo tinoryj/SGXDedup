@@ -79,7 +79,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     unsigned char digest[32], r[32], s[32], gb_ga[128];
 
     if (msg01.msg0_extended_epid_group_id != 0) {
-        cerr << "msg0 Extended Epid Group ID is not zero.  Exiting.\n";
+        cerr << "PowServer : msg0 Extended Epid Group ID is not zero.  Exiting.\n";
         return false;
     }
 
@@ -87,12 +87,12 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 
     Gb = key_generate();
     if (Gb == nullptr) {
-        cerr << "can not create session key\n";
+        cerr << "PowServer : can not create session key\n";
         return false;
     }
 
     if (!derive_kdk(Gb, current->kdk, msg01.msg1.g_a)) {
-        cerr << "can not derive KDK\n";
+        cerr << "PowServer : can not derive KDK\n";
         return false;
     }
 
@@ -108,7 +108,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     msg2.kdf_id = 1;
 
     if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
-        cerr << "can not retrieve sigrl form ias server\n";
+        cerr << "PowServer : can not retrieve sigrl form ias server\n";
         return false;
     }
 
@@ -135,12 +135,12 @@ bool powServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t 
     EVP_PKEY* Ga;
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
-        cerr << "can not get ga from msg1\n";
+        cerr << "PowServer : can not get ga from msg1\n";
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
-        cerr << "can not get shared secret\n";
+        cerr << "PowServer : can not get shared secret\n";
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
@@ -156,12 +156,12 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
 
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
-        cerr << "can not make ias request\n";
+        cerr << "PowServer : can not make ias request\n";
         return false;
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
-        cerr << "ias get sigrl error\n";
+        cerr << "PowServer : ias get sigrl error\n";
         return false;
     }
     memcpy(sig_rl, &sigrlstr[0], sigrlstr.length());
@@ -177,13 +177,13 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
 {
 
     if (CRYPTO_memcmp(&msg3->g_a, &current->msg1.g_a, sizeof(sgx_ec256_public_t))) {
-        cerr << "msg1.ga != msg3.ga\n";
+        cerr << "PowServer : msg1.ga != msg3.ga\n";
         return false;
     }
     sgx_mac_t msgMAC;
     cmac128(current->smk, (unsigned char*)&msg3->g_a, sizeof(sgx_ra_msg3_t) - sizeof(sgx_mac_t) + quote_sz, (unsigned char*)msgMAC);
     if (CRYPTO_memcmp(msg3->mac, msgMAC, sizeof(sgx_mac_t))) {
-        cerr << "broken msg3 from client\n";
+        cerr << "PowServer : broken msg3 from client\n";
         return false;
     }
     char* b64quote;
@@ -191,7 +191,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
     sgx_quote_t* q;
     q = (sgx_quote_t*)msg3->quote;
     if (memcmp(current->msg1.gid, &q->epid_group_id, sizeof(sgx_epid_group_id_t))) {
-        cerr << "Attestation failed. Differ gid\n";
+        cerr << "PowServer : Attestation failed. Differ gid\n";
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
@@ -230,7 +230,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
         if (CRYPTO_memcmp((void*)vfy_rdata, (void*)&r->report_data,
                 64)) {
 
-            cerr << "Report verification failed.\n";
+            cerr << "PowServer : Report verification failed.\n";
             return false;
         }
         // temp ---- msg4 maul setting
@@ -244,7 +244,7 @@ bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
             current->enclaveTrusted = true;
             return true;
         } else {
-            cerr << "PowServer : set client session key" << endl;
+            cout << "PowServer : set client session key error" << endl;
             return false;
         }
     } else {
@@ -263,7 +263,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
 
     req = new IAS_Request(_ias, (uint16_t)_iasVersion);
     if (req == nullptr) {
-        cerr << "Exception while creating IAS request object\n";
+        cerr << "PowServer : Exception while creating IAS request object\n";
         return false;
     }
 
@@ -284,7 +284,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
         if (reportObj.hasKey("version")) {
             unsigned int rversion = (unsigned int)reportObj["version"].ToInt();
             if (_iasVersion != rversion) {
-                cerr << "Report version " << rversion << " does not match API version " << _iasVersion << endl;
+                cerr << "PowServer : Report version " << rversion << " does not match API version " << _iasVersion << endl;
                 return false;
             }
         }
