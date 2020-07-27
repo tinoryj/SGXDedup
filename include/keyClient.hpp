@@ -1,13 +1,13 @@
 #ifndef SGXDEDUP_KEYCLIENT_HPP
 #define SGXDEDUP_KEYCLIENT_HPP
 
+#include "configure.hpp"
 #if ENCODER_MODULE_ENABLED == 1
 #include "encoder.hpp"
 #else
 #include "powClient.hpp"
 #include "powSession.hpp"
 #endif
-#include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
@@ -29,7 +29,7 @@ private:
     int keyGenNumber_;
     int clientID_;
 #if KEY_GEN_SGX_CTR == 1
-    u_char nonce[CRYPTO_BLOCK_SZIE - sizeof(uint32_t)];
+    u_char nonce_[CRYPTO_BLOCK_SZIE - sizeof(uint32_t)];
 #endif
 
 public:

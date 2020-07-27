@@ -16,7 +16,9 @@ using namespace std;
 
 Configure config("config.json");
 Chunker* chunkerObj;
+#if FINGERPRINTER_MODULE_ENABLE == 1
 Fingerprinter* fingerprinterObj;
+#endif
 KeyClient* keyClientObj;
 #if ENCODER_MODULE_ENABLED == 1
 Encoder* encoderObj;
@@ -52,7 +54,9 @@ void CTRLC(int s)
 {
     cerr << "Client exit with keyboard interrupt" << endl;
     delete chunkerObj;
+#if FINGERPRINTER_MODULE_ENABLE == 1
     delete fingerprinterObj;
+#endif
     delete keyClientObj;
 #if ENCODER_MODULE_ENABLED == 1
     delete encoderObj;
@@ -165,10 +169,14 @@ int main(int argv, char* argc[])
 #else
         keyClientObj = new KeyClient(powClientObj, sessionKey);
 #endif
+#if FINGERPRINTER_MODULE_ENABLE == 1
         fingerprinterObj = new Fingerprinter(keyClientObj);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, fingerprinterObj);
-
+#else
+        string inputFile(argc[2]);
+        chunkerObj = new Chunker(inputFile, keyClientObj);
+#endif
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
         second = diff / 1000000.0;
@@ -178,11 +186,11 @@ int main(int argv, char* argc[])
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
-
+#if FINGERPRINTER_MODULE_ENABLE == 1
         //start fingerprinting thread
         th = new boost::thread(attrs, boost::bind(&Fingerprinter::run, fingerprinterObj));
         thList.push_back(th);
-
+#endif
         //start key client thread
         th = new boost::thread(attrs, boost::bind(&KeyClient::run, keyClientObj));
         thList.push_back(th);
@@ -212,7 +220,9 @@ int main(int argv, char* argc[])
     second = diff / 1000000.0;
 
     delete chunkerObj;
+#if FINGERPRINTER_MODULE_ENABLE == 1
     delete fingerprinterObj;
+#endif
     delete keyClientObj;
 #if ENCODER_MODULE_ENABLED == 1
     delete encoderObj;

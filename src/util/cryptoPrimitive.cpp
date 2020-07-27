@@ -293,34 +293,33 @@ bool CryptoPrimitive::keyExchangeEncrypt(u_char* dataBuffer, const int dataSize,
 
 bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter, uint32_t generateNumber, u_char* key, u_char* iv, u_char* ctrBaseBuffer)
 {
-    u_char currentKeyBase[CRYPTO_BLOCK_SZIE * generateNumber];
-    u_char currentKey[CRYPTO_BLOCK_SZIE * generateNumber];
+    u_char currentKeyBase[32];
+    u_char currentKey[32];
     int cipherlen = 0, len = 0;
-    for (uint32_t i = counter; i < counter + generateNumber; i++) {
-        memcpy(currentKeyBase + (i - counter) * CRYPTO_BLOCK_SZIE, &i, sizeof(uint32_t));
-        memcpy(currentKeyBase + (i - counter) * CRYPTO_BLOCK_SZIE + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
-    }
+    uint32_t currentCounterTemp = counter;
     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
-    if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), nullptr, key, iv) != 1) {
-        cerr << "encrypt error\n";
-        return false;
+    for (int i = 0; i < generateNumber / 2; i++) {
+        memcpy(currentKeyBase, &currentCounterTemp, sizeof(uint32_t));
+        memcpy(currentKeyBase + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
+        currentCounterTemp++;
+        memcpy(currentKeyBase + CRYPTO_BLOCK_SZIE, &currentCounterTemp, sizeof(uint32_t));
+        memcpy(currentKeyBase + CRYPTO_BLOCK_SZIE + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
+        currentCounterTemp++;
+        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), nullptr, key, iv) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+        // cout << "cipher len = " << cipherlen << endl;
+        if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+            cerr << "encrypt error\n";
+            return false;
+        }
+        memcpy(ctrBaseBuffer + i * 32, currentKey, 32);
     }
-    if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, CRYPTO_BLOCK_SZIE * generateNumber) != 1) {
-        cerr << "encrypt error\n";
-        return false;
-    }
-    // cout << "cipher len = " << cipherlen << endl;
-    if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
-        cerr << "encrypt error\n";
-        return false;
-    }
-    // cipherlen += len;
-    // if (cipherlen != CRYPTO_BLOCK_SZIE * generateNumber) {
-    //     cerr << "CryptoPrimitive : encrypt output size not equal to origin size, size = " << cipherlen << ", len = " << len << ", generate number = " << generateNumber << endl;
-    //     return false;
-    // } else {
-    memcpy(ctrBaseBuffer, currentKey, CRYPTO_BLOCK_SZIE * generateNumber);
-    // }
     return true;
 }
 

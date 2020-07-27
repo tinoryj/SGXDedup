@@ -27,7 +27,7 @@ void PRINT_BYTE_ARRAY_CHUNKER(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
-
+#if FINGERPRINTER_MODULE_ENABLE == 1
 Chunker::Chunker(std::string path, Fingerprinter* FingerprinterObjTemp)
 {
     loadChunkFile(path);
@@ -35,7 +35,15 @@ Chunker::Chunker(std::string path, Fingerprinter* FingerprinterObjTemp)
     cryptoObj_ = new CryptoPrimitive();
     FingerprinterObj_ = FingerprinterObjTemp;
 }
-
+#else
+Chunker::Chunker(std::string path, KeyClient* keyClientObjTemp)
+{
+    loadChunkFile(path);
+    ChunkerInit(path);
+    cryptoObj_ = new CryptoPrimitive();
+    keyClientObj_ = keyClientObjTemp;
+}
+#endif
 Chunker::~Chunker()
 {
     if (powerLUT_ != NULL) {
@@ -249,7 +257,11 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
+#if FINGERPRINTER_MODULE_ENABLE == 1
                 FingerprinterObj_->insertMQ(tempChunk);
+#else
+                keyClientObj_->insertMQ(tempChunk);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -286,7 +298,11 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
+#if FINGERPRINTER_MODULE_ENABLE == 1
                 FingerprinterObj_->insertMQ(tempChunk);
+#else
+                keyClientObj_->insertMQ(tempChunk);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -309,17 +325,23 @@ void Chunker::fixSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-    if (!FingerprinterObj_->insertMQ(fileRecipe_)) {
-        cerr << "Chunker : error insert recipe head to KeyClient message queue" << endl;
-        return;
-    }
+#if FINGERPRINTER_MODULE_ENABLE == 1
+    FingerprinterObj_->insertMQ(fileRecipe_);
+#else
+    keyClientObj_->insertMQ(fileRecipe_);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendChunkerInsertMQ, NULL);
     diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
     second = diff / 1000000.0;
     insertTime += second;
 #endif
-    if (FingerprinterObj_->editJobDoneFlag() == false) {
+#if FINGERPRINTER_MODULE_ENABLE == 1
+    bool jobDoneFlagStatus = FingerprinterObj_->editJobDoneFlag();
+#else
+    bool jobDoneFlagStatus = keyClientObj_->editJobDoneFlag();
+#endif
+    if (jobDoneFlagStatus == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -398,10 +420,11 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                if (!FingerprinterObj_->insertMQ(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
-                    return;
-                }
+#if FINGERPRINTER_MODULE_ENABLE == 1
+                FingerprinterObj_->insertMQ(tempChunk);
+#else
+                keyClientObj_->insertMQ(tempChunk);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -425,10 +448,11 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-                if (!FingerprinterObj_->insertMQ(tempChunk)) {
-                    cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
-                    return;
-                }
+#if FINGERPRINTER_MODULE_ENABLE == 1
+                FingerprinterObj_->insertMQ(tempChunk);
+#else
+                keyClientObj_->insertMQ(tempChunk);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendChunkerInsertMQ, NULL);
                 diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -457,10 +481,11 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-        if (!FingerprinterObj_->insertMQ(tempChunk)) {
-            cerr << "Chunker : error insert chunk to KeyClient message queue for chunk ID = " << tempChunk.chunk.ID << endl;
-            return;
-        }
+#if FINGERPRINTER_MODULE_ENABLE == 1
+        FingerprinterObj_->insertMQ(tempChunk);
+#else
+        keyClientObj_->insertMQ(tempChunk);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeendChunkerInsertMQ, NULL);
         diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
@@ -479,19 +504,24 @@ void Chunker::varSizeChunking()
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartChunkerInsertMQ, NULL);
 #endif
-    if (!FingerprinterObj_->insertMQ(fileRecipe_)) {
-        cerr << "Chunker : error insert recipe head to KeyClient message queue" << endl;
-        return;
-    }
+#if FINGERPRINTER_MODULE_ENABLE == 1
+    FingerprinterObj_->insertMQ(fileRecipe_);
+#else
+    keyClientObj_->insertMQ(fileRecipe_);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendChunkerInsertMQ, NULL);
     diff = 1000000 * (timeendChunkerInsertMQ.tv_sec - timestartChunkerInsertMQ.tv_sec) + timeendChunkerInsertMQ.tv_usec - timestartChunkerInsertMQ.tv_usec;
     second = diff / 1000000.0;
     insertTime += second;
 #endif
-    if (FingerprinterObj_->editJobDoneFlag() == false) {
-        cerr << "Chunker: set chunking done flag error" << endl;
-        return;
+#if FINGERPRINTER_MODULE_ENABLE == 1
+    bool jobDoneFlagStatus = FingerprinterObj_->editJobDoneFlag();
+#else
+    bool jobDoneFlagStatus = keyClientObj_->editJobDoneFlag();
+#endif
+    if (jobDoneFlagStatus == false) {
+        cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendChunker, NULL);
@@ -571,8 +601,11 @@ void Chunker::traceDrivenChunkingFSL()
         memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
-
+#if FINGERPRINTER_MODULE_ENABLE == 1
         FingerprinterObj_->insertMQ(tempChunk);
+#else
+        keyClientObj_->insertMQ(tempChunk);
+#endif
         chunkIDCounter++;
         fileSize += size;
     }
@@ -581,8 +614,14 @@ void Chunker::traceDrivenChunkingFSL()
     fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
     fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
     fileRecipe_.dataType = DATA_TYPE_RECIPE;
+#if FINGERPRINTER_MODULE_ENABLE == 1
     FingerprinterObj_->insertMQ(fileRecipe_);
-    if (FingerprinterObj_->editJobDoneFlag() == false) {
+    bool jobDoneFlagStatus = FingerprinterObj_->editJobDoneFlag();
+#else
+    keyClientObj_->insertMQ(fileRecipe_);
+    bool jobDoneFlagStatus = keyClientObj_->editJobDoneFlag();
+#endif
+    if (jobDoneFlagStatus == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -660,8 +699,11 @@ void Chunker::traceDrivenChunkingUBC()
         memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
-
+#if FINGERPRINTER_MODULE_ENABLE == 1
         FingerprinterObj_->insertMQ(tempChunk);
+#else
+        keyClientObj_->insertMQ(tempChunk);
+#endif
         chunkIDCounter++;
         fileSize += size;
     }
@@ -670,8 +712,14 @@ void Chunker::traceDrivenChunkingUBC()
     fileRecipe_.recipe.fileRecipeHead.fileSize = fileSize;
     fileRecipe_.recipe.keyRecipeHead.fileSize = fileRecipe_.recipe.fileRecipeHead.fileSize;
     fileRecipe_.dataType = DATA_TYPE_RECIPE;
+#if FINGERPRINTER_MODULE_ENABLE == 1
     FingerprinterObj_->insertMQ(fileRecipe_);
-    if (FingerprinterObj_->editJobDoneFlag() == false) {
+    bool jobDoneFlagStatus = FingerprinterObj_->editJobDoneFlag();
+#else
+    keyClientObj_->insertMQ(fileRecipe_);
+    bool jobDoneFlagStatus = keyClientObj_->editJobDoneFlag();
+#endif
+    if (jobDoneFlagStatus == false) {
         cerr << "Chunker : set chunking done flag error" << endl;
     }
 #if SYSTEM_BREAK_DOWN == 1

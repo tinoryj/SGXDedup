@@ -9,8 +9,7 @@
 #include <string.h>
 
 #define MAX_SPECULATIVE_KEY_SIZE 4 * 1024 * 1024
-#define MAX_SPECULATIVE_KEY_NUMBER (MAX_SPECULATIVE_KEY_SIZE / 16)
-#define MAX_SPECULATIVE_CLIENT_SIZE 20
+#define MAX_SPECULATIVE_CLIENT_SIZE 1
 
 // static const sgx_ec256_public_t def_service_public_key = {
 //     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -141,20 +140,24 @@ sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNum
 {
     nextEncryptMaskSetupFlag_ = 0;
     EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
-    unsigned char currentKeyBase[16];
-    unsigned char currentKey[16];
+    unsigned char currentKeyBase[32];
+    unsigned char currentKey[32];
     int cipherlen, len;
     uint32_t currentCounter = previousCountNumber;
-    for (int i = 0; i < MAX_SPECULATIVE_KEY_SIZE / 16; i++) {
-        currentCounter++;
+    EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
+    for (int i = 0; i < MAX_SPECULATIVE_KEY_SIZE / 32; i++) {
         memcpy(currentKeyBase, &currentCounter, sizeof(uint32_t));
         memcpy(currentKeyBase + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+        currentCounter++;
+        memcpy(currentKeyBase + 16, &currentCounter, sizeof(uint32_t));
+        memcpy(currentKeyBase + 16 + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+        currentCounter++;
         if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey) != 1) {
             EVP_CIPHER_CTX_cleanup(cipherctx_);
             return SGX_ERROR_UNEXPECTED;
         }
 
-        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 16) != 1) {
+        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
             EVP_CIPHER_CTX_cleanup(cipherctx_);
             return SGX_ERROR_UNEXPECTED;
         }
@@ -163,13 +166,7 @@ sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNum
             EVP_CIPHER_CTX_cleanup(cipherctx_);
             return SGX_ERROR_UNEXPECTED;
         }
-        cipherlen += len;
-        if (cipherlen != 16) {
-            EVP_CIPHER_CTX_cleanup(cipherctx_);
-            return SGX_ERROR_UNEXPECTED;
-        } else {
-            memcpy(nextEncryptionMaskSet_ + clientID * MAX_SPECULATIVE_KEY_SIZE + i * 16, currentKey, 16);
-        }
+        memcpy_s(nextEncryptionMaskSet_ + clientID * MAX_SPECULATIVE_KEY_SIZE + i * 32, MAX_SPECULATIVE_CLIENT_SIZE * MAX_SPECULATIVE_KEY_SIZE, currentKey, 32);
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
     nextEncryptMaskSetupFlag_ = 1;
@@ -209,6 +206,9 @@ sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)
 sgx_status_t ecall_setCTRMode()
 {
     nextEncryptionMaskSet_ = (uint8_t*)malloc(MAX_SPECULATIVE_CLIENT_SIZE * MAX_SPECULATIVE_KEY_SIZE * sizeof(uint8_t));
+    if (nextEncryptionMaskSet_ == NULL) {
+        return SGX_ERROR_UNEXPECTED;
+    }
     return SGX_SUCCESS;
 }
 
@@ -234,51 +234,45 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         }
-        unsigned char currentKeyBase[srcLen * 2];
-        unsigned char currentKey[srcLen * 2];
+        unsigned char currentKeyBase[32];
+        unsigned char currentKey[32];
         int cipherlen, len;
         EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
         uint32_t currentCounterTemp = previousCounter + currentCounter;
-        for (int i = 0; i < srcLen * 2 / 16; i++) {
-            memcpy(currentKeyBase + i * 16, &currentCounterTemp, sizeof(uint32_t));
-            memcpy(currentKeyBase + i * 16 + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+        for (int i = 0; i < srcLen * 2 / 32; i++) {
+            memcpy_s(currentKeyBase, 32, &currentCounterTemp, sizeof(uint32_t));
+            memcpy_s(currentKeyBase + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
             currentCounterTemp++;
-        }
-        if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey)) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
-            return SGX_ERROR_UNEXPECTED;
-        }
-        if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, srcLen) != 1) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
-            return SGX_ERROR_UNEXPECTED;
-        }
-        if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
-            return SGX_ERROR_UNEXPECTED;
-        }
-        cipherlen += len;
-        if (cipherlen != srcLen * 2) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
-            return SGX_ERROR_UNEXPECTED;
-        } else {
-            memcpy(mask, currentKey, srcLen * 2);
+            memcpy_s(currentKeyBase + 16, 32, &currentCounterTemp, sizeof(uint32_t));
+            memcpy_s(currentKeyBase + 16 + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
+            currentCounterTemp++;
+            if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey)) {
+                free(hash);
+                free(originhash);
+                free(hashTemp);
+                free(keySeed);
+                return SGX_ERROR_UNEXPECTED;
+            }
+            if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
+                free(hash);
+                free(originhash);
+                free(hashTemp);
+                free(keySeed);
+                return SGX_ERROR_UNEXPECTED;
+            }
+            if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+                free(hash);
+                free(originhash);
+                free(hashTemp);
+                free(keySeed);
+                return SGX_ERROR_UNEXPECTED;
+            }
+            memcpy_s(mask + i * 32, srcLen * 2, currentKey, 32);
         }
         EVP_CIPHER_CTX_cleanup(cipherctx_);
-    }
-    for (int i = 0; i < srcLen; i++) {
-        originhash[i] = src[i] ^ mask[i];
+        for (int i = 0; i < srcLen; i++) {
+            originhash[i] = src[i] ^ mask[i];
+        }
     }
     for (uint32_t index = 0; index < (srcLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
@@ -293,13 +287,13 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         }
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
-    if ((currentCounter + (srcLen / 32)) < MAX_SPECULATIVE_KEY_SIZE && nextEncryptMaskSetupFlag_ == 1) {
+    if ((currentCounter * 16 + srcLen) < MAX_SPECULATIVE_KEY_SIZE && nextEncryptMaskSetupFlag_ == 1) {
         for (int i = 0; i < srcLen; i++) {
             key[i] = keySeed[i] ^ nextEncryptionMaskSet_[clientID * MAX_SPECULATIVE_KEY_SIZE + currentCounter * 16 + srcLen + i];
         }
     } else {
         for (int i = 0; i < srcLen; i++) {
-            originhash[i] = src[i] ^ mask[i + srcLen];
+            key[i] = keySeed[i] ^ mask[i + srcLen];
         }
     }
     free(hash);

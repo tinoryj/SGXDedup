@@ -21,6 +21,7 @@ void PRINT_BYTE_ARRAY_KM(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
+
 #if KEY_GEN_SGX_CTR == 1
 bool kmClient::maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen)
 {
@@ -139,13 +140,23 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                     char currentSessionKey[32];
                     status = ecall_getCurrentSessionKey(_eid, &retval, currentSessionKey);
                     PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey, 32);
+#if KEY_GEN_SGX_CTR == 1
                     status = ecall_setCTRMode(_eid, &retval);
                     if (status == SGX_SUCCESS) {
                         return true;
                     } else {
                         return false;
                     }
+#endif
 #else
+#if KEY_GEN_SGX_CTR == 1
+                    status = ecall_setCTRMode(_eid, &retval);
+                    if (status == SGX_SUCCESS) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+#endif
                     return true;
 #endif
                 } else {

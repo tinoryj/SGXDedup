@@ -11,14 +11,20 @@ using namespace std;
 #define SYSTEM_BREAK_DOWN 1
 #define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
-#define ENCODER_MODULE_ENABLED 0
+#define ENCODER_MODULE_ENABLED 0 // if enable encoder, chunk encryption will move from keyclient to encoder
+#define FINGERPRINTER_MODULE_ENABLE 1
 #define ENCLAVE_SEALED_INIT_ENABLE 1
+/* Key Generation method Settings: 0-disable; 1-enable */
+#define KEY_GEN_SGX_CFB 0
+#define KEY_GEN_SGX_CTR 1
+#define KEY_GEN_SERVER_MLE_NO_OPRF 0
 
-/* System Running Type Settings */
-#define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
-#define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
-#define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
-#define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
+/* Storage Core Settings: 0-disable; 1-enable */
+#define STORAGE_SERVER_VERIFY_UPLOAD 0
+#define STORAGE_CORE_READ_CACHE 0
+
+#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
+#define KEY_GEN_EPOLL_MODE 0
 
 /* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/
 #define QUEUE_TYPE_LOCKFREE_SPSC_QUEUE 0
@@ -32,17 +38,11 @@ using namespace std;
 #define ENCRYPT_ONLY_KEY_RECIPE_FILE 1
 #define RECIPE_MANAGEMENT_METHOD ENCRYPT_WHOLE_RECIPE_FILE
 
-/* Storage Core Settings: 0-disable; 1-enable */
-#define STORAGE_SERVER_VERIFY_UPLOAD 0
-#define STORAGE_CORE_READ_CACHE 0
-
-/* Key Generation method Settings: 0-disable; 1-enable */
-#define KEY_GEN_SGX_CFB 1
-#define KEY_GEN_SGX_CTR 0
-#define KEY_GEN_SERVER_MLE_NO_OPRF 0
-
-#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
-#define KEY_GEN_EPOLL_MODE 0
+/* System Running Type Settings */
+#define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
+#define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
+#define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
+#define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
 
 /* System Infomation Size Settings */
 #define CHUNK_FINGER_PRINT_SIZE 32

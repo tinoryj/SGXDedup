@@ -65,7 +65,7 @@ KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
     keyGenNumber_ = keyGenNumber;
     clientID_ = config.getClientID();
 #if KEY_GEN_SGX_CTR == 1
-    memset(nonce, 1, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
+    memset(nonce_, 1, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
 #endif
 }
 
@@ -132,10 +132,10 @@ void KeyClient::runKeyGenSimulator(int clientID)
     initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
     dataHead.clientID = clientID;
     dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
-    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
+    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce_ & counter
     memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce_, 16 - sizeof(uint32_t));
     if (!keySecurityChannel->send(sslConnection, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
         cerr << "KeyClient: send init information error" << endl;
         return;
@@ -226,8 +226,10 @@ void KeyClient::run()
 
 #if SYSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
-    double keyExchangeTime = 0;
     double chunkContentEncryptionTime = 0;
+#if FINGERPRINTER_MODULE_ENABLE == 0
+    double generatePlainChunkHashTime = 0;
+#endif
     long diff;
     double second;
 #endif
@@ -270,10 +272,10 @@ void KeyClient::run()
     initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
     dataHead.clientID = clientID_;
     dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
-    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
+    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce_ & counter
     memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
     memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), &counter, sizeof(uint32_t));
-    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), nonce_, 16 - sizeof(uint32_t));
     if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
         cerr << "KeyClient: send init information error" << endl;
         return;
@@ -298,6 +300,18 @@ void KeyClient::run()
                 continue;
             }
             batchList.push_back(tempChunk);
+#if FINGERPRINTER_MODULE_ENABLE == 0
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timestartKey, NULL);
+#endif
+            bool generatePlainChunkHashStatus = cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timeendKey, NULL);
+            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+            second = diff / 1000000.0;
+            generatePlainChunkHashTime += second;
+#endif
+#endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             batchNumber++;
         }
@@ -319,7 +333,6 @@ void KeyClient::run()
             diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
             second = diff / 1000000.0;
             keyGenTime += second;
-            keyExchangeTime += second;
 #endif
             if (!keyExchangeStatus) {
                 cerr << "KeyClient : error get key for " << setbase(10) << batchNumber << " chunks" << endl;
@@ -348,7 +361,12 @@ void KeyClient::run()
                     } else {
                         memcpy(batchList[i].chunk.logicData, ciphertext, batchList[i].chunk.logicDataSize);
                     }
+#if ENCODER_MODULE_ENABLED == 1
+                    encoderObj_->insertMQ(batchList[i]);
+#else
                     powObj_->insertMQ(batchList[i]);
+#endif
+
 #endif
                 }
                 batchList.clear();
@@ -370,8 +388,10 @@ void KeyClient::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
+#if FINGERPRINTER_MODULE_ENABLE == 0
+    cout << "KeyClient : plain chunk hash generate time = " << generatePlainChunkHashTime << " s" << endl;
+#endif
     cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
-    cout << "KeyClient : key exchange total work time = " << keyExchangeTime << " s" << endl;
     cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
 #if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
@@ -490,7 +510,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     gettimeofday(&timestartKey_enc, NULL);
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce_, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
@@ -535,7 +555,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     u_char sendHash[sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber];
     memcpy(sendHash, &netHead, sizeof(NetworkHeadStruct_t));
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce_, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
 
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + sizeof(NetworkHeadStruct_t))) {

@@ -46,6 +46,7 @@ private:
         uint32_t currentKeyGenerateCounter = 0;
         u_char nonce[16 - sizeof(uint32_t)];
         int nonceLen = 16 - sizeof(uint32_t);
+        bool offLineGenerateFlag = false;
     } MaskInfo_t;
     unordered_map<int, MaskInfo_t> clientList_; //clientID - MaskInfo_t pair
 #endif
