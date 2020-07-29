@@ -287,6 +287,9 @@ powClient::powClient(Sender* senderObjTemp)
     ctx_ = 0xdeadbeef;
     senderObj_ = senderObjTemp;
     cryptoObj_ = new CryptoPrimitive();
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartPowClient, NULL);
+#endif
 #if ENCLAVE_SEALED_INIT_ENABLE == 1
     sealedLen_ = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
     // cout << "PowClient : sealed size = " << sealedLen_ << endl;
@@ -367,6 +370,12 @@ powClient::powClient(Sender* senderObjTemp)
 #endif
         }
     }
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendPowClient, NULL);
+    int diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
+    double second = diff / 1000000.0;
+    cout << "PowClient : enclave init time = " << second << endl;
 #endif
 }
 
