@@ -120,11 +120,10 @@ void KeyClient::runKeyGenSimulator(int clientID)
                 cerr << "KeyClient : read old counter file size error" << endl;
             } else {
                 memcpy(&counter, readBuffer, sizeof(uint32_t));
-                cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
+                cerr << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
             }
         }
     }
-    // cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
     NetworkHeadStruct_t initHead, dataHead;
     initHead.clientID = clientID;
@@ -140,7 +139,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
         cerr << "KeyClient: send init information error" << endl;
         return;
     } else {
-        cout << "KeyClient : send init information success, start key generate" << endl;
+        cerr << "KeyClient : send init information success, start key generate" << endl;
     }
 #endif
     u_char chunkHashTemp[CHUNK_HASH_SIZE];
@@ -208,7 +207,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
-        cout << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
+        cerr << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
     }
 #endif
 #if SYSTEM_BREAK_DOWN == 1
@@ -260,11 +259,10 @@ void KeyClient::run()
                 cerr << "KeyClient : read old counter file size error" << endl;
             } else {
                 memcpy(&counter, readBuffer, sizeof(uint32_t));
-                cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
+                cerr << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
             }
         }
     }
-    // cout << "KeyClient : Read old counter file : " << counterFileName << " success, the original counter = " << counter << endl;
     // done
     NetworkHeadStruct_t initHead, dataHead;
     initHead.clientID = clientID_;
@@ -280,7 +278,7 @@ void KeyClient::run()
         cerr << "KeyClient: send init information error" << endl;
         return;
     } else {
-        cout << "KeyClient : send init information success, start key generate" << endl;
+        cerr << "KeyClient : send init information success, start key generate" << endl;
     }
 
 #endif
@@ -407,7 +405,7 @@ void KeyClient::run()
         memcpy(writeBuffer, &counter, sizeof(uint32_t));
         counterOut.write(writeBuffer, sizeof(uint32_t));
         counterOut.close();
-        cout << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
+        cerr << "KeyClient : Stored current counter file : " << counterFileName << ", counter = " << counter << endl;
     }
 #endif
     return;

@@ -5,8 +5,8 @@ extern Configure config;
 
 struct timeval timestartSender;
 struct timeval timeendSender;
-struct timeval timestartSenderReadMQ;
-struct timeval timeendSenderReadMQ;
+struct timeval timestartSenderRun;
+struct timeval timeendSenderRun;
 struct timeval timestartSenderRecipe;
 struct timeval timeendSenderRecipe;
 
@@ -397,14 +397,28 @@ void Sender::run()
     double totalChunkAssembleTime = 0;
     double totalSendRecipeTime = 0;
     double totalRecipeAssembleTime = 0;
+    double totalReadMessageQueueTime = 0;
+    double totalSenderRunTime = 0;
     long diff;
     double second;
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartSenderRun, NULL);
 #endif
     while (!jobDoneFlag) {
         if (inputMQ_->done_ && inputMQ_->isEmpty()) {
             jobDoneFlag = true;
         }
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartSender, NULL);
+#endif
         bool extractChunkStatus = extractMQ(tempChunk);
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendSender, NULL);
+        diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
+        second = diff / 1000000.0;
+        totalReadMessageQueueTime += second;
+#endif
         if (extractChunkStatus) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
 #if SYSTEM_DEBUG_FLAG == 1
@@ -506,13 +520,20 @@ void Sender::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendSenderRun, NULL);
+    diff = 1000000 * (timeendSenderRun.tv_sec - timestartSenderRun.tv_sec) + timeendSenderRun.tv_usec - timestartSenderRun.tv_usec;
+    second = diff / 1000000.0;
+    totalSenderRunTime += second;
+#endif
+#if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendSender, NULL);
     diff = 1000000 * (timeendSender.tv_sec - timestartSender.tv_sec) + timeendSender.tv_usec - timestartSender.tv_usec;
     second = diff / 1000000.0;
     totalSendRecipeTime += second;
     cout << "Sender : assemble recipe list time = " << totalRecipeAssembleTime << " s" << endl;
     cout << "Sender : send recipe list time = " << totalSendRecipeTime << " s" << endl;
-    cout << "Sender : total work time = " << totalRecipeAssembleTime + totalSendRecipeTime + totalChunkAssembleTime + totalSendChunkTime << " s" << endl;
+    cout << "Sender : total sending work time = " << totalRecipeAssembleTime + totalSendRecipeTime + totalChunkAssembleTime + totalSendChunkTime << " s" << endl;
+    cout << "Sender : total thread work time = " << totalSenderRunTime - totalReadMessageQueueTime << " s" << endl;
 #endif
     free(sendChunkBatchBuffer);
     bool serverJobDoneFlag = sendEndFlag();

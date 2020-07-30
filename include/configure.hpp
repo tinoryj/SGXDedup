@@ -14,6 +14,7 @@ using namespace std;
 #define ENCODER_MODULE_ENABLED 0 // if enable encoder, chunk encryption will move from keyclient to encoder
 #define FINGERPRINTER_MODULE_ENABLE 1
 #define ENCLAVE_SEALED_INIT_ENABLE 1
+
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
