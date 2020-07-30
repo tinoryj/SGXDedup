@@ -8,7 +8,7 @@
 #include <sgx_utils.h>
 #include <string.h>
 
-#define MAX_SPECULATIVE_KEY_SIZE 4 * 1024 * 1024
+#define MAX_SPECULATIVE_KEY_SIZE 5 * 4 * 1024 * 1024
 #define MAX_SPECULATIVE_CLIENT_SIZE 1
 
 // static const sgx_ec256_public_t def_service_public_key = {
