@@ -9,6 +9,7 @@
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/opensslconf.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -58,6 +59,7 @@ public:
     bool decryptChunk(Chunk_t& chunk);
     bool decryptChunk(u_char* chunkData, int chunkSize, u_char* key, u_char* plaintData);
     bool cmac128(u_char* hashList, uint32_t chunkNumber, u_char* mac, u_char* key, int keyLen);
+    bool sha256Hmac(u_char* data, uint32_t dataSize, u_char* mac, u_char* key, int keyLen);
     void PRINT_BYTE_ARRAY(FILE* file, void* mem, uint32_t len)
     {
         if (!mem || !len) {

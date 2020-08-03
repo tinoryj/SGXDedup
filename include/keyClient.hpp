@@ -28,9 +28,6 @@ private:
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     int keyGenNumber_;
     int clientID_;
-#if KEY_GEN_SGX_CTR == 1
-    u_char nonce_[CRYPTO_BLOCK_SZIE - sizeof(uint32_t)];
-#endif
 
 public:
     double keyExchangeEncTime = 0;
@@ -51,8 +48,8 @@ public:
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj);
 #if KEY_GEN_SGX_CTR == 1
     bool keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber);
-    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, uint32_t counter, NetworkHeadStruct_t netHead);
-    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, uint32_t counter, NetworkHeadStruct_t netHead);
+    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, u_char* nonce, uint32_t counter, NetworkHeadStruct_t netHead);
+    bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, u_char* nonce, uint32_t counter, NetworkHeadStruct_t netHead);
 #endif
 };
 

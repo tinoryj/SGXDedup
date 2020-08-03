@@ -340,3 +340,15 @@ bool CryptoPrimitive::cmac128(u_char* hashList, uint32_t chunkNumber, u_char* ma
         return true;
     }
 }
+
+bool CryptoPrimitive::sha256Hmac(u_char* data, uint32_t dataSize, u_char* hmac, u_char* key, int keyLen)
+{
+    uint hmacLen;
+    HMAC_CTX* hmacCtx = HMAC_CTX_new();
+    HMAC_Init_ex(hmacCtx, key, keyLen, EVP_sha256(), NULL);
+    HMAC_Update(hmacCtx, data, dataSize);
+    HMAC_Final(hmacCtx, hmac, &hmacLen);
+    HMAC_CTX_reset(hmacCtx);
+    HMAC_CTX_free(hmacCtx);
+    return true;
+}

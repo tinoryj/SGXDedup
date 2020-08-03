@@ -43,8 +43,9 @@ public:
     bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();
 #if KEY_GEN_SGX_CTR == 1
-    bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen);
-    bool maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen);
+    bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID);
+    int modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hmacBuffer);
+    bool maskGenerate();
 #else
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
 #endif

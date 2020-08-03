@@ -20,16 +20,13 @@ enclave {
         public sgx_status_t ecall_keygen_ctr([user_check] uint8_t *src,
                                             uint32_t srcLen,
                                             [user_check] uint8_t *key, 
-                                            int clientID, 
-                                            uint32_t previousCounter,
-                                            uint32_t currentCounter,
-                                            [user_check] uint8_t* nonce, 
-                                            uint32_t nonceLen);
-        public sgx_status_t ecall_setNextEncryptionMask(int clientID, 
-                                                        uint32_t previousCountNumber, 
-                                                        [user_check] uint8_t* nonce, 
-                                                        uint32_t nonceLen);
+                                            int clientID);
+        public sgx_status_t ecall_setNextEncryptionMask();
         public sgx_status_t ecall_setCTRMode();
         public sgx_status_t ecall_getCurrentSessionKey([user_check] char* currentSessionKeyResult);
+        public sgx_status_t ecall_clientStatusModify(int clientID, [user_check]uint8_t* inputBuffer, [user_check]uint8_t* hmacBuffer);
+    };
+    untrusted {
+		void print([in,string] const char *string, uint32_t len);
     };
 };

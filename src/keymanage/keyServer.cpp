@@ -203,25 +203,13 @@ void keyServer::runSessionKeyUpdate()
 void keyServer::runCTRModeMaskGenerate()
 {
     while (true) {
-        if (raRequestFlag == false) {
-            if (clientThreadCount_ != 0) {
-                continue;
-            } else {
-                boost::xtime xt;
-                boost::xtime_get(&xt, boost::TIME_UTC_);
-                xt.sec += 3;
-                boost::thread::sleep(xt);
-                auto it = clientList_.begin();
-                while (it != clientList_.end()) {
-                    if (it->second.keyGenerateCounter > 0 && it->second.offLineGenerateFlag == true) {
-                        cout << "KeyServer : offlien mask generate for client " << it->first << ", counter = " << it->second.keyGenerateCounter << endl;
-                        client->maskGenerate(it->second.clientID, it->second.keyGenerateCounter, it->second.nonce, it->second.nonceLen);
-                        cout << "KeyServer : offlien mask generate done for client " << it->first << endl;
-                        it->second.offLineGenerateFlag = false;
-                    }
-                    ++it;
-                }
-            }
+        if (raRequestFlag == false && offlineGenerateFlag_ == true) {
+            multiThreadCountMutex_.lock();
+            cout << "KeyServer : start offlien mask generate" << endl;
+            client->maskGenerate();
+            offlineGenerateFlag_ = false;
+            cout << "KeyServer : offlien mask generate done" << endl;
+            multiThreadCountMutex_.unlock();
         }
     }
 }
@@ -324,6 +312,7 @@ void keyServer::runRecvThread()
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
                     multiThreadCountMutex_.lock();
                     clientThreadCount_--;
+                    offlineGenerateFlag_ = true;
                     multiThreadCountMutex_.unlock();
                     continue;
                 } else {
@@ -423,6 +412,7 @@ void keyServer::runRecvThread()
                     cerr << "KeyServer : client closed ssl connect, fd = " << event[i].data.fd << endl;
                     multiThreadCountMutex_.lock();
                     clientThreadCount_--;
+                    offlineGenerateFlag_ = true;
                     multiThreadCountMutex_.unlock();
                     continue;
                 }
@@ -522,12 +512,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -539,12 +531,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;
@@ -594,12 +588,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;
@@ -620,6 +616,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #endif
     multiThreadCountMutex_.lock();
     clientThreadCount_++;
+    offlineGenerateFlag_ = false;
     multiThreadCountMutex_.unlock();
     int recvSize = 0;
     uint64_t currentThreadkeyGenerationNumber = 0;
@@ -629,31 +626,50 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     bool clientInfoExistFlag = false;
     // recv init messages
     NetworkHeadStruct_t netHead;
-    char initInfoBuffer[16 + sizeof(NetworkHeadStruct_t)]; // clientID & nonce & counter
-
-    if (keySecurityChannel_->recv(connection, initInfoBuffer, recvSize)) {
-        memcpy(&netHead, initInfoBuffer, sizeof(NetworkHeadStruct_t));
-        memcpy(&recvedClientCounter, initInfoBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint32_t));
-        memcpy(currentMaskInfo.nonce, initInfoBuffer + sizeof(NetworkHeadStruct_t) + sizeof(uint32_t), 16 - sizeof(uint32_t));
-        currentMaskInfo.clientID = netHead.clientID;
-        currentMaskInfo.keyGenerateCounter = 0; // counter for AES block size, each key increase 4 (hash + key) of the counter
-        currentMaskInfo.currentKeyGenerateCounter = 0;
-        if (clientList_.find(currentMaskInfo.clientID) == clientList_.end()) {
-            cerr << "KeyServer : find data in client mask info list failed" << endl;
-        } else {
-            if (clientList_.at(currentMaskInfo.clientID).keyGenerateCounter == recvedClientCounter) {
-                cout << "KeyServer : compared key generate encryption counter success" << endl;
-                clientInfoExistFlag = true;
-            } else {
-                cerr << "KeyServer : compared key generate encryption counter error, recved counter = " << recvedClientCounter << ", exist counter = " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << endl;
-                clientList_.erase(currentMaskInfo.clientID);
+    char initInfoBuffer[48 + sizeof(NetworkHeadStruct_t)]; // clientID & nonce & counter
+    while (true) {
+        if (keySecurityChannel_->recv(connection, initInfoBuffer, recvSize)) {
+            memcpy(&netHead, initInfoBuffer, sizeof(NetworkHeadStruct_t));
+            u_char cipherBuffer[16], hmacbuffer[32];
+            memcpy(cipherBuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t), 16);
+            memcpy(hmacbuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, 32);
+            int modifyClientInfoStatus = client->modifyClientStatus(netHead.clientID, cipherBuffer, hmacbuffer);
+            if (modifyClientInfoStatus == 1) {
+                char responseBuffer[sizeof(NetworkHeadStruct_t)];
+                NetworkHeadStruct_t responseHead;
+                responseHead.clientID = netHead.clientID;
+                responseHead.dataSize = 0;
+                responseHead.messageType = CLIENT_COUNTER_REST;
+                int sendSize = sizeof(NetworkHeadStruct_t);
+                keySecurityChannel_->send(connection, responseBuffer, sendSize);
+                break;
+            } else if (modifyClientInfoStatus == 2) {
+                char responseBuffer[sizeof(NetworkHeadStruct_t)];
+                NetworkHeadStruct_t responseHead;
+                responseHead.clientID = netHead.clientID;
+                responseHead.dataSize = 0;
+                responseHead.messageType = ERROR_RESEND;
+                int sendSize = sizeof(NetworkHeadStruct_t);
+                keySecurityChannel_->send(connection, responseBuffer, sendSize);
+            } else if (modifyClientInfoStatus == 3) {
+                break;
+            } else if (modifyClientInfoStatus == 4) {
+                char responseBuffer[sizeof(NetworkHeadStruct_t)];
+                NetworkHeadStruct_t responseHead;
+                responseHead.clientID = netHead.clientID;
+                responseHead.dataSize = 0;
+                responseHead.messageType = NONCE_HAS_USED;
+                int sendSize = sizeof(NetworkHeadStruct_t);
+                keySecurityChannel_->send(connection, responseBuffer, sendSize);
+            } else if (modifyClientInfoStatus == -1) {
+                cerr << "KeyServer : error init client messages, ecall not correct" << endl;
                 return;
             }
-        }
 
-    } else {
-        cerr << "KeyServer : error recv client init messages" << endl;
-        return;
+        } else {
+            cerr << "KeyServer : error recv client init messages" << endl;
+            return;
+        }
     }
     //done
     while (true) {
@@ -662,32 +678,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -699,32 +697,13 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -741,19 +720,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        if (clientInfoExistFlag == true) {
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList_.at(currentMaskInfo.clientID).keyGenerateCounter, clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter, clientList_.at(currentMaskInfo.clientID).nonce, clientList_.at(currentMaskInfo.clientID).nonceLen);
-            clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter += 4 * recvNumber;
-#if SYSTEM_DEBUG_FLAG == 1
-            cout << netHead.clientID << ", " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).nonceLen << endl;
-#endif
-        } else {
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, currentMaskInfo.keyGenerateCounter, currentMaskInfo.currentKeyGenerateCounter, currentMaskInfo.nonce, currentMaskInfo.nonceLen);
-            currentMaskInfo.currentKeyGenerateCounter += 4 * recvNumber;
-#if SYSTEM_DEBUG_FLAG == 1
-            cout << netHead.clientID << ", " << currentMaskInfo.keyGenerateCounter << ", " << currentMaskInfo.currentKeyGenerateCounter << ", " << currentMaskInfo.nonceLen << endl;
-#endif
-        }
+        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -768,19 +735,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        if (clientInfoExistFlag == true) {
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, clientList_.at(currentMaskInfo.clientID).keyGenerateCounter, clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter, clientList_.at(currentMaskInfo.clientID).nonce, clientList_.at(currentMaskInfo.clientID).nonceLen);
-            clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter += 4 * recvNumber;
-#if SYSTEM_DEBUG_FLAG == 1
-            cout << netHead.clientID << ", " << clientList_.at(currentMaskInfo.clientID).keyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter << ", " << clientList_.at(currentMaskInfo.clientID).nonceLen << endl;
-#endif
-        } else {
-            client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID, currentMaskInfo.keyGenerateCounter, currentMaskInfo.currentKeyGenerateCounter, currentMaskInfo.nonce, currentMaskInfo.nonceLen);
-            currentMaskInfo.currentKeyGenerateCounter += 4 * recvNumber;
-#if SYSTEM_DEBUG_FLAG == 1
-            cout << netHead.clientID << ", " << currentMaskInfo.keyGenerateCounter << ", " << currentMaskInfo.currentKeyGenerateCounter << ", " << currentMaskInfo.nonceLen << endl;
-#endif
-        }
+        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -796,32 +751,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            if (clientInfoExistFlag == false) {
-                currentMaskInfo.keyGenerateCounter += currentMaskInfo.currentKeyGenerateCounter;
-                currentMaskInfo.currentKeyGenerateCounter = 0;
-                clientList_.insert(make_pair(currentMaskInfo.clientID, currentMaskInfo));
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            } else {
-                clientList_.at(currentMaskInfo.clientID).keyGenerateCounter += clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter;
-                clientList_.at(currentMaskInfo.clientID).currentKeyGenerateCounter = 0;
-                clientList_.at(currentMaskInfo.clientID).offLineGenerateFlag = true;
-            }
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -852,12 +789,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -869,12 +808,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;
@@ -907,12 +848,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
+            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;

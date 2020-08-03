@@ -25,33 +25,74 @@ void PRINT_BYTE_ARRAY_KM(
     fprintf(file, "\n}\n");
 }
 
+void print(const char* str, uint32_t len)
+{
+    uint8_t* array = (uint8_t*)str;
+    for (int i = 0; i < len - 1; i++) {
+        printf("0x%x, ", array[i]);
+        if (i % 8 == 7)
+            printf("\n");
+    }
+    printf("0x%x ", array[len - 1]);
+    printf("\n=====================================\n");
+}
+
 #if KEY_GEN_SGX_CTR == 1
-bool kmClient::maskGenerate(int clientID, uint32_t previousCounter, uint8_t* nonce, uint32_t nonceLen)
+bool kmClient::maskGenerate()
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "kmClient : can't do mask generation before km_enclave trusted" << endl;
+        cerr << "KmClient : can't do mask generation before km_enclave trusted" << endl;
         return false;
     }
     sgx_status_t status;
     status = ecall_setNextEncryptionMask(_eid,
-        &retval,
-        clientID,
-        previousCounter,
-        nonce,
-        nonceLen);
+        &retval);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : ecall failed" << endl;
+        cerr << "KmClient : ecall failed for mask generate" << endl;
         return false;
     }
     return true;
 }
 
-bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID, uint32_t previousCounter, uint32_t currentCounter, uint8_t* nonce, uint32_t nonceLen)
+int kmClient::modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hmacBuffer)
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "kmClient : can't do a request before km_enclave trusted" << endl;
+        cerr << "KmClient : can't modify client status before km_enclave trusted" << endl;
+        return -1;
+    }
+    sgx_status_t status;
+    status = ecall_clientStatusModify(_eid,
+        &retval,
+        clientID,
+        (uint8_t*)cipherBuffer,
+        (uint8_t*)hmacBuffer);
+    if (status != SGX_SUCCESS) {
+        cerr << "KmClient : ecall failed for modify client list" << endl;
+        return -1;
+    } else {
+        if (retval == SGX_ERROR_UNEXPECTED) {
+            cerr << "KmClient : counter not correct, reset to 0" << endl;
+            return 1; // reset counter
+        } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
+            cerr << "KmClient : client hmac not correct, require resend" << endl;
+            return 2; // resend message  (hmac not cpmpare)
+        } else if (retval == SGX_SUCCESS) {
+            cerr << "KmClient : init client info success" << endl;
+            return 3; // success
+        } else if (retval == SGX_ERROR_INVALID_PARAMETER) {
+            cerr << "KmClient : nonce has been used, send regrenate message" << endl;
+            return 4;
+        }
+    }
+}
+
+bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID)
+{
+    sgx_status_t retval;
+    if (!enclave_trusted) {
+        cerr << "KmClient : can't do a request before km_enclave trusted" << endl;
         return false;
     }
     sgx_status_t status;
@@ -62,13 +103,9 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int
         (uint8_t*)hash,
         (uint32_t)hashSize,
         ans,
-        clientID,
-        previousCounter,
-        currentCounter,
-        nonce,
-        nonceLen);
+        clientID);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : ecall failed" << endl;
+        cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
         return false;
     }
     memcpy(key, ans, keySize);
@@ -80,7 +117,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
 {
     sgx_status_t retval;
     if (!enclave_trusted) {
-        cerr << "kmClient : can't do a request before pow_enclave trusted" << endl;
+        cerr << "KmClient : can't do a request before pow_enclave trusted" << endl;
         return false;
     }
 
@@ -94,11 +131,11 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
         (uint32_t)hashSize,
         ans);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : ecall failed, return ID = " << retval << ", status = " << status << endl;
+        cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
         return false;
     }
     // else {
-    //     cout << "kmClient : ecall success, return ID = " << retval << ", status = " << status << endl;
+    //     cout << "KmClient : ecall success, return ID = " << retval << ", status = " << status << endl;
     // }
     memcpy(key, ans, keySize);
     free(ans);
@@ -344,10 +381,10 @@ bool kmClient::doAttestation()
     uint32_t msg3_sz;
 
     string enclaveName = config.getKMEnclaveName();
-    cout << "kmClient : start to create enclave" << endl;
+    cout << "KmClient : start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : Can not launch km_enclave : " << enclaveName << endl;
+        cerr << "KmClient : Can not launch km_enclave : " << enclaveName << endl;
         printf("%08x\n", status);
         return false;
     }
@@ -355,11 +392,11 @@ bool kmClient::doAttestation()
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
         &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "kmClient : pow_enclave ra init failed : " << status << endl;
+        cerr << "KmClient : pow_enclave ra init failed : " << status << endl;
         return false;
     }
     if (sgxrv != SGX_SUCCESS) {
-        cerr << "kmClient : sgx ra init failed : " << sgxrv << endl;
+        cerr << "KmClient : sgx ra init failed : " << sgxrv << endl;
         return false;
     }
 
@@ -368,7 +405,7 @@ bool kmClient::doAttestation()
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "kmClient : sgx ge epid failed : " << status << endl;
+        cerr << "KmClient : sgx ge epid failed : " << status << endl;
         return false;
     }
 
@@ -377,7 +414,7 @@ bool kmClient::doAttestation()
     status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg01.msg1);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "kmClient : sgx error get msg1" << endl
+        cerr << "KmClient : sgx error get msg1" << endl
              << status << endl;
         return false;
     }
@@ -387,19 +424,19 @@ bool kmClient::doAttestation()
     char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg2RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg01Buffer, sizeof(msg01))) {
-        cerr << "kmClient : msg01 send socket error" << endl;
+        cerr << "KmClient : msg01 send socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     if (!raSecurityChannel_->recv(sslConnection_, msg2Buffer, msg2RecvSize)) {
-        cerr << "kmClient : msg2 recv socket error" << endl;
+        cerr << "KmClient : msg2 recv socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     msg2 = (sgx_ra_msg2_t*)new uint8_t[msg2RecvSize];
     memcpy(msg2, msg2Buffer, msg2RecvSize);
 #if SYSTEM_DEBUG_FLAG == 1
-    cout << "kmClient : Send msg01 and Recv msg2 success" << endl;
+    cout << "KmClient : Send msg01 and Recv msg2 success" << endl;
 #endif
     /* Process Msg2, Get Msg3  */
     /* object msg3 is malloc'd by SGX SDK, so remember to free when finished */
@@ -411,7 +448,7 @@ bool kmClient::doAttestation()
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "kmClient : sgx_ra_proc_msg2 error, status = " << status << endl;
+        cerr << "KmClient : sgx_ra_proc_msg2 error, status = " << status << endl;
         if (msg2 != nullptr) {
             free(msg2);
         }
@@ -419,7 +456,7 @@ bool kmClient::doAttestation()
     }
 
 #if SYSTEM_DEBUG_FLAG == 1
-    cout << "kmClient : process msg2 success" << endl;
+    cout << "KmClient : process msg2 success" << endl;
 #endif
 
     char msg3Buffer[msg3_sz];
@@ -427,30 +464,30 @@ bool kmClient::doAttestation()
     char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg4RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg3Buffer, msg3_sz)) {
-        cerr << "kmClient : msg3 send socket error" << endl;
+        cerr << "KmClient : msg3 send socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
 
     if (!raSecurityChannel_->recv(sslConnection_, msg4Buffer, msg4RecvSize)) {
-        cerr << "kmClient : msg4 recv socket error" << endl;
+        cerr << "KmClient : msg4 recv socket error" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
     msg4 = (ra_msg4_t*)new uint8_t[msg4RecvSize];
     memcpy(msg4, msg4Buffer, msg4RecvSize);
 #if SYSTEM_DEBUG_FLAG == 1
-    cout << "kmClient : send msg3 and Recv msg4 success" << endl;
+    cout << "KmClient : send msg3 and Recv msg4 success" << endl;
 #endif
     if (msg3 != nullptr) {
         free(msg3);
     }
     if (msg4->status) {
 #if SYSTEM_DEBUG_FLAG == 1
-        cout << "kmClient : Enclave TRUSTED" << endl;
+        cout << "KmClient : Enclave TRUSTED" << endl;
 #endif
     } else if (!msg4->status) {
-        cerr << "kmClient : Enclave NOT TRUSTED" << endl;
+        cerr << "KmClient : Enclave NOT TRUSTED" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }

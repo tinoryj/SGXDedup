@@ -30,6 +30,9 @@ private:
     uint64_t sessionKeyUpdateCount_;
     bool raRequestFlag;
     bool raSetupFlag;
+#if KEY_GEN_SGX_CTR == 1
+    bool offlineGenerateFlag_ = false;
+#endif
     ssl* keySecurityChannel_;
 #if KEY_GEN_EPOLL_MODE == 1
     messageQueue<int>* requestMQ_; // only transmit fd
@@ -47,6 +50,7 @@ private:
         u_char nonce[16 - sizeof(uint32_t)];
         int nonceLen = 16 - sizeof(uint32_t);
         bool offLineGenerateFlag = false;
+        u_char secretDataBuffer[16 + 16];
     } MaskInfo_t;
     unordered_map<int, MaskInfo_t> clientList_; //clientID - MaskInfo_t pair
 #endif
