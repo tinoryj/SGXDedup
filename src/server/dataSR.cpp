@@ -33,6 +33,9 @@ DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powS
     powSecurityChannel_ = powSecurityChannelTemp;
     dataSecurityChannel_ = dataSecurityChannelTemp;
     keyRegressionCurrentTimes_ = config.getKeyRegressionMaxTimes();
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << " DataSR : key regression current count = " << keyRegressionCurrentTimes_ << endl;
+#endif
     // memcpy(keyExchangeKey_, keyExchangeKey, 16);
 }
 
@@ -648,7 +651,7 @@ void DataSR::runKeyServerRA()
             memcpy(currentSessionKey + 16, session->mk, 16);
             u_char hashDataTemp[32];
             u_char hashResultTemp[32];
-            memcpy(hashDataTemp, &currentSessionKey, 32);
+            memcpy(hashDataTemp, currentSessionKey, 32);
             for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                 SHA256(hashDataTemp, 32, hashResultTemp);
                 memcpy(hashDataTemp, hashResultTemp, 32);
@@ -656,9 +659,16 @@ void DataSR::runKeyServerRA()
             u_char finalHashBuffer[40];
             memset(finalHashBuffer, 0, 40);
             memcpy(finalHashBuffer + 8, hashResultTemp, 32);
-            SHA256(finalHashBuffer, 32, hashResultTemp);
-            memcpy(currentSessionKey, hashResultTemp, 32);
-            memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
+            SHA256(finalHashBuffer, 40, hashResultTemp);
+            memcpy(keyExchangeKey_, hashResultTemp, KEY_SERVER_SESSION_KEY_SIZE);
+#if SYSTEM_DEBUG_FLAG == 1
+            cout << "DataSR : key server current session key = " << endl;
+            PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
+            cout << "DataSR : key server original session key = " << endl;
+            PRINT_BYTE_ARRAY_DATA_SR(stderr, session->sk, 16);
+            cout << "DataSR : key server original mac key = " << endl;
+            PRINT_BYTE_ARRAY_DATA_SR(stderr, session->mk, 16);
+#endif
             keyExchangeKeySetFlag = true;
             free(sslRAListenConnection);
         } else if (recvHead.messageType == KEY_SERVER_RA_REQUES) {
@@ -666,13 +676,10 @@ void DataSR::runKeyServerRA()
             kmServer server(sslRAListen, sslRAListenConnection);
             session = server.authkm();
             if (session != nullptr) {
-                // memcpy(keyExchangeKey_, keyExchangeKey, 16);
-                char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
-                memcpy(currentSessionKey, session->sk, 16);
-                memcpy(currentSessionKey + 16, session->mk, 16);
                 u_char hashDataTemp[32];
                 u_char hashResultTemp[32];
-                memcpy(hashDataTemp, &currentSessionKey, 32);
+                memcpy(hashDataTemp, session->sk, 16);
+                memcpy(hashDataTemp + 16, session->mk, 16);
                 for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                     SHA256(hashDataTemp, 32, hashResultTemp);
                     memcpy(hashDataTemp, hashResultTemp, 32);
@@ -680,12 +687,15 @@ void DataSR::runKeyServerRA()
                 u_char finalHashBuffer[40];
                 memset(finalHashBuffer, 0, 40);
                 memcpy(finalHashBuffer + 8, hashResultTemp, 32);
-                SHA256(finalHashBuffer, 32, hashResultTemp);
-                memcpy(currentSessionKey, hashResultTemp, 32);
-                memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
+                SHA256(finalHashBuffer, 40, hashResultTemp);
+                memcpy(keyExchangeKey_, hashResultTemp, KEY_SERVER_SESSION_KEY_SIZE);
 #if SYSTEM_DEBUG_FLAG == 1
                 cout << "DataSR : key server current session key = " << endl;
                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
+                cout << "DataSR : key server original session key = " << endl;
+                PRINT_BYTE_ARRAY_DATA_SR(stderr, session->sk, 16);
+                cout << "DataSR : key server original mac key = " << endl;
+                PRINT_BYTE_ARRAY_DATA_SR(stderr, session->mk, 16);
 #endif
                 keyExchangeKeySetFlag = true;
                 cout << "DataSR : keyServer enclave trusted" << endl;

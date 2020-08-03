@@ -3,6 +3,9 @@
 using namespace std;
 extern Configure config;
 
+struct timeval timestartkmClient;
+struct timeval timeendKmClient;
+
 void PRINT_BYTE_ARRAY_KM(
     FILE* file, void* mem, uint32_t len)
 {
@@ -116,47 +119,94 @@ kmClient::~kmClient()
 
 bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
 {
+#if SYSTEM_BREAK_DOWN == 1
+    long diff;
+    double second;
+#endif
     _ctx = 0xdeadbeef;
     raSecurityChannel_ = raSecurityChannel;
     sslConnection_ = sslConnection;
     raclose(_eid, _ctx);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartkmClient, NULL);
+#endif
     enclave_trusted = doAttestation();
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKmClient, NULL);
+    diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
+    second = diff / 1000000.0;
+    cout << "KmClient : remote attestation time = " << second << endl;
+#endif
     if (enclave_trusted) {
         sgx_status_t status;
         sgx_status_t retval;
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartkmClient, NULL);
+#endif
         status = ecall_setServerSecret(_eid,
             &retval,
             (uint8_t*)_keyd.c_str(),
             (uint32_t)_keyd.length());
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendKmClient, NULL);
+        diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
+        second = diff / 1000000.0;
+        cout << "KmClient : set key enclave global secret time = " << second << endl;
+#endif
         if (status == SGX_SUCCESS) {
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timestartkmClient, NULL);
+#endif
+            uint32_t keyRegressionCounter = config.getKeyRegressionMaxTimes();
             status = ecall_setKeyRegressionCounter(_eid,
                 &retval,
-                256);
+                keyRegressionCounter);
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timeendKmClient, NULL);
+            diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
+            second = diff / 1000000.0;
+            cout << "KmClient : set key regression max counter time = " << second << endl;
+#endif
             if (status == SGX_SUCCESS) {
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timestartkmClient, NULL);
+#endif
                 status = ecall_setSessionKey(_eid,
                     &retval, &_ctx);
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendKmClient, NULL);
+                diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
+                second = diff / 1000000.0;
+                cout << "KmClient : set key enclave session key time = " << second << endl;
+#endif
                 if (status == SGX_SUCCESS) {
 #if SYSTEM_DEBUG_FLAG == 1
-                    char currentSessionKey[32];
+                    char currentSessionKey[64];
                     status = ecall_getCurrentSessionKey(_eid, &retval, currentSessionKey);
+                    cerr << "KmClient : Current session key = " << endl;
                     PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey, 32);
+                    cerr << "KmClient : Original session key = " << endl;
+                    PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey + 32, 16);
+                    cerr << "KmClient : Original mac key = " << endl;
+                    PRINT_BYTE_ARRAY_KM(stdout, currentSessionKey + 48, 16);
+#endif
 #if KEY_GEN_SGX_CTR == 1
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timestartkmClient, NULL);
+#endif
                     status = ecall_setCTRMode(_eid, &retval);
+#if SYSTEM_BREAK_DOWN == 1
+                    gettimeofday(&timeendKmClient, NULL);
+                    diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
+                    second = diff / 1000000.0;
+                    cout << "KmClient : init enclave ctr mode time = " << second << endl;
+#endif
                     if (status == SGX_SUCCESS) {
                         return true;
                     } else {
                         return false;
                     }
-#endif
 #else
-#if KEY_GEN_SGX_CTR == 1
-                    status = ecall_setCTRMode(_eid, &retval);
-                    if (status == SGX_SUCCESS) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-#endif
                     return true;
 #endif
                 } else {

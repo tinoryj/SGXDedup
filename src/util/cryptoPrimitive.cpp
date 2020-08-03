@@ -313,7 +313,6 @@ bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter
             cerr << "encrypt error\n";
             return false;
         }
-        // cout << "cipher len = " << cipherlen << endl;
         if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
             cerr << "encrypt error\n";
             return false;
@@ -329,10 +328,8 @@ bool CryptoPrimitive::cmac128(u_char* hashList, uint32_t chunkNumber, u_char* ma
         cerr << "cmac error\n";
         return false;
     }
-    // u_char currentHash[CHUNK_HASH_SIZE];
 
     for (int i = 0; i < chunkNumber; i++) {
-        // memcpy(currentHash, hashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
         CMAC_Update(cmacctx_, (void*)(hashList + i * CHUNK_HASH_SIZE), CHUNK_HASH_SIZE);
     }
     size_t maclen;

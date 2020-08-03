@@ -115,9 +115,9 @@ void powClient::run()
             u_char serverResponse[sizeof(int) + sizeof(bool) * currentBatchChunkNumber];
             senderObj_->sendEnclaveSignedHash(clientMac, chunkHashList, currentBatchChunkNumber, serverResponse, netstatus);
 #if SYSTEM_DEBUG_FLAG == 1
-// cout <<"PowClient : send signed hash list data = "<<endl;
-// PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
-// PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, currentBatchChunkNumber * CHUNK_HASH_SIZE);
+            cout << "PowClient : send signed hash list data = " << endl;
+            PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
+            PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, currentBatchChunkNumber * CHUNK_HASH_SIZE);
 #endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
@@ -129,14 +129,13 @@ void powClient::run()
                 cerr << "PowClient : send pow signed hash error" << endl;
                 break;
             } else {
-#if SYSTEM_DEBUG_FLAG == 1
-                cout << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success" << endl;
-#endif
                 int totalNeedChunkNumber;
                 memcpy(&totalNeedChunkNumber, serverResponse, sizeof(int));
                 bool requiredChunksList[currentBatchChunkNumber];
                 memcpy(requiredChunksList, serverResponse + sizeof(int), sizeof(bool) * currentBatchChunkNumber);
-                // cout << "PowClient : Server need " << serverResponse.size() << " over all " << batchChunk.size() << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+                cout << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success, Server need " << totalNeedChunkNumber << " over all " << batchChunk.size() << endl;
+#endif
                 for (int i = 0; i < totalNeedChunkNumber; i++) {
                     if (requiredChunksList[i] == true) {
                         batchChunk[i].chunk.type = CHUNK_TYPE_NEED_UPLOAD;
@@ -292,7 +291,6 @@ powClient::powClient(Sender* senderObjTemp)
 #endif
 #if ENCLAVE_SEALED_INIT_ENABLE == 1
     sealedLen_ = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
-    // cout << "PowClient : sealed size = " << sealedLen_ << endl;
     sealedBuffer_ = (char*)malloc(sealedLen_);
     memset(sealedBuffer_, -1, sealedLen_);
 

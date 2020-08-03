@@ -401,11 +401,6 @@ void keyServer::runRecvThread()
                     requestMQ_->push(tmpfd);
 #if SYSTEM_DEBUG_FLAG == 1
                     cout << "KeyServer : fd = " << event[i].data.fd << " recved data size = " << epollSession_.at(event[i].data.fd).length << endl;
-                    // KeyServerEpollMessage_t tempPopMsg;
-                    // requestMQ_->pop(tempPopMsg);
-                    // cout << "KeyServer : fd = " << tempPopMsg.fd << " pop data size = " << tempPopMsg.length << endl;
-                    // requestMQ_->push(tempPopMsg);
-                    // cout << "KeyServer : fd = " << tempPopMsg.fd << " push data size = " << tempPopMsg.length << endl;
 #endif
                     continue;
                 }

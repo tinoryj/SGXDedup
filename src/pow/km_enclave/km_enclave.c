@@ -80,8 +80,8 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
 
 sgx_ra_key_128_t sessionkey;
 sgx_ra_key_128_t macKey;
-uint8_t currentSessionKey[32];
-uint8_t* serverSecret;
+uint8_t currentSessionKey_[32];
+uint8_t serverSecret_[32];
 uint32_t keyRegressionMaxTimes_;
 uint32_t keyRegressionCurrentTimes_;
 int nextEncryptMaskSetupFlag_ = 0;
@@ -90,12 +90,11 @@ uint8_t currentXORBase[32 * 3000];
 
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
-    serverSecret = (uint8_t*)malloc(32);
     uint8_t* secretTemp = (uint8_t*)malloc(64 + keydLen);
     memset(secretTemp, 1, keydLen + 64);
     memcpy_s(secretTemp + 64, 128, keyd, keydLen);
     sgx_status_t sha256Status = sgx_sha256_msg(secretTemp, 64 + keydLen,
-        (sgx_sha256_hash_t*)serverSecret);
+        (sgx_sha256_hash_t*)serverSecret_);
     free(secretTemp);
     return sha256Status;
 }
@@ -118,13 +117,13 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
         if (ret_status != SGX_SUCCESS) {
             return ret_status;
         } else {
-            memcpy(currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
-            memcpy(currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
-            uint8_t* hashDataTemp = (uint8_t*)malloc(32);
-            uint8_t* hashResultTemp = (uint8_t*)malloc(32);
-            memcpy_s(hashDataTemp, 32, &currentSessionKey, 32);
+            uint8_t hashDataTemp[32];
+            uint8_t hashResultTemp[32];
+            sgx_status_t sha256Status;
+            memcpy_s(hashDataTemp, sizeof(sgx_ra_key_128_t), sessionkey, sizeof(sgx_ra_key_128_t));
+            memcpy_s(hashDataTemp + sizeof(sgx_ra_key_128_t), sizeof(sgx_ra_key_128_t), macKey, sizeof(sgx_ra_key_128_t));
             for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
-                sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
+                sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
                 if (sha256Status != SGX_SUCCESS) {
                     return -1;
                 }
@@ -132,12 +131,12 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
             }
             uint8_t finalHashBuffer[40];
             memset(finalHashBuffer, 0, 40);
-            memcpy(finalHashBuffer + 8, hashResultTemp, 32);
-            sgx_status_t sha256Status = sgx_sha256_msg(finalHashBuffer, 40, (sgx_sha256_hash_t*)hashResultTemp);
+            memcpy(finalHashBuffer + 8, hashDataTemp, 32);
+            sha256Status = sgx_sha256_msg(finalHashBuffer, 40, (sgx_sha256_hash_t*)hashResultTemp);
             if (sha256Status != SGX_SUCCESS) {
                 return -1;
             }
-            memcpy_s(currentSessionKey, 32, hashResultTemp, 32);
+            memcpy_s(currentSessionKey_, 32, hashResultTemp, 32);
             return SGX_SUCCESS;
         }
     }
@@ -159,7 +158,7 @@ sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNum
         memcpy(currentKeyBase + 16, &currentCounter, sizeof(uint32_t));
         memcpy(currentKeyBase + 16 + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
         currentCounter++;
-        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey) != 1) {
+        if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey_, currentSessionKey_) != 1) {
             EVP_CIPHER_CTX_cleanup(cipherctx_);
             return SGX_ERROR_UNEXPECTED;
         }
@@ -183,37 +182,34 @@ sgx_status_t ecall_setNextEncryptionMask(int clientID, uint32_t previousCountNum
 sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
 {
     keyRegressionCurrentTimes_--;
-    memset(currentSessionKey, 0, 32);
-    memcpy(&currentSessionKey, &sessionkey, sizeof(sgx_ra_key_128_t));
-    memcpy(&currentSessionKey + sizeof(sgx_ra_key_128_t), &macKey, sizeof(sgx_ra_key_128_t));
-    uint8_t* hashDataTemp = (uint8_t*)malloc(32);
-    uint8_t* hashResultTemp = (uint8_t*)malloc(32);
-    memcpy_s(hashDataTemp, 32, &currentSessionKey, 32);
+    memset(currentSessionKey_, 0, 32);
+    uint8_t hashDataTemp[32];
+    uint8_t hashResultTemp[32];
+    memcpy_s(hashDataTemp, sizeof(sgx_ra_key_128_t), sessionkey, sizeof(sgx_ra_key_128_t));
+    memcpy_s(hashDataTemp + sizeof(sgx_ra_key_128_t), sizeof(sgx_ra_key_128_t), macKey, sizeof(sgx_ra_key_128_t));
     for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
         sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
         if (sha256Status != SGX_SUCCESS) {
-            free(hashDataTemp);
-            free(hashResultTemp);
             return 1;
         }
         memcpy_s(hashDataTemp, 32, hashResultTemp, 32);
     }
     uint8_t finalHashBuffer[40];
     memset(finalHashBuffer, 0, 40);
-    memcpy(finalHashBuffer + 8, hashResultTemp, 32);
+    memcpy(finalHashBuffer + 8, hashDataTemp, 32);
     sgx_status_t sha256Status = sgx_sha256_msg(finalHashBuffer, 40, (sgx_sha256_hash_t*)hashResultTemp);
     if (sha256Status != SGX_SUCCESS) {
         return -1;
     }
-    memcpy_s(&currentSessionKey, 32, hashResultTemp, 32);
-    free(hashDataTemp);
-    free(hashResultTemp);
+    memcpy_s(currentSessionKey_, 32, hashResultTemp, 32);
     return 2;
 }
 
 sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)
 {
-    memcpy(currentSessionKeyResult, currentSessionKey, 32);
+    memcpy(currentSessionKeyResult, currentSessionKey_, 32);
+    memcpy(currentSessionKeyResult + 32, sessionkey, 16);
+    memcpy(currentSessionKeyResult + 48, macKey, 16);
     return SGX_SUCCESS;
 }
 
@@ -260,7 +256,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             memcpy_s(currentKeyBase + 16, 32, &currentCounterTemp, sizeof(uint32_t));
             memcpy_s(currentKeyBase + 16 + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
             currentCounterTemp++;
-            if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey, currentSessionKey)) {
+            if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey_, currentSessionKey_)) {
                 free(hash);
                 free(originhash);
                 free(hashTemp);
@@ -290,7 +286,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
     }
     for (uint32_t index = 0; index < (srcLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
-        memcpy_s(hashTemp + 32, 64, serverSecret, 32);
+        memcpy_s(hashTemp + 32, 64, serverSecret_, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
             free(hash);
@@ -326,7 +322,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
     keySeed = (uint8_t*)malloc(srcLen);
     hashTemp = (uint8_t*)malloc(64);
 
-    if (!decrypt(src, srcLen, currentSessionKey, 32, originhash, &decryptLen)) {
+    if (!decrypt(src, srcLen, currentSessionKey_, 32, originhash, &decryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
@@ -335,7 +331,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
     }
     for (uint32_t index = 0; index < (decryptLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
-        memcpy_s(hashTemp + 32, 64, serverSecret, 32);
+        memcpy_s(hashTemp + 32, 64, serverSecret_, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
             free(hash);
@@ -347,7 +343,7 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
         memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
     }
 
-    if (!encrypt(keySeed, srcLen, currentSessionKey, 32, key, &encryptLen)) {
+    if (!encrypt(keySeed, srcLen, currentSessionKey_, 32, key, &encryptLen)) {
         free(hash);
         free(originhash);
         free(hashTemp);
