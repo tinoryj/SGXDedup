@@ -148,10 +148,32 @@ void keyServer::runRA()
 void keyServer::runSessionKeyUpdate()
 {
     while (true) {
+#if KEY_REGRESSION_METHOD == KEY_REGRESSION_BY_INTERVALS
         if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cout << "KeyServer : start session key update with storage server" << endl;
+            cerr << "KeyServer : start session key update" << endl;
+            keyGenerateCount_ = 0;
+            while (true) {
+                bool enclaveSessionKeyUpdateStatus = client->sessionKeyUpdate();
+                if (enclaveSessionKeyUpdateStatus) {
+                    cerr << "KeyServer : update session key done" << endl;
+                    break;
+                } else {
+                    cerr << "KeyServer : update session key error" << endl;
+                    continue;
+                }
+            }
+        }
+        boost::xtime xt;
+        boost::xtime_get(&xt, boost::TIME_UTC_);
+        xt.sec += config.getKeyRegressionIntervals();
+        boost::thread::sleep(xt);
+#elif KEY_REGRESSION_METHOD == KEY_REGRESSION_BY_NUMBER
+        if (keyGenerateCount_ >= keyGenLimitPerSessionKey_) {
+            while (!(clientThreadCount_ == 0))
+                ;
+            cerr << "KeyServer : start session key update with storage server" << endl;
             keyGenerateCount_ = 0;
             ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
@@ -165,7 +187,7 @@ void keyServer::runSessionKeyUpdate()
                 raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
                 delete raSecurityChannelTemp;
                 free(sslConnection);
-                cout << "KeyServer : update session key storage SP done" << endl;
+                cerr << "KeyServer : update session key storage SP done" << endl;
             } else {
                 delete raSecurityChannelTemp;
                 free(sslConnection);
@@ -173,6 +195,7 @@ void keyServer::runSessionKeyUpdate()
                 continue;
             }
         }
+#endif
     }
 }
 

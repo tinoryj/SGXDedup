@@ -21,7 +21,8 @@
 		"_keyServerPort": [
 			6666
 		],
-		"_keyRegressionMaxTimes": 256
+		"_keyRegressionMaxTimes": 1048576,
+		"_keyRegressionIntervals": 14400
 	},
 	"SPConfig": {
 		"_storageServerNumber": 1,

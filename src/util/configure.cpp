@@ -43,6 +43,7 @@ void Configure::readConf(std::string path)
         _keyServerPort.push_back(it.second.get_value<int>());
     }
     _keyRegressionMaxTimes = root.get<uint32_t>("KeyServerConfig._keyRegressionMaxTimes");
+    _keyRegressionIntervals = root.get<uint32_t>("KeyServerConfig._keyRegressionIntervals");
 
     //SP Configure
     _storageServerNumber = root.get<uint64_t>("SPConfig._storageServerNumber");
@@ -192,6 +193,10 @@ uint32_t Configure::getKeyRegressionMaxTimes()
     return _keyRegressionMaxTimes;
 }
 
+uint32_t Configure::getKeyRegressionIntervals()
+{
+    return _keyRegressionIntervals;
+}
 // storage management settings
 uint64_t Configure::getStorageServerNumber()
 {

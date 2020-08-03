@@ -27,6 +27,10 @@ using namespace std;
 #define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
 #define KEY_GEN_EPOLL_MODE 0
 
+#define KEY_REGRESSION_BY_INTERVALS 0
+#define KEY_REGRESSION_BY_NUMBER 1
+#define KEY_REGRESSION_METHOD KEY_REGRESSION_BY_NUMBER
+
 /* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/
 #define QUEUE_TYPE_LOCKFREE_SPSC_QUEUE 0
 #define QUEUE_TYPE_LOCKFREE_QUEUE 1
@@ -98,6 +102,7 @@ private:
     uint64_t _keyCacheSize;
     uint64_t _keyGenLimitPerSessionKey;
     uint32_t _keyRegressionMaxTimes;
+    uint32_t _keyRegressionIntervals;
 
     //POW settings
     int _POWQuoteType; //0x00 linkable; 0x01 unlinkable
@@ -171,6 +176,7 @@ public:
     uint64_t getKeyCacheSize();
     uint64_t getKeyGenLimitPerSessionkeySize();
     uint32_t getKeyRegressionMaxTimes();
+    uint32_t getKeyRegressionIntervals(); // unit: sec
 
     //pow settings
     int getPOWQuoteType();

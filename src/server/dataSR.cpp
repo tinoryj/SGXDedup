@@ -646,13 +646,17 @@ void DataSR::runKeyServerRA()
             char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
             memcpy(currentSessionKey, session->sk, 16);
             memcpy(currentSessionKey + 16, session->mk, 16);
-            uint8_t* hashDataTemp = (uint8_t*)malloc(32);
-            uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+            u_char hashDataTemp[32];
+            u_char hashResultTemp[32];
             memcpy(hashDataTemp, &currentSessionKey, 32);
             for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                 SHA256(hashDataTemp, 32, hashResultTemp);
                 memcpy(hashDataTemp, hashResultTemp, 32);
             }
+            u_char finalHashBuffer[40];
+            memset(finalHashBuffer, 0, 40);
+            memcpy(finalHashBuffer + 8, hashResultTemp, 32);
+            SHA256(finalHashBuffer, 32, hashResultTemp);
             memcpy(currentSessionKey, hashResultTemp, 32);
             memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
             keyExchangeKeySetFlag = true;
@@ -666,13 +670,17 @@ void DataSR::runKeyServerRA()
                 char currentSessionKey[KEY_SERVER_SESSION_KEY_SIZE];
                 memcpy(currentSessionKey, session->sk, 16);
                 memcpy(currentSessionKey + 16, session->mk, 16);
-                uint8_t* hashDataTemp = (uint8_t*)malloc(32);
-                uint8_t* hashResultTemp = (uint8_t*)malloc(32);
+                u_char hashDataTemp[32];
+                u_char hashResultTemp[32];
                 memcpy(hashDataTemp, &currentSessionKey, 32);
                 for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
                     SHA256(hashDataTemp, 32, hashResultTemp);
                     memcpy(hashDataTemp, hashResultTemp, 32);
                 }
+                u_char finalHashBuffer[40];
+                memset(finalHashBuffer, 0, 40);
+                memcpy(finalHashBuffer + 8, hashResultTemp, 32);
+                SHA256(finalHashBuffer, 32, hashResultTemp);
                 memcpy(currentSessionKey, hashResultTemp, 32);
                 memcpy(keyExchangeKey_, currentSessionKey, KEY_SERVER_SESSION_KEY_SIZE);
 #if SYSTEM_DEBUG_FLAG == 1
@@ -681,7 +689,7 @@ void DataSR::runKeyServerRA()
 #endif
                 keyExchangeKeySetFlag = true;
                 cout << "DataSR : keyServer enclave trusted" << endl;
-                delete session;
+                // delete session;
                 boost::xtime xt;
                 boost::xtime_get(&xt, boost::TIME_UTC_);
                 xt.sec += config.getRASessionKeylifeSpan();
