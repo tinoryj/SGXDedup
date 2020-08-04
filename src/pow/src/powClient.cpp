@@ -217,26 +217,26 @@ bool powClient::loadSealedData()
 
 bool powClient::powEnclaveSealedInit()
 {
-    sgx_status_t ret = SGX_SUCCESS;
+    sgx_status_t status = SGX_SUCCESS;
     string enclaveName = config.getPOWEnclaveName();
     sgx_status_t retval;
-    ret = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &eid_, NULL);
-    if (ret != SGX_SUCCESS) {
+    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, NULL, NULL, &eid_, NULL);
+    if (status != SGX_SUCCESS) {
         cerr << "PowClient : create enclave error, eid = " << eid_ << endl;
         sgx_destroy_enclave(eid_);
-        sgxErrorReport(ret);
+        sgxErrorReport(status);
         return false;
     } else {
         cerr << "PowClient : create enclave done" << endl;
-        ret = enclave_sealed_init(eid_, &retval, (uint8_t*)sealedBuffer_);
+        status = enclave_sealed_init(eid_, &retval, (uint8_t*)sealedBuffer_);
 #if SYSTEM_DEBUG_FLAG == 1
-        cerr << "PowClient : unseal data size = " << sealedLen_ << "\t retval = " << retval << "\t status = " << ret << endl;
+        cerr << "PowClient : unseal data size = " << sealedLen_ << "\t retval = " << retval << "\t status = " << status << endl;
 #endif
-        if (ret == SGX_SUCCESS) {
+        if (status == SGX_SUCCESS) {
 #if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : unseal data ecall success, status = " << ret << endl;
+            cerr << "PowClient : unseal data ecall success, status = " << status << endl;
 #endif
-            if (retval != 0) {
+            if (retval != SGX_SUCCESS) {
                 cerr << "PowClient : unseal data error, retval = " << retval << endl;
                 sgx_destroy_enclave(eid_);
                 return false;
@@ -244,8 +244,8 @@ bool powClient::powEnclaveSealedInit()
                 return true;
             }
         } else {
-            cerr << "PowClient : unseal data ecall error, status = " << ret << endl;
-            sgxErrorReport(ret);
+            cerr << "PowClient : unseal data ecall error, status = " << status << endl;
+            sgxErrorReport(status);
             sgx_destroy_enclave(eid_);
             return false;
         }
@@ -254,15 +254,15 @@ bool powClient::powEnclaveSealedInit()
 
 bool powClient::powEnclaveSealedColse()
 {
-    sgx_status_t ret;
+    sgx_status_t status;
     sgx_status_t retval;
-    ret = enclave_sealed_close(eid_, &retval, (uint8_t*)sealedBuffer_);
-    if (ret != SGX_SUCCESS) {
+    status = enclave_sealed_close(eid_, &retval, (uint8_t*)sealedBuffer_);
+    if (status != SGX_SUCCESS) {
         cerr << "PowClient : seal data ecall error, status = " << endl;
-        sgxErrorReport(ret);
+        sgxErrorReport(status);
         return false;
     } else {
-        if (retval != 0) {
+        if (retval != SGX_SUCCESS) {
             cerr << "PowClient : unseal data ecall return error, return value = " << retval << endl;
             return false;
         } else {

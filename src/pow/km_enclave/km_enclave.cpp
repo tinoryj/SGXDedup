@@ -1,5 +1,6 @@
 #include "km_enclave_t.h"
 #include "mbusafecrt.h"
+#include "systemSettings.hpp"
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <sgx_tae_service.h>
@@ -125,7 +126,6 @@ sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes)
 
 sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_t* hmacBuffer)
 {
-    print("KeyEnclave : client Info init", 29, 1);
     auto it = clientList_.begin();
     while (it != clientList_.end()) {
         it->second.keyGenerateCounter += it->second.currentKeyGenerateCounter;
@@ -141,9 +141,11 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
         return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
     } else {
         memcpy_s(&recvedCounter, sizeof(uint32_t), plaintextBuffer, sizeof(uint32_t));
+#if SYSTEM_DEBUG_FLAG == 1
         print("KeyEnclave : client Info = ", 27, 1);
         print((char*)plaintextBuffer, sizeof(uint32_t), 2);
         print((char*)plaintextBuffer + sizeof(uint32_t), 12, 2);
+#endif
         if (clientList_.find(clientID) == clientList_.end()) {
             ClientInfo_t newClient;
             memcpy_s(newClient.nonce, 12, plaintextBuffer + sizeof(uint32_t), 12);
@@ -220,7 +222,10 @@ sgx_status_t ecall_setNextEncryptionMask()
     int generatedNumber = 0;
     auto it = clientList_.begin();
     while (it != clientList_.end() && generatedNumber < MAX_SPECULATIVE_CLIENT_NUMBER) {
+#if SYSTEM_DEBUG_FLAG == 1
         print("Key enclave generate mask for client start", 42, 1);
+        print((char*)it->second.nonce, 32, 2);
+#endif
         uint32_t currentCounter = it->second.keyGenerateCounter + it->second.currentKeyGenerateCounter;
         it->second.offlineFlag = -1;
         uint8_t nonce[12];
@@ -252,7 +257,9 @@ sgx_status_t ecall_setNextEncryptionMask()
         it->second.maskOffset = generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
         it++;
         generatedNumber++;
+#if SYSTEM_DEBUG_FLAG == 1
         print("Key enclave generate mask for client done", 41, 1);
+#endif
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
     return SGX_SUCCESS;
@@ -362,8 +369,10 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             return sha256Status;
         }
         memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
+#if SYSTEM_DEBUG_FLAG == 1
         print("KeyEnclave : Chunk Key = ", 25, 1);
         print((char*)hash, 32, 2);
+#endif
     }
     if ((currentCounter * 16 + originalHashLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
         for (int i = 0; i < originalHashLen; i++) {
@@ -382,27 +391,30 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
 sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
 {
     uint32_t decryptLen, encryptLen;
-    uint8_t hash[32];
-    uint8_t originhash[srcLen];
-    uint8_t keySeed[srcLen];
-    uint8_t hashTemp[64];
+    int originalHashLen = srcLen - 32;
+    uint8_t hash[32], originhash[originalHashLen], keySeed[originalHashLen], hashTemp[64], hmac[32];
+    sgx_hmac_sha256_msg(src, originalHashLen, currentSessionKey_, 32, hmac, 32);
+    if (memcmp(hmac, src + originalHashLen, 32) != 0) {
+        return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
+    }
 
-    if (!decrypt(src, srcLen, currentSessionKey_, 32, originhash, &decryptLen)) {
+    if (!decrypt(src, originalHashLen, currentSessionKey_, 32, originhash, &decryptLen)) {
         return SGX_ERROR_UNEXPECTED;
     } else {
-        for (uint32_t index = 0; index < (decryptLen / 32); index++) {
+        for (uint32_t index = 0; index < (originalHashLen / 32); index++) {
             memcpy_s(hashTemp, 64, originhash + index * 32, 32);
             memcpy_s(hashTemp + 32, 64, serverSecret_, 32);
             sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
             if (sha256Status != SGX_SUCCESS) {
                 return sha256Status;
             } else {
-                memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
+                memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
             }
         }
-        if (!encrypt(keySeed, srcLen, currentSessionKey_, 32, key, &encryptLen)) {
+        if (!encrypt(keySeed, originalHashLen, currentSessionKey_, 32, key, &encryptLen)) {
             return SGX_ERROR_UNEXPECTED;
         } else {
+            sgx_hmac_sha256_msg(key, originalHashLen, currentSessionKey_, 32, key + originalHashLen, 32);
             return SGX_SUCCESS;
         }
     }

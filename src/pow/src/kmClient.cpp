@@ -106,8 +106,7 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int
         return false;
     }
     sgx_status_t status;
-    uint8_t* ans;
-    ans = (uint8_t*)malloc(keySize);
+    uint8_t* ans = (uint8_t*)malloc(keySize);
     status = ecall_keygen_ctr(_eid,
         &retval,
         (uint8_t*)hash,
@@ -128,16 +127,12 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int
 #else
 bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
 {
-    sgx_status_t retval;
+    sgx_status_t retval, status;
     if (!enclave_trusted) {
         cerr << "KmClient : can't do a request before pow_enclave trusted" << endl;
         return false;
     }
-
-    sgx_status_t status;
-    uint8_t* ans;
-    ans = (uint8_t*)malloc(keySize);
-
+    uint8_t* ans = (uint8_t*)malloc(keySize);
     status = ecall_keygen(_eid,
         &retval,
         (uint8_t*)hash,
@@ -146,10 +141,10 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
     if (status != SGX_SUCCESS) {
         cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
         return false;
+    } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
+        cerr << "KmClient : client hash list hmac error, key generate failed" << endl;
+        return false;
     }
-    // else {
-    //     cout << "KmClient : ecall success, return ID = " << retval << ", status = " << status << endl;
-    // }
     memcpy(key, ans, keySize);
     free(ans);
     return true;
@@ -179,10 +174,14 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
     _ctx = 0xdeadbeef;
     raSecurityChannel_ = raSecurityChannel;
     sslConnection_ = sslConnection;
+    sgx_status_t status;
+    sgx_status_t retval;
     raclose(_eid, _ctx);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartkmClient, NULL);
 #endif
+    status = ecall_enclave_close(_eid, &retval);
+    sgx_destroy_enclave(_eid);
     enclave_trusted = doAttestation();
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKmClient, NULL);
@@ -191,8 +190,6 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
     cout << "KmClient : remote attestation time = " << second << endl;
 #endif
     if (enclave_trusted) {
-        sgx_status_t status;
-        sgx_status_t retval;
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartkmClient, NULL);
 #endif

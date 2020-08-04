@@ -202,6 +202,12 @@ void keyServer::runSessionKeyUpdate()
 #if KEY_GEN_SGX_CTR == 1
 void keyServer::runCTRModeMaskGenerate()
 {
+#if SYSTEM_BREAK_DOWN == 1
+    struct timeval timestart;
+    struct timeval timeend;
+    long diff;
+    double second;
+#endif
     while (true) {
         boost::xtime xt;
         boost::xtime_get(&xt, boost::TIME_UTC_);
@@ -210,7 +216,16 @@ void keyServer::runCTRModeMaskGenerate()
         if (raRequestFlag == false && offlineGenerateFlag_ == true) {
             multiThreadCountMutex_.lock();
             cout << "KeyServer : start offlien mask generate" << endl;
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timestart, 0);
+#endif
             client->maskGenerate();
+#if SYSTEM_BREAK_DOWN == 1
+            gettimeofday(&timeend, 0);
+            diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
+            second = diff / 1000000.0;
+            cout << "KeyServer : offline mask generate time = " << second << ", (" << diff << " us)" << endl;
+#endif
             offlineGenerateFlag_ = false;
             cout << "KeyServer : offlien mask generate done" << endl;
             multiThreadCountMutex_.unlock();
@@ -510,7 +525,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     multiThreadCountMutex_.unlock();
     uint64_t currentThreadkeyGenerationNumber = 0;
     while (true) {
-        u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE + 32];
         int recvSize = 0;
         if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
             multiThreadCountMutex_.lock();
@@ -524,30 +539,17 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             return;
         }
 
-        if ((recvSize % CHUNK_HASH_SIZE) != 0) {
-            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-#if SYSTEM_BREAK_DOWN == 1
-            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
-            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-#endif
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
-            multiThreadCountMutex_.unlock();
-            return;
-        }
-
-        int recvNumber = recvSize / CHUNK_HASH_SIZE;
+        int recvNumber = (recvSize - 32) / CHUNK_HASH_SIZE;
 #if SYSTEM_DEBUG_FLAG == 1
         cout << "KeyServer : recv hash number = " << recvNumber << endl;
 #endif
-        u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        u_char key[recvSize];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
 
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+        client->request(hash, recvSize, key, recvSize);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -564,7 +566,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash, recvSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE);
+        client->request(hash, recvSize, key, recvSize);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -576,7 +578,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 
 #endif
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char*)key, recvSize)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;

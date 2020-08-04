@@ -447,9 +447,9 @@ void Sender::run()
                     totalChunkAssembleTime += second;
 #endif
 #if SYSTEM_DEBUG_FLAG == 1
-// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
-// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-// PRINT_BYTE_ARRAY_SENDER(stdout, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
+                    PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
+                    PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                    PRINT_BYTE_ARRAY_SENDER(stderr, tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize);
 #endif
                 }
 #if SYSTEM_BREAK_DOWN == 1

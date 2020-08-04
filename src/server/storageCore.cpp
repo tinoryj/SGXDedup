@@ -134,8 +134,10 @@ bool StorageCore::restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe)
             RecipeIn.read(recipeHeadBuffer, sizeof(Recipe_t));
             RecipeIn.close();
             memcpy(&restoreRecipe, recipeHeadBuffer, sizeof(Recipe_t));
-            // cout << "StorageCore : restore file size = " << restoreRecipe.fileRecipeHead.fileSize << " total chunk number = " << restoreRecipe.fileRecipeHead.totalChunkNumber << endl;
-            // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeHeadBuffer, sizeof(Recipe_t));
+#if SYSTEM_DEBUG_FLAG == 1
+            cerr << "StorageCore : restore file size = " << restoreRecipe.fileRecipeHead.fileSize << " total chunk number = " << restoreRecipe.fileRecipeHead.totalChunkNumber << endl;
+            PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeHeadBuffer, sizeof(Recipe_t));
+#endif
             return true;
         }
     } else {
@@ -157,9 +159,7 @@ bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, Recipe
     }
     int recipeListSize = recipeList.size();
     if (status) {
-        // char tempBuffer[sizeof(RecipeEntry_t)];
         for (int i = 0; i < recipeListSize; i++) {
-            // memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
             RecipeOut.write((char*)&recipeList[i], sizeof(RecipeEntry_t));
         }
     } else {
@@ -167,9 +167,10 @@ bool StorageCore::saveRecipe(std::string recipeName, Recipe_t recipeHead, Recipe
         memcpy(tempHeadBuffer, &recipeHead, sizeof(Recipe_t));
         RecipeOut.write(tempHeadBuffer, sizeof(Recipe_t));
         cout << "StorageCore : save recipe head over, total chunk number = " << recipeHead.fileRecipeHead.totalChunkNumber << " file size = " << recipeHead.fileRecipeHead.fileSize << endl;
-        // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempHeadBuffer, sizeof(Recipe_t));
+#if SYSTEM_DEBUG_FLAG == 1
+        PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, tempHeadBuffer, sizeof(Recipe_t));
+#endif
         for (int i = 0; i < recipeListSize; i++) {
-            // memcpy(tempBuffer, &recipeList[i], sizeof(RecipeEntry_t));
             RecipeOut.write((char*)&recipeList[i], sizeof(RecipeEntry_t));
         }
     }
@@ -217,8 +218,8 @@ bool StorageCore::restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, u
         string chunkHash((char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
         string chunkData;
 #if SYSTEM_DEBUG_FLAG == 1
-        // cout << "StorageCore : restore chunk ID = " << newRecipeEntry.chunkID << ", size = " << newRecipeEntry.chunkSize << endl;
-        // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
+        cerr << "StorageCore : starting restore chunk ID = " << newRecipeEntry.chunkID << ", size = " << newRecipeEntry.chunkSize << endl;
+        PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, (char*)newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
 #endif
         if (restoreChunk(chunkHash, chunkData)) {
             if (chunkData.length() != newRecipeEntry.chunkSize) {
@@ -233,10 +234,10 @@ bool StorageCore::restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, u
                 memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
                 restoredChunkList.push_back(newChunk);
 #if SYSTEM_DEBUG_FLAG == 1
-                // cout << "StorageCore : Restore Chunk ID = " << newChunk.ID << " size = " << newChunk.logicDataSize << endl;
-                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.chunkHash, CHUNK_HASH_SIZE);
-                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
-                // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, newChunk.logicData, newChunk.logicDataSize);
+                cerr << "StorageCore : restored Chunk ID = " << newChunk.ID << " size = " << newChunk.logicDataSize << endl;
+                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, newChunk.chunkHash, CHUNK_HASH_SIZE);
+                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, newChunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE);
+                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, newChunk.logicData, newChunk.logicDataSize);
 #endif
             }
         } else {
@@ -249,10 +250,11 @@ bool StorageCore::restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, u
 
 bool StorageCore::saveChunk(std::string chunkHash, char* chunkData, int chunkSize)
 {
-    // cout << "Save Chunk size = " << chunkSize << endl;
-    // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &chunkHash[0], CHUNK_HASH_SIZE);
-    // PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, chunkData, chunkSize);
-
+#if SYSTEM_DEBUG_FLAG == 1
+    cout << "ContainerManager : save Chunk size = " << chunkSize << endl;
+    PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, &chunkHash[0], CHUNK_HASH_SIZE);
+    PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, chunkData, chunkSize);
+#endif
     keyForChunkHashDB_t key;
     key.length = chunkSize;
     bool status = writeContainer(key, chunkData);
@@ -301,7 +303,7 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
     if (status) {
         memcpy(&key, &ans[0], sizeof(keyForChunkHashDB_t));
 #if SYSTEM_DEBUG_FLAG == 1
-        // cout << "StorageCore : restore chunk from " << key.containerName << ", size = " << key.length << endl;
+        cerr << "StorageCore : restore chunk from " << key.containerName << ", size = " << key.length << endl;
 #endif
         char chunkData[key.length];
         if (readContainer(key, chunkData)) {
@@ -322,8 +324,10 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
 {
     string recipeName;
     string DBKey((char*)recipeHead.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
-    // cout << "StorageCore : recv recpie head, file size = " << recipeHead.fileRecipeHead.fileSize << " total chunk number = " << recipeHead.fileRecipeHead.totalChunkNumber << endl;
-    // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeHead.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+#if SYSTEM_DEBUG_FLAG == 1
+    cerr << "StorageCore : recv recpie head, file size = " << recipeHead.fileRecipeHead.fileSize << " total chunk number = " << recipeHead.fileRecipeHead.totalChunkNumber << endl;
+    PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeHead.fileRecipeHead.fileNameHash, FILE_NAME_HASH_SIZE);
+#endif
     if (fileName2metaDB.query(DBKey, recipeName)) {
         cout << "StorageCore : current file's recipe exist, add data back, recipe file name = " << recipeName << endl;
         if (!this->saveRecipe(recipeName, recipeHead, recipeList, true)) {

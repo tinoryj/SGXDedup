@@ -260,7 +260,7 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
     memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), fileNameHash, FILE_NAME_HASH_SIZE);
 #if SYSTEM_DEBUG_FLAG == 1
-    // PRINT_BYTE_ARRAY_RECV(stdout, fileNameHash, FILE_NAME_HASH_SIZE);
+    PRINT_BYTE_ARRAY_RECV(stderr, fileNameHash, FILE_NAME_HASH_SIZE);
 #endif
     if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
         cerr << "RecvDecode : storage server closed" << endl;
