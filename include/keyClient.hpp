@@ -28,6 +28,7 @@ private:
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     int keyGenNumber_;
     int clientID_;
+    std::mutex mutexkeyGenerateSimulatorEncTime_;
 
 public:
     double keyExchangeEncTime = 0;

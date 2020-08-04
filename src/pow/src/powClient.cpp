@@ -10,6 +10,7 @@ struct timeval timeendPowClient;
 
 void print(const char* str, uint32_t len)
 {
+    cout << str << endl;
     uint8_t* array = (uint8_t*)str;
     for (int i = 0; i < len - 1; i++) {
         printf("0x%x, ", array[i]);

@@ -65,6 +65,7 @@ void SGX_UBRIDGE(SGX_NOCONVENTION, u_sgxssl_ftime, (void* timeptr, uint32_t time
 
 sgx_status_t enclave_ra_init(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ec256_public_t key, int b_pse, sgx_ra_context_t* ctx, sgx_status_t* pse_status);
 sgx_status_t enclave_ra_close(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context);
+sgx_status_t ecall_enclave_close(sgx_enclave_id_t eid, sgx_status_t* retval);
 sgx_status_t ecall_setServerSecret(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* keyd, uint32_t keydLen);
 sgx_status_t ecall_setSessionKey(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx);
 sgx_status_t ecall_setSessionKeyUpdate(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx);

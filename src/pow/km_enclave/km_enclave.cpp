@@ -11,7 +11,8 @@
 using namespace std;
 
 #define MAX_SPECULATIVE_KEY_SIZE 90 * 1024 * 1024
-#define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT 90 * 1024 * 1024
+#define MAX_SEPCULATIVE_CLIENT_NUMBER 3
+#define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SEPCULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
 //     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -96,6 +97,13 @@ typedef struct {
 } ClientInfo_t;
 std::unordered_map<int, ClientInfo_t> clientList_;
 
+sgx_status_t ecall_enclave_close()
+{
+    clientList_.clear();
+    free(nextEncryptionMaskSet_);
+    return SGX_SUCCESS;
+}
+
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
     uint8_t* secretTemp = (uint8_t*)malloc(64 + keydLen);
@@ -121,6 +129,8 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
     while (it != clientList_.end()) {
         it->second.keyGenerateCounter += it->second.currentKeyGenerateCounter;
         it->second.currentKeyGenerateCounter = 0;
+        print((char*)it->second.nonce, 12);
+        it++;
     }
     uint8_t hmac[32];
     sgx_hmac_sha256_msg(inputBuffer, 16, currentSessionKey_, 32, hmac, 32);
@@ -130,12 +140,12 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
     if (memcmp(hmac, hmacBuffer, 32) != 0) {
         return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
     } else {
-        memcpy_s(&recvedCounter, sizeof(uint32_t), plaintextBuffer + 12, sizeof(uint32_t));
-        print((char*)plaintextBuffer, 12);
-        print((char*)plaintextBuffer + 12, 4);
+        memcpy_s(&recvedCounter, sizeof(uint32_t), plaintextBuffer, sizeof(uint32_t));
+        print((char*)plaintextBuffer, sizeof(uint32_t));
+        print((char*)plaintextBuffer + sizeof(uint32_t), 12);
         if (clientList_.find(clientID) == clientList_.end()) {
             ClientInfo_t newClient;
-            memcpy_s(newClient.nonce, 12, plaintextBuffer, 12);
+            memcpy_s(newClient.nonce, 12, plaintextBuffer + sizeof(uint32_t), 12);
             newClient.keyGenerateCounter = 0;
             newClient.currentKeyGenerateCounter = 0;
             auto it = clientList_.begin();
@@ -204,19 +214,19 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx)
 sgx_status_t ecall_setNextEncryptionMask()
 {
     EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
+    EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
     unsigned char currentKeyBase[32];
     unsigned char currentKey[32];
     int cipherlen, len;
-    int generateClientNumber = MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
     int generatedNumber = 0;
     auto it = clientList_.begin();
-    while (it != clientList_.end() && generatedNumber < generateClientNumber) {
+    while (it != clientList_.end() && generatedNumber < MAX_SEPCULATIVE_CLIENT_NUMBER) {
+        print("Key enclave generate mask for client start", 42);
         uint32_t currentCounter = it->second.keyGenerateCounter + it->second.currentKeyGenerateCounter;
         it->second.offlineFlag = -1;
         uint8_t nonce[12];
         memcpy_s(nonce, 12, it->second.nonce, 12);
-        EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
-        for (int i = 0; i < MAX_SPECULATIVE_KEY_SIZE / 32; i++) {
+        for (int i = 0; i < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT / 32; i++) {
             memcpy(currentKeyBase, &currentCounter, sizeof(uint32_t));
             memcpy(currentKeyBase + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
             currentCounter++;
@@ -241,7 +251,7 @@ sgx_status_t ecall_setNextEncryptionMask()
         }
         it->second.offlineFlag = 1;
         it->second.maskOffset = generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
-        ++it;
+        it++;
         generatedNumber++;
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
@@ -293,26 +303,23 @@ sgx_status_t ecall_setCTRMode()
 
 sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int clientID)
 {
-    uint8_t *originhash, *hashTemp, *keySeed, *hash;
-    hash = (uint8_t*)malloc(32);
-    originhash = (uint8_t*)malloc(srcLen);
-    keySeed = (uint8_t*)malloc(srcLen);
-    hashTemp = (uint8_t*)malloc(64);
-    unsigned char mask[srcLen * 2];
+    uint8_t hmac[32];
+    int originalHashLen = srcLen - 32;
+    sgx_hmac_sha256_msg(src, originalHashLen, currentSessionKey_, 32, hmac, 32);
+    if (memcmp(hmac, src + originalHashLen, 32) != 0) {
+        return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
+    }
+    uint8_t hash[32], originhash[originalHashLen], keySeed[originalHashLen], hashTemp[64], mask[originalHashLen * 2];
     uint32_t currentCounter = clientList_.at(clientID).currentKeyGenerateCounter;
     uint32_t previousCounter = clientList_.at(clientID).keyGenerateCounter;
     uint32_t maskBufferOffset = clientList_.at(clientID).maskOffset;
-    if ((16 * (currentCounter + (srcLen / 32) * 4)) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
-        for (int i = 0; i < srcLen; i++) {
+    if ((16 * (currentCounter + (originalHashLen / 32) * 4)) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
+        for (int i = 0; i < originalHashLen; i++) {
             originhash[i] = src[i] ^ nextEncryptionMaskSet_[maskBufferOffset + currentCounter * 16 + i];
         }
     } else {
         EVP_CIPHER_CTX* cipherctx_ = EVP_CIPHER_CTX_new();
         if (cipherctx_ == NULL) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
             return SGX_ERROR_UNEXPECTED;
         }
         unsigned char currentKeyBase[32];
@@ -322,7 +329,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         int cipherlen, len;
         EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
         uint32_t currentCounterTemp = previousCounter + currentCounter;
-        for (int i = 0; i < srcLen * 2 / 32; i++) {
+        for (int i = 0; i < originalHashLen * 2 / 32; i++) {
             memcpy_s(currentKeyBase, 32, &currentCounterTemp, sizeof(uint32_t));
             memcpy_s(currentKeyBase + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
             currentCounterTemp++;
@@ -330,60 +337,41 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             memcpy_s(currentKeyBase + 16 + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
             currentCounterTemp++;
             if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey_, currentSessionKey_)) {
-                free(hash);
-                free(originhash);
-                free(hashTemp);
-                free(keySeed);
                 return SGX_ERROR_UNEXPECTED;
             }
             if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
-                free(hash);
-                free(originhash);
-                free(hashTemp);
-                free(keySeed);
                 return SGX_ERROR_UNEXPECTED;
             }
             if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
-                free(hash);
-                free(originhash);
-                free(hashTemp);
-                free(keySeed);
                 return SGX_ERROR_UNEXPECTED;
             }
-            memcpy_s(mask + i * 32, srcLen * 2, currentKey, 32);
+            memcpy_s(mask + i * 32, originalHashLen * 2 - i * 32, currentKey, 32);
         }
         EVP_CIPHER_CTX_cleanup(cipherctx_);
-        for (int i = 0; i < srcLen; i++) {
+        for (int i = 0; i < originalHashLen; i++) {
             originhash[i] = src[i] ^ mask[i];
         }
     }
-    for (uint32_t index = 0; index < (srcLen / 32); index++) {
+    for (uint32_t index = 0; index < (originalHashLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
         memcpy_s(hashTemp + 32, 64, serverSecret_, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
         if (sha256Status != SGX_SUCCESS) {
-            free(hash);
-            free(originhash);
-            free(hashTemp);
-            free(keySeed);
             return sha256Status;
         }
-        memcpy_s(keySeed + index * 32, srcLen - index * 32, hash, 32);
+        memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
     }
-    if ((currentCounter * 16 + srcLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
-        for (int i = 0; i < srcLen; i++) {
-            key[i] = keySeed[i] ^ nextEncryptionMaskSet_[maskBufferOffset + currentCounter * 16 + srcLen + i];
+    if ((currentCounter * 16 + originalHashLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
+        for (int i = 0; i < originalHashLen; i++) {
+            key[i] = keySeed[i] ^ nextEncryptionMaskSet_[maskBufferOffset + currentCounter * 16 + originalHashLen + i];
         }
     } else {
-        for (int i = 0; i < srcLen; i++) {
-            key[i] = keySeed[i] ^ mask[i + srcLen];
+        for (int i = 0; i < originalHashLen; i++) {
+            key[i] = keySeed[i] ^ mask[i + originalHashLen];
         }
     }
-    clientList_.at(clientID).currentKeyGenerateCounter += (srcLen * 2 / 16);
-    free(hash);
-    free(originhash);
-    free(hashTemp);
-    free(keySeed);
+    sgx_hmac_sha256_msg(key, originalHashLen, currentSessionKey_, 32, key + originalHashLen, 32);
+    clientList_.at(clientID).currentKeyGenerateCounter += (originalHashLen * 2 / 16);
     return SGX_SUCCESS;
 }
 

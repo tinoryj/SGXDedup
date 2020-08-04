@@ -27,6 +27,7 @@ void PRINT_BYTE_ARRAY_KM(
 
 void print(const char* str, uint32_t len)
 {
+    cout << str << endl;
     uint8_t* array = (uint8_t*)str;
     for (int i = 0; i < len - 1; i++) {
         printf("0x%x, ", array[i]);
@@ -74,16 +75,16 @@ int kmClient::modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hma
     } else {
         if (retval == SGX_ERROR_UNEXPECTED) {
             cerr << "KmClient : counter not correct, reset to 0" << endl;
-            return 1; // reset counter
+            return CLIENT_COUNTER_REST; // reset counter
         } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
             cerr << "KmClient : client hmac not correct, require resend" << endl;
-            return 2; // resend message  (hmac not cpmpare)
+            return ERROR_RESEND; // resend message  (hmac not cpmpare)
         } else if (retval == SGX_SUCCESS) {
             cerr << "KmClient : init client info success" << endl;
-            return 3; // success
+            return SUCCESS; // success
         } else if (retval == SGX_ERROR_INVALID_PARAMETER) {
             cerr << "KmClient : nonce has been used, send regrenate message" << endl;
-            return 4;
+            return NONCE_HAS_USED;
         }
     }
 }
@@ -106,6 +107,9 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int
         clientID);
     if (status != SGX_SUCCESS) {
         cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
+        return false;
+    } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
+        cerr << "KmClient : client hash list hmac error, key generate failed" << endl;
         return false;
     }
     memcpy(key, ans, keySize);
@@ -151,6 +155,9 @@ kmClient::kmClient(string keyd, uint64_t keyRegressionMaxTimes)
 
 kmClient::~kmClient()
 {
+    sgx_status_t status;
+    sgx_status_t retval;
+    status = ecall_enclave_close(_eid, &retval);
     sgx_destroy_enclave(_eid);
 }
 

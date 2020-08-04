@@ -203,6 +203,10 @@ void keyServer::runSessionKeyUpdate()
 void keyServer::runCTRModeMaskGenerate()
 {
     while (true) {
+        boost::xtime xt;
+        boost::xtime_get(&xt, boost::TIME_UTC_);
+        xt.sec = 5;
+        boost::thread::sleep(xt);
         if (raRequestFlag == false && offlineGenerateFlag_ == true) {
             multiThreadCountMutex_.lock();
             cout << "KeyServer : start offlien mask generate" << endl;
@@ -509,38 +513,27 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         u_char hash[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
         int recvSize = 0;
         if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
-#if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
+#if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            multiThreadCountMutex_.unlock();
             return;
         }
 
         if ((recvSize % CHUNK_HASH_SIZE) != 0) {
             cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
-#if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
+#if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
 #endif
+            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            multiThreadCountMutex_.unlock();
             return;
         }
 
@@ -585,19 +578,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         currentThreadkeyGenerationNumber += recvNumber;
         if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
-#if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
+#if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
 #endif
+            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            multiThreadCountMutex_.unlock();
             return;
         }
     }
@@ -624,7 +612,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     MaskInfo_t currentMaskInfo;
     currentMaskInfo.offLineGenerateFlag = false;
     bool clientInfoExistFlag = false;
-    // recv init messages
+    cerr << "KeyServer : start recv init messages" << endl;
     NetworkHeadStruct_t netHead;
     char initInfoBuffer[48 + sizeof(NetworkHeadStruct_t)]; // clientID & nonce & counter
     while (true) {
@@ -633,32 +621,24 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             u_char cipherBuffer[16], hmacbuffer[32];
             memcpy(cipherBuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t), 16);
             memcpy(hmacbuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, 32);
+            multiThreadMutex_.lock();
             int modifyClientInfoStatus = client->modifyClientStatus(netHead.clientID, cipherBuffer, hmacbuffer);
-            if (modifyClientInfoStatus == 1) {
+            multiThreadMutex_.unlock();
+            if (modifyClientInfoStatus == SUCCESS || modifyClientInfoStatus == CLIENT_COUNTER_REST) {
                 char responseBuffer[sizeof(NetworkHeadStruct_t)];
                 NetworkHeadStruct_t responseHead;
                 responseHead.clientID = netHead.clientID;
                 responseHead.dataSize = 0;
-                responseHead.messageType = CLIENT_COUNTER_REST;
+                responseHead.messageType = modifyClientInfoStatus;
                 int sendSize = sizeof(NetworkHeadStruct_t);
                 keySecurityChannel_->send(connection, responseBuffer, sendSize);
                 break;
-            } else if (modifyClientInfoStatus == 2) {
+            } else if (modifyClientInfoStatus == ERROR_RESEND || modifyClientInfoStatus == NONCE_HAS_USED) {
                 char responseBuffer[sizeof(NetworkHeadStruct_t)];
                 NetworkHeadStruct_t responseHead;
                 responseHead.clientID = netHead.clientID;
                 responseHead.dataSize = 0;
-                responseHead.messageType = ERROR_RESEND;
-                int sendSize = sizeof(NetworkHeadStruct_t);
-                keySecurityChannel_->send(connection, responseBuffer, sendSize);
-            } else if (modifyClientInfoStatus == 3) {
-                break;
-            } else if (modifyClientInfoStatus == 4) {
-                char responseBuffer[sizeof(NetworkHeadStruct_t)];
-                NetworkHeadStruct_t responseHead;
-                responseHead.clientID = netHead.clientID;
-                responseHead.dataSize = 0;
-                responseHead.messageType = NONCE_HAS_USED;
+                responseHead.messageType = modifyClientInfoStatus;
                 int sendSize = sizeof(NetworkHeadStruct_t);
                 keySecurityChannel_->send(connection, responseBuffer, sendSize);
             } else if (modifyClientInfoStatus == -1) {
@@ -673,54 +653,32 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     }
     //done
     while (true) {
-        u_char hash[sizeof(NetworkHeadStruct_t) + config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        u_char hash[sizeof(NetworkHeadStruct_t) + config.getKeyBatchSize() * CHUNK_HASH_SIZE + 32];
         if (!keySecurityChannel_->recv(connection, (char*)hash, recvSize)) {
-#if SYSTEM_BREAK_DOWN == 1
+
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
             offlineGenerateFlag_ = true;
+#if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
-#endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+#endif
+            multiThreadCountMutex_.unlock();
             return;
         }
         memcpy(&netHead, hash, sizeof(NetworkHeadStruct_t));
-        if ((netHead.dataSize % CHUNK_HASH_SIZE) != 0) {
-            cerr << "keyServer : recv chunk hash error : hash size wrong" << endl;
-#if SYSTEM_BREAK_DOWN == 1
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
-            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
-#endif
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
-            return;
-        }
-
-        int recvNumber = netHead.dataSize / CHUNK_HASH_SIZE;
+        int recvNumber = netHead.dataSize;
 #if SYSTEM_DEBUG_FLAG == 1
         cout << "KeyServer : recv hash number = " << recvNumber << endl;
 #endif
-        u_char key[config.getKeyBatchSize() * CHUNK_HASH_SIZE];
+        u_char key[netHead.dataSize * CHUNK_HASH_SIZE + 32];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
 
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID);
+        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize * CHUNK_HASH_SIZE + 32, key, netHead.dataSize * CHUNK_HASH_SIZE + 32, netHead.clientID);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -735,7 +693,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize, key, config.getKeyBatchSize() * CHUNK_HASH_SIZE, netHead.clientID);
+        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize * CHUNK_HASH_SIZE + 32, key, netHead.dataSize * CHUNK_HASH_SIZE + 32, netHead.clientID);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -746,22 +704,16 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         multiThreadMutex_.unlock();
 #endif
         currentThreadkeyGenerationNumber += recvNumber;
-        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE)) {
+        if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE + 32)) {
             cerr << "KeyServer : error send back chunk key to client" << endl;
-#if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
+#if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            multiThreadCountMutex_.unlock();
-#else
-            multiThreadCountMutex_.lock();
-            clientThreadCount_--;
-            offlineGenerateFlag_ = true;
-            multiThreadCountMutex_.unlock();
-#endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+#endif
+            multiThreadCountMutex_.unlock();
             return;
         }
     }
