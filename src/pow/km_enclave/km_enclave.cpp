@@ -10,9 +10,9 @@
 
 using namespace std;
 
-#define MAX_SPECULATIVE_KEY_SIZE 90 * 1024 * 1024
-#define MAX_SEPCULATIVE_CLIENT_NUMBER 3
-#define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SEPCULATIVE_CLIENT_NUMBER
+#define MAX_SPECULATIVE_KEY_SIZE 80 * 1024 * 1024
+#define MAX_SPECULATIVE_CLIENT_NUMBER 4
+#define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
 //     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -125,11 +125,11 @@ sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes)
 
 sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_t* hmacBuffer)
 {
+    print("KeyEnclave : client Info init", 29, 1);
     auto it = clientList_.begin();
     while (it != clientList_.end()) {
         it->second.keyGenerateCounter += it->second.currentKeyGenerateCounter;
         it->second.currentKeyGenerateCounter = 0;
-        print((char*)it->second.nonce, 12);
         it++;
     }
     uint8_t hmac[32];
@@ -141,8 +141,9 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
         return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
     } else {
         memcpy_s(&recvedCounter, sizeof(uint32_t), plaintextBuffer, sizeof(uint32_t));
-        print((char*)plaintextBuffer, sizeof(uint32_t));
-        print((char*)plaintextBuffer + sizeof(uint32_t), 12);
+        print("KeyEnclave : client Info = ", 27, 1);
+        print((char*)plaintextBuffer, sizeof(uint32_t), 2);
+        print((char*)plaintextBuffer + sizeof(uint32_t), 12, 2);
         if (clientList_.find(clientID) == clientList_.end()) {
             ClientInfo_t newClient;
             memcpy_s(newClient.nonce, 12, plaintextBuffer + sizeof(uint32_t), 12);
@@ -162,8 +163,6 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
             }
         } else {
             if (clientList_.at(clientID).keyGenerateCounter == recvedCounter) {
-                clientList_.at(clientID).keyGenerateCounter += clientList_.at(clientID).currentKeyGenerateCounter;
-                clientList_.at(clientID).currentKeyGenerateCounter = 0;
                 return SGX_SUCCESS; // success, use offline mode
             } else {
                 clientList_.at(clientID).keyGenerateCounter = 0;
@@ -220,8 +219,8 @@ sgx_status_t ecall_setNextEncryptionMask()
     int cipherlen, len;
     int generatedNumber = 0;
     auto it = clientList_.begin();
-    while (it != clientList_.end() && generatedNumber < MAX_SEPCULATIVE_CLIENT_NUMBER) {
-        print("Key enclave generate mask for client start", 42);
+    while (it != clientList_.end() && generatedNumber < MAX_SPECULATIVE_CLIENT_NUMBER) {
+        print("Key enclave generate mask for client start", 42, 1);
         uint32_t currentCounter = it->second.keyGenerateCounter + it->second.currentKeyGenerateCounter;
         it->second.offlineFlag = -1;
         uint8_t nonce[12];
@@ -247,12 +246,13 @@ sgx_status_t ecall_setNextEncryptionMask()
                 EVP_CIPHER_CTX_cleanup(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
-            memcpy_s(nextEncryptionMaskSet_ + generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT + i * 32, MAX_SPECULATIVE_KEY_SIZE - generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT + i * 32, currentKey, 32);
+            memcpy_s(nextEncryptionMaskSet_ + generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT + i * 32, MAX_SPECULATIVE_KEY_SIZE - generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT - i * 32, currentKey, 32);
         }
         it->second.offlineFlag = 1;
         it->second.maskOffset = generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
         it++;
         generatedNumber++;
+        print("Key enclave generate mask for client done", 41, 1);
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
     return SGX_SUCCESS;
@@ -297,6 +297,8 @@ sgx_status_t ecall_setCTRMode()
     nextEncryptionMaskSet_ = (uint8_t*)malloc(MAX_SPECULATIVE_KEY_SIZE * sizeof(uint8_t));
     if (nextEncryptionMaskSet_ == NULL) {
         return SGX_ERROR_UNEXPECTED;
+    } else {
+        memset(nextEncryptionMaskSet_, 0, MAX_SPECULATIVE_KEY_SIZE);
     }
     return SGX_SUCCESS;
 }
@@ -360,6 +362,8 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             return sha256Status;
         }
         memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
+        print("KeyEnclave : Chunk Key = ", 25, 1);
+        print((char*)hash, 32, 2);
     }
     if ((currentCounter * 16 + originalHashLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
         for (int i = 0; i < originalHashLen; i++) {

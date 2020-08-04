@@ -28,6 +28,6 @@ enclave {
         public sgx_status_t ecall_clientStatusModify(int clientID, [user_check]uint8_t* inputBuffer, [user_check]uint8_t* hmacBuffer);
     };
     untrusted {
-		void print([in,string] const char *string, uint32_t len);
+		    void print([in,size=len]const char* mem, uint32_t len, uint32_t type);
     };
 };

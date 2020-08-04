@@ -20,7 +20,7 @@ extern "C" {
 
 #ifndef PRINT_DEFINED__
 #define PRINT_DEFINED__
-void SGX_UBRIDGE(SGX_NOCONVENTION, print, (const char* string, uint32_t len));
+void SGX_UBRIDGE(SGX_NOCONVENTION, print, (const char* mem, uint32_t len, uint32_t type));
 #endif
 #ifndef CREATE_SESSION_OCALL_DEFINED__
 #define CREATE_SESSION_OCALL_DEFINED__

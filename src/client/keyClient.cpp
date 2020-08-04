@@ -419,7 +419,10 @@ void KeyClient::run()
             } else {
                 for (int i = 0; i < batchNumber; i++) {
                     memcpy(batchList[i].chunk.encryptKey, chunkKey + i * CHUNK_ENCRYPT_KEY_SIZE, CHUNK_ENCRYPT_KEY_SIZE);
-                    // memcpy(batchList[i].chunk.encryptKey, batchList[i].chunk.chunkHash, CHUNK_ENCRYPT_KEY_SIZE);
+#if SYSTEM_DEBUG_FLAG == 1
+                    cerr << "KeyClient : chunk " << batchList[i].chunk.ID << ", encrypt key = " << endl;
+                    PRINT_BYTE_ARRAY_KEY_CLIENT(stdout, batchList[i].chunk.encryptKey, 32);
+#endif
 #if ENCODER_MODULE_ENABLED == 1
                     encoderObj_->insertMQ(batchList[i]);
 #else
@@ -593,6 +596,8 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    cerr << "key exchange mask = " << endl;
+    PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, keyExchangeXORBase, batchNumber * CHUNK_HASH_SIZE * 2);
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
     cryptoObj_->sha256Hmac(sendHash + sizeof(NetworkHeadStruct_t), CHUNK_HASH_SIZE * batchNumber, sendHash + sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, 32);
 #if SYSTEM_BREAK_DOWN == 1

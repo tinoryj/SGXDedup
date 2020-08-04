@@ -8,17 +8,26 @@ extern Configure config;
 struct timeval timestartPowClient;
 struct timeval timeendPowClient;
 
-void print(const char* str, uint32_t len)
+void print(const char* mem, uint32_t len, uint32_t type)
 {
-    cout << str << endl;
-    uint8_t* array = (uint8_t*)str;
-    for (int i = 0; i < len - 1; i++) {
-        printf("0x%x, ", array[i]);
-        if (i % 8 == 7)
-            printf("\n");
+    if (type == 1) {
+        cout << mem << endl;
+    } else if (type == 2) {
+        if (!mem || !len) {
+            fprintf(stderr, "\n( null )\n");
+            return;
+        }
+        uint8_t* array = (uint8_t*)mem;
+        fprintf(stderr, "%u bytes:\n{\n", len);
+        uint32_t i = 0;
+        for (i = 0; i < len - 1; i++) {
+            fprintf(stderr, "0x%x, ", array[i]);
+            if (i % 8 == 7)
+                fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "0x%x ", array[i]);
+        fprintf(stderr, "\n}\n");
     }
-    printf("0x%x ", array[len - 1]);
-    printf("\n=====================================\n");
 }
 
 void PRINT_BYTE_ARRAY_POW_CLIENT(

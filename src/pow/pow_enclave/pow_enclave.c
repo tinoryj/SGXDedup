@@ -127,20 +127,20 @@ sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
 {
     uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));
     if (sealed_buf == NULL || sgx_is_outside_enclave(sealed_buf, sgxCalSealedLen)) {
-        print("PowEnclave : input sealed_buf error.\n", 38);
+        print("PowEnclave : input sealed_buf error.\n", 38, 1);
         return 1;
     }
     uint32_t plain_text_length = 0;
     uint8_t* sealed_data = (uint8_t*)malloc(sgxCalSealedLen);
     if (sealed_data == NULL || sgx_is_outside_enclave(sealed_data, sgxCalSealedLen)) {
         free(sealed_data);
-        print("PowEnclave : sealed_data buffer error.\n", 40);
+        print("PowEnclave : sealed_data buffer error.\n", 40, 1);
         return 2;
     }
     memcpy_s(sealed_data, sgxCalSealedLen, sealed_buf, sgxCalSealedLen);
     uint32_t decryptSize = sgx_get_encrypt_txt_len((sgx_sealed_data_t*)sealed_data);
     if (decryptSize != sizeof(sgx_ra_key_128_t)) {
-        print("PowEnclave : unseal decrypt size size error", 44);
+        print("PowEnclave : unseal decrypt size size error", 44, 1);
         free(sealed_data);
         return 3;
     }
@@ -149,7 +149,7 @@ sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
     sgx_status_t ret;
     ret = sgx_unseal_data((sgx_sealed_data_t*)sealed_data, NULL, &plain_text_length, unsealed_data, &unsealed_data_length);
     if (ret != SGX_SUCCESS) {
-        print("PowEnclave : unseal session key error", 38);
+        print("PowEnclave : unseal session key error", 38, 1);
         free(sealed_data);
         free(unsealed_data);
         return 4;
@@ -157,12 +157,11 @@ sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
         if (unsealed_data_length != decryptSize) {
             char* output = (char*)malloc(256);
             snprintf(output, 256, "PowEnclave : unseal data size = %u not equal to decrypt size = %u, error\n", unsealed_data_length, decryptSize);
-            print(output, 82);
+            print(output, 82, 1);
             free(output);
             return 5;
         } else {
             memcpy_s((uint8_t*)&powSessionKey, 16 * sizeof(uint8_t), unsealed_data, 16 * sizeof(uint8_t));
-            // print(powSessionKey, 16);
             return 0;
         }
     }
@@ -174,13 +173,13 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
     uint32_t sealed_len = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
     uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));
     if (sgxCalSealedLen != sealed_len) {
-        print("PowEnclave : sealed length error.\n", 35);
+        print("PowEnclave : sealed length error.\n", 35, 1);
         free(output);
         return 1;
     }
     // Check the sealed_buf length and check the outside pointers deeply
     if (!sealed_buf) {
-        print("PowEnclave : sealed buffer error.\n", 35);
+        print("PowEnclave : sealed buffer error.\n", 35, 1);
         free(output);
         return 2;
     }
@@ -189,7 +188,7 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
     if (temp_sealed_buf == NULL || sgx_is_outside_enclave(temp_sealed_buf, sgxCalSealedLen)) {
         free(output);
         free(temp_sealed_buf);
-        print("PowEnclave : sealing buffer error.\n", 36);
+        print("PowEnclave : sealing buffer error.\n", 36, 1);
         return 3;
     }
     memset_s(temp_sealed_buf, sgxCalSealedLen, 0, sgxCalSealedLen);
@@ -199,7 +198,7 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
     if (ret != SGX_SUCCESS) {
         free(temp_sealed_buf);
         free(output);
-        print("PowEnclave : seal session key error.\n", 38);
+        print("PowEnclave : seal session key error.\n", 38, 1);
         return 4;
     } else {
         // Backup the sealed data to outside bufferret
@@ -208,9 +207,9 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
         // uint32_t decryptSize = sgx_get_encrypt_txt_len(temp_sealed_buf);
         // uint8_t* unsealed_data = (uint8_t*)malloc(decryptSize);
         // snprintf(output, 256, "unseal data size = %u\n", decryptSize);
-        // print(output, 27);
+        // print(output, 27, 2);
         // if (sgx_is_outside_enclave(unsealed_data, decryptSize)) {
-        //     print("ocall close : unseal data space error\n", 39);
+        //     print("ocall close : unseal data space error\n", 39, 1);
         //     free(temp_sealed_buf);
         //     free(unsealed_data);
         //     free(output);
@@ -220,7 +219,7 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
         // uint32_t plain_text_length = 0;
         // ret = sgx_unseal_data((sgx_sealed_data_t*)temp_sealed_buf, NULL, &plain_text_length, unsealed_data, &unsealed_data_length);
         // if (ret != SGX_SUCCESS) {
-        //     print("ocall close : unseal error\n", 28);
+        //     print("ocall close : unseal error\n", 28, 1);
         //     free(temp_sealed_buf);
         //     free(unsealed_data);
         //     free(output);
@@ -228,14 +227,14 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
         // } else {
         //     if (unsealed_data_length != decryptSize) {
         //         snprintf(output, 256, "unseal data size = %u, decrypt size = %u\n", unsealed_data_length, decryptSize);
-        //         print(output, 46);
+        //         print(output, 46, 1);
         //         free(temp_sealed_buf);
         //         free(unsealed_data);
         //         free(output);
         //         return 7;
         //     } else {
-        //         print("Unsealed key = ", 16);
-        //         print(unsealed_data, 16);
+        //         print("Unsealed key = ", 16, 1);
+        //         print(unsealed_data, 16, 2);
         //         free(temp_sealed_buf);
         //         free(unsealed_data);
         //         free(output);
