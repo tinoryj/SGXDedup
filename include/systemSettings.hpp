@@ -9,9 +9,10 @@
 #define ENCLAVE_SEALED_INIT_ENABLE 1
 
 /* Key Generation method Settings: 0-disable; 1-enable */
-#define KEY_GEN_SGX_CFB 1
-#define KEY_GEN_SGX_CTR 0
+#define KEY_GEN_SGX_CFB 0
+#define KEY_GEN_SGX_CTR 1
 #define KEY_GEN_SERVER_MLE_NO_OPRF 0
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
 
 /* Storage Core Settings: 0-disable; 1-enable */
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
@@ -19,10 +20,6 @@
 
 #define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
 #define KEY_GEN_EPOLL_MODE 0
-
-#define KEY_REGRESSION_BY_INTERVALS 0
-#define KEY_REGRESSION_BY_NUMBER 1
-#define KEY_REGRESSION_METHOD KEY_REGRESSION_BY_NUMBER
 
 /* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/
 #define QUEUE_TYPE_LOCKFREE_SPSC_QUEUE 0

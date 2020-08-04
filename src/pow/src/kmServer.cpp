@@ -71,7 +71,7 @@ kmServer::kmServer(ssl* raSecurityChannel, SSL* sslConnection)
     sslConnection_ = sslConnection;
 }
 
-bool kmServer::process_msg01(powSession* session, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
+bool kmServer::process_msg01(enclaveSession* session, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
 
     EVP_PKEY* Gb;
@@ -173,7 +173,7 @@ bool kmServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
     return true;
 }
 
-bool kmServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+bool kmServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
@@ -322,9 +322,9 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
     }
     return true;
 }
-powSession* kmServer::authkm()
+enclaveSession* kmServer::authkm()
 {
-    powSession* ans = new powSession();
+    enclaveSession* ans = new enclaveSession();
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
     ra_msg4_t msg4;

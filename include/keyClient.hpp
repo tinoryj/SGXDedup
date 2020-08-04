@@ -5,8 +5,8 @@
 #if ENCODER_MODULE_ENABLED == 1
 #include "encoder.hpp"
 #else
+#include "enclaveSession.hpp"
 #include "powClient.hpp"
-#include "powSession.hpp"
 #endif
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -47,7 +47,7 @@ public:
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj);
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     bool keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, u_char* nonce, uint32_t counter, NetworkHeadStruct_t netHead);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj, u_char* nonce, uint32_t counter, NetworkHeadStruct_t netHead);

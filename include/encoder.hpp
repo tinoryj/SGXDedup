@@ -4,9 +4,9 @@
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
+#include "enclaveSession.hpp"
 #include "messageQueue.hpp"
 #include "powClient.hpp"
-#include "powSession.hpp"
 #include "ssl.hpp"
 
 class Encoder {

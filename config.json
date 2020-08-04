@@ -12,8 +12,6 @@
 		"_keyBatchSize": 3000,
 		"_keyServerNumber": 1,
 		"_keyEnclaveThreadNumber": 1,
-		"_keyCacheSize": 10000,
-		"_keyGenLimitPerSessionKey": 10000000,
 		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
 			"127.0.0.1"
@@ -22,7 +20,7 @@
 			6666
 		],
 		"_keyRegressionMaxTimes": 1048576,
-		"_keyRegressionIntervals": 14400
+		"_keyRegressionIntervals": 259200
 	},
 	"SPConfig": {
 		"_storageServerNumber": 1,
@@ -60,7 +58,7 @@
 		"_containerRootPath": "Containers/",
 		"_fp2ChunkDBName": "db1",
 		"_fp2MetaDBame": "db2",
-		"_raSessionKeylifeSpan": 10000000
+		"_raSessionKeylifeSpan": 2592000
 	},
 	"client": {
 		"_clientID": 0,

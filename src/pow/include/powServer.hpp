@@ -7,10 +7,10 @@
 #include "crypto.h"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
+#include "enclaveSession.hpp"
 #include "iasrequest.h"
 #include "json.hpp"
 #include "messageQueue.hpp"
-#include "powSession.hpp"
 #include "protocol.hpp"
 #include <bits/stdc++.h>
 #include <openssl/err.h>
@@ -71,11 +71,11 @@ private:
 
 public:
     powServer();
-    map<int, powSession*> sessions;
+    map<int, enclaveSession*> sessions;
     void closeSession(int fd);
     bool process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2);
-    bool process_msg3(powSession* session, sgx_ra_msg3_t* msg3, ra_msg4_t& msg4, uint32_t quote_sz);
-    bool process_signedHash(powSession* session, u_char* mac, u_char* hashList, int chunkNumber);
+    bool process_msg3(enclaveSession* session, sgx_ra_msg3_t* msg3, ra_msg4_t& msg4, uint32_t quote_sz);
+    bool process_signedHash(enclaveSession* session, u_char* mac, u_char* hashList, int chunkNumber);
 };
 
 #endif //SGXDEDUP_POWSERVER_HPP

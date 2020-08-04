@@ -72,7 +72,7 @@ powServer::powServer()
 
 bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
-    powSession* current = new powSession();
+    enclaveSession* current = new enclaveSession();
     sessions.insert(make_pair(fd, current));
 
     EVP_PKEY* Gb;
@@ -172,7 +172,7 @@ bool powServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
     return true;
 }
 
-bool powServer::process_msg3(powSession* current, sgx_ra_msg3_t* msg3,
+bool powServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
     ra_msg4_t& msg4, uint32_t quote_sz)
 {
 
@@ -304,7 +304,7 @@ bool powServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_des
     return true;
 }
 
-bool powServer::process_signedHash(powSession* session, u_char* mac, u_char* hashList, int chunkNumber)
+bool powServer::process_signedHash(enclaveSession* session, u_char* mac, u_char* hashList, int chunkNumber)
 {
     u_char serverMac[16];
     cryptoObj_->cmac128(hashList, chunkNumber, serverMac, session->sk, 16);

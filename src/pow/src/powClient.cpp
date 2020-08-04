@@ -383,7 +383,7 @@ powClient::powClient(Sender* senderObjTemp)
     gettimeofday(&timeendPowClient, NULL);
     int diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
     double second = diff / 1000000.0;
-    cout << "PowClient : enclave init time = " << second << endl;
+    cout << "PowClient : enclave init time = " << second << " s" << endl;
 #endif
 }
 

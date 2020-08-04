@@ -26,11 +26,10 @@ private:
     std::mutex clientThreadNumberCountMutex_;
     uint64_t keyGenerateCount_;
     uint64_t clientThreadCount_;
-    uint64_t keyGenLimitPerSessionKey_;
-    uint64_t sessionKeyUpdateCount_;
-    bool raRequestFlag;
-    bool raSetupFlag;
-#if KEY_GEN_SGX_CTR == 1
+    uint64_t sessionKeyRegressionMaxNumber_, sessionKeyRegressionCurrentNumber_;
+    bool raRequestFlag_, raSetupFlag_, sessionKeyUpdateFlag_;
+    std::mutex mutexSessionKeyUpdate;
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     bool offlineGenerateFlag_ = false;
 #endif
     ssl* keySecurityChannel_;
@@ -42,25 +41,13 @@ private:
     unordered_map<int, SSL*> sslConnectionList_;
     int epfd_;
 #endif
-#if KEY_GEN_SGX_CTR == 1
-    typedef struct {
-        int clientID;
-        uint32_t keyGenerateCounter = 0;
-        uint32_t currentKeyGenerateCounter = 0;
-        u_char nonce[16 - sizeof(uint32_t)];
-        int nonceLen = 16 - sizeof(uint32_t);
-        bool offLineGenerateFlag = false;
-        u_char secretDataBuffer[16 + 16];
-    } MaskInfo_t;
-    unordered_map<int, MaskInfo_t> clientList_; //clientID - MaskInfo_t pair
-#endif
 public:
     keyServer(ssl* keySecurityChannelTemp);
     ~keyServer();
-    void runRA();
+    bool runRemoteAttestationInit();
     void runRAwithSPRequest();
     void runSessionKeyUpdate();
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     void runCTRModeMaskGenerate();
 #endif
 #if KEY_GEN_EPOLL_MODE == 1
@@ -70,7 +57,7 @@ public:
 #else
     void runKeyGenerateThread(SSL* connection);
 #endif
-    bool doRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
+    bool initEnclaveViaRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection);
     bool getRASetupFlag();
 };
 

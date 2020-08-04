@@ -3,6 +3,10 @@
 
 Configure config("config.json");
 keyServer* server;
+
+struct timeval timestartKeyServerMain;
+struct timeval timeendKeyServerMain;
+
 void CTRLC(int s)
 {
     cerr << "KeyManager exit with keyboard interrupt" << endl;
@@ -23,17 +27,25 @@ int main()
     ssl* keySecurityChannelTemp = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), SERVERSIDE);
     boost::thread* th;
     server = new keyServer(keySecurityChannelTemp);
-    cout << "KeyServerMain : setup keyserver object done" << endl;
-#if KEY_GEN_SGX_CFB == 1
-    th = new boost::thread(boost::bind(&keyServer::runRA, server));
-    th->detach();
+#if SYSTEM_BREAK_DOWN == 1
+    long diff;
+    double second;
+    gettimeofday(&timestartKeyServerMain, NULL);
+#endif
+    server->runRemoteAttestationInit();
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKeyServerMain, NULL);
+    diff = 1000000 * (timeendKeyServerMain.tv_sec - timestartKeyServerMain.tv_sec) + timeendKeyServerMain.tv_usec - timestartKeyServerMain.tv_usec;
+    second = diff / 1000000.0;
+    cout << "KeyServerMain : init key server enclave time = " << second << " s" << endl;
+#endif
+    cout << "KeyServerMain : key server remote attestation done, start provide service" << endl;
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
     th->detach();
-#elif KEY_GEN_SGX_CTR == 1
-    th = new boost::thread(boost::bind(&keyServer::runRA, server));
-    th->detach();
+#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();
     th = new boost::thread(boost::bind(&keyServer::runSessionKeyUpdate, server));
@@ -41,12 +53,6 @@ int main()
     th = new boost::thread(boost::bind(&keyServer::runCTRModeMaskGenerate, server));
     th->detach();
 #endif
-    while (true) {
-        if (server->getRASetupFlag()) {
-            break;
-        }
-    }
-    cout << "KeyServerMain : key server remote attestation done, start provide service" << endl;
 #if KEY_GEN_EPOLL_MODE == 1
     th = new boost::thread(boost::bind(&keyServer::runRecvThread, server));
     th->detach();

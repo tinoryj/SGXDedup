@@ -25,17 +25,20 @@ private:
     powServer* powServerObj_;
     uint32_t restoreChunkBatchSize;
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
-    bool keyExchangeKeySetFlag;
+    bool keyExchangeKeySetFlag_;
     ssl* powSecurityChannel_;
     ssl* dataSecurityChannel_;
     uint64_t keyRegressionCurrentTimes_;
+    bool keyServerTrustedFlag_ = false;
 
 public:
+    enclaveSession* keyServerSession_;
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp);
     ~DataSR() {};
     void runData(SSL* sslConnection);
     void runPow(SSL* sslConnection);
-    void runKeyServerRA();
+    void runKeyServerRemoteAttestation();
+    void runKeyServerSessionKeyUpdate();
 };
 
 #endif //SGXDEDUP_DATASR_HPP

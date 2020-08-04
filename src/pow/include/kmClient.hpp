@@ -1,9 +1,9 @@
 #ifndef SGXDEDUP_KMCLIENT_HPP
 #define SGXDEDUP_KMCLIENT_HPP
 #include "crypto.h"
+#include "enclaveSession.hpp"
 #include "km_enclave_u.h"
 #include "messageQueue.hpp"
-#include "powSession.hpp"
 #include "protocol.hpp"
 #include "pthread.h"
 #include "sender.hpp"
@@ -42,7 +42,7 @@ public:
     ~kmClient();
     bool init(ssl* raSecurityChannel, SSL* sslConnection);
     bool trusted();
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID);
     int modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hmacBuffer);
     bool maskGenerate();

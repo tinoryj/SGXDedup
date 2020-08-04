@@ -1,5 +1,5 @@
-#ifndef SGXDEDUP_POWSESSION_HPP
-#define SGXDEDUP_POWSESSION_HPP
+#ifndef SGXDEDUP_ENCLAVESESSION_HPP
+#define SGXDEDUP_ENCLAVESESSION_HPP
 
 #include "../../../include/configure.hpp"
 #include "../../../include/cryptoPrimitive.hpp"
@@ -9,9 +9,9 @@
 #include "base64.h"
 #include "byteorder.h"
 #include "crypto.h"
+#include "enclaveSession.hpp"
 #include "iasrequest.h"
 #include "json.hpp"
-#include "powSession.hpp"
 #include <iostream>
 
 struct sgx_msg01_t {
@@ -19,7 +19,7 @@ struct sgx_msg01_t {
     sgx_ra_msg1_t msg1;
 };
 
-struct powSession {
+struct enclaveSession {
     bool enclaveTrusted;
     u_char g_a[64];
     u_char g_b[64];
@@ -31,4 +31,4 @@ struct powSession {
     sgx_ra_msg1_t msg1;
 };
 
-#endif //SGXDEDUP_POWSESSION_HPP
+#endif //SGXDEDUP_ENCLAVESESSION_HPP

@@ -63,13 +63,15 @@ int main()
     dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
 
     boost::thread* th;
-    th = new boost::thread(boost::bind(&DataSR::runKeyServerRA, dataSRObj));
+    th = new boost::thread(boost::bind(&DataSR::runKeyServerRemoteAttestation, dataSRObj));
+    thList.push_back(th);
+    th->detach();
+    th = new boost::thread(boost::bind(&DataSR::runKeyServerSessionKeyUpdate, dataSRObj));
     thList.push_back(th);
     th->detach();
 
     boost::thread::attributes attrs;
     attrs.set_stack_size(1000 * 1024 * 1024);
-
     while (true) {
         SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;
         th = new boost::thread(attrs, boost::bind(&DataSR::runData, dataSRObj, sslConnectionData));

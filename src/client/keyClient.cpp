@@ -95,7 +95,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartKeySimulator, NULL);
 #endif
@@ -179,7 +179,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
     gettimeofday(&timeendKeySimulator, NULL);
     diff = 1000000 * (timeendKeySimulator.tv_sec - timestartKeySimulator.tv_sec) + timeendKeySimulator.tv_usec - timestartKeySimulator.tv_usec;
     second = diff / 1000000.0;
-    cout << "KeyClient : init ctr mode time = " << second << endl;
+    cout << "KeyClient : init ctr mode time = " << second << " s" << endl;
 #endif
 #endif
     NetworkHeadStruct_t dataHead;
@@ -214,7 +214,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
             dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, nonce, counter, dataHead);
             counter += batchNumber * 4;
@@ -240,7 +240,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
             break;
         }
     }
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     ofstream counterOut;
     counterOut.open(keyGenFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -280,7 +280,7 @@ void KeyClient::run()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartKey, NULL);
 #endif // SYSTEM_BREAK_DOWN
@@ -366,7 +366,7 @@ void KeyClient::run()
     gettimeofday(&timeendKey, NULL);
     diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
     second = diff / 1000000.0;
-    cout << "KeyClient : init ctr mode time = " << second << endl;
+    cout << "KeyClient : init ctr mode time = " << second << " s" << endl;
 #endif // SYSTEM_BREAK_DOWN
 #endif // KEY_GEN_SGX_CTR
     NetworkHeadStruct_t dataHead;
@@ -407,7 +407,7 @@ void KeyClient::run()
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKey, NULL);
 #endif
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
             dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, nonce, counter, dataHead);
             counter += batchNumber * 4;
@@ -487,7 +487,7 @@ void KeyClient::run()
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
 #endif
 #endif
-#if KEY_GEN_SGX_CTR == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     ofstream counterOut;
     counterOut.open(keyGenFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
@@ -504,7 +504,7 @@ void KeyClient::run()
     return;
 }
 
-#if KEY_GEN_SGX_CFB == 1
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB
 bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber + 32];
@@ -619,7 +619,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     return true;
 }
 
-#elif KEY_GEN_SGX_CTR == 1
+#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
 
 bool KeyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, int batchNumber)
 {
@@ -736,7 +736,9 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
     return true;
 }
-#elif KEY_GEN_SERVER_MLE_NO_OPRF == 1
+
+#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SERVER_MLE_NO_OPRF
+
 bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
 {
     if (!keySecurityChannel_->send(sslConnection_, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {

@@ -31,8 +31,6 @@ void Configure::readConf(std::string path)
     _keyServerNumber = root.get<uint64_t>("KeyServerConfig._keyServerNumber");
     _keyEnclaveThreadNumber = root.get<uint64_t>("KeyServerConfig._keyEnclaveThreadNumber");
     _keyBatchSize = root.get<uint64_t>("KeyServerConfig._keyBatchSize");
-    _keyCacheSize = root.get<uint64_t>("KeyServerConfig._keyCacheSize");
-    _keyGenLimitPerSessionKey = root.get<uint64_t>("KeyServerConfig._keyGenLimitPerSessionKey");
     _keyServerRArequestPort = root.get<int>("KeyServerConfig._keyServerRArequestPort");
     _keyServerIP.clear();
     for (ptree::value_type& it : root.get_child("KeyServerConfig._keyServerIP")) {
@@ -153,16 +151,6 @@ int Configure::getKeyBatchSize()
 int Configure::getkeyServerRArequestPort()
 {
     return _keyServerRArequestPort;
-}
-
-uint64_t Configure::getKeyCacheSize()
-{
-    return _keyCacheSize;
-}
-
-uint64_t Configure::getKeyGenLimitPerSessionkeySize()
-{
-    return _keyGenLimitPerSessionKey;
 }
 
 /*

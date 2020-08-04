@@ -28,8 +28,6 @@ private:
     std::vector<int> _keyServerPort;
     int _keyServerRArequestPort;
     int _keyBatchSize;
-    uint64_t _keyCacheSize;
-    uint64_t _keyGenLimitPerSessionKey;
     uint32_t _keyRegressionMaxTimes;
     uint32_t _keyRegressionIntervals;
 
@@ -102,8 +100,6 @@ public:
     //std::vector<int> getKeyServerPort();
     int getkeyServerRArequestPort();
     int getKeyBatchSize();
-    uint64_t getKeyCacheSize();
-    uint64_t getKeyGenLimitPerSessionkeySize();
     uint32_t getKeyRegressionMaxTimes();
     uint32_t getKeyRegressionIntervals(); // unit: sec
 
