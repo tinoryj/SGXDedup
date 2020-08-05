@@ -233,5 +233,7 @@ int main(int argv, char* argc[])
     delete retrieverObj;
 
     cout << "System : total work time is " << second << " s" << endl;
+    cout << "System : start work time is " << timestart.tv_sec << " s, " << timestart.tv_usec << " us" << endl;
+    cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
     return 0;
 }
