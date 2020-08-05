@@ -37,7 +37,7 @@
 		"_iasVersion": 3,
 		"_ServerPort": 6669,
 		"_enclave_name": "pow_enclave.signed.so",
-		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_SPID": "6F8714DBCA251B114F308C708AAE9205",
 		"_iasServerType": 0,
 		"_batchSize": 3000,
 		"_PriSubscriptionKey": "b912a65603f64aee9c974a4ce218162c",
@@ -48,7 +48,7 @@
 		"_iasVersion": 3,
 		"_ServerPort": 6676,
 		"_enclave_name": "km_enclave.signed.so",
-		"_SPID": "797F0D90EE75B24B554A73AB01FD3335",
+		"_SPID": "6F8714DBCA251B114F308C708AAE9205",
 		"_iasServerType": 0,
 		"_PriSubscriptionKey": "b912a65603f64aee9c974a4ce218162c",
 		"_SecSubscriptionKey": "482aaca3b1664d6a8757321743adef64"
