@@ -357,7 +357,6 @@ bool StorageCore::storeChunks(NetworkHeadStruct_t& networkHead, char* data)
     int chunkNumber;
     memcpy(&chunkNumber, data, sizeof(int));
     int readSize = sizeof(int);
-    u_char hash[CHUNK_HASH_SIZE];
     string tmpdata;
     for (int i = 0; i < chunkNumber; i++) {
         int currentChunkSize;

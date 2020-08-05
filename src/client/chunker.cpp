@@ -536,7 +536,6 @@ void Chunker::varSizeChunking()
 
 void Chunker::traceDrivenChunkingFSL()
 {
-    char* readFlag;
 #if SYSTEM_BREAK_DOWN == 1
     double chunkTime = 0;
     double readFileTime = 0;
@@ -633,7 +632,6 @@ void Chunker::traceDrivenChunkingFSL()
 
 void Chunker::traceDrivenChunkingUBC()
 {
-    char* readFlag;
 #if SYSTEM_BREAK_DOWN == 1
     double chunkTime = 0;
     double readFileTime = 0;

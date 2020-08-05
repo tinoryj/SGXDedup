@@ -29,7 +29,6 @@ private:
     ssl* powSecurityChannel_;
     ssl* dataSecurityChannel_;
     uint64_t keyRegressionCurrentTimes_;
-    bool keyServerTrustedFlag_ = false;
 
 public:
     enclaveSession* keyServerSession_;

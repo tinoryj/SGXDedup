@@ -88,7 +88,9 @@ bool keyServer::initEnclaveViaRemoteAttestation(ssl* raSecurityChannel, SSL* ssl
     } else {
         raSetupFlag_ = true;
         sessionKeyUpdateFlag_ = true;
-        cout << "KeyServer : enclave trusted" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "KeyServer : enclave trusted" << endl;
+#endif
     }
     multiThreadCountMutex_.lock();
     keyGenerateCount_ = 0;
@@ -110,7 +112,10 @@ void keyServer::runRAwithSPRequest()
         while (true) {
             while (!(clientThreadCount_ == 0))
                 ;
-            cout << "KeyServer : start do remote attestation to storage server" << endl;
+            cout << "KeyServer : start do remote attestation to storage server, current time = " << endl;
+            time_t timep;
+            time(&timep);
+            cout << asctime(gmtime(&timep));
             keyGenerateCount_ = 0;
             ssl* raSendSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
             SSL* sslConnectionSend = raSendSecurityChannelTemp->sslConnect().second;
@@ -126,7 +131,10 @@ void keyServer::runRAwithSPRequest()
                 delete raSecurityChannelTemp;
                 free(sslConnectionSend);
                 raRequestFlag_ = false;
-                cout << "KeyServer : do remote attestation to storage SP done" << endl;
+                cout << "KeyServer : do remote attestation to storage SP done, current time = " << endl;
+                time_t timep;
+                time(&timep);
+                cout << asctime(gmtime(&timep));
                 break;
             } else {
                 delete raSecurityChannelTemp;
@@ -141,7 +149,10 @@ void keyServer::runRAwithSPRequest()
 bool keyServer::runRemoteAttestationInit()
 {
     while (true) {
-        cout << "KeyServer : start do remote attestation to storage server" << endl;
+        cout << "KeyServer : start do remote attestation to storage server, current time = " << endl;
+        time_t timep;
+        time(&timep);
+        cout << asctime(gmtime(&timep));
         keyGenerateCount_ = 0;
         ssl* raSecurityChannelTemp = new ssl(config.getStorageServerIP(), config.getKMServerPort(), CLIENTSIDE);
         SSL* sslConnection = raSecurityChannelTemp->sslConnect().second;
@@ -160,7 +171,10 @@ bool keyServer::runRemoteAttestationInit()
             delete raSecurityChannelTemp;
             free(sslConnection);
             raRequestFlag_ = false;
-            cout << "KeyServer : do remote attestation to storage SP done" << endl;
+            cout << "KeyServer : do remote attestation to storage SP done, current time = " << endl;
+            time_t timep;
+            time(&timep);
+            cout << asctime(gmtime(&timep));
             break;
         } else {
             delete raSecurityChannelTemp;
@@ -209,9 +223,9 @@ void keyServer::runSessionKeyUpdate()
         }
         sessionKeyUpdateFlag_ = true;
         mutexSessionKeyUpdate.unlock();
-        cout << "KeyServer : keyServer session key update done, current regression counter = " << sessionKeyRegressionCurrentNumber_ << endl;
+        cerr << "KeyServer : keyServer session key update done, current regression counter = " << sessionKeyRegressionCurrentNumber_ << endl;
 #if SYSTEM_BREAK_DOWN == 1
-        cout << "KeyServer : session key update time = " << second << " s" << endl;
+        cout << "KeyServer : session key counter = " << sessionKeyRegressionCurrentNumber_ << " update time = " << second << " s" << endl;
 #endif
         sessionKeyRegressionCurrentNumber_--;
         boost::xtime xt;
@@ -326,7 +340,7 @@ void keyServer::runCTRModeMaskGenerate()
         if (raRequestFlag_ == false && offlineGenerateFlag_ == true) {
             multiThreadCountMutex_.lock();
             mutexSessionKeyUpdate.lock();
-            cout << "KeyServer : start offlien mask generate" << endl;
+            cerr << "KeyServer : start offlien mask generate" << endl;
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestart, 0);
 #endif
@@ -338,7 +352,7 @@ void keyServer::runCTRModeMaskGenerate()
             cout << "KeyServer : offline mask generate time = " << second << " s" << endl;
 #endif
             offlineGenerateFlag_ = false;
-            cout << "KeyServer : offlien mask generate done" << endl;
+            cerr << "KeyServer : offlien mask generate done" << endl;
             mutexSessionKeyUpdate.unlock();
             multiThreadCountMutex_.unlock();
         }

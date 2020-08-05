@@ -7,6 +7,6 @@ link_directories(${SGX_OPENSSL_LIBRARY_PATH})
 
 add_library(keyServer STATIC keyServer.cpp)
 
-add_executable(keymanager keyServerMain.cpp)
+add_executable(keymanager-sgx keyServerMain.cpp)
 #target_link_libraries(keymanager keyServer)
-target_link_libraries(keymanager ${KEYSERVER_OBJ} ${LINK_OBJ} ${SGX_OPENSSL_OBJ})
+target_link_libraries(keymanager-sgx ${KEYSERVER_OBJ} ${LINK_OBJ} ${SGX_OPENSSL_OBJ})

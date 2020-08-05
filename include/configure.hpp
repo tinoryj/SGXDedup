@@ -10,7 +10,6 @@ using namespace std;
 class Configure {
 private:
     // following settings configure by macro set
-    uint64_t _runningType; // localDedup \ serverDedup
 
     // chunking settings
     uint64_t _chunkingType; // varSize \ fixedSize \ simple

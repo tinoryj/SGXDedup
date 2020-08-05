@@ -30,8 +30,6 @@ void Retriever::run()
     while (totalRecvNumber_ < totalChunkNumber_) {
         if (recvDecodeObj_->extractMQ(newData)) {
 #if SYSTEM_BREAK_DOWN == 1
-            long diff;
-            double second;
             gettimeofday(&timestartRetriever, NULL);
 #endif
             retrieveFile_.write(newData.logicData, newData.logicDataSize);

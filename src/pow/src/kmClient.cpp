@@ -95,6 +95,7 @@ int kmClient::modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hma
             cerr << "KmClient : nonce has been used, send regrenate message" << endl;
             return NONCE_HAS_USED;
         }
+        return -1;
     }
 }
 
@@ -390,7 +391,7 @@ bool kmClient::doAttestation()
     uint32_t msg3_sz;
 
     string enclaveName = config.getKMEnclaveName();
-    cout << "KmClient : start to create enclave" << endl;
+    cerr << "KmClient : start to create enclave" << endl;
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "KmClient : Can not launch km_enclave : " << enclaveName << endl;

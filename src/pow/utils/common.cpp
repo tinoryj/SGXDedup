@@ -15,8 +15,6 @@ in the License.
 
 */
 
-using namespace std;
-
 #include "common.h"
 #include "logfile.h"
 #include <cstdio>
@@ -25,6 +23,8 @@ using namespace std;
 #include <string.h>
 #include <string>
 #include <time.h>
+
+using namespace std;
 
 #define LINE_TYPE '-'
 #define LINE_SHORT_LEN 4

@@ -48,11 +48,13 @@ void Encoder::run()
 {
 
 #if SYSTEM_BREAK_DOWN == 1
-    double encryptChunkContentTime = 0;
-    double encryptChunkKeyTime = 0;
     long diff;
     double second;
-#endif
+    double encryptChunkContentTime = 0;
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
+    double encryptChunkKeyTime = 0;
+#endif //RECIPE_MANAGEMENT_METHOD
+#endif // SYSTEM_BREAK_DOWN
     bool JobDoneFlag = false;
     while (true) {
 

@@ -481,7 +481,7 @@ void KeyClient::run()
 #if FINGERPRINTER_MODULE_ENABLE == 0
     cout << "KeyClient : plain chunk hash generate time = " << generatePlainChunkHashTime << " s" << endl;
 #endif
-    cout << "KeyClient : key exchange encrypt work time = " << keyExchangeEncTime << " s" << endl;
+    cout << "KeyClient : key exchange encrypt/decrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
 #if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;

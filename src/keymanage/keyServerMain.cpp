@@ -39,7 +39,7 @@ int main()
     second = diff / 1000000.0;
     cout << "KeyServerMain : init key server enclave time = " << second << " s" << endl;
 #endif
-    cout << "KeyServerMain : key server remote attestation done, start provide service" << endl;
+    cerr << "KeyServerMain : key server remote attestation done, start provide service" << endl;
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB
     th = new boost::thread(boost::bind(&keyServer::runRAwithSPRequest, server));
     th->detach();

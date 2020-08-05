@@ -53,15 +53,13 @@ void DataSR::runData(SSL* sslConnection)
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
     RecipeList_t restoredRecipeList;
     uint64_t recipeSize = 0;
-    double restoreChunkTime = 0;
-    double storeChunkTime = 0;
-    double storeRecipeTime = 0;
 #endif
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartDataSR;
     struct timeval timeendDataSR;
     double saveChunkTime = 0;
     double saveRecipeTime = 0;
+    double restoreChunkTime = 0;
     long diff;
     double second;
 #endif
@@ -91,7 +89,7 @@ void DataSR::runData(SSL* sslConnection)
                 cout << "DataSR : total save chunk time = " << saveChunkTime << " s" << endl;
                 cout << "DataSR : total save recipe time = " << saveRecipeTime << " s" << endl;
 #endif
-                cout << "DataSR : data thread recv exit flag, thread exit now" << endl;
+                cerr << "DataSR : data thread recv exit flag, thread exit now" << endl;
                 return;
             }
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
@@ -432,13 +430,13 @@ void DataSR::runPow(SSL* sslConnection)
                 cout << "DataSR : total pow Verify time = " << verifyTime << " s" << endl;
                 cout << "DataSR : total deduplication query time = " << dedupTime << " s" << endl;
 #endif
-                cout << "DataSR : pow thread recv exit flag, exit now" << endl;
+                cerr << "DataSR : pow thread recv exit flag, exit now" << endl;
                 return;
             }
             case CLIENT_SET_LOGIN: {
-                cout << "DataSR : client send login message, init session" << endl;
+                cerr << "DataSR : client send login message, init session" << endl;
                 clientID = netBody.clientID;
-                cout << "DataSR : set client ID = " << clientID << endl;
+                cout << "DataSR : connected client ID = " << clientID << endl;
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
                 memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
@@ -449,7 +447,7 @@ void DataSR::runPow(SSL* sslConnection)
             case CLIENT_SET_LOGIN_WITH_SEAL: {
                 cout << "DataSR : client send login message, loading session" << endl;
                 clientID = netBody.clientID;
-                cout << "DataSR : set client ID = " << clientID << endl;
+                cout << "DataSR : connected client ID = " << clientID << endl;
                 if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
                     cerr << "PowServer : client not trusted yet" << endl;
                     netBody.messageType = ERROR_CLOSE;
@@ -479,7 +477,7 @@ void DataSR::runPow(SSL* sslConnection)
                 continue;
             }
             case CLIENT_SET_LOGOUT: {
-                cout << "DataSR : client send logout message, clean up loged session" << endl;
+                cerr << "DataSR : client send logout message, clean up loged session" << endl;
                 powServerObj_->closeSession(netBody.clientID);
                 netBody.messageType = SUCCESS;
                 netBody.dataSize = 0;
@@ -689,7 +687,7 @@ void DataSR::runKeyServerSessionKeyUpdate()
 void DataSR::runKeyServerRemoteAttestation()
 {
     ssl* sslRAListen = new ssl(config.getStorageServerIP(), config.getKMServerPort(), SERVERSIDE);
-    cout << "DataSR : key server ra request channel setup" << endl;
+    cerr << "DataSR : key server ra request channel setup" << endl;
     int sendSize = sizeof(NetworkHeadStruct_t);
     char sendBuffer[sendSize];
     NetworkHeadStruct_t netHead, recvHead;
@@ -698,39 +696,21 @@ void DataSR::runKeyServerRemoteAttestation()
     memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
     while (true) {
         SSL* sslRAListenConnection = sslRAListen->sslListen().second;
-        cout << "DataSR : key server connected" << endl;
+        cerr << "DataSR : key server connected" << endl;
         char recvBuffer[sizeof(NetworkHeadStruct_t)];
         int recvSize;
         sslRAListen->recv(sslRAListenConnection, recvBuffer, recvSize);
         memcpy(&recvHead, recvBuffer, sizeof(NetworkHeadStruct_t));
         if (recvHead.messageType == KEY_SERVER_RA_REQUES) {
-            cout << "DataSR : key server start remote attestation now" << endl;
+            cout << "DataSR : key server start remote attestation now, current time = " << endl;
+            time_t timep;
+            time(&timep);
+            cout << asctime(gmtime(&timep));
             kmServer server(sslRAListen, sslRAListenConnection);
             keyServerSession_ = server.authkm();
             if (keyServerSession_ != nullptr) {
-                //                 u_char hashDataTemp[32];
-                //                 u_char hashResultTemp[32];
-                //                 memcpy(hashDataTemp, keyServerSession_->sk, 16);
-                //                 memcpy(hashDataTemp + 16, keyServerSession_->mk, 16);
-                //                 for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
-                //                     SHA256(hashDataTemp, 32, hashResultTemp);
-                //                     memcpy(hashDataTemp, hashResultTemp, 32);
-                //                 }
-                //                 u_char finalHashBuffer[40];
-                //                 memset(finalHashBuffer, 0, 40);
-                //                 memcpy(finalHashBuffer + 8, hashResultTemp, 32);
-                //                 SHA256(finalHashBuffer, 40, hashResultTemp);
-                //                 memcpy(keyExchangeKey_, hashResultTemp, KEY_SERVER_SESSION_KEY_SIZE);
-                // #if SYSTEM_DEBUG_FLAG == 1
-                //                 cout << "DataSR : key server current session key = " << endl;
-                //                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyExchangeKey_, KEY_SERVER_SESSION_KEY_SIZE);
-                //                 cout << "DataSR : key server original session key = " << endl;
-                //                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyServerSession_->sk, 16);
-                //                 cout << "DataSR : key server original mac key = " << endl;
-                //                 PRINT_BYTE_ARRAY_DATA_SR(stderr, keyServerSession_->mk, 16);
-                // #endif
                 keyExchangeKeySetFlag_ = true;
-                cout << "DataSR : keyServer enclave trusted" << endl;
+                cerr << "DataSR : keyServer enclave trusted" << endl;
                 // delete sslRAListenConnection
                 free(sslRAListenConnection);
                 boost::xtime xt;

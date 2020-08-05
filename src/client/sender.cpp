@@ -113,7 +113,7 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
         memcpy(recipeBuffer + i * sizeof(RecipeEntry_t), &recipeList[i], sizeof(RecipeEntry_t));
     }
 
-    NetworkHeadStruct_t requestBody, respondBody;
+    NetworkHeadStruct_t requestBody;
     requestBody.clientID = clientID_;
     requestBody.messageType = CLIENT_UPLOAD_ENCRYPTED_RECIPE;
     int sendSize = sizeof(NetworkHeadStruct_t);
