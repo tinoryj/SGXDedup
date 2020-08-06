@@ -107,13 +107,18 @@ sgx_status_t ecall_enclave_close()
 
 sgx_status_t ecall_setServerSecret(uint8_t* keyd, uint32_t keydLen)
 {
-    uint8_t* secretTemp = (uint8_t*)malloc(64 + keydLen);
-    memset(secretTemp, 1, keydLen + 64);
-    memcpy_s(secretTemp + 64, 128, keyd, keydLen);
-    sgx_status_t sha256Status = sgx_sha256_msg(secretTemp, 64 + keydLen,
-        (sgx_sha256_hash_t*)serverSecret_);
+    uint8_t* secretTemp = (uint8_t*)malloc(128 + keydLen);
+    memset(secretTemp, 1, keydLen + 128);
+    memcpy_s(secretTemp + 128, 256, keyd, keydLen);
+    sgx_status_t sha256Status = sgx_sha256_msg(secretTemp, 128 + keydLen, (sgx_sha256_hash_t*)serverSecret_);
     free(secretTemp);
     return sha256Status;
+}
+
+sgx_status_t ecall_getServerSecret(uint8_t* secret)
+{
+    memcpy_s(secret, 32, serverSecret_, 32);
+    return SGX_SUCCESS;
 }
 
 sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes)

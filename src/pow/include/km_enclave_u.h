@@ -67,6 +67,7 @@ sgx_status_t enclave_ra_init(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ec2
 sgx_status_t enclave_ra_close(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t context);
 sgx_status_t ecall_enclave_close(sgx_enclave_id_t eid, sgx_status_t* retval);
 sgx_status_t ecall_setServerSecret(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* keyd, uint32_t keydLen);
+sgx_status_t ecall_getServerSecret(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* secret);
 sgx_status_t ecall_setSessionKey(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx);
 sgx_status_t ecall_setSessionKeyUpdate(sgx_enclave_id_t eid, sgx_status_t* retval, sgx_ra_context_t* ctx);
 sgx_status_t ecall_setKeyRegressionCounter(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t keyRegressionMaxTimes);

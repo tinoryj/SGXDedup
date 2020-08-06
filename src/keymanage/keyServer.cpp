@@ -42,7 +42,7 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     u_char keydBuffer[4096];
     int lenKeyd;
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
-    string keyd((char*)keydBuffer, lenKeyd / 2);
+    string keyd((char*)keydBuffer, lenKeyd);
     sessionKeyRegressionMaxNumber_ = config.getKeyRegressionMaxTimes();
     client = new kmClient(keyd, sessionKeyRegressionMaxNumber_);
     sessionKeyRegressionCurrentNumber_ = sessionKeyRegressionMaxNumber_;

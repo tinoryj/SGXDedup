@@ -227,6 +227,12 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
         cout << "KmClient : set key enclave global secret time = " << second << " s" << endl;
 #endif
         if (status == SGX_SUCCESS) {
+#if SYSTEM_DEBUG_FLAG == 1
+            uint8_t ans[32];
+            status = ecall_getServerSecret(_eid, &retval, ans);
+            cerr << "KmClient : current server secret = " << endl;
+            PRINT_BYTE_ARRAY_KM(stderr, ans, 32);
+#endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartkmClient, NULL);
 #endif

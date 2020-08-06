@@ -11,7 +11,8 @@ enclave {
                                             [out] sgx_status_t *pse_status);
         public sgx_status_t enclave_ra_close(sgx_ra_context_t context);
         public sgx_status_t ecall_enclave_close();
-        public sgx_status_t ecall_setServerSecret([in,size=keydLen]uint8_t* keyd, uint32_t keydLen);
+        public sgx_status_t ecall_setServerSecret([in,size=keydLen] uint8_t* keyd, uint32_t keydLen);
+        public sgx_status_t ecall_getServerSecret([user_check] uint8_t* secret);
         public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx);
         public sgx_status_t ecall_setSessionKeyUpdate([in]sgx_ra_context_t* ctx);
         public sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes);
