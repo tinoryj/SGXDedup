@@ -39,6 +39,15 @@ KeyClient::KeyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
     keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     sslConnection_ = keySecurityChannel_->sslConnect().second;
     clientID_ = config.getClientID();
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    bool initStatus = initClientCTRInfo();
+    if (initStatus != true) {
+        cerr << "KeyClient : init to key server error, client exit" << endl;
+        exit(0);
+    } else {
+        cerr << "KeyClient : init to key server success" << endl;
+    }
+#endif
 }
 
 #else
@@ -53,6 +62,15 @@ KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
     keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     sslConnection_ = keySecurityChannel_->sslConnect().second;
     clientID_ = config.getClientID();
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    bool initStatus = initClientCTRInfo();
+    if (initStatus != true) {
+        cerr << "KeyClient : init to key server error, client exit" << endl;
+        exit(0);
+    } else {
+        cerr << "KeyClient : init to key server success" << endl;
+    }
+#endif
 }
 #endif
 
@@ -68,6 +86,7 @@ KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 
 KeyClient::~KeyClient()
 {
+    saveClientCTRInfo();
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
@@ -76,6 +95,135 @@ KeyClient::~KeyClient()
     delete inputMQ_;
 #endif
 }
+
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+
+bool KeyClient::initClientCTRInfo()
+{
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartKey, NULL);
+#endif // SYSTEM_BREAK_DOWN
+    //read old counter
+    string keyGenFileName = ".keyGenStore";
+    ifstream keyGenStoreIn;
+    keyGenStoreIn.open(keyGenFileName, std::ifstream::in | std::ifstream::binary);
+    if (keyGenStoreIn.is_open()) {
+        keyGenStoreIn.seekg(0, ios_base::end);
+        int counterFileSize = keyGenStoreIn.tellg();
+        keyGenStoreIn.seekg(0, ios_base::beg);
+        if (counterFileSize != 16) {
+            cerr << "KeyClient : stored old counter file size error" << endl;
+            return false;
+        } else {
+            char readBuffer[16];
+            keyGenStoreIn.read(readBuffer, 16);
+            keyGenStoreIn.close();
+            if (keyGenStoreIn.gcount() != 16) {
+                cerr << "KeyClient : read old counter file size error" << endl;
+            } else {
+                memcpy(nonce_, readBuffer, 12);
+                memcpy(&counter_, readBuffer + 12, sizeof(uint32_t));
+#if SYSTEM_DEBUG_FLAG == 1
+                cerr << "KeyClient : Read old counter file : " << keyGenFileName << " success, the original counter = " << counter_ << ", nonce = " << endl;
+                PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, nonce_, 12);
+#endif
+            }
+        }
+    } else {
+    nonceUsedRetry:
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+        memset(nonce_, clientID_, 12);
+#else
+        srand(time(NULL));
+        for (int i = 0; i < 12 / sizeof(int); i++) {
+            int randomNumber = rand();
+            memcpy(nonce_ + i * sizeof(int), &randomNumber, sizeof(int));
+        }
+#endif
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "KeyClient : Can not open old counter file : \"" << keyGenFileName << "\", Directly reset counter to 0, generate nonce = " << endl;
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, nonce_, 12);
+#endif
+    }
+    // done
+    NetworkHeadStruct_t initHead, responseHead;
+    initHead.clientID = clientID_;
+    initHead.dataSize = 48;
+    initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
+    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
+    char responseBuffer[sizeof(NetworkHeadStruct_t)];
+    memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
+    u_char tempCipherBuffer[16], tempPlaintBuffer[16];
+    memcpy(tempPlaintBuffer, &counter_, sizeof(uint32_t));
+    memcpy(tempPlaintBuffer + sizeof(uint32_t), nonce_, 16 - sizeof(uint32_t));
+    cryptoObj_->keyExchangeEncrypt(tempPlaintBuffer, 16, keyExchangeKey_, keyExchangeKey_, tempCipherBuffer);
+    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), tempCipherBuffer, 16);
+    cryptoObj_->sha256Hmac(tempCipherBuffer, 16, (u_char*)initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, keyExchangeKey_, 32);
+    if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
+        cerr << "KeyClient: send init information error" << endl;
+        return false;
+    } else {
+        int recvSize;
+        if (!keySecurityChannel_->recv(sslConnection_, responseBuffer, recvSize)) {
+            cerr << "KeyClient: recv init information status error" << endl;
+            return false;
+        } else {
+            memcpy(&responseHead, responseBuffer, sizeof(NetworkHeadStruct_t));
+            cerr << "KeyClient : recv key server response, message type = " << responseHead.messageType << endl;
+            PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, responseBuffer, sizeof(NetworkHeadStruct_t));
+            if (responseHead.messageType == CLIENT_COUNTER_REST) {
+                cerr << "KeyClient : key server counter error, reset client counter to 0" << endl;
+                counter_ = 0;
+                return true;
+            } else if (responseHead.messageType == NONCE_HAS_USED) {
+                cerr << "KeyClient: nonce has used, goto retry" << endl;
+                goto nonceUsedRetry;
+            } else if (responseHead.messageType == ERROR_RESEND) {
+                cerr << "KeyClient: hmac error, goto retry" << endl;
+                goto nonceUsedRetry;
+            } else if (responseHead.messageType == SUCCESS) {
+                cerr << "KeyClient : init information success, start key generate" << endl;
+                return true;
+            }
+        }
+    }
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKey, NULL);
+    int diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+    double second = diff / 1000000.0;
+    cout << "KeyClient : init ctr mode time = " << second << " s" << endl;
+#endif // SYSTEM_BREAK_DOWN
+}
+
+bool KeyClient::saveClientCTRInfo()
+{
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartKey, NULL);
+#endif // SYSTEM_BREAK_DOWN
+    string keyGenFileName = ".keyGenStore";
+    ofstream counterOut;
+    counterOut.open(keyGenFileName, std::ofstream::out | std::ofstream::binary);
+    if (!counterOut.is_open()) {
+        cerr << "KeyClient : Can not open counter store file : " << keyGenFileName << endl;
+        return false;
+    } else {
+        char writeBuffer[16];
+        memcpy(writeBuffer, nonce_, 12);
+        memcpy(writeBuffer + 12, &counter_, sizeof(uint32_t));
+        counterOut.write(writeBuffer, 16);
+        counterOut.close();
+        cerr << "KeyClient : Stored current counter file : " << keyGenFileName << endl;
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendKey, NULL);
+        int diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+        double second = diff / 1000000.0;
+        cout << "KeyClient : save ctr mode status time = " << second << " s" << endl;
+#endif // SYSTEM_BREAK_DOWN
+        return true;
+    }
+}
+
+#endif
 
 void KeyClient::runKeyGenSimulator(int clientID)
 {
@@ -128,11 +276,12 @@ void KeyClient::runKeyGenSimulator(int clientID)
         }
     } else {
     nonceUsedRetry:
-        srand(time(NULL));
-        for (int i = 0; i < 12 / sizeof(int); i++) {
-            int randomNumber = rand();
-            memcpy(nonce + i * sizeof(int), &randomNumber, sizeof(int));
-        }
+        // srand(time(NULL));
+        // for (int i = 0; i < 12 / sizeof(int); i++) {
+        //     int randomNumber = rand();
+        //     memcpy(nonce + i * sizeof(int), &randomNumber, sizeof(int));
+        // }
+        memset(nonce, clientID, 12);
 #if SYSTEM_DEBUG_FLAG == 1
         cerr << "KeyClient : Can not open old counter file : \"" << keyGenFileName << "\", Directly reset counter to 0, generate nonce = " << endl;
         PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, nonce, 12);
@@ -190,9 +339,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
     while (true) {
 
         if (currentKeyGenNumber < keyGenNumber_) {
-            batchNumber++;
-            currentKeyGenNumber++;
-            memset(chunkTemp, currentKeyGenNumber, 5 * CHUNK_HASH_SIZE);
+            memset(chunkTemp, currentKeyGenNumber + 1, 5 * CHUNK_HASH_SIZE);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
 #endif
@@ -205,11 +352,16 @@ void KeyClient::runKeyGenSimulator(int clientID)
             chunkHashGenerateTime += second;
 #endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, chunkHashTemp, CHUNK_HASH_SIZE);
+            batchNumber++;
+            currentKeyGenNumber++;
         } else {
             JobDoneFlag = true;
         }
 
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
+            if (batchNumber == 0) {
+                break;
+            }
             int batchedKeySize = 0;
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKeySimulator, NULL);
@@ -280,95 +432,6 @@ void KeyClient::run()
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
     u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
     bool JobDoneFlag = false;
-#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestartKey, NULL);
-#endif // SYSTEM_BREAK_DOWN
-    u_char nonce[CRYPTO_BLOCK_SZIE - sizeof(uint32_t)];
-    uint32_t counter = 0;
-    //read old counter
-    string keyGenFileName = ".keyGenStore";
-    ifstream keyGenStoreIn;
-    keyGenStoreIn.open(keyGenFileName, std::ifstream::in | std::ifstream::binary);
-    if (keyGenStoreIn.is_open()) {
-        keyGenStoreIn.seekg(0, ios_base::end);
-        int counterFileSize = keyGenStoreIn.tellg();
-        keyGenStoreIn.seekg(0, ios_base::beg);
-        if (counterFileSize != 16) {
-            cerr << "KeyClient : stored old counter file size error" << endl;
-        } else {
-            char readBuffer[16];
-            keyGenStoreIn.read(readBuffer, 16);
-            keyGenStoreIn.close();
-            if (keyGenStoreIn.gcount() != 16) {
-                cerr << "KeyClient : read old counter file size error" << endl;
-            } else {
-                memcpy(nonce, readBuffer, 12);
-                memcpy(&counter, readBuffer + 12, sizeof(uint32_t));
-#if SYSTEM_DEBUG_FLAG == 1
-                cerr << "KeyClient : Read old counter file : " << keyGenFileName << " success, the original counter = " << counter << ", nonce = " << endl;
-                PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, nonce, 12);
-#endif
-            }
-        }
-    } else {
-    nonceUsedRetry:
-        srand(time(NULL));
-        for (int i = 0; i < 12 / sizeof(int); i++) {
-            int randomNumber = rand();
-            memcpy(nonce + i * sizeof(int), &randomNumber, sizeof(int));
-        }
-#if SYSTEM_DEBUG_FLAG == 1
-        cerr << "KeyClient : Can not open old counter file : \"" << keyGenFileName << "\", Directly reset counter to 0, generate nonce = " << endl;
-        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, nonce, 12);
-#endif
-    }
-    // done
-    NetworkHeadStruct_t initHead, responseHead;
-    initHead.clientID = clientID_;
-    initHead.dataSize = 48;
-    initHead.messageType = KEY_GEN_UPLOAD_CLIENT_INFO;
-    char initInfoBuffer[sizeof(NetworkHeadStruct_t) + initHead.dataSize]; // clientID & nonce & counter
-    char responseBuffer[sizeof(NetworkHeadStruct_t)];
-    memcpy(initInfoBuffer, &initHead, sizeof(NetworkHeadStruct_t));
-    u_char tempCipherBuffer[16], tempPlaintBuffer[16];
-    memcpy(tempPlaintBuffer, &counter, sizeof(uint32_t));
-    memcpy(tempPlaintBuffer + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
-    cryptoObj_->keyExchangeEncrypt(tempPlaintBuffer, 16, keyExchangeKey_, keyExchangeKey_, tempCipherBuffer);
-    memcpy(initInfoBuffer + sizeof(NetworkHeadStruct_t), tempCipherBuffer, 16);
-    cryptoObj_->sha256Hmac(tempCipherBuffer, 16, (u_char*)initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, keyExchangeKey_, 32);
-    if (!keySecurityChannel_->send(sslConnection_, initInfoBuffer, sizeof(NetworkHeadStruct_t) + initHead.dataSize)) {
-        cerr << "KeyClient: send init information error" << endl;
-        return;
-    } else {
-        int recvSize;
-        if (!keySecurityChannel_->recv(sslConnection_, responseBuffer, recvSize)) {
-            cerr << "KeyClient: recv init information status error" << endl;
-            return;
-        } else {
-            memcpy(&responseHead, responseBuffer, sizeof(NetworkHeadStruct_t));
-            cerr << "KeyClient : recv key server response" << endl;
-            if (responseHead.messageType == CLIENT_COUNTER_REST) {
-                cerr << "KeyClient : key server counter error, reset client counter to 0" << endl;
-                counter = 0;
-            } else if (responseHead.messageType == NONCE_HAS_USED) {
-                cerr << "KeyClient: nonce has used, goto retry" << endl;
-                goto nonceUsedRetry;
-            } else if (responseHead.messageType == ERROR_RESEND) {
-                cerr << "KeyClient: hmac error, goto retry" << endl;
-                goto nonceUsedRetry;
-            } else if (responseHead.messageType == SUCCESS) {
-                cerr << "KeyClient : init information success, start key generate" << endl;
-            }
-        }
-    }
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendKey, NULL);
-    diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-    second = diff / 1000000.0;
-    cout << "KeyClient : init ctr mode time = " << second << " s" << endl;
-#endif // SYSTEM_BREAK_DOWN
-#endif // KEY_GEN_SGX_CTR
     NetworkHeadStruct_t dataHead;
     dataHead.clientID = clientID_;
     dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
@@ -403,14 +466,25 @@ void KeyClient::run()
             batchNumber++;
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
+            if (batchNumber == 0) {
+#if ENCODER_MODULE_ENABLED == 1
+                bool editJobDoneFlagStatus = encoderObj_->editJobDoneFlag();
+#else
+                bool editJobDoneFlagStatus = powObj_->editJobDoneFlag();
+#endif
+                if (!editJobDoneFlagStatus) {
+                    cerr << "KeyClient : error to set job done flag for encoder" << endl;
+                }
+                break;
+            }
             int batchedKeySize = 0;
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartKey, NULL);
 #endif
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
             dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, nonce, counter, dataHead);
-            counter += batchNumber * 4;
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, dataHead);
+            counter_ += batchNumber * 4;
 #else
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize);
 #endif
@@ -486,20 +560,6 @@ void KeyClient::run()
 #if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
 #endif
-#endif
-#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-    ofstream counterOut;
-    counterOut.open(keyGenFileName, std::ofstream::out | std::ofstream::binary);
-    if (!counterOut.is_open()) {
-        cerr << "KeyClient : Can not open counter store file : " << keyGenFileName << endl;
-    } else {
-        char writeBuffer[16];
-        memcpy(writeBuffer, nonce, 12);
-        memcpy(writeBuffer + 12, &counter, sizeof(uint32_t));
-        counterOut.write(writeBuffer, 16);
-        counterOut.close();
-        cerr << "KeyClient : Stored current counter file : " << keyGenFileName << endl;
-    }
 #endif
     return;
 }
@@ -629,7 +689,7 @@ bool KeyClient::keyExchangeXOR(u_char* result, u_char* input, u_char* xorBase, i
     return true;
 }
 
-bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, u_char* nonce, uint32_t counter, NetworkHeadStruct_t netHead)
+bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, NetworkHeadStruct_t netHead)
 {
     int sendSize = sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber + 32;
     u_char sendHash[sendSize];
@@ -641,7 +701,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     gettimeofday(&timestartKey_enc, NULL);
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
-    cryptoObj_->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+    cryptoObj_->keyExchangeCTRBaseGenerate(nonce_, counter_, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
 #if SYSTEM_DEBUG_FLAG == 1
     cerr << "key exchange mask = " << endl;
     PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, keyExchangeXORBase, batchNumber * CHUNK_HASH_SIZE * 2);

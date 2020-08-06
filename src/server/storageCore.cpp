@@ -657,7 +657,9 @@ bool Container::saveTOFile(string fileName)
         cerr << "ContainerManager : Can not open Container file : " << fileName << endl;
         return false;
     }
+#if MULTI_CLIENT_UPLOAD_TEST == 0
     containerOut.write(this->body_, this->used_);
+#endif
     cout << "ContainerManager : save " << setbase(10) << this->used_ << " bytes to file system" << endl;
     containerOut.close();
     return true;

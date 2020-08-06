@@ -670,9 +670,9 @@ void DataSR::runKeyServerSessionKeyUpdate()
             PRINT_BYTE_ARRAY_DATA_SR(stderr, keyServerSession_->mk, 16);
 #endif
             keyExchangeKeySetFlag_ = true;
-            cout << "DataSR : keyServer session key update done, current regression counter = " << keyRegressionCurrentTimes_ << endl;
+            cerr << "DataSR : keyServer session key update done, current regression counter = " << keyRegressionCurrentTimes_ << endl;
 #if SYSTEM_BREAK_DOWN == 1
-            cout << "DataSR : session key update time = " << second << " s" << endl;
+            cout << "DataSR : session key update time = " << second << " s, current regression counter = " << keyRegressionCurrentTimes_ << endl;
 #endif
             keyRegressionCurrentTimes_--;
             boost::xtime xt;

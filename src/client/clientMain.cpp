@@ -181,7 +181,11 @@ int main(int argv, char* argc[])
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
         second = diff / 1000000.0;
         cout << "System : Init time is " << second << " s" << endl;
-
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+        cerr << "System : input sync number for multi client test" << endl;
+        int inputNumberUsedForSyncInMultiClientTest = 0;
+        cin >> inputNumberUsedForSyncInMultiClientTest;
+#endif
         gettimeofday(&timestart, NULL);
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
@@ -234,6 +238,7 @@ int main(int argv, char* argc[])
 
     cout << "System : total work time is " << second << " s" << endl;
     cout << "System : start work time is " << timestart.tv_sec << " s, " << timestart.tv_usec << " us" << endl;
-    cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
+    cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl
+         << endl;
     return 0;
 }

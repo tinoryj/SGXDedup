@@ -11,8 +11,8 @@
 
 using namespace std;
 
-#define MAX_SPECULATIVE_KEY_SIZE 60 * 1024 * 1024
-#define MAX_SPECULATIVE_CLIENT_NUMBER 2
+#define MAX_SPECULATIVE_KEY_SIZE 80 * 1024 * 1024
+#define MAX_SPECULATIVE_CLIENT_NUMBER 10
 #define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
@@ -147,28 +147,41 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
     } else {
         memcpy_s(&recvedCounter, sizeof(uint32_t), plaintextBuffer, sizeof(uint32_t));
 #if SYSTEM_DEBUG_FLAG == 1
-        print("KeyEnclave : client Info = ", 27, 1);
+        print("KeyEnclave : client Info = ", 28, 1);
         print((char*)plaintextBuffer, sizeof(uint32_t), 2);
         print((char*)plaintextBuffer + sizeof(uint32_t), 12, 2);
 #endif
         if (clientList_.find(clientID) == clientList_.end()) {
+#if SYSTEM_DEBUG_FLAG == 1
+            print("KeyEnclave : not found client info", 35, 1);
+#endif
             ClientInfo_t newClient;
             memcpy_s(newClient.nonce, 12, plaintextBuffer + sizeof(uint32_t), 12);
             newClient.keyGenerateCounter = 0;
             newClient.currentKeyGenerateCounter = 0;
-            auto it = clientList_.begin();
-            while (it != clientList_.end()) {
-                if (memcmp(it->second.nonce, newClient.nonce, 12) == 0) {
+            auto index = clientList_.begin();
+            while (index != clientList_.end()) {
+                if (memcmp(index->second.nonce, newClient.nonce, 12) == 0) {
                     return SGX_ERROR_INVALID_PARAMETER;
                 }
+                index++;
             }
+#if SYSTEM_DEBUG_FLAG == 1
+            print("KeyEnclave : start insert new clint info", 41, 1);
+#endif
             clientList_.insert(make_pair(clientID, newClient));
+#if SYSTEM_DEBUG_FLAG == 1
+            print("KeyEnclave : insert new client info done", 41, 1);
+#endif
             if (recvedCounter == 0) {
                 return SGX_SUCCESS; // success, first login
             } else {
                 return SGX_ERROR_UNEXPECTED; // key enclave no information, send reset to client
             }
         } else {
+#if SYSTEM_DEBUG_FLAG == 1
+            print("KeyEnclave : found client info", 31, 1);
+#endif
             if (clientList_.at(clientID).keyGenerateCounter == recvedCounter) {
                 return SGX_SUCCESS; // success, use offline mode
             } else {
@@ -208,7 +221,7 @@ sgx_status_t ecall_setNextEncryptionMask()
     auto it = clientList_.begin();
     while (it != clientList_.end() && generatedNumber < MAX_SPECULATIVE_CLIENT_NUMBER) {
 #if SYSTEM_DEBUG_FLAG == 1
-        print("Key enclave generate mask for client start", 42, 1);
+        print("Key enclave generate mask for client start", 43, 1);
         print((char*)it->second.nonce, 32, 2);
 #endif
         uint32_t currentCounter = it->second.keyGenerateCounter + it->second.currentKeyGenerateCounter;
@@ -355,8 +368,8 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         }
         memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
 #if SYSTEM_DEBUG_FLAG == 1
-        print("KeyEnclave : Chunk Key = ", 25, 1);
-        print((char*)hash, 32, 2);
+        // print("KeyEnclave : Chunk Key = ", 25, 1);
+        // print((char*)hash, 32, 2);
 #endif
     }
     if ((currentCounter * 16 + originalHashLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {
@@ -380,6 +393,12 @@ sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
     uint8_t hash[32], originhash[originalHashLen], keySeed[originalHashLen], hashTemp[64], hmac[32];
     sgx_hmac_sha256_msg(src, originalHashLen, currentSessionKey_, 32, hmac, 32);
     if (memcmp(hmac, src + originalHashLen, 32) != 0) {
+#if SYSTEM_DEBUG_FLAG == 1
+        print("KeyEnclave : recved hmac = ", 28, 1);
+        print((char*)src + originalHashLen, 32, 2);
+        print("KeyEnclave : generated hmac = ", 31, 1);
+        print((char*)hmac, 32, 2);
+#endif
         return SGX_ERROR_INVALID_SIGNATURE; // hmac not right , reject
     }
 

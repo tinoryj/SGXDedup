@@ -2,11 +2,12 @@
 #define SGXDEDUP_SYSTEMSETTINGS_HPP
 /* System Test Settings: 0-disable; 1-enable */
 #define SYSTEM_BREAK_DOWN 1
-#define SYSTEM_DEBUG_FLAG 0
+#define SYSTEM_DEBUG_FLAG 1
 #define OPENSSL_V_1_0_2 0
 #define ENCODER_MODULE_ENABLED 0 // if enable encoder, chunk encryption will move from keyclient to encoder
 #define FINGERPRINTER_MODULE_ENABLE 1
 #define ENCLAVE_SEALED_INIT_ENABLE 1
+#define MULTI_CLIENT_UPLOAD_TEST 1
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0

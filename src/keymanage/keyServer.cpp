@@ -269,8 +269,21 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         }
 
         int recvNumber = (recvSize - 32) / CHUNK_HASH_SIZE;
+        if (recvNumber == 0) {
+            multiThreadCountMutex_.lock();
+            clientThreadCount_--;
+#if SYSTEM_BREAK_DOWN == 1
+            cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
+            cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
+#endif
+            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            multiThreadCountMutex_.unlock();
+            return;
+        }
 #if SYSTEM_DEBUG_FLAG == 1
-        cout << "KeyServer : recv hash number = " << recvNumber << endl;
+        cerr << "KeyServer : recv hash number = " << recvNumber << ", recv size = " << recvSize << endl;
+        cerr << "KeyServer : recved hmac = " << endl;
+        PRINT_BYTE_ARRAY_KEY_SERVER(stderr, hash + recvNumber * CHUNK_HASH_SIZE, 32);
 #endif
         u_char key[recvSize];
 #if KEY_GEN_SGX_MULTITHREAD_ENCLAVE == 1
@@ -387,7 +400,13 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             memcpy(cipherBuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t), 16);
             memcpy(hmacbuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, 32);
             multiThreadMutex_.lock();
+#if SYSTEM_DEBUG_FLAG == 1
+            cout << "KeyServer : modify client info for client = " << netHead.clientID << endl;
+#endif
             int modifyClientInfoStatus = client->modifyClientStatus(netHead.clientID, cipherBuffer, hmacbuffer);
+#if SYSTEM_DEBUG_FLAG == 1
+            cout << "KeyServer : modify client info done for client = " << netHead.clientID << endl;
+#endif
             multiThreadMutex_.unlock();
             if (modifyClientInfoStatus == SUCCESS || modifyClientInfoStatus == CLIENT_COUNTER_REST) {
                 char responseBuffer[sizeof(NetworkHeadStruct_t)];
@@ -396,6 +415,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
                 responseHead.dataSize = 0;
                 responseHead.messageType = modifyClientInfoStatus;
                 int sendSize = sizeof(NetworkHeadStruct_t);
+                memcpy(responseBuffer, &responseHead, sizeof(NetworkHeadStruct_t));
                 keySecurityChannel_->send(connection, responseBuffer, sendSize);
                 break;
             } else if (modifyClientInfoStatus == ERROR_RESEND || modifyClientInfoStatus == NONCE_HAS_USED) {
@@ -405,12 +425,12 @@ void keyServer::runKeyGenerateThread(SSL* connection)
                 responseHead.dataSize = 0;
                 responseHead.messageType = modifyClientInfoStatus;
                 int sendSize = sizeof(NetworkHeadStruct_t);
+                memcpy(responseBuffer, &responseHead, sizeof(NetworkHeadStruct_t));
                 keySecurityChannel_->send(connection, responseBuffer, sendSize);
             } else if (modifyClientInfoStatus == -1) {
                 cerr << "KeyServer : error init client messages, ecall not correct" << endl;
                 return;
             }
-
         } else {
             cerr << "KeyServer : error recv client init messages" << endl;
             return;
@@ -456,6 +476,9 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         second = diff / 1000000.0;
         keyGenTime += second;
 #endif
+#if SYSTEM_DEBUG_FLAG == 1
+        cout << "KeyServer : generate key done for hash number = " << recvNumber << endl;
+#endif
         multiThreadMutex_.lock();
         keyGenerateCount_ += recvNumber;
         multiThreadMutex_.unlock();
@@ -487,6 +510,11 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             multiThreadCountMutex_.unlock();
             return;
         }
+#if SYSTEM_DEBUG_FLAG == 1
+        else {
+            cout << "KeyServer : send key to " << netHead.clientID << " done for hash number = " << recvNumber << endl;
+        }
+#endif
     }
 }
 
