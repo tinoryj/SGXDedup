@@ -43,6 +43,8 @@ void Retriever::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
+    while (!recvDecodeObj_->getJobDoneFlag())
+        ;
     cout << "Retriever : write file time = " << writeFileTime << " s" << endl;
 #endif
     return;

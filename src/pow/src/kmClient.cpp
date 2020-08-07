@@ -1,4 +1,5 @@
 #include "kmClient.hpp"
+#include "sgxErrorSupport.h"
 
 using namespace std;
 extern Configure config;
@@ -29,6 +30,10 @@ void print(const char* mem, uint32_t len, uint32_t type)
 {
     if (type == 1) {
         cout << mem << endl;
+    } else if (type == 3) {
+        uint32_t number;
+        memcpy(&number, mem, sizeof(uint32_t));
+        cout << number << endl;
     } else if (type == 2) {
         if (!mem || !len) {
             fprintf(stderr, "\n( null )\n");
@@ -59,7 +64,8 @@ bool kmClient::maskGenerate()
     status = ecall_setNextEncryptionMask(_eid,
         &retval);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : ecall failed for mask generate" << endl;
+        cerr << "KmClient : ecall failed for mask generate, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
     return true;
@@ -79,7 +85,8 @@ int kmClient::modifyClientStatus(int clientID, u_char* cipherBuffer, u_char* hma
         (uint8_t*)cipherBuffer,
         (uint8_t*)hmacBuffer);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : ecall failed for modify client list" << endl;
+        cerr << "KmClient : ecall failed for modify client list, status = " << endl;
+        sgxErrorReport(status);
         return -1;
     } else {
         if (retval == SGX_ERROR_UNEXPECTED) {
@@ -115,7 +122,8 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize, int
         ans,
         clientID);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
+        cerr << "KmClient : ecall failed for key generate, status = " << endl;
+        sgxErrorReport(status);
         return false;
     } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
         cerr << "KmClient : client hash list hmac error, key generate failed" << endl;
@@ -140,7 +148,8 @@ bool kmClient::request(u_char* hash, int hashSize, u_char* key, int keySize)
         (uint32_t)hashSize,
         ans);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : ecall failed for key generate, return ID = " << retval << ", status = " << status << endl;
+        cerr << "KmClient : ecall failed for key generate, status = " << endl;
+        sgxErrorReport(status);
         return false;
     } else if (retval == SGX_ERROR_INVALID_SIGNATURE) {
         cerr << "KmClient : client hash list hmac error, key generate failed" << endl;
@@ -169,9 +178,10 @@ kmClient::~kmClient()
 bool kmClient::sessionKeyUpdate()
 {
     sgx_status_t status, retval;
-    _ctx = 0xdeadbeef;
-    status = ecall_setSessionKeyUpdate(_eid, &retval, &_ctx);
+    status = ecall_setSessionKeyUpdate(_eid, &retval);
     if (status != SGX_SUCCESS) {
+        cerr << "KmClient : session key regression ecall error, status = " << endl;
+        sgxErrorReport(status);
         return false;
     } else {
 #if SYSTEM_DEBUG_FLAG == 1
@@ -273,21 +283,30 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                     if (status == SGX_SUCCESS) {
                         return true;
                     } else {
+                        cerr << "KmClient : set key server offline mask generate space error, status = " << endl;
+                        sgxErrorReport(status);
                         return false;
                     }
 #else
                     return true;
 #endif
                 } else {
+                    cerr << "KmClient : set key server generate regression session key error, status = " << endl;
+                    sgxErrorReport(status);
                     return false;
                 }
             } else {
+                cerr << "KmClient : set key server key regression max counter error, status = " << endl;
+                sgxErrorReport(status);
                 return false;
             }
         } else {
+            cerr << "KmClient : set key server secret error, status = " << endl;
+            sgxErrorReport(status);
             return false;
         }
     } else {
+        cerr << "KmClient : enclave not trusted by storage server" << endl;
         return false;
     }
 }
@@ -296,29 +315,31 @@ bool kmClient::createEnclave(sgx_enclave_id_t& eid,
     sgx_ra_context_t& ctx,
     string enclaveName)
 {
-    sgx_status_t status, pse_status;
+    sgx_status_t status, retval, pse_status;
 
-    if (sgx_create_enclave(enclaveName.c_str(),
-            SGX_DEBUG_FLAG,
-            &_token,
-            &updated,
-            &eid,
-            0)
-        != SGX_SUCCESS) {
+    status = sgx_create_enclave(enclaveName.c_str(),
+        SGX_DEBUG_FLAG,
+        &_token,
+        &updated,
+        &eid,
+        0);
+    if (status != SGX_SUCCESS) {
+        cerr << "KmClient : create enclave error, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
-
-    if (enclave_ra_init(eid,
-            &status,
-            def_service_public_key,
-            false,
-            &ctx,
-            &pse_status)
-        != SGX_SUCCESS) {
+    status = enclave_ra_init(eid,
+        &retval,
+        def_service_public_key,
+        false,
+        &ctx,
+        &pse_status);
+    if (status != SGX_SUCCESS) {
+        cerr << "KmClient : remote attestation ecall error, status = " << endl;
+        sgxErrorReport(status);
         return false;
-    }
-
-    if (!(status && pse_status)) {
+    } else if (!(retval && pse_status)) {
+        cerr << "KmClient : remote attestation init enclave error" << endl;
         return false;
     }
 
@@ -401,14 +422,15 @@ bool kmClient::doAttestation()
     status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "KmClient : Can not launch km_enclave : " << enclaveName << endl;
-        printf("%08x\n", status);
+        sgxErrorReport(status);
         return false;
     }
 
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
         &_ctx, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : pow_enclave ra init failed : " << status << endl;
+        cerr << "KmClient : pow_enclave ra init failed, status =  " << endl;
+        sgxErrorReport(status);
         return false;
     }
     if (sgxrv != SGX_SUCCESS) {
@@ -421,7 +443,8 @@ bool kmClient::doAttestation()
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "KmClient : sgx ge epid failed : " << status << endl;
+        cerr << "KmClient : sgx ge epid failed, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
 
@@ -430,8 +453,8 @@ bool kmClient::doAttestation()
     status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg01.msg1);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "KmClient : sgx error get msg1" << endl
-             << status << endl;
+        cerr << "KmClient : sgx error get msg1, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
 
@@ -464,7 +487,8 @@ bool kmClient::doAttestation()
 
     if (status != SGX_SUCCESS) {
         enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "KmClient : sgx_ra_proc_msg2 error, status = " << status << endl;
+        cerr << "KmClient : sgx_ra_proc_msg2 error, status = " << endl;
+        sgxErrorReport(status);
         if (msg2 != nullptr) {
             free(msg2);
         }

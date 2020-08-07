@@ -161,7 +161,7 @@ bool kmServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
-        cerr << "KmServer : ias get sigrl error" << endl;
+        cerr << "KmServer : ias get sigrl error, status != ok" << endl;
         return false;
     }
 

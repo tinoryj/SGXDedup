@@ -66,6 +66,7 @@ StorageCore::~StorageCore()
 
     delete cryptoObj_;
 }
+
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
 bool StorageCore::saveChunks(NetworkHeadStruct_t& networkHead, char* data)
 {
@@ -406,6 +407,7 @@ bool StorageCore::restoreRecipes(char* fileNameHash, u_char* recipeContent, uint
     if (fileName2metaDB.query(DBKey, recipeName)) {
         ifstream RecipeIn;
         string readRecipeName;
+
         readRecipeName = RecipeNamePrefix_ + recipeName + RecipeNameTail_;
         RecipeIn.open(readRecipeName, ifstream::in | ifstream::binary);
         if (!RecipeIn.is_open()) {
@@ -431,7 +433,9 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
 
     ofstream RecipeOut;
     string writeRecipeName, buffer, recipeName;
-
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+    mutexContainerOperation_.lock();
+#endif
     string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
     if (fileName2metaDB.query(DBKey, recipeName)) {
         cerr << "StorageCore : current file's recipe exist, modify it now, recipe name = \n\t"
@@ -440,10 +444,16 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
         RecipeOut.open(writeRecipeName, ios::app | ios::binary);
         if (!RecipeOut.is_open()) {
             cerr << "StorageCore : Can not open Recipe file, name =  " << writeRecipeName << endl;
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+            mutexContainerOperation_.unlock();
+#endif
             return false;
         }
         RecipeOut.write((char*)recipeContent, recipeSize);
         RecipeOut.close();
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+        mutexContainerOperation_.unlock();
+#endif
         return true;
     } else {
         char recipeNameBuffer[FILE_NAME_HASH_SIZE * 2 + 1];
@@ -458,10 +468,16 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
         RecipeOut.open(writeRecipeName, ios::app | ios::binary);
         if (!RecipeOut.is_open()) {
             cerr << "StorageCore : Can not open Recipe file, name =  " << writeRecipeName << endl;
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+            mutexContainerOperation_.unlock();
+#endif
             return false;
         }
         RecipeOut.write((char*)recipeContent, recipeSize);
         RecipeOut.close();
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+        mutexContainerOperation_.unlock();
+#endif
         return true;
     }
 }
@@ -571,6 +587,9 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
 #endif
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+    mutexContainerOperation_.lock();
+#endif
     if (key.length + currentContainer_.used_ < maxContainerSize_) {
         memcpy(&currentContainer_.body_[currentContainer_.used_], data, key.length);
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
@@ -583,6 +602,9 @@ bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
     }
     key.offset = currentContainer_.used_;
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+    mutexContainerOperation_.unlock();
+#endif
     return true;
 }
 
@@ -591,7 +613,6 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
     ifstream containerIn;
     string containerNameStr((char*)key.containerName, lastContainerFileName_.length());
     string readName = containerNamePrefix_ + containerNameStr + containerNameTail_;
-
     if (containerNameStr.compare(lastContainerFileName_) == 0) {
         memcpy(data, currentContainer_.body_ + key.offset, key.length);
         return true;

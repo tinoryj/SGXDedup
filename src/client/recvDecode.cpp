@@ -33,6 +33,14 @@ RecvDecode::RecvDecode(string fileName)
     powSecurityChannel_ = new ssl(config.getStorageServerIP(), config.getPOWServerPort(), CLIENTSIDE);
     sslConnectionData_ = dataSecurityChannel_->sslConnect().second;
     sslConnectionPow_ = powSecurityChannel_->sslConnect().second;
+    NetworkHeadStruct_t request;
+    request.messageType = POW_THREAD_DOWNLOAD;
+    request.dataSize = 0;
+    request.clientID = clientID_;
+    int sendSize = sizeof(NetworkHeadStruct_t);
+    char requestBuffer[sendSize];
+    memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));
+    powSecurityChannel_->send(sslConnectionPow_, requestBuffer, sendSize);
 #if SYSTEM_BREAK_DOWN == 1
     long diff;
     double second;
@@ -44,7 +52,7 @@ RecvDecode::RecvDecode(string fileName)
 #elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
     bool initDownloadStatus = processRecipe(fileRecipe_, fileRecipeList_, fileNameHash_);
     if (initDownloadStatus) {
-        cout << "RecvDecode : init download infomation success, file size = " << fileRecipe_.fileRecipeHead.fileSize << " Byte, total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
+        cout << "RecvDecode : init download infomation success:\n\t  Total file size = " << fileRecipe_.fileRecipeHead.fileSize << " Byte\n\t  Total chunk number = " << fileRecipe_.fileRecipeHead.totalChunkNumber << endl;
     } else {
         cerr << "RecvDecode : recv file recipe error" << endl;
 #if SYSTEM_BREAK_DOWN == 1
@@ -152,6 +160,11 @@ bool RecvDecode::insertMQ(RetrieverData_t& newData)
 bool RecvDecode::extractMQ(RetrieverData_t& newData)
 {
     return outPutMQ_->pop(newData);
+}
+
+bool RecvDecode::getJobDoneFlag()
+{
+    return outPutMQ_->done_;
 }
 
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
@@ -287,7 +300,9 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
     }
     if (respond.messageType == SUCCESS) {
         uint64_t recipeLength = respond.dataSize;
-        cout << "RecvDecode : recv encrypted recipe size = " << recipeLength << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "RecvDecode : recv encrypted recipe size = " << recipeLength << endl;
+#endif
         u_char* encryptedRecipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeLength + sizeof(NetworkHeadStruct_t));
         u_char* decryptedRecipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeLength);
 
@@ -419,6 +434,7 @@ void RecvDecode::run()
     }
 #if SYSTEM_BREAK_DOWN == 1
     cout << "RecvDecode : chunk decrypt time = " << decryptChunkTime << " s" << endl;
+    outPutMQ_->done_ = true;
 #endif
     return;
 }

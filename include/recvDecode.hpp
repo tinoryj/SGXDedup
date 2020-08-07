@@ -37,6 +37,7 @@ public:
     Recipe_t getFileRecipeHead();
     bool insertMQ(RetrieverData_t& newChunk);
     bool extractMQ(RetrieverData_t& newChunk);
+    bool getJobDoneFlag();
 };
 
 #endif //SGXDEDUP_RECIVER_HPP

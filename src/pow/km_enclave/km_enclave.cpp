@@ -263,7 +263,7 @@ sgx_status_t ecall_setNextEncryptionMask()
     return SGX_SUCCESS;
 }
 
-sgx_status_t ecall_setSessionKeyUpdate(sgx_ra_context_t* ctx)
+sgx_status_t ecall_setSessionKeyUpdate()
 {
     memset(currentSessionKey_, 0, 32);
     uint8_t hashDataTemp[32];

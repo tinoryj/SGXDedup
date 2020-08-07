@@ -67,9 +67,12 @@ KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
     if (initStatus != true) {
         cerr << "KeyClient : init to key server error, client exit" << endl;
         exit(0);
-    } else {
+    }
+#if SYSTEM_DEBUG_FLAG == 1
+    else {
         cerr << "KeyClient : init to key server success" << endl;
     }
+#endif
 #endif
 }
 #endif
@@ -86,7 +89,18 @@ KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 
 KeyClient::~KeyClient()
 {
-    saveClientCTRInfo();
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    bool saveStatus = saveClientCTRInfo();
+    if (saveStatus != true) {
+        cerr << "KeyClient : save ctr mode information error" << endl;
+        exit(0);
+    }
+#if SYSTEM_DEBUG_FLAG == 1
+    else {
+        cerr << "KeyClient : save ctr mode information success" << endl;
+    }
+#endif
+#endif
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
@@ -169,11 +183,19 @@ bool KeyClient::initClientCTRInfo()
             return false;
         } else {
             memcpy(&responseHead, responseBuffer, sizeof(NetworkHeadStruct_t));
+#if SYSTEM_DEBUG_FLAG == 1
             cerr << "KeyClient : recv key server response, message type = " << responseHead.messageType << endl;
             PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, responseBuffer, sizeof(NetworkHeadStruct_t));
+#endif
             if (responseHead.messageType == CLIENT_COUNTER_REST) {
                 cerr << "KeyClient : key server counter error, reset client counter to 0" << endl;
                 counter_ = 0;
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendKey, NULL);
+                int diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+                double second = diff / 1000000.0;
+                cout << "KeyClient : init ctr mode key exchange time = " << second << " s" << endl;
+#endif // SYSTEM_BREAK_DOWN
                 return true;
             } else if (responseHead.messageType == NONCE_HAS_USED) {
                 cerr << "KeyClient: nonce has used, goto retry" << endl;
@@ -183,16 +205,16 @@ bool KeyClient::initClientCTRInfo()
                 goto nonceUsedRetry;
             } else if (responseHead.messageType == SUCCESS) {
                 cerr << "KeyClient : init information success, start key generate" << endl;
+#if SYSTEM_BREAK_DOWN == 1
+                gettimeofday(&timeendKey, NULL);
+                int diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
+                double second = diff / 1000000.0;
+                cout << "KeyClient : init ctr mode key exchange time = " << second << " s" << endl;
+#endif // SYSTEM_BREAK_DOWN
                 return true;
             }
         }
     }
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendKey, NULL);
-    int diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-    double second = diff / 1000000.0;
-    cout << "KeyClient : init ctr mode time = " << second << " s" << endl;
-#endif // SYSTEM_BREAK_DOWN
 }
 
 bool KeyClient::saveClientCTRInfo()

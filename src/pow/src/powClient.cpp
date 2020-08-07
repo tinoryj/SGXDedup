@@ -12,6 +12,10 @@ void print(const char* mem, uint32_t len, uint32_t type)
 {
     if (type == 1) {
         cout << mem << endl;
+    } else if (type == 3) {
+        uint32_t number;
+        memcpy(&number, mem, sizeof(uint32_t));
+        cout << number << endl;
     } else if (type == 2) {
         if (!mem || !len) {
             fprintf(stderr, "\n( null )\n");
@@ -182,7 +186,8 @@ bool powClient::request(u_char* logicDataBatchBuffer, uint64_t bufferSize, uint8
     sgx_status_t status, retval;
     status = ecall_calcmac(eid_, &retval, (uint8_t*)logicDataBatchBuffer, bufferSize, cmac, chunkHashList);
     if (retval != SGX_SUCCESS) {
-        cerr << "PowClient : ecall failed" << endl;
+        cerr << "PowClient : ecall failed, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
     return true;
@@ -428,7 +433,8 @@ powClient::powClient(Sender* senderObjTemp)
             cout << "PowClient : set up remote attestation session key time = " << second << " s" << endl;
 #endif
             if (status != SGX_SUCCESS) {
-                cerr << "PowClient : ecall set session key failed" << endl;
+                cerr << "PowClient : ecall set session key failed, status = " << endl;
+                sgxErrorReport(status);
                 exit(0);
             } else {
                 startMethod_ = 2;
@@ -485,7 +491,8 @@ powClient::powClient(Sender* senderObjTemp)
         cout << "PowClient : set up remote attestation session key time = " << second << " s" << endl;
 #endif
         if (status != SGX_SUCCESS) {
-            cerr << "PowClient : ecall set session key failed" << endl;
+            cerr << "PowClient : ecall set session key failed, status = " << endl;
+            sgxErrorReport(status);
             exit(0);
         } else {
             startMethod_ = 2;
@@ -564,7 +571,7 @@ bool powClient::do_attestation()
     cerr << "PowClient : create pow enclave done" << endl;
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : Can not launch pow_enclave : " << enclaveName << endl;
-        printf("%08x", status);
+        sgxErrorReport(status);
         return false;
     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -572,7 +579,8 @@ bool powClient::do_attestation()
 #endif
     status = enclave_ra_init(eid_, &sgxrv, def_service_public_key, false, &ctx_, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "PowClient : pow_enclave ra init failed : " << status << endl;
+        cerr << "PowClient : pow_enclave ra init failed, status =  " << endl;
+        sgxErrorReport(status);
         return false;
     }
 
@@ -586,7 +594,8 @@ bool powClient::do_attestation()
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(eid_, &sgxrv, ctx_);
-        cerr << "PowClient : sgx get epid failed : " << status << endl;
+        cerr << "PowClient : sgx get epid failed, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
     /* Generate msg1 */
@@ -594,7 +603,8 @@ bool powClient::do_attestation()
     status = sgx_ra_get_msg1(ctx_, eid_, sgx_ra_get_ga, &msg1);
     if (status != SGX_SUCCESS) {
         enclave_ra_close(eid_, &sgxrv, ctx_);
-        cerr << "PowClient : sgx error get msg1" << status << endl;
+        cerr << "PowClient : sgx error get msg1, status = " << endl;
+        sgxErrorReport(status);
         return false;
     }
 
@@ -608,6 +618,8 @@ bool powClient::do_attestation()
     status = sgx_ra_proc_msg2(ctx_, eid_, sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2, sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size, &msg3, &msg3Size);
 
     if (status != SGX_SUCCESS) {
+        cerr << "PowClient : error process msg 2, status = " << endl;
+        sgxErrorReport(status);
         enclave_ra_close(eid_, &sgxrv, ctx_);
     }
 

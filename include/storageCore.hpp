@@ -46,6 +46,9 @@ private:
     double writeContainerTime = 0;
     int uniqueChunkNumber = 0;
 #endif
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+    std::mutex mutexContainerOperation_;
+#endif
 public:
     StorageCore();
     ~StorageCore();

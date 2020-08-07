@@ -29,7 +29,11 @@ private:
     ssl* powSecurityChannel_;
     ssl* dataSecurityChannel_;
     uint64_t keyRegressionCurrentTimes_;
-
+#if MULTI_CLIENT_UPLOAD_TEST == 1
+    std::mutex mutexSessions_;
+    std::mutex mutexCrypto_;
+    std::mutex mutexRestore_;
+#endif
 public:
     enclaveSession* keyServerSession_;
     DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp);

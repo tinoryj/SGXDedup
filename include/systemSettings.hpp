@@ -2,7 +2,7 @@
 #define SGXDEDUP_SYSTEMSETTINGS_HPP
 /* System Test Settings: 0-disable; 1-enable */
 #define SYSTEM_BREAK_DOWN 1
-#define SYSTEM_DEBUG_FLAG 1
+#define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
 #define ENCODER_MODULE_ENABLED 0 // if enable encoder, chunk encryption will move from keyclient to encoder
 #define FINGERPRINTER_MODULE_ENABLE 1
@@ -41,7 +41,6 @@
 #define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
 
 /* System Infomation Size Settings */
-#define CHUNK_FINGER_PRINT_SIZE 32
 #define CHUNK_HASH_SIZE 32
 #define CHUNK_ENCRYPT_KEY_SIZE 32
 #define FILE_NAME_HASH_SIZE 32

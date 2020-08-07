@@ -31,7 +31,7 @@ set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ}
 
 set(CLIENT_OBJ chunker fingerprinter keyClient encoder powClient sender recvDecode  retriever)
 set(SERVER_OBJ dataSR  dedupCore powServer storage kmServer) 
-set(KEYSERVER_OBJ keyServer kmClient)
+set(KEYSERVER_OBJ keyServer kmClient sgxErrorSupport)
 
 #-fno-builtin-memset
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)

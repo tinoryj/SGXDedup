@@ -14,7 +14,7 @@ enclave {
         public sgx_status_t ecall_setServerSecret([in,size=keydLen] uint8_t* keyd, uint32_t keydLen);
         public sgx_status_t ecall_getServerSecret([user_check] uint8_t* secret);
         public sgx_status_t ecall_setSessionKey([in]sgx_ra_context_t* ctx);
-        public sgx_status_t ecall_setSessionKeyUpdate([in]sgx_ra_context_t* ctx);
+        public sgx_status_t ecall_setSessionKeyUpdate();
         public sgx_status_t ecall_setKeyRegressionCounter(uint32_t keyRegressionMaxTimes);
         public sgx_status_t ecall_keygen([user_check] uint8_t *src,
                                         uint32_t srcLen,
@@ -26,7 +26,9 @@ enclave {
         public sgx_status_t ecall_setNextEncryptionMask();
         public sgx_status_t ecall_setCTRMode();
         public sgx_status_t ecall_getCurrentSessionKey([user_check] char* currentSessionKeyResult);
-        public sgx_status_t ecall_clientStatusModify(int clientID, [user_check]uint8_t* inputBuffer, [user_check]uint8_t* hmacBuffer);
+        public sgx_status_t ecall_clientStatusModify(int clientID, 
+                                                    [user_check]uint8_t* inputBuffer, 
+                                                    [user_check]uint8_t* hmacBuffer);
     };
     untrusted {
 		    void print([in,size=len]const char* mem, uint32_t len, uint32_t type);
