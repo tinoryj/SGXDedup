@@ -37,15 +37,14 @@ private:
     uint64_t maxContainerSize_;
     bool writeContainer(keyForChunkHashDB_t& key, char* data);
     bool readContainer(keyForChunkHashDB_t key, char* data);
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
-    double queryDBTime = 0;
+#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE && SYSTEM_BREAK_DOWN == 1
+    double storeChunkInsertDBTime = 0;
+    double restoreChunkQueryDBTime = 0;
     double readContainerTime = 0;
-    int readContainerNumber = 0;
-    double queryDBTimeUpload = 0;
-    double insertDBTimeUpload = 0;
     double writeContainerTime = 0;
-    int uniqueChunkNumber = 0;
+    int readContainerNumber = 0;
 #endif
+
 #if MULTI_CLIENT_UPLOAD_TEST == 1
     std::mutex mutexContainerOperation_;
 #endif
@@ -73,6 +72,9 @@ public:
     bool restoreChunk(std::string chunkHash, std::string& chunkDataStr);
     bool restoreRecipes(char* fileNameHash, u_char* recipeContent, uint64_t& recipeSize);
     bool restoreRecipesSize(char* fileNameHash, uint64_t& recipeSize);
+#if SYSTEM_BREAK_DOWN == 1
+    bool clientExitSystemStatusOutput(bool type); // type true == upload, false == download
+#endif
 #endif
 };
 

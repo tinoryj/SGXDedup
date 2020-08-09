@@ -97,6 +97,7 @@ void DataSR::runData(SSL* sslConnection)
                 } else {
                     cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                 }
+                storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                 cerr << "DataSR : data thread recv exit flag, thread exit now" << endl;
                 return;
@@ -123,6 +124,7 @@ void DataSR::runData(SSL* sslConnection)
                     } else {
                         cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                     }
+                    storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                     return;
                 }
@@ -249,6 +251,7 @@ void DataSR::runData(SSL* sslConnection)
                             } else {
                                 cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                             }
+                            storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                             mutexRestore_.unlock();
@@ -271,6 +274,7 @@ void DataSR::runData(SSL* sslConnection)
                     } else {
                         cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                     }
+                    storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                     return;
                 }
@@ -298,6 +302,7 @@ void DataSR::runData(SSL* sslConnection)
                     } else {
                         cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                     }
+                    storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                     return;
                 }
@@ -317,6 +322,7 @@ void DataSR::runData(SSL* sslConnection)
                     } else {
                         cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                     }
+                    storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                     return;
                 }
@@ -457,6 +463,7 @@ void DataSR::runData(SSL* sslConnection)
                         } else {
                             cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
                         }
+                        storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                         return;
                     }

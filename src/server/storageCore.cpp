@@ -352,6 +352,24 @@ bool StorageCore::checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList
     return true;
 }
 #elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
+
+#if SYSTEM_BREAK_DOWN == 1
+// type true == upload, false == download
+bool StorageCore::clientExitSystemStatusOutput(bool type)
+{
+    cout << "StorageCore : service for client done, output service status:" << endl;
+    if (type == true) {
+        cout << "StorageCore : store chunk insert database time = " << storeChunkInsertDBTime << " s" << endl;
+        cout << "StorageCore : store chunk write container time = " << writeContainerTime << " s" << endl;
+    } else {
+        cout << "StorageCore : restore chunk query database time = " << restoreChunkQueryDBTime << " s" << endl;
+        cout << "StorageCore : restore chunk read container time = " << readContainerTime << " s" << endl;
+        cout << "StorageCore : restore chunk read container number = " << readContainerNumber << endl;
+    }
+    return true;
+}
+#endif
+
 bool StorageCore::storeChunks(NetworkHeadStruct_t& networkHead, char* data)
 {
     // gettimeofday(&timestartStorage, NULL);
@@ -534,7 +552,7 @@ bool StorageCore::storeChunk(std::string chunkHash, char* chunkData, int chunkSi
     status = fp2ChunkDB.insert(chunkHash, dbValue);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendStorage, NULL);
-    insertDBTimeUpload += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
+    storeChunkInsertDBTime += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
 #endif
     if (!status) {
         cerr << "StorageCore : Can't insert chunk to database" << endl;
@@ -557,7 +575,7 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
     gettimeofday(&timeendStorage, NULL);
     int diff = 1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec;
     double second = diff / 1000000.0;
-    queryDBTime += second;
+    restoreChunkQueryDBTime += second;
 #endif
     if (status) {
         memcpy(&key, &ans[0], sizeof(keyForChunkHashDB_t));
