@@ -62,18 +62,6 @@ KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
     keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
     sslConnection_ = keySecurityChannel_->sslConnect().second;
     clientID_ = config.getClientID();
-#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-    bool initStatus = initClientCTRInfo();
-    if (initStatus != true) {
-        cerr << "KeyClient : init to key server error, client exit" << endl;
-        exit(0);
-    }
-#if SYSTEM_DEBUG_FLAG == 1
-    else {
-        cerr << "KeyClient : init to key server success" << endl;
-    }
-#endif
-#endif
 }
 #endif
 
@@ -89,18 +77,6 @@ KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 
 KeyClient::~KeyClient()
 {
-#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-    bool saveStatus = saveClientCTRInfo();
-    if (saveStatus != true) {
-        cerr << "KeyClient : save ctr mode information error" << endl;
-        exit(0);
-    }
-#if SYSTEM_DEBUG_FLAG == 1
-    else {
-        cerr << "KeyClient : save ctr mode information success" << endl;
-    }
-#endif
-#endif
     if (cryptoObj_ != NULL) {
         delete cryptoObj_;
     }
@@ -449,6 +425,18 @@ void KeyClient::run()
     long diff;
     double second;
 #endif // SYSTEM_BREAK_DOWN
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    bool initStatus = initClientCTRInfo();
+    if (initStatus != true) {
+        cerr << "KeyClient : init to key server error, client exit" << endl;
+        exit(0);
+    }
+#if SYSTEM_DEBUG_FLAG == 1
+    else {
+        cerr << "KeyClient : init to key server success" << endl;
+    }
+#endif
+#endif
     vector<Data_t> batchList;
     int batchNumber = 0;
     u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
@@ -581,6 +569,18 @@ void KeyClient::run()
     cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
 #if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
+#endif
+#endif
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    bool saveStatus = saveClientCTRInfo();
+    if (saveStatus != true) {
+        cerr << "KeyClient : save ctr mode information error" << endl;
+        exit(0);
+    }
+#if SYSTEM_DEBUG_FLAG == 1
+    else {
+        cerr << "KeyClient : save ctr mode information success" << endl;
+    }
 #endif
 #endif
     return;
