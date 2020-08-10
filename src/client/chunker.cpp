@@ -588,18 +588,18 @@ void Chunker::traceDrivenChunkingFSL()
             memcpy(chunkBuffer_ + copySize, chunkFp, 6);
             copySize += 6;
         }
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendChunker, NULL);
-        diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
-        second = diff / 1000000.0;
-        chunkTime += second;
-#endif
         Data_t tempChunk;
         tempChunk.chunk.ID = chunkIDCounter;
         tempChunk.chunk.logicDataSize = size;
         memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendChunker, NULL);
+        diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
+        second = diff / 1000000.0;
+        chunkTime += second;
+#endif
 #if FINGERPRINTER_MODULE_ENABLE == 1
         FingerprinterObj_->insertMQ(tempChunk);
 #else
@@ -685,18 +685,19 @@ void Chunker::traceDrivenChunkingUBC()
             memcpy(chunkBuffer_ + copySize, chunkFp, 5);
             copySize += 5;
         }
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendChunker, NULL);
-        diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
-        second = diff / 1000000.0;
-        chunkTime += second;
-#endif
+
         Data_t tempChunk;
         tempChunk.chunk.ID = chunkIDCounter;
         tempChunk.chunk.logicDataSize = size;
         memcpy(tempChunk.chunk.logicData, chunkBuffer_, size);
         memcpy(tempChunk.chunk.chunkHash, hash, CHUNK_HASH_SIZE);
         tempChunk.dataType = DATA_TYPE_CHUNK;
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendChunker, NULL);
+        diff = 1000000 * (timeendChunker.tv_sec - timestartChunker.tv_sec) + timeendChunker.tv_usec - timestartChunker.tv_usec;
+        second = diff / 1000000.0;
+        chunkTime += second;
+#endif
 #if FINGERPRINTER_MODULE_ENABLE == 1
         FingerprinterObj_->insertMQ(tempChunk);
 #else
