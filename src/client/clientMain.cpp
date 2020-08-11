@@ -322,7 +322,6 @@ int main(int argv, char* argc[])
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
         second = diff / 1000000.0;
         cout << "System : Setup time is " << second << " s" << endl;
-        delete senderObj;
         while (true) {
             cerr << "System : Waiting for operation request input" << endl
                  << "\tstore : upload a new file" << endl
@@ -345,8 +344,6 @@ int main(int argv, char* argc[])
                 cerr << "System : upload need input file path : " << endl;
                 string filePath;
                 cin >> filePath;
-                senderObj = new Sender();
-                powClientObj->resetSenderObj(senderObj);
                 u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB || KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
                 if (!senderObj->getKeyServerSK(sessionKey)) {
@@ -408,7 +405,6 @@ int main(int argv, char* argc[])
                 cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
 #endif
                 cout << endl;
-                delete senderObj;
 #if ENCODER_MODULE_ENABLED == 1
                 delete encoderObj;
                 delete keyClientObj;
@@ -468,15 +464,11 @@ int main(int argv, char* argc[])
                 }
                 u_char sessionKey[KEY_SERVER_SESSION_KEY_SIZE];
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB || KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-                senderObj = new Sender();
-                powClientObj->resetSenderObj(senderObj);
                 if (!senderObj->getKeyServerSK(sessionKey)) {
                     cerr << "Client : get key server session key failed, client exit" << endl;
                     delete senderObj;
                     delete powClientObj;
                     return 0;
-                } else {
-                    delete senderObj;
                 }
 #endif
 #if SYSTEM_DEBUG_FLAG == 1

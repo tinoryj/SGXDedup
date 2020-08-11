@@ -543,15 +543,6 @@ powClient::~powClient()
     }
 }
 
-bool powClient::resetSenderObj(Sender* senderObjTemp)
-{
-    senderObj_ = nullptr;
-    senderObj_ = senderObjTemp;
-    cerr << __LINE__ << endl;
-    bool loginToServerStatus = senderObj_->sendLogInMessage(CLIENT_SET_LOGIN_WITH_SEAL);
-    cerr << __LINE__ << endl;
-}
-
 bool powClient::do_attestation()
 {
 #if SYSTEM_BREAK_DOWN == 1
