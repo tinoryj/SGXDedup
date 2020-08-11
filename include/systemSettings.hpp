@@ -8,6 +8,7 @@
 #define FINGERPRINTER_MODULE_ENABLE 1
 #define ENCLAVE_SEALED_INIT_ENABLE 1
 #define MULTI_CLIENT_UPLOAD_TEST 0
+#define TRACE_DRIVEN_TEST 0
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
@@ -49,9 +50,12 @@
 #define AVG_CHUNK_SIZE 8192 //macro for the average size of variable-size chunker
 #define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
 
+#if TRACE_DRIVEN_TEST == 1
+#define NETWORK_MESSAGE_DATA_SIZE 16440 * 1000
+#else
 #define NETWORK_MESSAGE_DATA_SIZE 12 * 1000 * 1000
+#endif
 #define SGX_MESSAGE_MAX_SIZE 1024 * 1024
-#define NETWORK_RESPOND_BUFFER_MAX_SIZE 12 * 1000 * 1000
 #define CRYPTO_BLOCK_SZIE 16
 #define KEY_SERVER_SESSION_KEY_SIZE 32
 

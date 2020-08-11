@@ -182,7 +182,7 @@ void RecvDecode::run()
     request.clientID = clientID_;
     int sendSize = sizeof(NetworkHeadStruct_t) + FILE_NAME_HASH_SIZE;
     char requestBuffer[sendSize];
-    char respondBuffer[NETWORK_RESPOND_BUFFER_MAX_SIZE];
+    char respondBuffer[NETWORK_MESSAGE_DATA_SIZE];
     int recvSize;
 
     memcpy(requestBuffer, &request, sizeof(NetworkHeadStruct_t));

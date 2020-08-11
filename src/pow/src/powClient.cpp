@@ -346,7 +346,9 @@ powClient::powClient(Sender* senderObjTemp)
     gettimeofday(&timeendEnclave, NULL);
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
     second = diff / 1000000.0;
-    cout << "PowClient : load sealed information time = " << second << " s" << endl;
+    if (loadSealedDataStatus == true) {
+        cout << "PowClient : load sealed information time = " << second << " s" << endl;
+    }
 #endif
     if (loadSealedDataStatus == true) {
 #if SYSTEM_BREAK_DOWN == 1
@@ -539,6 +541,15 @@ powClient::~powClient()
     if (ret != SGX_SUCCESS) {
         cerr << "PowClient : enclave clean up error" << endl;
     }
+}
+
+bool powClient::resetSenderObj(Sender* senderObjTemp)
+{
+    senderObj_ = nullptr;
+    senderObj_ = senderObjTemp;
+    cerr << __LINE__ << endl;
+    bool loginToServerStatus = senderObj_->sendLogInMessage(CLIENT_SET_LOGIN_WITH_SEAL);
+    cerr << __LINE__ << endl;
 }
 
 bool powClient::do_attestation()

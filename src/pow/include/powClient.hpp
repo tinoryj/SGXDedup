@@ -54,6 +54,7 @@ public:
     bool powEnclaveSealedColse();
     bool loadSealedData();
     bool outputSealedData();
+    bool resetSenderObj(Sender* senderObjTemp);
 
     bool do_attestation();
     void run();
