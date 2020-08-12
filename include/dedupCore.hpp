@@ -12,9 +12,6 @@
 using namespace std;
 
 class DedupCore {
-private:
-    CryptoPrimitive* cryptoObj_;
-
 public:
     DedupCore();
     ~DedupCore();

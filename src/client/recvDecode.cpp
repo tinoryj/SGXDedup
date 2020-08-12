@@ -85,9 +85,7 @@ RecvDecode::~RecvDecode()
     powSecurityChannel_->send(sslConnectionPow_, requestBuffer, sendSize);
     delete dataSecurityChannel_;
     delete powSecurityChannel_;
-    if (cryptoObj_ != nullptr) {
-        delete cryptoObj_;
-    }
+    delete cryptoObj_;
 #if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     outPutMQ_->~messageQueue();
     delete outPutMQ_;

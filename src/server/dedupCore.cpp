@@ -24,13 +24,10 @@ void PRINT_BYTE_ARRAY_DEDUP_CORE(
 
 DedupCore::DedupCore()
 {
-    cryptoObj_ = new CryptoPrimitive();
 }
 
 DedupCore::~DedupCore()
 {
-    if (cryptoObj_ != nullptr)
-        delete cryptoObj_;
 }
 
 bool DedupCore::dedupByHash(u_char* inputHashList, int chunkNumber, bool* out, int& requiredChunkNumber)

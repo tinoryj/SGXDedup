@@ -109,6 +109,7 @@ bool kmServer::process_msg01(enclaveSession* session, sgx_msg01_t& msg01, sgx_ra
 
     if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
         cerr << "KmServer : can not retrieve sigrl form ias server" << endl;
+        free(Gb);
         return false;
     }
 
@@ -123,7 +124,7 @@ bool kmServer::process_msg01(enclaveSession* session, sgx_msg01_t& msg01, sgx_ra
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
     cmac128(session->smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
-
+    free(Gb);
     return true;
 }
 
@@ -136,17 +137,20 @@ bool kmServer::derive_kdk(EVP_PKEY* Gb, unsigned char* kdk, sgx_ec256_public_t g
     Ga = key_from_sgx_ec256(&g_a);
     if (Ga == nullptr) {
         cerr << "KmServer : can not get ga from msg1" << endl;
+        free(Ga);
         return false;
     }
     Gab_x = key_shared_secret(Gb, Ga, &len);
     if (Gab_x == nullptr) {
         cerr << "KmServer : can not get shared secret" << endl;
+        free(Ga);
         return false;
     }
     reverse_bytes(Gab_x, Gab_x, len);
 
     memset(cmacKey, 0, sizeof(cmacKey));
     cmac128(cmacKey, Gab_x, len, kdk);
+    free(Ga);
     return true;
 }
 
@@ -157,19 +161,23 @@ bool kmServer::get_sigrl(uint8_t* gid, char* sig_rl, uint32_t* sig_rl_size)
     req = new IAS_Request(_ias, _iasVersion);
     if (req == nullptr) {
         cerr << "KmServer : can not make ias request" << endl;
+        delete req;
         return false;
     }
     string sigrlstr;
     if (req->sigrl(*(uint32_t*)gid, sigrlstr) != IAS_OK) {
         cerr << "KmServer : ias get sigrl error, status != ok" << endl;
+        delete req;
         return false;
     }
 
     memcpy(sig_rl, &sigrlstr[0], sigrlstr.length());
     if (sig_rl == nullptr) {
+        delete req;
         return false;
     }
     *sig_rl_size = (uint32_t)sigrlstr.length();
+    delete req;
     return true;
 }
 
@@ -197,6 +205,7 @@ bool kmServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
+        free(b64quote);
         unsigned char vfy_rdata[64];
         unsigned char msg_rdata[144]; /* for Ga || Gb || VK */
 
@@ -266,6 +275,7 @@ bool kmServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
             return false;
         }
     } else {
+        free(b64quote);
         cerr << "KmServer : Attestation failed" << endl;
         return false;
     }
@@ -283,6 +293,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
     req = new IAS_Request(_ias, (uint16_t)_iasVersion);
     if (req == nullptr) {
         cerr << "KmServer : Exception while creating IAS request object" << endl;
+        messages.clear();
         return false;
     }
 
@@ -304,6 +315,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
             unsigned int rversion = (unsigned int)reportObj["version"].ToInt();
             if (_iasVersion != rversion) {
                 cerr << "KmServer : Report version " << rversion << " does not match API version " << _iasVersion << endl;
+                messages.clear();
                 return false;
             }
         }
@@ -320,6 +332,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
             msg4->status = false;
         }
     }
+    messages.clear();
     return true;
 }
 enclaveSession* kmServer::authkm()

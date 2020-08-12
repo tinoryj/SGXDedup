@@ -71,6 +71,12 @@ bool CryptoPrimitive::opensslLockCleanup()
 
     OPENSSL_free(opensslLock_->lockList);
     OPENSSL_free(opensslLock_->cntList);
+    if (opensslLock_->lockList != nullptr) {
+        free(opensslLock_->lockList);
+    }
+    if (opensslLock_->cntList != nullptr) {
+        free(opensslLock_->cntList);
+    }
     free(opensslLock_);
 
     cout << "OpenSSL lock cleanup done" << endl;
@@ -151,6 +157,7 @@ CryptoPrimitive::~CryptoPrimitive()
     free(iv_);
     free(chunkKeyEncryptionKey_);
     CMAC_CTX_cleanup(cmacctx_);
+    CMAC_CTX_free(cmacctx_);
     // opensslLockCleanup();
 }
 
@@ -175,18 +182,41 @@ bool CryptoPrimitive::generateHash(u_char* dataBuffer, const int dataSize, u_cha
 
     if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1) {
         cerr << "hash error\n";
+#if OPENSSL_V_1_0_2 == 1
+        EVP_MD_CTX_cleanup(mdctx);
+#else
+        EVP_MD_CTX_reset(mdctx);
+#endif
+        EVP_MD_CTX_destroy(mdctx);
         return false;
     }
     if (EVP_DigestUpdate(mdctx, dataBuffer, dataSize) != 1) {
         cerr << "hash error\n";
+#if OPENSSL_V_1_0_2 == 1
+        EVP_MD_CTX_cleanup(mdctx);
+#else
+        EVP_MD_CTX_reset(mdctx);
+#endif
+        EVP_MD_CTX_destroy(mdctx);
         return false;
     }
     int hashSize;
     if (EVP_DigestFinal_ex(mdctx, hash, (unsigned int*)&hashSize) != 1) {
         cerr << "hash error\n";
+#if OPENSSL_V_1_0_2 == 1
+        EVP_MD_CTX_cleanup(mdctx);
+#else
+        EVP_MD_CTX_reset(mdctx);
+#endif
+        EVP_MD_CTX_destroy(mdctx);
         return false;
     }
-
+#if OPENSSL_V_1_0_2 == 1
+    EVP_MD_CTX_cleanup(mdctx);
+#else
+    EVP_MD_CTX_reset(mdctx);
+#endif
+    EVP_MD_CTX_destroy(mdctx);
     return true;
 }
 

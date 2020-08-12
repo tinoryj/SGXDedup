@@ -77,9 +77,7 @@ KeyClient::KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber)
 
 KeyClient::~KeyClient()
 {
-    if (cryptoObj_ != NULL) {
-        delete cryptoObj_;
-    }
+    delete cryptoObj_;
 #if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
@@ -407,6 +405,9 @@ void KeyClient::runKeyGenSimulator(int clientID)
     cout << "KeyClient : client ID = " << clientID << endl;
     cout << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
     cout << "KeyClient : key exchange work time = " << keyExchangeTime << " s, chunk hash generate time is " << chunkHashGenerateTime << " s" << endl;
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    cout << "KeyClient : key exchange mask generate work time = " << keyExchangeMaskGenerateTime << " s" << endl;
+#endif
 #endif
     // delete cryptoObj;
     // delete keySecurityChannel;
@@ -565,6 +566,9 @@ void KeyClient::run()
 #if FINGERPRINTER_MODULE_ENABLE == 0
     cout << "KeyClient : plain chunk hash generate time = " << generatePlainChunkHashTime << " s" << endl;
 #endif
+#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    cout << "KeyClient : key exchange mask generate work time = " << keyExchangeMaskGenerateTime << " s" << endl;
+#endif
     cout << "KeyClient : key exchange encrypt/decrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
 #if ENCODER_MODULE_ENABLED == 0
@@ -720,20 +724,31 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartKey_enc;
     struct timeval timeendKey_enc;
+    long diff;
+    double second;
     gettimeofday(&timestartKey_enc, NULL);
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj_->keyExchangeCTRBaseGenerate(nonce_, counter_, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKey_enc, NULL);
+    diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    second = diff / 1000000.0;
+    keyExchangeMaskGenerateTime += second;
+#endif
 #if SYSTEM_DEBUG_FLAG == 1
     cerr << "key exchange mask = " << endl;
     PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, keyExchangeXORBase, batchNumber * CHUNK_HASH_SIZE * 2);
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartKey_enc, NULL);
 #endif
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
     cryptoObj_->sha256Hmac(sendHash + sizeof(NetworkHeadStruct_t), CHUNK_HASH_SIZE * batchNumber, sendHash + sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, 32);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
-    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    double second = diff / 1000000.0;
+    diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    second = diff / 1000000.0;
     keyExchangeEncTime += second;
 #endif
     if (!keySecurityChannel_->send(sslConnection_, (char*)sendHash, sendSize)) {
@@ -774,16 +789,29 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartKey_enc;
     struct timeval timeendKey_enc;
+    long diff;
+    double second;
     gettimeofday(&timestartKey_enc, NULL);
 #endif
     u_char keyExchangeXORBase[batchNumber * CHUNK_HASH_SIZE * 2];
     cryptoObj->keyExchangeCTRBaseGenerate(nonce, counter, batchNumber * 4, keyExchangeKey_, keyExchangeKey_, keyExchangeXORBase);
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timeendKey_enc, NULL);
+    diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    second = diff / 1000000.0;
+    mutexkeyGenerateSimulatorEncTime_.lock();
+    keyExchangeMaskGenerateTime += second;
+    mutexkeyGenerateSimulatorEncTime_.unlock();
+#endif
+#if SYSTEM_BREAK_DOWN == 1
+    gettimeofday(&timestartKey_enc, NULL);
+#endif
     keyExchangeXOR(sendHash + sizeof(NetworkHeadStruct_t), batchHashList, keyExchangeXORBase, batchNumber);
     cryptoObj->sha256Hmac(sendHash + sizeof(NetworkHeadStruct_t), CHUNK_HASH_SIZE * batchNumber, sendHash + sizeof(NetworkHeadStruct_t) + CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, 32);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
-    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    double second = diff / 1000000.0;
+    diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    second = diff / 1000000.0;
     mutexkeyGenerateSimulatorEncTime_.lock();
     keyExchangeEncTime += second;
     mutexkeyGenerateSimulatorEncTime_.unlock();

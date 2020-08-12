@@ -121,6 +121,7 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
     char* requestBufferFirst = (char*)malloc(sizeof(char) * sendSize);
     memcpy(requestBufferFirst, &requestBody, sizeof(NetworkHeadStruct_t));
     if (!dataSecurityChannel_->send(sslConnectionData_, requestBufferFirst, sendSize)) {
+        free(recipeBuffer);
         free(requestBufferFirst);
         cerr << "Sender : error sending file resipces size, peer may close" << endl;
         return false;
@@ -133,10 +134,13 @@ bool Sender::sendRecipe(Recipe_t request, RecipeList_t recipeList, int& status)
         memcpy(requestBuffer + sizeof(NetworkHeadStruct_t), &request, sizeof(Recipe_t));
         cryptoObj_->encryptWithKey(recipeBuffer, totalRecipeNumber * sizeof(RecipeEntry_t), cryptoObj_->chunkKeyEncryptionKey_, (u_char*)requestBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t));
         if (!dataSecurityChannel_->send(sslConnectionData_, requestBuffer, sendSize)) {
+            free(recipeBuffer);
             free(requestBuffer);
             cerr << "Sender : error sending file resipces, peer may close" << endl;
             return false;
         } else {
+            free(recipeBuffer);
+            free(requestBuffer);
             return true;
         }
     }
@@ -249,7 +253,7 @@ bool Sender::sendSGXmsg01(uint32_t& msg0, sgx_ra_msg1_t& msg1, sgx_ra_msg2_t*& m
     status = respondBody.messageType;
 
     if (status == SUCCESS) {
-        msg2 = (sgx_ra_msg2_t*)new char[recvSize - sizeof(NetworkHeadStruct_t)];
+        msg2 = (sgx_ra_msg2_t*)malloc(recvSize - sizeof(NetworkHeadStruct_t));
         memcpy(msg2, respondBuffer + sizeof(NetworkHeadStruct_t), recvSize - sizeof(NetworkHeadStruct_t));
         return true;
     }
@@ -285,7 +289,7 @@ bool Sender::sendSGXmsg3(sgx_ra_msg3_t* msg3, uint32_t size, ra_msg4_t*& msg4, i
     status = respondBody.messageType;
 
     if (status == SUCCESS) {
-        msg4 = new ra_msg4_t;
+        msg4 = (ra_msg4_t*)malloc(sizeof(ra_msg4_t));
         memcpy(msg4, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(ra_msg4_t));
         return true;
     }

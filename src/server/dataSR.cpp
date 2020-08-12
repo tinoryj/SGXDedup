@@ -490,7 +490,6 @@ void DataSR::runPow(SSL* sslConnection)
 {
     sgx_msg01_t msg01;
     sgx_ra_msg2_t msg2;
-    sgx_ra_msg3_t* msg3;
     ra_msg4_t msg4;
     int recvSize = 0;
     int sendSize = 0;
@@ -647,7 +646,7 @@ void DataSR::runPow(SSL* sslConnection)
                 break;
             }
             case SGX_RA_MSG3: {
-                msg3 = (sgx_ra_msg3_t*)new char[netBody.dataSize];
+                sgx_ra_msg3_t* msg3 = (sgx_ra_msg3_t*)malloc(netBody.dataSize);
                 memcpy(msg3, recvBuffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                 mutexSessions_.lock();
@@ -681,6 +680,7 @@ void DataSR::runPow(SSL* sslConnection)
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                 mutexSessions_.unlock();
 #endif
+                free(msg3);
                 powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                 break;
             }

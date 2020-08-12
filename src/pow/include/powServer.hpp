@@ -71,6 +71,7 @@ private:
 
 public:
     powServer();
+    ~powServer();
     map<int, enclaveSession*> sessions;
     void closeSession(int fd);
     bool process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2);

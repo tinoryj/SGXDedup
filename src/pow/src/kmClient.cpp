@@ -472,7 +472,7 @@ bool kmClient::doAttestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    msg2 = (sgx_ra_msg2_t*)new uint8_t[msg2RecvSize];
+    msg2 = (sgx_ra_msg2_t*)malloc(msg2RecvSize);
     memcpy(msg2, msg2Buffer, msg2RecvSize);
 #if SYSTEM_DEBUG_FLAG == 1
     cout << "KmClient : Send msg01 and Recv msg2 success" << endl;
@@ -493,6 +493,8 @@ bool kmClient::doAttestation()
             free(msg2);
         }
         return false;
+    } else {
+        free(msg2);
     }
 
 #if SYSTEM_DEBUG_FLAG == 1
@@ -514,7 +516,7 @@ bool kmClient::doAttestation()
         enclave_ra_close(_eid, &sgxrv, _ctx);
         return false;
     }
-    msg4 = (ra_msg4_t*)new uint8_t[msg4RecvSize];
+    msg4 = (ra_msg4_t*)malloc(msg4RecvSize);
     memcpy(msg4, msg4Buffer, msg4RecvSize);
 #if SYSTEM_DEBUG_FLAG == 1
     cout << "KmClient : send msg3 and Recv msg4 success" << endl;
@@ -529,10 +531,11 @@ bool kmClient::doAttestation()
     } else if (!msg4->status) {
         cerr << "KmClient : Enclave NOT TRUSTED" << endl;
         enclave_ra_close(_eid, &sgxrv, _ctx);
+        free(msg4);
         return false;
     }
 
     enclave_trusted = msg4->status;
-
+    free(msg4);
     return true;
 }

@@ -625,11 +625,14 @@ bool powClient::do_attestation()
         enclave_ra_close(eid_, &sgxrv, ctx_);
     }
 
+    free(msg2);
+
     if (!senderObj_->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
         enclave_ra_close(eid_, &sgxrv, ctx_);
         cerr << "PowClient : error send msg3 & get back msg4: " << netstatus << endl;
         return false;
     }
+    free(msg3);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendEnclave, NULL);
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
@@ -639,9 +642,11 @@ bool powClient::do_attestation()
     if (!msg4->status) {
         cerr << "PowClient : Enclave NOT TRUSTED" << endl;
         enclave_ra_close(eid_, &sgxrv, ctx_);
+        free(msg4);
         return false;
     } else {
         enclaveIsTrusted_ = msg4->status;
+        free(msg4);
         return true;
     }
 }

@@ -32,6 +32,7 @@ private:
 
 public:
     double keyExchangeEncTime = 0;
+
 #if ENCODER_MODULE_ENABLED == 1
     KeyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
 #else
@@ -48,6 +49,7 @@ public:
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection);
     bool keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj);
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
+    double keyExchangeMaskGenerateTime = 0;
     u_char nonce_[CRYPTO_BLOCK_SZIE - sizeof(uint32_t)];
     uint32_t counter_ = 0;
     bool initClientCTRInfo();

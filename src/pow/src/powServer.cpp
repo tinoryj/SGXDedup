@@ -70,6 +70,17 @@ powServer::powServer()
     _iasVersion = config.getPOWIASVersion();
 }
 
+powServer::~powServer()
+{
+    auto it = sessions.begin();
+    while (it != sessions.end()) {
+        delete it->second;
+        it++;
+    }
+    sessions.clear();
+    free(_service_private_key);
+    delete cryptoObj_;
+}
 bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
     enclaveSession* current = new enclaveSession();
@@ -88,11 +99,13 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     Gb = key_generate();
     if (Gb == nullptr) {
         cerr << "PowServer : can not create session key\n";
+        free(Gb);
         return false;
     }
 
     if (!derive_kdk(Gb, current->kdk, msg01.msg1.g_a)) {
         cerr << "PowServer : can not derive KDK\n";
+        free(Gb);
         return false;
     }
 
@@ -109,6 +122,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 
     if (!get_sigrl(msg01.msg1.gid, (char*)&msg2.sig_rl, &msg2.sig_rl_size)) {
         cerr << "PowServer : can not retrieve sigrl form ias server\n";
+        free(Gb);
         return false;
     }
 
@@ -123,7 +137,7 @@ bool powServer::process_msg01(int fd, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
     cmac128(current->smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
-
+    free(Gb);
     return true;
 }
 
@@ -195,6 +209,7 @@ bool powServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
         return false;
     }
     if (get_attestation_report(b64quote, msg3->ps_sec_prop, &msg4)) {
+        free(b64quote);
         cerr << "PowServer : Get Attestation report success\n";
         unsigned char vfy_rdata[64];
         unsigned char msg_rdata[144]; /* for Ga || Gb || VK */
@@ -248,6 +263,7 @@ bool powServer::process_msg3(enclaveSession* current, sgx_ra_msg3_t* msg3,
             return false;
         }
     } else {
+        free(b64quote);
         cerr << "PowServer : Remote Attestation Failed" << endl;
         return false;
     }
