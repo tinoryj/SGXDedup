@@ -51,7 +51,7 @@
 #define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
 
 #if TRACE_DRIVEN_TEST == 1
-#define NETWORK_MESSAGE_DATA_SIZE 16440 * 1000
+#define NETWORK_MESSAGE_DATA_SIZE 18 * 1000 * 1000
 #else
 #define NETWORK_MESSAGE_DATA_SIZE 12 * 1000 * 1000
 #endif
