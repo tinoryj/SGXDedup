@@ -1,6 +1,6 @@
 {
 	"ChunkerConfig": {
-		"_chunkingType": 1,
+		"_chunkingType": 3,
 		"_minChunkSize": 4096,
 		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
@@ -20,7 +20,7 @@
 			6666
 		],
 		"_keyRegressionMaxTimes": 1048576,
-		"_keyRegressionIntervals": 259200
+		"_keyRegressionIntervals": 25920000
 	},
 	"SPConfig": {
 		"_storageServerNumber": 1,
@@ -58,7 +58,7 @@
 		"_containerRootPath": "Containers/",
 		"_fp2ChunkDBName": "db1",
 		"_fp2MetaDBame": "db2",
-		"_raSessionKeylifeSpan": 2592000
+		"_raSessionKeylifeSpan": 259200000
 	},
 	"client": {
 		"_clientID": 1,
