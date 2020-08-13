@@ -14,7 +14,7 @@
 		"_keyEnclaveThreadNumber": 1,
 		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
-			"127.0.0.1"
+			"10.59.13.201"
 		],
 		"_keyServerPort": [
 			6666
@@ -25,7 +25,7 @@
 	"SPConfig": {
 		"_storageServerNumber": 1,
 		"_storageServerIP": [
-			"127.0.0.1"
+			"10.59.13.188"
 		],
 		"_storageServerPort": [
 			6668
