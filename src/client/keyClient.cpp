@@ -366,8 +366,10 @@ void KeyClient::runKeyGenSimulator(int clientID)
             dataHead.dataSize = batchNumber * CHUNK_HASH_SIZE;
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj, nonce, counter, dataHead);
             counter += batchNumber * 4;
-#else
+#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
+#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SERVER_MLE_NO_OPRF
+            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection);
 #endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendKeySimulator, NULL);
@@ -768,6 +770,8 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     cryptoObj_->sha256Hmac(recvBuffer, CHUNK_HASH_SIZE * batchNumber, hmac, keyExchangeKey_, 32);
     if (memcmp(hmac, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32) != 0) {
         cerr << "KeyClient : recved keys hmac error" << endl;
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, hmac, 32);
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32);
         return false;
     }
     keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchNumber);

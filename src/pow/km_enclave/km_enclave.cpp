@@ -185,6 +185,7 @@ sgx_status_t ecall_clientStatusModify(int clientID, uint8_t* inputBuffer, uint8_
             if (clientList_.at(clientID).keyGenerateCounter == recvedCounter) {
                 return SGX_SUCCESS; // success, use offline mode
             } else {
+                memcpy_s(clientList_.at(clientID).nonce, 12, plaintextBuffer + sizeof(uint32_t), 12);
                 clientList_.at(clientID).keyGenerateCounter = 0;
                 clientList_.at(clientID).currentKeyGenerateCounter = 0;
                 clientList_.at(clientID).offlineFlag = -1;
@@ -355,6 +356,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             memcpy_s(mask + i * 32, originalHashLen * 2 - i * 32, currentKey, 32);
         }
         EVP_CIPHER_CTX_cleanup(cipherctx_);
+        EVP_CIPHER_CTX_free(cipherctx_);
         for (int i = 0; i < originalHashLen; i++) {
             originhash[i] = src[i] ^ mask[i];
         }

@@ -8,13 +8,13 @@
 #define FINGERPRINTER_MODULE_ENABLE 1
 #define ENCLAVE_SEALED_INIT_ENABLE 1
 #define MULTI_CLIENT_UPLOAD_TEST 0
-#define TRACE_DRIVEN_TEST 1
+#define TRACE_DRIVEN_TEST 0
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
-#define KEY_GEN_SERVER_MLE_NO_OPRF 0
-#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
+#define KEY_GEN_SERVER_MLE_NO_OPRF 2
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SERVER_MLE_NO_OPRF
 
 /* Storage Core Settings: 0-disable; 1-enable */
 #define STORAGE_SERVER_VERIFY_UPLOAD 0

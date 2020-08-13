@@ -512,7 +512,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         }
 #if SYSTEM_DEBUG_FLAG == 1
         else {
-            cout << "KeyServer : send key to " << netHead.clientID << " done for hash number = " << recvNumber << endl;
+            cout << "KeyServer : send key to client " << netHead.clientID << " done for hash number = " << recvNumber << endl;
         }
 #endif
     }
@@ -540,14 +540,12 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
@@ -559,14 +557,12 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;
@@ -599,14 +595,12 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
             multiThreadCountMutex_.unlock();
 #else
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
-            offlineGenerateFlag_ = true;
             multiThreadCountMutex_.unlock();
 #endif
             return;
