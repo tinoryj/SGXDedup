@@ -26,9 +26,12 @@ private:
     ssl* keySecurityChannel_;
     SSL* sslConnection_;
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
-    int keyGenNumber_;
+    uint64_t keyGenNumber_;
     int clientID_;
     std::mutex mutexkeyGenerateSimulatorEncTime_;
+    std::mutex mutexkeyGenerateSimulatorStart_;
+    int totalSimulatorThreadNumber_;
+    int currentInitThreadNumber_;
 
 public:
     double keyExchangeEncTime = 0;
@@ -38,7 +41,7 @@ public:
 #else
     KeyClient(powClient* powObjTemp, u_char* keyExchangeKey);
 #endif
-    KeyClient(u_char* keyExchangeKey, uint64_t keyGenNumber);
+    KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber);
     ~KeyClient();
     void run();
     void runKeyGenSimulator(int clientID);

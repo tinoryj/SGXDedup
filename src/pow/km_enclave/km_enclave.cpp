@@ -11,8 +11,8 @@
 
 using namespace std;
 
-#define MAX_SPECULATIVE_KEY_SIZE 80 * 1024 * 1024
-#define MAX_SPECULATIVE_CLIENT_NUMBER 10
+#define MAX_SPECULATIVE_KEY_SIZE 84000 * 1024
+#define MAX_SPECULATIVE_CLIENT_NUMBER 64
 #define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
@@ -219,9 +219,15 @@ sgx_status_t ecall_setNextEncryptionMask()
     unsigned char currentKey[32];
     int cipherlen, len;
     int generatedNumber = 0;
+#if SYSTEM_DEBUG_FLAG == 1
+    print("Key enclave generate mask total number", 39, 1);
+    int number = clientList_.size();
+    print((char*)&number, 4, 3);
+#endif
     auto it = clientList_.begin();
     while (it != clientList_.end() && generatedNumber < MAX_SPECULATIVE_CLIENT_NUMBER) {
 #if SYSTEM_DEBUG_FLAG == 1
+        print((char*)&generatedNumber, 4, 3);
         print("Key enclave generate mask for client start", 43, 1);
         print((char*)it->second.nonce, 32, 2);
 #endif
@@ -229,6 +235,12 @@ sgx_status_t ecall_setNextEncryptionMask()
         it->second.offlineFlag = -1;
         uint8_t nonce[12];
         memcpy_s(nonce, 12, it->second.nonce, 12);
+        uint32_t offset = 0;
+        for (int j = 0; j < generatedNumber; j++) {
+            offset += MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
+        }
+        it->second.offlineFlag = 1;
+        it->second.maskOffset = offset;
         for (int i = 0; i < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT / 32; i++) {
             memcpy(currentKeyBase, &currentCounter, sizeof(uint32_t));
             memcpy(currentKeyBase + sizeof(uint32_t), nonce, 16 - sizeof(uint32_t));
@@ -250,10 +262,15 @@ sgx_status_t ecall_setNextEncryptionMask()
                 EVP_CIPHER_CTX_cleanup(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
-            memcpy_s(nextEncryptionMaskSet_ + generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT + i * 32, MAX_SPECULATIVE_KEY_SIZE - generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT - i * 32, currentKey, 32);
+#if SYSTEM_DEBUG_FLAG == 1
+            uint32_t max = MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
+            print((char*)&offset, 4, 3);
+            print((char*)&generatedNumber, 4, 3);
+            print((char*)&i, 4, 3);
+            print((char*)&max, 4, 3);
+#endif
+            memcpy_s(nextEncryptionMaskSet_ + offset + i * 32, MAX_SPECULATIVE_KEY_SIZE - offset - i * 32, currentKey, 32);
         }
-        it->second.offlineFlag = 1;
-        it->second.maskOffset = generatedNumber * MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT;
         it++;
         generatedNumber++;
 #if SYSTEM_DEBUG_FLAG == 1

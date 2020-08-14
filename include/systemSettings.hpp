@@ -14,7 +14,7 @@
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
 #define KEY_GEN_SERVER_MLE_NO_OPRF 2
-#define KEY_GEN_METHOD_TYPE KEY_GEN_SERVER_MLE_NO_OPRF
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
 
 /* Storage Core Settings: 0-disable; 1-enable */
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
@@ -38,8 +38,8 @@
 /* System Running Type Settings */
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
 #define CHUNKER_VAR_SIZE_TYPE 1 //macro for the type of variable-size chunker
-#define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2
-#define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3
+#define CHUNKER_TRACE_DRIVEN_TYPE_FSL 2 //macro for the type of fsl dataset chunk generator
+#define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3 //macro for the type of ms dataset chunk generator
 
 /* System Infomation Size Settings */
 #define CHUNK_HASH_SIZE 32

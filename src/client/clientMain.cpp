@@ -180,7 +180,7 @@ int main(int argv, char* argc[])
         PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #endif
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
-        keyClientObj = new KeyClient(sessionKey, keyGenNumber);
+        keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber);
 
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -476,7 +476,7 @@ int main(int argv, char* argc[])
                 PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #endif
                 cerr << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
-                keyClientObj = new KeyClient(sessionKey, keyGenNumber);
+                keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber);
 
                 gettimeofday(&timestart, NULL);
                 for (int i = 0; i < threadNumber; i++) {
