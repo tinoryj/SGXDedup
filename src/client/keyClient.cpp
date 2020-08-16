@@ -84,6 +84,32 @@ KeyClient::~KeyClient()
 #endif
 }
 
+bool KeyClient::outputKeyGenSimulatorRunningTime()
+{
+    uint64_t startTime = ~0, endTime = 0;
+    if (keyGenSimulatorStartTimeCounter_.size() != keyGenSimulatorEndTimeCounter_.size()) {
+        cerr << "KeyClient : key generate simulator time counter error" << endl;
+        return false;
+    }
+    for (int i = 0; i < keyGenSimulatorStartTimeCounter_.size(); i++) {
+        uint64_t startTimeTemp = 1000000 * keyGenSimulatorStartTimeCounter_[i].tv_sec + keyGenSimulatorStartTimeCounter_[i].tv_usec;
+        uint64_t endTimeTemp = 1000000 * keyGenSimulatorEndTimeCounter_[i].tv_sec + keyGenSimulatorEndTimeCounter_[i].tv_usec;
+        if (startTimeTemp < startTime) {
+            startTime = startTimeTemp;
+        }
+        if (endTimeTemp > endTime) {
+            endTime = endTimeTemp;
+        }
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "Time Count : " << startTime << "\t" << startTimeTemp << "\t" << endTime << "\t" << endTimeTemp << endl;
+#endif
+    }
+    double second = (endTime - startTime) / 1000000.0;
+    cout << "KeyClient : key generate simulator working time = " << second << endl;
+    ;
+    return true;
+}
+
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
 
 bool KeyClient::initClientCTRInfo()
@@ -435,6 +461,8 @@ void KeyClient::runKeyGenSimulator(int clientID)
     }
 #endif
     mutexkeyGenerateSimulatorStart_.lock();
+    keyGenSimulatorStartTimeCounter_.push_back(timestartKeySimulatorThread);
+    keyGenSimulatorEndTimeCounter_.push_back(timeendKeySimulatorThread);
 #if SYSTEM_BREAK_DOWN == 1
     cout << "KeyClient : client ID = " << clientID << endl;
     cout << "KeyClient : key generate work time = " << keyGenTime << " s, total key generated is " << currentKeyGenNumber << endl;
@@ -686,25 +714,25 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection, CryptoPrimitive* cryptoObj)
 {
     u_char sendHash[CHUNK_HASH_SIZE * batchNumber + 32];
-#if SYSTEM_BREAK_DOWN == 1
-    struct timeval timestartKey_enc;
-    struct timeval timeendKey_enc;
-    gettimeofday(&timestartKey_enc, NULL);
-#endif
+    // #if SYSTEM_BREAK_DOWN == 1
+    //     struct timeval timestartKey_enc;
+    //     struct timeval timeendKey_enc;
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
     cryptoObj->keyExchangeEncrypt(batchHashList, batchNumber * CHUNK_HASH_SIZE, keyExchangeKey_, keyExchangeKey_, sendHash);
     cryptoObj->sha256Hmac(sendHash, CHUNK_HASH_SIZE * batchNumber, sendHash + CHUNK_HASH_SIZE * batchNumber, keyExchangeKey_, 32);
 #if SYSTEM_DEBUG_FLAG == 1
     cerr << "KeyClient : send key exchange hmac = " << endl;
     PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, sendHash + CHUNK_HASH_SIZE * batchNumber, 32);
 #endif
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendKey_enc, NULL);
-    long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    double second = diff / 1000000.0;
-    mutexkeyGenerateSimulatorEncTime_.lock();
-    keyExchangeEncTime += second;
-    mutexkeyGenerateSimulatorEncTime_.unlock();
-#endif
+    // #if SYSTEM_BREAK_DOWN == 1
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     long diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     double second = diff / 1000000.0;
+    //     mutexkeyGenerateSimulatorEncTime_.lock();
+    //     keyExchangeEncTime += second;
+    //     mutexkeyGenerateSimulatorEncTime_.unlock();
+    // #endif
     if (!securityChannel->send(sslConnection, (char*)sendHash, CHUNK_HASH_SIZE * batchNumber + 32)) {
         cerr << "KeyClient: send socket error" << endl;
         return false;
@@ -715,9 +743,9 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         cerr << "KeyClient: recv socket error" << endl;
         return false;
     }
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestartKey_enc, NULL);
-#endif
+    // #if SYSTEM_BREAK_DOWN == 1
+    //     gettimeofday(&timestartKey_enc, NULL);
+    // #endif
     u_char hmac[32];
     cryptoObj->sha256Hmac(recvBuffer, CHUNK_HASH_SIZE * batchNumber, hmac, keyExchangeKey_, 32);
     if (memcmp(hmac, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32) != 0) {
@@ -731,14 +759,14 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
         return false;
     }
     cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendKey_enc, NULL);
-    diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
-    second = diff / 1000000.0;
-    mutexkeyGenerateSimulatorEncTime_.lock();
-    keyExchangeEncTime += second;
-    mutexkeyGenerateSimulatorEncTime_.unlock();
-#endif
+    // #if SYSTEM_BREAK_DOWN == 1
+    //     gettimeofday(&timeendKey_enc, NULL);
+    //     diff = 1000000 * (timeendKey_enc.tv_sec - timestartKey_enc.tv_sec) + timeendKey_enc.tv_usec - timestartKey_enc.tv_usec;
+    //     second = diff / 1000000.0;
+    //     mutexkeyGenerateSimulatorEncTime_.lock();
+    //     keyExchangeEncTime += second;
+    //     mutexkeyGenerateSimulatorEncTime_.unlock();
+    // #endif
     return true;
 }
 

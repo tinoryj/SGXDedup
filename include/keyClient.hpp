@@ -28,8 +28,10 @@ private:
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     uint64_t keyGenNumber_;
     int clientID_;
-    std::mutex mutexkeyGenerateSimulatorEncTime_;
+    // std::mutex mutexkeyGenerateSimulatorEncTime_;
     std::mutex mutexkeyGenerateSimulatorStart_;
+    vector<timeval> keyGenSimulatorStartTimeCounter_;
+    vector<timeval> keyGenSimulatorEndTimeCounter_;
     int totalSimulatorThreadNumber_;
     int currentInitThreadNumber_;
 
@@ -43,6 +45,7 @@ public:
 #endif
     KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber);
     ~KeyClient();
+    bool outputKeyGenSimulatorRunningTime();
     void run();
     void runKeyGenSimulator(int clientID);
     bool insertMQ(Data_t& newChunk);

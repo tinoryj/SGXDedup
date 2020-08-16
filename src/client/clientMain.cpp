@@ -198,7 +198,7 @@ int main(int argv, char* argc[])
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
         second = diff / 1000000.0;
-
+        keyClientObj->outputKeyGenSimulatorRunningTime();
         delete keyClientObj;
 
         cout << "System : total work time is " << second << " s" << endl;
