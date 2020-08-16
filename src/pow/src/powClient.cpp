@@ -71,7 +71,7 @@ void powClient::run()
     int netstatus;
     int currentBatchChunkNumber = 0;
     bool jobDoneFlag = false;
-    uint64_t currentBatchSize = 0;
+    uint32_t currentBatchSize = 0;
     batchChunk.clear();
     bool powRequestStatus = false;
 
@@ -99,6 +99,7 @@ void powClient::run()
 #endif
             uint8_t clientMac[16];
             uint8_t chunkHashList[currentBatchChunkNumber * CHUNK_HASH_SIZE];
+            memset(chunkHashList, 0, currentBatchChunkNumber * CHUNK_HASH_SIZE);
             powRequestStatus = this->request(batchChunkLogicDataCharBuffer, currentBatchSize, clientMac, chunkHashList);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
@@ -140,7 +141,9 @@ void powClient::run()
             powExchangeInofrmationTime += second;
 #endif
             if (netstatus != SUCCESS) {
-                cerr << "PowClient : send pow signed hash error" << endl;
+                cerr << "PowClient : server pow signed hash verify error, client mac = " << endl;
+                PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
+                PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, CHUNK_HASH_SIZE);
                 break;
             } else {
                 int totalNeedChunkNumber;
@@ -181,13 +184,17 @@ void powClient::run()
     return;
 }
 
-bool powClient::request(u_char* logicDataBatchBuffer, uint64_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList)
+bool powClient::request(u_char* logicDataBatchBuffer, uint32_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList)
 {
     sgx_status_t status, retval;
     status = ecall_calcmac(eid_, &retval, (uint8_t*)logicDataBatchBuffer, bufferSize, cmac, chunkHashList);
-    if (retval != SGX_SUCCESS) {
+    if (status != SGX_SUCCESS) {
         cerr << "PowClient : ecall failed, status = " << endl;
         sgxErrorReport(status);
+        return false;
+    } else if (retval != SGX_SUCCESS) {
+        cerr << "PowClient : pow compute error, retval = " << endl;
+        sgxErrorReport(retval);
         return false;
     }
     return true;

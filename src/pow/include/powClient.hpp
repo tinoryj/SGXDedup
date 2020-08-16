@@ -37,7 +37,7 @@ private:
     bool enclaveIsTrusted_;
     messageQueue<Data_t>* inputMQ_;
     Sender* senderObj_;
-    bool request(u_char* logicDataBatchBuffer, uint64_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList);
+    bool request(u_char* logicDataBatchBuffer, uint32_t bufferSize, uint8_t cmac[16], uint8_t* chunkHashList);
     CryptoPrimitive* cryptoObj_;
     uint32_t sealedLen_;
     uint32_t startMethod_;

@@ -148,7 +148,7 @@ int main(int argv, char* argc[])
         vector<boost::thread*> thList;
         boost::thread* th;
         boost::thread::attributes attrs;
-        attrs.set_stack_size(200 * 1024 * 1024);
+        attrs.set_stack_size(10 * 1024 * 1024);
         gettimeofday(&timestart, NULL);
         int threadNumber = atoi(argc[2]);
         int keyGenNumber = atoi(argc[3]);

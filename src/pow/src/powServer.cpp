@@ -327,11 +327,10 @@ bool powServer::process_signedHash(enclaveSession* session, u_char* mac, u_char*
     if (memcmp(mac, serverMac, 16) == 0) {
         return true;
     } else {
-        cerr << "PowServer : client signature unvalid\n";
-#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "PowServer : client signature unvalid, client mac = " << endl;
         PRINT_BYTE_ARRAY_POW_SERVER(stderr, mac, 16);
+        cerr << "\t server mac = " << endl;
         PRINT_BYTE_ARRAY_POW_SERVER(stderr, serverMac, 16);
-#endif
         return false;
     }
 }

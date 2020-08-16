@@ -95,13 +95,13 @@ sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t
     for (it = 0; it < srcLen; it = it + sz) {
         if (srcLen - sizeof(int) < it) {
             memset(cmac, 0, 16);
-            return ret_status;
+            return SGX_ERROR_UNEXPECTED;
         }
         memcpy(&sz, &src[it], sizeof(int));
         it = it + 4;
         if (srcLen - it < sz) {
             memset(cmac, 0, 16);
-            return ret_status;
+            return SGX_ERROR_UNEXPECTED;
         }
         ret_status = sgx_sha256_msg(&src[it], sz, &chunkHash);
         if (ret_status != SGX_SUCCESS) {
@@ -114,7 +114,7 @@ sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t
 
     sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t*)cmac);
     sgx_cmac128_close(cmac_ctx);
-    return ret_status;
+    return SGX_SUCCESS;
 }
 
 sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)

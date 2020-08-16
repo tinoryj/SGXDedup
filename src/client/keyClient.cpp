@@ -249,12 +249,11 @@ bool KeyClient::saveClientCTRInfo()
 
 void KeyClient::runKeyGenSimulator(int clientID)
 {
-
+    struct timeval timestartKeySimulatorThread;
+    struct timeval timeendKeySimulatorThread;
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartKeySimulator;
     struct timeval timeendKeySimulator;
-    struct timeval timestartKeySimulatorThread;
-    struct timeval timeendKeySimulatorThread;
     double threadWorkTime = 0;
     double keyGenTime = 0;
     double chunkHashGenerateTime = 0;
@@ -379,9 +378,9 @@ void KeyClient::runKeyGenSimulator(int clientID)
     dataHead.messageType = KEY_GEN_UPLOAD_CHUNK_HASH;
     u_char chunkHashTemp[CHUNK_HASH_SIZE];
     u_char chunkTemp[5 * CHUNK_HASH_SIZE];
-#if SYSTEM_BREAK_DOWN == 1
+
     gettimeofday(&timestartKeySimulatorThread, NULL);
-#endif
+
     while (true) {
 
         if (currentKeyGenNumber < keyGenNumber_) {
@@ -440,14 +439,17 @@ void KeyClient::runKeyGenSimulator(int clientID)
             break;
         }
     }
-#if SYSTEM_BREAK_DOWN == 1
+
     gettimeofday(&timeendKeySimulatorThread, NULL);
+#if SYSTEM_BREAK_DOWN == 1
     diff = 1000000 * (timeendKeySimulatorThread.tv_sec - timestartKeySimulatorThread.tv_sec) + timeendKeySimulatorThread.tv_usec - timestartKeySimulatorThread.tv_usec;
     second = diff / 1000000.0;
     threadWorkTime += second;
 #endif
+
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     ofstream counterOut;
+    mutexkeyGenerateSimulatorStart_.lock();
     counterOut.open(keyGenFileName, std::ofstream::out | std::ofstream::binary);
     if (!counterOut.is_open()) {
         cerr << "KeyClient : Can not open counter store file : " << keyGenFileName << endl;
@@ -459,6 +461,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
         counterOut.close();
         cerr << "KeyClient : Stored current counter file : " << keyGenFileName << ", counter = " << counter << endl;
     }
+    mutexkeyGenerateSimulatorStart_.unlock();
 #endif
     mutexkeyGenerateSimulatorStart_.lock();
     keyGenSimulatorStartTimeCounter_.push_back(timestartKeySimulatorThread);

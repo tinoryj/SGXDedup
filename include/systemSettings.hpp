@@ -1,7 +1,7 @@
 #ifndef SGXDEDUP_SYSTEMSETTINGS_HPP
 #define SGXDEDUP_SYSTEMSETTINGS_HPP
 /* System Test Settings: 0-disable; 1-enable */
-#define SYSTEM_BREAK_DOWN 1
+#define SYSTEM_BREAK_DOWN 0
 #define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
 #define ENCODER_MODULE_ENABLED 0 // if enable encoder, chunk encryption will move from keyclient to encoder
@@ -20,7 +20,7 @@
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
 #define STORAGE_CORE_READ_CACHE 0
 
-#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
+#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 0
 #define KEY_GEN_EPOLL_MODE 0
 
 /* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/

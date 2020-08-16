@@ -6,9 +6,9 @@
     <HeapMaxSize>0x5a00000</HeapMaxSize>
     <HeapMinSize>0x5a00000</HeapMinSize>
     <HeapInitSize>0x5a00000</HeapInitSize>
-    <TCSNum>64</TCSNum>
-    <TCSMaxNum>64</TCSMaxNum>
-    <TCSMinPool>64</TCSMinPool>
+    <TCSNum>30</TCSNum>
+    <TCSMaxNum>30</TCSMaxNum>
+    <TCSMinPool>30</TCSMinPool>
     <TCSPolicy>1</TCSPolicy>
     <DisableDebug>0</DisableDebug>
     <MiscSelect>0</MiscSelect>

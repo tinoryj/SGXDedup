@@ -350,7 +350,7 @@ void keyServer::runCTRModeMaskGenerate()
         boost::xtime_get(&xt, boost::TIME_UTC_);
         xt.sec = 5;
         boost::thread::sleep(xt);
-        if (raRequestFlag_ == false && offlineGenerateFlag_ == true) {
+        if (raRequestFlag_ == false && offlineGenerateFlag_ == true && clientThreadCount_ == 0) {
             multiThreadCountMutex_.lock();
             mutexSessionKeyUpdate.lock();
             cerr << "KeyServer : start offlien mask generate" << endl;
