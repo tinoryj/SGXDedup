@@ -9,7 +9,7 @@ for batchSize in ${batchSizeSet[@]}; do
 		sleep 5
 		./client-sgx -k 1 205106 ${batchSize}
 		sleep 5
-		rm -rf .keyGenStore
+		rm -rf .keyGenStore*
 	done
 done
 

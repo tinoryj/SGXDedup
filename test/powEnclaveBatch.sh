@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # path of input file
-file='/home/tinoryj/TestData/2G.file'
+file='2G.file'
 
-batchSizeSet=('1' '10' '100' '500' '1000' '2000'  '3000' '4000')
+batchSizeSet=('1' '2' '4' '8' '16' '32'  '64' '128' '256' '512' '1024' '2048' '4096' '8192')
 
 for batchSize in ${batchSizeSet[@]}; do
 	cp ../test/config-${batchSize}.json ./config.json
-	for i in {1..10};do
+	for i in {1..3};do
     	echo ${batchSize}-${i} 
 		./client-sgx -s ${file}
 		rm -rf .keyGenStore

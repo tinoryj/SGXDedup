@@ -9,7 +9,7 @@
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 33000,
+		"_keyBatchSize": 4000,
 		"_keyServerNumber": 1,
 		"_keyEnclaveThreadNumber": 1,
 		"_keyServerRArequestPort": 1559,
