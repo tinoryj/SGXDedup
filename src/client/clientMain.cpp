@@ -458,8 +458,8 @@ int main(int argv, char* argc[])
                 boost::thread::attributes attrs;
                 attrs.set_stack_size(200 * 1024 * 1024);
                 cerr << "System : key generate simulator need input thread number & key number : " << endl;
-                int threadNumber, keyGenNumber;
-                cin >> threadNumber >> keyGenNumber;
+                int threadNumber, keyGenNumber, batchSize;
+                cin >> threadNumber >> keyGenNumber >> batchSize;
                 if (threadNumber == 0) {
                     threadNumber = 1;
                 }
@@ -477,7 +477,7 @@ int main(int argv, char* argc[])
                 PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #endif
                 cerr << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
-                keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber);
+                keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber, batchSize);
 
                 gettimeofday(&timestart, NULL);
                 for (int i = 0; i < threadNumber; i++) {
