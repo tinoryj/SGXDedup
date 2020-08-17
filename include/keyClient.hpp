@@ -34,6 +34,7 @@ private:
     vector<timeval> keyGenSimulatorEndTimeCounter_;
     int totalSimulatorThreadNumber_;
     int currentInitThreadNumber_;
+    int batchNumber_;
 
 public:
     double keyExchangeEncTime = 0;
@@ -43,7 +44,7 @@ public:
 #else
     KeyClient(powClient* powObjTemp, u_char* keyExchangeKey);
 #endif
-    KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber);
+    KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber, int batchSize);
     ~KeyClient();
     bool outputKeyGenSimulatorRunningTime();
     void run();

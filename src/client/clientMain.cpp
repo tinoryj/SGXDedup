@@ -99,7 +99,7 @@ int main(int argv, char* argc[])
     long diff;
     double second;
 
-    if (argv != 2 && argv != 3 && argv != 4) {
+    if (argv != 2 && argv != 3 && argv != 4 && argv != 5) {
         usage();
         return 0;
     }
@@ -152,6 +152,7 @@ int main(int argv, char* argc[])
         gettimeofday(&timestart, NULL);
         int threadNumber = atoi(argc[2]);
         int keyGenNumber = atoi(argc[3]);
+        int batchNumber = atoi(argc[4]);
         if (threadNumber == 0) {
             threadNumber = 1;
         }
@@ -180,7 +181,7 @@ int main(int argv, char* argc[])
         PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #endif
         cout << "Key Generate Test : target thread number = " << threadNumber << ", target key number per thread = " << keyGenNumber << endl;
-        keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber);
+        keyClientObj = new KeyClient(sessionKey, threadNumber, keyGenNumber, batchNumber);
 
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;

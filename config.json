@@ -9,12 +9,12 @@
 		"_segmentSize": 0
 	},
 	"KeyServerConfig": {
-		"_keyBatchSize": 4000,
+		"_keyBatchSize": 33000,
 		"_keyServerNumber": 1,
 		"_keyEnclaveThreadNumber": 1,
 		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
-			"127.0.0.1"
+			"10.59.13.188"
 		],
 		"_keyServerPort": [
 			6666
@@ -25,7 +25,7 @@
 	"SPConfig": {
 		"_storageServerNumber": 1,
 		"_storageServerIP": [
-			"127.0.0.1"
+			"10.59.13.172"
 		],
 		"_storageServerPort": [
 			6668

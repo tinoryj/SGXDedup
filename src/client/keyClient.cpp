@@ -63,7 +63,7 @@ KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
 }
 #endif
 
-KeyClient::KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber)
+KeyClient::KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber, int batchSize)
 {
     inputMQ_ = new messageQueue<Data_t>;
     cryptoObj_ = new CryptoPrimitive();
@@ -73,6 +73,7 @@ KeyClient::KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNu
     totalSimulatorThreadNumber_ = threadNumber;
     currentInitThreadNumber_ = 0;
     clientID_ = config.getClientID();
+    batchNumber_ = batchSize;
 }
 
 KeyClient::~KeyClient()
@@ -266,8 +267,8 @@ void KeyClient::runKeyGenSimulator(int clientID)
     SSL* sslConnection = keySecurityChannel->sslConnect().second;
     int batchNumber = 0;
     uint64_t currentKeyGenNumber = 0;
-    u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * keyBatchSize_];
-    u_char chunkHash[CHUNK_HASH_SIZE * keyBatchSize_];
+    u_char chunkKey[CHUNK_ENCRYPT_KEY_SIZE * batchNumber_];
+    u_char chunkHash[CHUNK_HASH_SIZE * batchNumber_];
     bool JobDoneFlag = false;
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
 #if SYSTEM_BREAK_DOWN == 1
@@ -403,7 +404,7 @@ void KeyClient::runKeyGenSimulator(int clientID)
             JobDoneFlag = true;
         }
 
-        if (batchNumber == keyBatchSize_ || JobDoneFlag) {
+        if (batchNumber == batchNumber_ || JobDoneFlag) {
             if (batchNumber == 0) {
                 break;
             }
@@ -427,8 +428,8 @@ void KeyClient::runKeyGenSimulator(int clientID)
             keyExchangeTime += second;
             keyGenTime += second;
 #endif
-            memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
-            memset(chunkKey, 0, CHUNK_HASH_SIZE * keyBatchSize_);
+            memset(chunkHash, 0, CHUNK_HASH_SIZE * batchNumber_);
+            memset(chunkKey, 0, CHUNK_HASH_SIZE * batchNumber_);
             batchNumber = 0;
             if (keyExchangeStatus == false) {
                 cerr << "KeyClient : key generate error, thread exit" << endl;
