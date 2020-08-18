@@ -361,10 +361,15 @@ bool StorageCore::clientExitSystemStatusOutput(bool type)
     if (type == true) {
         cout << "StorageCore : store chunk insert database time = " << storeChunkInsertDBTime << " s" << endl;
         cout << "StorageCore : store chunk write container time = " << writeContainerTime << " s" << endl;
+        storeChunkInsertDBTime = 0;
+        writeContainerTime = 0;
     } else {
         cout << "StorageCore : restore chunk query database time = " << restoreChunkQueryDBTime << " s" << endl;
         cout << "StorageCore : restore chunk read container time = " << readContainerTime << " s" << endl;
         cout << "StorageCore : restore chunk read container number = " << readContainerNumber << endl;
+        restoreChunkQueryDBTime = 0;
+        readContainerTime = 0;
+        readContainerNumber = 0;
     }
     return true;
 }
@@ -682,6 +687,7 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
             }
             memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
             currentReadContainerFileName_ = containerNameStr;
+            readContainerNumber++;
             return true;
         }
 #endif

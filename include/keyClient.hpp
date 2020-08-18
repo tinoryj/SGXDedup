@@ -28,7 +28,7 @@ private:
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     uint64_t keyGenNumber_;
     int clientID_;
-    // std::mutex mutexkeyGenerateSimulatorEncTime_;
+    std::mutex mutexkeyGenerateSimulatorEncTime_;
     std::mutex mutexkeyGenerateSimulatorStart_;
     vector<timeval> keyGenSimulatorStartTimeCounter_;
     vector<timeval> keyGenSimulatorEndTimeCounter_;

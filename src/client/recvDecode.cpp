@@ -365,6 +365,7 @@ void RecvDecode::run()
     long diff;
     double second;
     double decryptChunkTime = 0;
+    double recvChunkTime = 0;
 #endif
     NetworkHeadStruct_t request, respond;
     request.messageType = CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE;
@@ -385,7 +386,17 @@ void RecvDecode::run()
     uint32_t totalRecvChunks = 0;
     while (totalRecvChunks < fileRecipe_.fileRecipeHead.totalChunkNumber) {
         memset(respondBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
-        if (!dataSecurityChannel_->recv(sslConnectionData_, (char*)respondBuffer, recvSize)) {
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timestartRecvDecode, NULL);
+#endif
+        bool recvDataChunkStatus = dataSecurityChannel_->recv(sslConnectionData_, (char*)respondBuffer, recvSize);
+#if SYSTEM_BREAK_DOWN == 1
+        gettimeofday(&timeendRecvDecode, NULL);
+        diff = 1000000 * (timeendRecvDecode.tv_sec - timestartRecvDecode.tv_sec) + timeendRecvDecode.tv_usec - timestartRecvDecode.tv_usec;
+        second = diff / 1000000.0;
+        recvChunkTime += second;
+#endif
+        if (!recvDataChunkStatus) {
             cerr << "RecvDecode : storage server closed" << endl;
             return;
         }
@@ -431,6 +442,7 @@ void RecvDecode::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
+    cout << "RecvDecode : chunk download time = " << recvChunkTime << " s" << endl;
     cout << "RecvDecode : chunk decrypt time = " << decryptChunkTime << " s" << endl;
     outPutMQ_->done_ = true;
 #endif
