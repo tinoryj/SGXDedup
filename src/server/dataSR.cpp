@@ -47,10 +47,10 @@ void DataSR::runData(SSL* sslConnection)
     char recvBuffer[NETWORK_MESSAGE_DATA_SIZE];
     char sendBuffer[NETWORK_MESSAGE_DATA_SIZE];
     // double totalSaveChunkTime = 0;
-    uint32_t startID = 0;
-    uint32_t endID = 0;
-    Recipe_t restoredFileRecipe;
-    uint32_t totalRestoredChunkNumber = 0;
+    uint32_t startID_ = 0;
+    uint32_t endID_ = 0;
+    Recipe_t restoredFileRecipe_;
+    uint32_t totalRestoredChunkNumber_ = 0;
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
     RecipeList_t restoredRecipeList;
     uint64_t recipeSize = 0;
@@ -172,12 +172,12 @@ void DataSR::runData(SSL* sslConnection)
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                 mutexRestore_.lock();
 #endif
-                if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe)) {
-                    cout << "StorageCore : restore file size = " << restoredFileRecipe.fileRecipeHead.fileSize << " chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+                if (storageObj_->restoreRecipeHead((char*)recvBuffer + sizeof(NetworkHeadStruct_t), restoredFileRecipe_)) {
+                    cout << "StorageCore : restore file size = " << restoredFileRecipe_.fileRecipeHead.fileSize << " chunk number = " << restoredFileRecipe_.fileRecipeHead.totalChunkNumber << endl;
                     netBody.messageType = SUCCESS;
                     netBody.dataSize = sizeof(Recipe_t);
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &restoredFileRecipe, sizeof(Recipe_t));
+                    memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &restoredFileRecipe_, sizeof(Recipe_t));
                     sendSize = sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t);
                 } else {
                     netBody.messageType = ERROR_FILE_NOT_EXIST;
@@ -192,10 +192,10 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                if (restoredFileRecipe.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
-                    endID = restoredFileRecipe.fileRecipeHead.totalChunkNumber - 1;
+                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
+                    endID_ = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - 1;
                 }
-                uint32_t restoreRecipeListSize = sizeof(char) * sizeof(RecipeEntry_t) * restoredFileRecipe.fileRecipeHead.totalChunkNumber;
+                uint32_t restoreRecipeListSize = sizeof(char) * sizeof(RecipeEntry_t) * restoredFileRecipe_.fileRecipeHead.totalChunkNumber;
                 char* recipeList = (char*)malloc(restoreRecipeListSize);
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                 mutexRestore_.lock();
@@ -206,13 +206,13 @@ void DataSR::runData(SSL* sslConnection)
 #endif
                 if (restoreRecipeListStatus) {
                     cout << "DataSR : restore recipes list done" << endl;
-                    while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
+                    while (totalRestoredChunkNumber_ != restoredFileRecipe_.fileRecipeHead.totalChunkNumber) {
                         ChunkList_t restoredChunkList;
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                         mutexRestore_.lock();
 #endif
-                        if (storageObj_->restoreChunks(recipeList, restoreRecipeListSize, startID, endID, restoredChunkList)) {
-                            cout << "DataSR : restore chunks from " << startID << " to " << endID << " done" << endl;
+                        if (storageObj_->restoreChunks(recipeList, restoreRecipeListSize, startID_, endID_, restoredChunkList)) {
+                            cout << "DataSR : restore chunks from " << startID_ << " to " << endID_ << " done" << endl;
                             netBody.messageType = SUCCESS;
                             int currentChunkNumber = restoredChunkList.size();
                             int totalSendSize = sizeof(int);
@@ -230,12 +230,12 @@ void DataSR::runData(SSL* sslConnection)
                             netBody.dataSize = totalSendSize;
                             memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                             sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
-                            totalRestoredChunkNumber += restoredChunkList.size();
-                            startID = endID;
-                            if (restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber < restoreChunkBatchSize) {
-                                endID += restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber;
+                            totalRestoredChunkNumber_ += restoredChunkList.size();
+                            startID_ = endID_;
+                            if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_ < restoreChunkBatchSize) {
+                                endID_ += restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_;
                             } else {
-                                endID += config.getSendChunkBatchSize();
+                                endID_ += config.getSendChunkBatchSize();
                             }
                         } else {
                             netBody.dataSize = 0;
@@ -342,7 +342,7 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_UPLOAD_DECRYPTED_RECIPE: {
-                // cout << "DataSR : current recipe size = " << recipeSize << ", toatl chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+                // cout << "DataSR : current recipe size = " << recipeSize << ", toatl chunk number = " << restoredFileRecipe_.fileRecipeHead.totalChunkNumber << endl;
                 uint64_t decryptedRecipeListSize = 0;
                 memcpy(&decryptedRecipeListSize, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint64_t));
                 // cout << "DataSR : process recipe list size = " << decryptedRecipeListSize << endl;
@@ -354,9 +354,9 @@ void DataSR::runData(SSL* sslConnection)
                 } else {
                     cerr << "DataSR : recv decrypted file recipe error " << endl;
                 }
-                int restoreChunkNumber = restoredFileRecipe.fileRecipeHead.totalChunkNumber;
-                // cout << "DataSR : target restore chunk number = " << restoreChunkNumber << endl;
-                // memcpy(&restoredFileRecipe, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
+                int restoreChunkNumber = restoredFileRecipe_.fileRecipeHead.totalChunkNumber;
+                cerr << "DataSR : target restore chunk number = " << restoreChunkNumber << endl;
+                // memcpy(&restoredFileRecipe_, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
                 for (int i = 0; i < restoreChunkNumber; i++) {
                     RecipeEntry_t newRecipeEntry;
                     memcpy(&newRecipeEntry, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
@@ -395,9 +395,9 @@ void DataSR::runData(SSL* sslConnection)
                     memcpy(sendRecipeBuffer + sizeof(NetworkHeadStruct_t), recipeBuffer, recipeSize);
                     sendSize = sizeof(NetworkHeadStruct_t) + recipeSize;
                     dataSecurityChannel_->send(sslConnection, sendRecipeBuffer, sendSize);
-                    memcpy(&restoredFileRecipe, recipeBuffer, sizeof(Recipe_t));
+                    memcpy(&restoredFileRecipe_, recipeBuffer, sizeof(Recipe_t));
 #if SYSTEM_DEBUG_FLAG == 1
-                    cout << "StorageCore : send encrypted recipe list done, file size = " << restoredFileRecipe.fileRecipeHead.fileSize << ", total chunk number = " << restoredFileRecipe.fileRecipeHead.totalChunkNumber << endl;
+                    cout << "StorageCore : send encrypted recipe list done, file size = " << restoredFileRecipe_.fileRecipeHead.fileSize << ", total chunk number = " << restoredFileRecipe_.fileRecipeHead.totalChunkNumber << endl;
 #endif
                     free(sendRecipeBuffer);
                     free(recipeBuffer);
@@ -411,11 +411,11 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                cerr << "DataSR : start retrive chunks " << endl;
-                if (restoredFileRecipe.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
-                    endID = restoredFileRecipe.fileRecipeHead.totalChunkNumber - 1;
+                cerr << "DataSR : start retrive chunks" << endl;
+                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
+                    endID_ = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - 1;
                 }
-                while (totalRestoredChunkNumber != restoredFileRecipe.fileRecipeHead.totalChunkNumber) {
+                while (totalRestoredChunkNumber_ != restoredFileRecipe_.fileRecipeHead.totalChunkNumber) {
                     ChunkList_t restoredChunkList;
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartDataSR, NULL);
@@ -423,7 +423,7 @@ void DataSR::runData(SSL* sslConnection)
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                     mutexRestore_.lock();
 #endif
-                    bool restoreChunkStatus = storageObj_->restoreRecipeAndChunk(restoredRecipeList, startID, endID, restoredChunkList);
+                    bool restoreChunkStatus = storageObj_->restoreRecipeAndChunk(restoredRecipeList, startID_, endID_, restoredChunkList);
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                     mutexRestore_.unlock();
 #endif
@@ -444,12 +444,12 @@ void DataSR::runData(SSL* sslConnection)
                         netBody.dataSize = totalSendSize;
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                         sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
-                        totalRestoredChunkNumber += restoredChunkList.size();
-                        startID = endID;
-                        if (restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber < restoreChunkBatchSize) {
-                            endID += restoredFileRecipe.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber;
+                        totalRestoredChunkNumber_ += restoredChunkList.size();
+                        startID_ = endID_;
+                        if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_ < restoreChunkBatchSize) {
+                            endID_ += restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_;
                         } else {
-                            endID += config.getSendChunkBatchSize();
+                            endID_ += config.getSendChunkBatchSize();
                         }
                     } else {
                         netBody.dataSize = 0;

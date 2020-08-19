@@ -14,6 +14,17 @@ bool Database::insert(std::string key, std::string value)
     return insertStatus.ok();
 }
 
+uint64_t Database::getDBSize()
+{
+    std::lock_guard<std::mutex> locker(this->mutexDataBase_);
+    leveldb::Iterator* it = this->levelDBObj_->NewIterator(leveldb::ReadOptions());
+    uint64_t counter = 0;
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        counter++;
+    }
+    return counter;
+}
+
 bool Database::openDB(std::string dbName)
 {
     fstream dbLock;

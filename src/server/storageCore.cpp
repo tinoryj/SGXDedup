@@ -40,7 +40,7 @@ StorageCore::StorageCore()
         fin >> lastContainerFileName_;
         fin >> currentContainer_.used_;
         fin.close();
-
+        cerr << "StorageCore : read old storage configure, last container name = " << lastContainerFileName_ << ", used size = " << currentContainer_.used_ << endl;
         //read last container
         fin.open(containerNamePrefix_ + lastContainerFileName_ + containerNameTail_, ifstream::in | ifstream::binary);
         fin.read(currentContainer_.body_, currentContainer_.used_);
@@ -361,12 +361,18 @@ bool StorageCore::clientExitSystemStatusOutput(bool type)
     if (type == true) {
         cout << "StorageCore : store chunk insert database time = " << storeChunkInsertDBTime << " s" << endl;
         cout << "StorageCore : store chunk write container time = " << writeContainerTime << " s" << endl;
+        cout << "StorageCore : unique chunk number = " << uniqueChunkNumber << ", DB size = " << fp2ChunkDB.getDBSize() << endl;
         storeChunkInsertDBTime = 0;
         writeContainerTime = 0;
+        uniqueChunkNumber = 0;
     } else {
         cout << "StorageCore : restore chunk query database time = " << restoreChunkQueryDBTime << " s" << endl;
         cout << "StorageCore : restore chunk read container time = " << readContainerTime << " s" << endl;
         cout << "StorageCore : restore chunk read container number = " << readContainerNumber << endl;
+#if TRACE_DRIVEN_TEST == 1
+        cout << "StorageCore : trace not found chunk number = " << notFoundChunkNumber << endl;
+        notFoundChunkNumber = 0;
+#endif
         restoreChunkQueryDBTime = 0;
         readContainerTime = 0;
         readContainerNumber = 0;
@@ -513,7 +519,8 @@ bool StorageCore::restoreRecipeAndChunk(RecipeList_t recipeList, uint32_t startI
         string chunkData;
         if (restoreChunk(chunkHash, chunkData)) {
             if (chunkData.length() != recipeList[startID + i].chunkSize) {
-                cerr << "StorageCore : restore chunk logic data size error" << endl;
+                cerr << "StorageCore : restore chunk logic data size error for chunk " << startID + i << " , chunk size = " << recipeList[startID + i].chunkSize << " chunk hash = " << endl;
+                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
                 return false;
             } else {
                 Chunk_t newChunk;
@@ -524,8 +531,19 @@ bool StorageCore::restoreRecipeAndChunk(RecipeList_t recipeList, uint32_t startI
                 restoredChunkList.push_back(newChunk);
             }
         } else {
-            cerr << "StorageCore : can not restore chunk" << endl;
+#if TRACE_DRIVEN_TEST == 1
+            Chunk_t newChunk;
+            newChunk.ID = recipeList[startID + i].chunkID;
+            newChunk.logicDataSize = recipeList[startID + i].chunkSize;
+            memcpy(newChunk.chunkHash, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+            memset(newChunk.logicData, 0, newChunk.logicDataSize);
+            restoredChunkList.push_back(newChunk);
+            notFoundChunkNumber++;
+#else
+            cerr << "StorageCore : can not restore chunk " << startID + i << " , chunk size = " << recipeList[startID + i].chunkSize << " chunk hash = " << endl;
+            PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
             return false;
+#endif
         }
     }
     return true;
@@ -554,7 +572,12 @@ bool StorageCore::storeChunk(std::string chunkHash, char* chunkData, int chunkSi
     string dbValue;
     dbValue.resize(sizeof(keyForChunkHashDB_t));
     memcpy(&dbValue[0], &key, sizeof(keyForChunkHashDB_t));
+    if (chunkHash.size() != CHUNK_HASH_SIZE) {
+        cout << "error insert chunk hash" << endl;
+        PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &chunkHash[0], chunkHash.size());
+    }
     status = fp2ChunkDB.insert(chunkHash, dbValue);
+    uniqueChunkNumber++;
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendStorage, NULL);
     storeChunkInsertDBTime += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
