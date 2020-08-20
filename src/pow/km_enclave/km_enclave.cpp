@@ -11,8 +11,8 @@
 
 using namespace std;
 
-#define MAX_SPECULATIVE_KEY_SIZE 78750 * 1024
-#define MAX_SPECULATIVE_CLIENT_NUMBER 1
+#define MAX_SPECULATIVE_KEY_SIZE 50 * 1024
+#define MAX_SPECULATIVE_CLIENT_NUMBER 40
 #define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
@@ -250,16 +250,19 @@ sgx_status_t ecall_setNextEncryptionMask()
             currentCounter++;
             if (EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey_, currentSessionKey_) != 1) {
                 EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
 
             if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
                 EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
 
             if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
                 EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
 #if SYSTEM_DEBUG_FLAG == 1
@@ -278,6 +281,7 @@ sgx_status_t ecall_setNextEncryptionMask()
 #endif
     }
     EVP_CIPHER_CTX_cleanup(cipherctx_);
+    EVP_CIPHER_CTX_free(cipherctx_);
     return SGX_SUCCESS;
 }
 
@@ -362,12 +366,18 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             memcpy_s(currentKeyBase + 16 + sizeof(uint32_t), 32, nonce, 16 - sizeof(uint32_t));
             currentCounterTemp++;
             if (!EVP_EncryptInit_ex(cipherctx_, EVP_aes_256_ecb(), NULL, currentSessionKey_, currentSessionKey_)) {
+                EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
             if (EVP_EncryptUpdate(cipherctx_, currentKey, &cipherlen, currentKeyBase, 32) != 1) {
+                EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
             if (EVP_EncryptFinal_ex(cipherctx_, currentKey + cipherlen, &len) != 1) {
+                EVP_CIPHER_CTX_cleanup(cipherctx_);
+                EVP_CIPHER_CTX_free(cipherctx_);
                 return SGX_ERROR_UNEXPECTED;
             }
             memcpy_s(mask + i * 32, originalHashLen * 2 - i * 32, currentKey, 32);
@@ -464,9 +474,11 @@ int encrypt(uint8_t* plaint, uint32_t plaintLen, uint8_t* symKey,
     }
     cipherLen += len;
     EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return 1;
 error:
     EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return 0;
 }
 
@@ -492,9 +504,11 @@ int decrypt(uint8_t* cipher, uint32_t cipherLen, uint8_t* symKey,
     plaintLen += decryptLen;
 
     EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return 1;
 
 error:
     EVP_CIPHER_CTX_cleanup(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     return 0;
 }
