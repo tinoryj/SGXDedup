@@ -70,7 +70,7 @@ public:
 #elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
     bool restoreChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool storeRecipes(char* fileNameHash, u_char* recipeContent, uint64_t recipeSize);
-    bool restoreRecipeAndChunk(RecipeList_t recipeList, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
+    bool restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint32_t endID, char* restoredChunkList, int& restoredChunkNumber, int& restoredChunkSize);
     bool storeChunk(string chunkHash, char* chunkData, int chunkSize);
     bool storeChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool restoreChunk(std::string chunkHash, std::string& chunkDataStr);

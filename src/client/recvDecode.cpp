@@ -315,20 +315,21 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
         } else {
             memcpy(&recipeHead, encryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
             cryptoObj_->decryptWithKey(encryptedRecipeBuffer + sizeof(NetworkHeadStruct_t) + sizeof(Recipe_t), recipeLength - sizeof(Recipe_t), cryptoObj_->chunkKeyEncryptionKey_, decryptedRecipeBuffer);
-            u_char* requestChunkList = (u_char*)malloc(sizeof(u_char) * sizeof(RecipeEntry_t) * recipeHead.fileRecipeHead.totalChunkNumber + sizeof(NetworkHeadStruct_t));
+            u_char* requestChunkList = (u_char*)malloc(sizeof(u_char) * (CHUNK_HASH_SIZE + sizeof(int)) * recipeHead.fileRecipeHead.totalChunkNumber + sizeof(NetworkHeadStruct_t));
             for (uint64_t i = 0; i < recipeHead.fileRecipeHead.totalChunkNumber; i++) {
                 RecipeEntry_t newRecipeEntry;
                 memcpy(&newRecipeEntry, decryptedRecipeBuffer + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
                 recipeList.push_back(newRecipeEntry);
                 memset(newRecipeEntry.chunkKey, 0, CHUNK_ENCRYPT_KEY_SIZE);
-                memcpy(requestChunkList + sizeof(NetworkHeadStruct_t) + i * sizeof(RecipeEntry_t), &newRecipeEntry, sizeof(RecipeEntry_t));
+                memcpy(requestChunkList + sizeof(NetworkHeadStruct_t) + i * (CHUNK_HASH_SIZE + sizeof(int)), &newRecipeEntry.chunkSize, sizeof(int));
+                memcpy(requestChunkList + sizeof(NetworkHeadStruct_t) + i * (CHUNK_HASH_SIZE + sizeof(int)) + sizeof(int), newRecipeEntry.chunkHash, CHUNK_HASH_SIZE);
             }
             free(encryptedRecipeBuffer);
             free(decryptedRecipeBuffer);
 
             request.messageType = CLIENT_UPLOAD_DECRYPTED_RECIPE;
             request.dataSize = sizeof(uint64_t);
-            uint64_t recipeListSize = recipeHead.fileRecipeHead.totalChunkNumber * sizeof(RecipeEntry_t);
+            uint64_t recipeListSize = recipeHead.fileRecipeHead.totalChunkNumber * (CHUNK_HASH_SIZE + sizeof(int));
             sendSize = sizeof(NetworkHeadStruct_t) + sizeof(uint64_t);
             u_char sendDecryptedRecipeSizeBuffer[sizeof(NetworkHeadStruct_t) + sizeof(uint64_t)];
             memcpy(sendDecryptedRecipeSizeBuffer, &request, sizeof(NetworkHeadStruct_t));
@@ -338,8 +339,8 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
                 return false;
             } else {
                 request.messageType = CLIENT_UPLOAD_DECRYPTED_RECIPE;
-                request.dataSize = recipeHead.fileRecipeHead.totalChunkNumber * sizeof(RecipeEntry_t);
-                sendSize = recipeHead.fileRecipeHead.totalChunkNumber * sizeof(RecipeEntry_t) + sizeof(NetworkHeadStruct_t);
+                request.dataSize = recipeListSize;
+                sendSize = recipeListSize + sizeof(NetworkHeadStruct_t);
                 memcpy(requestChunkList, &request, sizeof(NetworkHeadStruct_t));
                 if (!dataSecurityChannel_->send(sslConnectionData_, (char*)requestChunkList, sendSize)) {
                     free(requestChunkList);

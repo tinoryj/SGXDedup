@@ -511,37 +511,45 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
     }
 }
 
-bool StorageCore::restoreRecipeAndChunk(RecipeList_t recipeList, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList)
+bool StorageCore::restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint32_t endID, char* restoredChunkList, int& restoredChunkNumber, int& restoredChunkSize)
 {
-
-    for (int i = 0; i < (endID - startID); i++) {
-        string chunkHash((char*)recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+    int index = 0;
+    restoredChunkNumber = endID - startID;
+    for (int i = 0; i < restoredChunkNumber; i++) {
+        int chunkSize = 0;
+        memcpy(&chunkSize, recipeList + i * (CHUNK_HASH_SIZE + sizeof(int)), sizeof(int));
+        string chunkHash(recipeList + i * (CHUNK_HASH_SIZE + sizeof(int)) + sizeof(int), CHUNK_HASH_SIZE);
+        // cout << "Restore chunk ID = " << startID + i << ", chunk size = " << chunkSize << endl;
         string chunkData;
         if (restoreChunk(chunkHash, chunkData)) {
-            if (chunkData.length() != recipeList[startID + i].chunkSize) {
-                cerr << "StorageCore : restore chunk logic data size error for chunk " << startID + i << " , chunk size = " << recipeList[startID + i].chunkSize << " chunk hash = " << endl;
-                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+            if (chunkData.length() != chunkSize) {
+                cerr << "StorageCore : restore chunk logic data size error for chunk " << startID + i << " , chunk size = " << chunkSize << " chunk hash = " << endl;
+                PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, &chunkHash[0], CHUNK_HASH_SIZE);
                 return false;
             } else {
-                Chunk_t newChunk;
-                newChunk.ID = recipeList[startID + i].chunkID;
-                newChunk.logicDataSize = recipeList[startID + i].chunkSize;
-                memcpy(newChunk.chunkHash, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
-                memcpy(newChunk.logicData, &chunkData[0], newChunk.logicDataSize);
-                restoredChunkList.push_back(newChunk);
+                uint32_t chunkID = startID + i;
+                memcpy(restoredChunkList + index, &chunkID, sizeof(uint32_t));
+                index += sizeof(uint32_t);
+                memcpy(restoredChunkList + index, &chunkSize, sizeof(int));
+                index += sizeof(int);
+                memcpy(restoredChunkList + index, &chunkData[0], chunkSize);
+                index += chunkSize;
+                restoredChunkSize += chunkSize;
             }
         } else {
 #if TRACE_DRIVEN_TEST == 1
-            Chunk_t newChunk;
-            newChunk.ID = recipeList[startID + i].chunkID;
-            newChunk.logicDataSize = recipeList[startID + i].chunkSize;
-            memcpy(newChunk.chunkHash, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
-            memset(newChunk.logicData, 0, newChunk.logicDataSize);
-            restoredChunkList.push_back(newChunk);
+            uint32_t chunkID = startID + i;
+            memcpy(restoredChunkList + index, &chunkID, sizeof(uint32_t));
+            index += sizeof(uint32_t);
+            memcpy(restoredChunkList + index, &chunkSize, sizeof(int));
+            index += sizeof(int);
+            memset(restoredChunkList + index, 0, chunkSize);
+            index += chunkSize;
             notFoundChunkNumber++;
+            restoredChunkSize += chunkSize;
 #else
-            cerr << "StorageCore : can not restore chunk " << startID + i << " , chunk size = " << recipeList[startID + i].chunkSize << " chunk hash = " << endl;
-            PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, recipeList[startID + i].chunkHash, CHUNK_HASH_SIZE);
+            cerr << "StorageCore : can not restore chunk " << startID + i << " , chunk size = " << chunkSize << " chunk hash = " << endl;
+            PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, &chunkHash[0], CHUNK_HASH_SIZE);
             return false;
 #endif
         }

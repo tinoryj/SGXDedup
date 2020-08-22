@@ -23,7 +23,7 @@ private:
     StorageCore* storageObj_;
     DedupCore* dedupCoreObj_;
     powServer* powServerObj_;
-    uint32_t restoreChunkBatchSize;
+    uint32_t restoreChunkBatchNumber_;
     u_char keyExchangeKey_[KEY_SERVER_SESSION_KEY_SIZE];
     bool keyExchangeKeySetFlag_;
     ssl* powSecurityChannel_;

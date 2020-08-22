@@ -25,7 +25,7 @@ void PRINT_BYTE_ARRAY_DATA_SR(
 
 DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp)
 {
-    restoreChunkBatchSize = config.getSendChunkBatchSize();
+    restoreChunkBatchNumber_ = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
@@ -52,7 +52,7 @@ void DataSR::runData(SSL* sslConnection)
     Recipe_t restoredFileRecipe_;
     uint32_t totalRestoredChunkNumber_ = 0;
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
-    RecipeList_t restoredRecipeList;
+    char* restoredRecipeList;
     uint64_t recipeSize = 0;
 #endif
 #if SYSTEM_BREAK_DOWN == 1
@@ -75,6 +75,10 @@ void DataSR::runData(SSL* sslConnection)
                 cout << "DataSR : total restore chunk time = " << restoreChunkTime << " s" << endl;
             }
 #endif
+            cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+            if (restoredRecipeList != nullptr) {
+                free(restoredRecipeList);
+            }
             return;
         } else {
             NetworkHeadStruct_t netBody;
@@ -100,6 +104,9 @@ void DataSR::runData(SSL* sslConnection)
                 storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
                 cerr << "DataSR : data thread recv exit flag, thread exit now" << endl;
+                if (restoredRecipeList != nullptr) {
+                    free(restoredRecipeList);
+                }
                 return;
             }
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
@@ -126,6 +133,10 @@ void DataSR::runData(SSL* sslConnection)
                     }
                     storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                    cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                    if (restoredRecipeList != nullptr) {
+                        free(restoredRecipeList);
+                    }
                     return;
                 }
                 break;
@@ -192,7 +203,7 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
+                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < restoreChunkBatchNumber_) {
                     endID_ = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - 1;
                 }
                 uint32_t restoreRecipeListSize = sizeof(char) * sizeof(RecipeEntry_t) * restoredFileRecipe_.fileRecipeHead.totalChunkNumber;
@@ -232,10 +243,10 @@ void DataSR::runData(SSL* sslConnection)
                             sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
                             totalRestoredChunkNumber_ += restoredChunkList.size();
                             startID_ = endID_;
-                            if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_ < restoreChunkBatchSize) {
+                            if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_ < restoreChunkBatchNumber_) {
                                 endID_ += restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_;
                             } else {
-                                endID_ += config.getSendChunkBatchSize();
+                                endID_ += restoreChunkBatchNumber_;
                             }
                         } else {
                             netBody.dataSize = 0;
@@ -256,6 +267,10 @@ void DataSR::runData(SSL* sslConnection)
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                             mutexRestore_.unlock();
 #endif
+                            cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                            if (restoredRecipeList != nullptr) {
+                                free(restoredRecipeList);
+                            }
                             return;
                         }
 #if MULTI_CLIENT_UPLOAD_TEST == 1
@@ -276,6 +291,10 @@ void DataSR::runData(SSL* sslConnection)
                     }
                     storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                    cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                    if (restoredRecipeList != nullptr) {
+                        free(restoredRecipeList);
+                    }
                     return;
                 }
                 break;
@@ -304,6 +323,10 @@ void DataSR::runData(SSL* sslConnection)
                     }
                     storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                    cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                    if (restoredRecipeList != nullptr) {
+                        free(restoredRecipeList);
+                    }
                     return;
                 }
                 break;
@@ -324,6 +347,10 @@ void DataSR::runData(SSL* sslConnection)
                     }
                     storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                    cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                    if (restoredRecipeList != nullptr) {
+                        free(restoredRecipeList);
+                    }
                     return;
                 }
                 Recipe_t newFileRecipe;
@@ -346,24 +373,14 @@ void DataSR::runData(SSL* sslConnection)
                 uint64_t decryptedRecipeListSize = 0;
                 memcpy(&decryptedRecipeListSize, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(uint64_t));
                 // cout << "DataSR : process recipe list size = " << decryptedRecipeListSize << endl;
-                char* recvDecryptedRecipeBuffer = (char*)malloc(sizeof(char) * decryptedRecipeListSize + sizeof(NetworkHeadStruct_t));
-                if (dataSecurityChannel_->recv(sslConnection, recvDecryptedRecipeBuffer, recvSize)) {
+                restoredRecipeList = (char*)malloc(sizeof(char) * decryptedRecipeListSize + sizeof(NetworkHeadStruct_t));
+                if (dataSecurityChannel_->recv(sslConnection, restoredRecipeList, recvSize)) {
                     NetworkHeadStruct_t tempHeader;
-                    memcpy(&tempHeader, recvDecryptedRecipeBuffer, sizeof(NetworkHeadStruct_t));
+                    memcpy(&tempHeader, restoredRecipeList, sizeof(NetworkHeadStruct_t));
                     // cout << "DataSR : CLIENT_UPLOAD_DECRYPTED_RECIPE, recv message type " << tempHeader.messageType << ", message size = " << tempHeader.dataSize << endl;
                 } else {
                     cerr << "DataSR : recv decrypted file recipe error " << endl;
                 }
-                int restoreChunkNumber = restoredFileRecipe_.fileRecipeHead.totalChunkNumber;
-                cerr << "DataSR : target restore chunk number = " << restoreChunkNumber << endl;
-                // memcpy(&restoredFileRecipe_, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t), sizeof(Recipe_t));
-                for (int i = 0; i < restoreChunkNumber; i++) {
-                    RecipeEntry_t newRecipeEntry;
-                    memcpy(&newRecipeEntry, recvDecryptedRecipeBuffer + sizeof(NetworkHeadStruct_t) + i * sizeof(RecipeEntry_t), sizeof(RecipeEntry_t));
-                    // cout << "DataSR : recv chunk id = " << newRecipeEntry.chunkID << ", chunk size = " << newRecipeEntry.chunkSize << endl;
-                    restoredRecipeList.push_back(newRecipeEntry);
-                }
-                free(recvDecryptedRecipeBuffer);
                 cerr << "DataSR : process recipe list done" << endl;
                 break;
             }
@@ -411,45 +428,37 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                cerr << "DataSR : start retrive chunks, chunk number = " << restoredRecipeList.size() << endl;
-                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
+                cerr << "DataSR : start retrive chunks, chunk number = " << restoredFileRecipe_.fileRecipeHead.totalChunkNumber << endl;
+                if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < restoreChunkBatchNumber_) {
                     endID_ = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - 1;
                 }
                 while (totalRestoredChunkNumber_ != restoredFileRecipe_.fileRecipeHead.totalChunkNumber) {
-                    ChunkList_t restoredChunkList;
+                    memset(sendBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
+                    int restoredChunkNumber = 0, restoredChunkSize = 0;
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartDataSR, NULL);
 #endif
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                     mutexRestore_.lock();
 #endif
-                    bool restoreChunkStatus = storageObj_->restoreRecipeAndChunk(restoredRecipeList, startID_, endID_, restoredChunkList);
+                    bool restoreChunkStatus = storageObj_->restoreRecipeAndChunk(restoredRecipeList + sizeof(NetworkHeadStruct_t) + startID_ * (CHUNK_HASH_SIZE + sizeof(int)), startID_, endID_, sendBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), restoredChunkNumber, restoredChunkSize);
 #if MULTI_CLIENT_UPLOAD_TEST == 1
                     mutexRestore_.unlock();
 #endif
                     if (restoreChunkStatus) {
                         netBody.messageType = SUCCESS;
-                        int currentChunkNumber = restoredChunkList.size();
-                        int totalSendSize = sizeof(int);
-                        memset(sendBuffer, 0, NETWORK_MESSAGE_DATA_SIZE);
-                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &currentChunkNumber, sizeof(int));
-                        for (int i = 0; i < currentChunkNumber; i++) {
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].ID, sizeof(uint32_t));
-                            totalSendSize += sizeof(uint32_t);
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicDataSize, sizeof(int));
-                            totalSendSize += sizeof(int);
-                            memcpy(sendBuffer + sizeof(NetworkHeadStruct_t) + totalSendSize, &restoredChunkList[i].logicData, restoredChunkList[i].logicDataSize);
-                            totalSendSize += restoredChunkList[i].logicDataSize;
-                        }
-                        netBody.dataSize = totalSendSize;
+                        memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &restoredChunkNumber, sizeof(int));
+                        netBody.dataSize = sizeof(int) + restoredChunkSize;
                         memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
-                        sendSize = sizeof(NetworkHeadStruct_t) + totalSendSize;
-                        totalRestoredChunkNumber_ += restoredChunkList.size();
+                        sendSize = sizeof(NetworkHeadStruct_t) + sizeof(int) + restoredChunkSize;
+                        totalRestoredChunkNumber_ += restoredChunkNumber;
                         startID_ = endID_;
-                        if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_ < restoreChunkBatchSize) {
+                        uint32_t remainChunkNumber = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_;
+                        // cout << "DataSR : wait for restore chunk number = " << remainChunkNumber << ", current restored chunk number = " << restoredChunkNumber << endl;
+                        if (remainChunkNumber < restoreChunkBatchNumber_) {
                             endID_ += restoredFileRecipe_.fileRecipeHead.totalChunkNumber - totalRestoredChunkNumber_;
                         } else {
-                            endID_ += config.getSendChunkBatchSize();
+                            endID_ += restoreChunkBatchNumber_;
                         }
                     } else {
                         netBody.dataSize = 0;
@@ -465,6 +474,10 @@ void DataSR::runData(SSL* sslConnection)
                         }
                         storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                        cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+                        if (restoredRecipeList != nullptr) {
+                            free(restoredRecipeList);
+                        }
                         return;
                     }
 #if SYSTEM_BREAK_DOWN == 1
@@ -475,6 +488,7 @@ void DataSR::runData(SSL* sslConnection)
 #endif
                     dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                     cerr << "DataSR : send back chunks last ID = " << startID_ << endl;
+                    // cerr << "DataSR : new start ID = " << startID_ << ", end ID = " << endID_ << endl;
                 }
                 break;
             }
@@ -483,6 +497,10 @@ void DataSR::runData(SSL* sslConnection)
                 continue;
             }
         }
+    }
+    cerr << "DataSR : data thread exit now due to client connection lost" << endl;
+    if (restoredRecipeList != nullptr) {
+        free(restoredRecipeList);
     }
     return;
 }

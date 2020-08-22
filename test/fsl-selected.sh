@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # path of fsl trace
-# fsl='/home/testbed/Dataset/FSL/2013'
-fsl='~/Testdata'
+fsl='/home/testbed/Dataset/FSL/2013'
+# fsl='~/Testdata'
 
 # users considered in backups
 # users=('004' '007' '008' '012' '013' '015' '022' '026' '028')
-users=('012' '015')
+users=('015')
 # auxiliary information
 date_of_aux=('2013-01-22' '2013-02-22' '2013-03-22' '2013-04-22' '2013-05-17')
 
