@@ -626,7 +626,7 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
             return false;
         }
     } else {
-        cerr << "StorageCore : chunk not in database" << endl;
+        // cerr << "StorageCore : chunk not in database" << endl;
         return false;
     }
 }

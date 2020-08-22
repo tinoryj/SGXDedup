@@ -20,7 +20,7 @@
 #define STORAGE_SERVER_VERIFY_UPLOAD 0
 #define STORAGE_CORE_READ_CACHE 0
 
-#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 0
+#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
 #define KEY_GEN_EPOLL_MODE 0
 
 /* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/

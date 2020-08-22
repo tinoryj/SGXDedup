@@ -411,7 +411,7 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_CHUNK_WITH_RECIPE: {
-                cerr << "DataSR : start retrive chunks" << endl;
+                cerr << "DataSR : start retrive chunks, chunk number = " << restoredRecipeList.size() << endl;
                 if (restoredFileRecipe_.fileRecipeHead.totalChunkNumber < config.getSendChunkBatchSize()) {
                     endID_ = restoredFileRecipe_.fileRecipeHead.totalChunkNumber - 1;
                 }
@@ -474,6 +474,7 @@ void DataSR::runData(SSL* sslConnection)
                     restoreChunkTime += second;
 #endif
                     dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+                    cerr << "DataSR : send back chunks last ID = " << startID_ << endl;
                 }
                 break;
             }

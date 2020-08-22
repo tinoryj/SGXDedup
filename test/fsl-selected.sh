@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # path of fsl trace
-fsl='/home/testbed/Dataset/FSL/2013'
+# fsl='/home/testbed/Dataset/FSL/2013'
+fsl='~/Testdata'
 
 # users considered in backups
 # users=('004' '007' '008' '012' '013' '015' '022' '026' '028')
@@ -28,7 +29,7 @@ done
 
 for date in ${date_of_aux[@]}; do
     for user in ${users[@]}; do
-	    snapshot="fslhomes-user${user}-2013-${date}"
+	    snapshot="fslhomes-user${user}-${date}"
         echo "ID: ${user}-${date}:" 
 		./client-sgx -r ./tmp/${snapshot}
 		rm -rf ./tmp/${snapshot}.d

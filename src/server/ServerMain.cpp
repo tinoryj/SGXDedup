@@ -71,7 +71,7 @@ int main()
     th->detach();
 
     boost::thread::attributes attrs;
-    attrs.set_stack_size(1000 * 1024 * 1024);
+    attrs.set_stack_size(100 * 1024 * 1024);
     while (true) {
         SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;
         th = new boost::thread(attrs, boost::bind(&DataSR::runData, dataSRObj, sslConnectionData));
