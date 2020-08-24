@@ -733,6 +733,7 @@ void DataSR::runPow(SSL* sslConnection)
                     second = diff / 1000000.0;
                     verifyTime += second;
 #endif
+#if POW_TEST == 0
                     if (powVerifyStatus) {
                         bool requiredChunkTemp[signedHashNumber];
                         int requiredChunkNumber = 0;
@@ -767,6 +768,20 @@ void DataSR::runPow(SSL* sslConnection)
                         sendSize = sizeof(NetworkHeadStruct_t);
                     }
                     powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+#else
+                    if (powVerifyStatus) {
+                        netBody.messageType = SUCCESS;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    } else {
+                        netBody.messageType = ERROR_RESEND;
+                        netBody.dataSize = 0;
+                        memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
+                        sendSize = sizeof(NetworkHeadStruct_t);
+                    }
+                    powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
+#endif
                     break;
                 }
             }
