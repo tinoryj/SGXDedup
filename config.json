@@ -1,6 +1,6 @@
 {
 	"ChunkerConfig": {
-		"_chunkingType": 2,
+		"_chunkingType": 1,
 		"_minChunkSize": 4096,
 		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
