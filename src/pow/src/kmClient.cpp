@@ -172,6 +172,10 @@ kmClient::~kmClient()
     sgx_status_t status;
     sgx_status_t retval;
     status = ecall_enclave_close(_eid, &retval);
+    if (status != SGX_SUCCESS) {
+        cerr << "KmClient : close enclave error:" << endl;
+        sgxErrorReport(status);
+    }
     sgx_destroy_enclave(_eid);
 }
 

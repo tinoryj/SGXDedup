@@ -585,8 +585,9 @@ bool StorageCore::storeChunk(std::string chunkHash, char* chunkData, int chunkSi
         PRINT_BYTE_ARRAY_STORAGE_CORE(stdout, &chunkHash[0], chunkHash.size());
     }
     status = fp2ChunkDB.insert(chunkHash, dbValue);
-    uniqueChunkNumber++;
+
 #if SYSTEM_BREAK_DOWN == 1
+    uniqueChunkNumber++;
     gettimeofday(&timeendStorage, NULL);
     storeChunkInsertDBTime += (1000000 * (timeendStorage.tv_sec - timestartStorage.tv_sec) + timeendStorage.tv_usec - timestartStorage.tv_usec) / 1000000.0;
 #endif
@@ -718,7 +719,9 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
             }
             memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
             currentReadContainerFileName_ = containerNameStr;
+#if SYSTEM_BREAK_DOWN == 1
             readContainerNumber++;
+#endif
             return true;
         }
 #endif

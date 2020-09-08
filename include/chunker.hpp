@@ -22,9 +22,9 @@ private:
     // Chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
     int ChunkerType_;
     /*chunk size setting*/
-    int avgChunkSize_;
-    int minChunkSize_;
-    int maxChunkSize_;
+    uint32_t avgChunkSize_;
+    uint32_t minChunkSize_;
+    uint32_t maxChunkSize_;
 
     u_char *waitingForChunkingBuffer_, *chunkBuffer_;
     uint64_t ReadSize_;
@@ -34,7 +34,7 @@ private:
 
     /*VarSize chunking*/
     /*sliding window size*/
-    int slidingWinSize_;
+    uint32_t slidingWinSize_;
     uint32_t polyBase_;
     /*the modulus for limiting the value of the polynomial in rolling hash*/
     uint32_t polyMOD_;

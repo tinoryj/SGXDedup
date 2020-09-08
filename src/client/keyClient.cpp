@@ -92,7 +92,7 @@ bool KeyClient::outputKeyGenSimulatorRunningTime()
         cerr << "KeyClient : key generate simulator time counter error" << endl;
         return false;
     }
-    for (int i = 0; i < keyGenSimulatorStartTimeCounter_.size(); i++) {
+    for (uint32_t i = 0; i < keyGenSimulatorStartTimeCounter_.size(); i++) {
         uint64_t startTimeTemp = 1000000 * keyGenSimulatorStartTimeCounter_[i].tv_sec + keyGenSimulatorStartTimeCounter_[i].tv_usec;
         uint64_t endTimeTemp = 1000000 * keyGenSimulatorEndTimeCounter_[i].tv_sec + keyGenSimulatorEndTimeCounter_[i].tv_usec;
         if (startTimeTemp < startTime) {
@@ -155,7 +155,7 @@ bool KeyClient::initClientCTRInfo()
         memset(nonce_, clientID_, 12);
 #else
         srand(time(NULL));
-        for (int i = 0; i < 12 / sizeof(int); i++) {
+        for (uint32_t i = 0; i < 12 / sizeof(int); i++) {
             int randomNumber = rand();
             memcpy(nonce_ + i * sizeof(int), &randomNumber, sizeof(int));
         }
@@ -262,7 +262,6 @@ void KeyClient::runKeyGenSimulator(int clientID)
     struct timeval timeendKeySimulator;
     double threadWorkTime = 0;
     double keyGenTime = 0;
-    double chunkHashGenerateTime = 0;
     double keyExchangeTime = 0;
     long diff;
     double second;

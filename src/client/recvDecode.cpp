@@ -309,7 +309,7 @@ bool RecvDecode::processRecipe(Recipe_t& recipeHead, RecipeList_t& recipeList, u
             return false;
         }
         memcpy(&respond, encryptedRecipeBuffer, sizeof(NetworkHeadStruct_t));
-        if (recvSize != respond.dataSize + sizeof(NetworkHeadStruct_t)) {
+        if (recvSize != respond.dataSize + (int)sizeof(NetworkHeadStruct_t)) {
             cerr << "RecvDecode : recv encrypted file recipe size error" << endl;
             return false;
         } else {

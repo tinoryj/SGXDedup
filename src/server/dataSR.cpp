@@ -103,6 +103,9 @@ void DataSR::runData(SSL* sslConnection)
                 }
                 storageObj_->clientExitSystemStatusOutput(uploadFlag);
 #endif
+                if (uploadFlag == true) {
+                } else {
+                }
                 cerr << "DataSR : data thread recv exit flag, thread exit now" << endl;
                 if (restoredRecipeList != nullptr) {
                     free(restoredRecipeList);
@@ -780,9 +783,9 @@ void DataSR::runPow(SSL* sslConnection)
 
 void DataSR::runKeyServerSessionKeyUpdate()
 {
+#if SYSTEM_BREAK_DOWN == 1
     struct timeval timestart;
     struct timeval timeend;
-#if SYSTEM_BREAK_DOWN == 1
     long diff;
     double second;
 #endif
@@ -803,7 +806,7 @@ void DataSR::runKeyServerSessionKeyUpdate()
             u_char hashResultTemp[32];
             memcpy(hashDataTemp, keyServerSession_->sk, 16);
             memcpy(hashDataTemp + 16, keyServerSession_->mk, 16);
-            for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+            for (uint64_t i = 0; i < keyRegressionCurrentTimes_; i++) {
                 SHA256(hashDataTemp, 32, hashResultTemp);
                 memcpy(hashDataTemp, hashResultTemp, 32);
             }

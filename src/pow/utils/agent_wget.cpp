@@ -78,7 +78,8 @@ int AgentWget::request(string const& url, string const& post,
         while (rem) {
         retry_write:
             bwritten = write(fd, bp, rem);
-            if (bwritten == -1) {
+            size_t flag = -1;
+            if (bwritten == flag) {
                 if (errno == EINTR)
                     goto retry_write;
                 else {
@@ -216,7 +217,8 @@ int AgentWget::request(string const& url, string const& post,
     repeat = 1;
     while (repeat) {
         bread = read(pipefd[0], buffer, CHUNK_SZ);
-        if (bread == -1) {
+        size_t flag = -1;
+        if (bread == flag) {
             if (errno == EINTR)
                 continue;
             else {

@@ -328,7 +328,7 @@ bool CryptoPrimitive::keyExchangeCTRBaseGenerate(u_char* nonce, uint32_t counter
     int cipherlen = 0, len = 0;
     uint32_t currentCounterTemp = counter;
     EVP_CIPHER_CTX_set_padding(cipherctx_, 0);
-    for (int i = 0; i < generateNumber / 2; i++) {
+    for (uint32_t i = 0; i < generateNumber / 2; i++) {
         memcpy(currentKeyBase, &currentCounterTemp, sizeof(uint32_t));
         memcpy(currentKeyBase + sizeof(uint32_t), nonce, CRYPTO_BLOCK_SZIE - sizeof(uint32_t));
         currentCounterTemp++;
@@ -359,7 +359,7 @@ bool CryptoPrimitive::cmac128(u_char* hashList, uint32_t chunkNumber, u_char* ma
         return false;
     }
 
-    for (int i = 0; i < chunkNumber; i++) {
+    for (uint32_t i = 0; i < chunkNumber; i++) {
         CMAC_Update(cmacctx_, (void*)(hashList + i * CHUNK_HASH_SIZE), CHUNK_HASH_SIZE);
     }
     size_t maclen;

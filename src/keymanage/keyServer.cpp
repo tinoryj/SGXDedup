@@ -188,9 +188,9 @@ bool keyServer::runRemoteAttestationInit()
 
 void keyServer::runSessionKeyUpdate()
 {
+#if SYSTEM_BREAK_DOWN == 1
     struct timeval timestart;
     struct timeval timeend;
-#if SYSTEM_BREAK_DOWN == 1
     long diff;
     double second;
 #endif

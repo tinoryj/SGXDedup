@@ -363,7 +363,8 @@ void Chunker::varSizeChunking()
     double second;
 #endif
     uint16_t winFp = 0;
-    uint64_t chunkBufferCnt = 0, chunkIDCnt = 0;
+    uint64_t chunkIDCnt = 0;
+    uint32_t chunkBufferCnt = 0;
     ifstream& fin = getChunkingFile();
     uint64_t fileSize = 0;
     u_char hash[CHUNK_HASH_SIZE];
@@ -581,7 +582,8 @@ void Chunker::traceDrivenChunkingFSL()
         auto size = atoi(item);
         int copySize = 0;
         memset(chunkBuffer_, 0, sizeof(char) * maxChunkSize_ + 6);
-        if (size > maxChunkSize_) {
+        if ((uint32_t)size > maxChunkSize_) {
+            cerr << "Chunker : input chunk size may overflow chunk content buffer" << endl;
             continue;
         }
         while (copySize < size) {
@@ -678,7 +680,8 @@ void Chunker::traceDrivenChunkingUBC()
         auto size = atoi(item);
         int copySize = 0;
         memset(chunkBuffer_, 0, sizeof(char) * maxChunkSize_ + 5);
-        if (size > maxChunkSize_) {
+        if ((uint32_t)size > maxChunkSize_) {
+            cerr << "Chunker : input chunk size may overflow chunk content buffer" << endl;
             continue;
         }
         while (copySize < size) {

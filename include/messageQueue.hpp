@@ -16,7 +16,7 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 
-#if QUEUE_TYPE == QUEUE_TYPE_CONCURRENT_QUEUE || QUEUE_TYPE == QUEUE_TYPE_READ_WRITE_QUEUE
+#if QUEUE_TYPE == QUEUE_TYPE_CONCURRENT_QUEUE
 using namespace moodycamel;
 #endif
 
@@ -26,8 +26,6 @@ class messageQueue {
     boost::lockfree::spsc_queue<T, boost::lockfree::capacity<5000>> lockFreeQueue_;
 #elif QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     boost::lockfree::queue<T, boost::lockfree::capacity<5000>> lockFreeQueue_;
-#elif QUEUE_TYPE == QUEUE_TYPE_READ_WRITE_QUEUE
-    ReaderWriterQueue<T, 5000> lockFreeQueue;
 #elif QUEUE_TYPE == QUEUE_TYPE_CONCURRENT_QUEUE
     ConcurrentQueue<T>* lockFreeQueue = new ConcurrentQueue<T>(5000);
 #endif
@@ -54,26 +52,6 @@ public:
     bool isEmpty()
     {
         return lockFreeQueue_.empty();
-    }
-#elif QUEUE_TYPE == QUEUE_TYPE_READ_WRITE_QUEUE
-    bool push(T& data)
-    {
-        while (!lockFreeQueue.try_enqueue(data))
-            ;
-        return true;
-    }
-    bool pop(T& data)
-    {
-        return lockFreeQueue.try_dequeue(data);
-    }
-    bool isEmpty()
-    {
-        T* front = lockFreeQueue.peek();
-        if (front == nullptr) {
-            return true;
-        } else {
-            return false;
-        }
     }
 #elif QUEUE_TYPE == QUEUE_TYPE_CONCURRENT_QUEUE
     bool push(T& data)

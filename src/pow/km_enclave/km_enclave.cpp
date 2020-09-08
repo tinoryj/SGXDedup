@@ -11,8 +11,8 @@
 
 using namespace std;
 
-#define MAX_SPECULATIVE_KEY_SIZE 80 * 1024 * 1024
-#define MAX_SPECULATIVE_CLIENT_NUMBER 1
+#define MAX_SPECULATIVE_KEY_SIZE 90 * 1024 * 1024
+#define MAX_SPECULATIVE_CLIENT_NUMBER 3
 #define MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT MAX_SPECULATIVE_KEY_SIZE / MAX_SPECULATIVE_CLIENT_NUMBER
 
 // static const sgx_ec256_public_t def_service_public_key = {
@@ -292,7 +292,7 @@ sgx_status_t ecall_setSessionKeyUpdate()
     uint8_t hashResultTemp[32];
     memcpy_s(hashDataTemp, sizeof(sgx_ra_key_128_t), sessionkey, sizeof(sgx_ra_key_128_t));
     memcpy_s(hashDataTemp + sizeof(sgx_ra_key_128_t), sizeof(sgx_ra_key_128_t), macKey, sizeof(sgx_ra_key_128_t));
-    for (int i = 0; i < keyRegressionCurrentTimes_; i++) {
+    for (uint32_t i = 0; i < keyRegressionCurrentTimes_; i++) {
         sgx_status_t sha256Status = sgx_sha256_msg(hashDataTemp, 32, (sgx_sha256_hash_t*)hashResultTemp);
         if (sha256Status != SGX_SUCCESS) {
             return sha256Status;
@@ -388,7 +388,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
             originhash[i] = src[i] ^ mask[i];
         }
     }
-    for (uint32_t index = 0; index < (originalHashLen / 32); index++) {
+    for (int index = 0; index < (originalHashLen / 32); index++) {
         memcpy_s(hashTemp, 64, originhash + index * 32, 32);
         memcpy_s(hashTemp + 32, 64, serverSecret_, 32);
         sgx_status_t sha256Status = sgx_sha256_msg(hashTemp, 64, (sgx_sha256_hash_t*)hash);
@@ -418,7 +418,7 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
 sgx_status_t ecall_keygen(uint8_t* src, uint32_t srcLen, uint8_t* key)
 {
     uint32_t decryptLen, encryptLen;
-    int originalHashLen = srcLen - 32;
+    uint32_t originalHashLen = srcLen - 32;
     uint8_t hash[32], originhash[originalHashLen], keySeed[originalHashLen], hashTemp[64], hmac[32];
     sgx_hmac_sha256_msg(src, originalHashLen, currentSessionKey_, 32, hmac, 32);
     if (memcmp(hmac, src + originalHashLen, 32) != 0) {
