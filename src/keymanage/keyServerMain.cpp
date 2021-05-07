@@ -53,26 +53,10 @@ int main()
     th = new boost::thread(boost::bind(&keyServer::runCTRModeMaskGenerate, server));
     th->detach();
 #endif
-#if KEY_GEN_EPOLL_MODE == 1
-    th = new boost::thread(boost::bind(&keyServer::runRecvThread, server));
-    th->detach();
-    // cout << "KeyServerMain : start epoll recv/send thread" << endl;
-    th = new boost::thread(boost::bind(&keyServer::runSendThread, server));
-    th->detach();
-    // cout << "KeyServerMain : start epoll collection thread" << endl;
-    for (int i = 0; i < config.getKeyEnclaveThreadNumber(); i++) {
-        th = new boost::thread(boost::bind(&keyServer::runKeyGenerateRequestThread, server, i));
-        th->detach();
-        // cout << "KeyServerMain : start epoll key generate thread " << i << endl;
-    }
-    while (true)
-        ;
-#else
     while (true) {
         SSL* sslConnection = keySecurityChannelTemp->sslListen().second;
         th = new boost::thread(boost::bind(&keyServer::runKeyGenerateThread, server, sslConnection));
         th->detach();
     }
-#endif
     return 0;
 }
