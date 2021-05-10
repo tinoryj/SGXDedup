@@ -397,8 +397,8 @@ sgx_status_t ecall_keygen_ctr(uint8_t* src, uint32_t srcLen, uint8_t* key, int c
         }
         memcpy_s(keySeed + index * 32, originalHashLen - index * 32, hash, 32);
 #if SYSTEM_DEBUG_FLAG == 1
-        // print("KeyEnclave : Chunk Key = ", 25, 1);
-        // print((char*)hash, 32, 2);
+        print("KeyEnclave : Chunk Key = ", 25, 1);
+        print((char*)hash, 32, 2);
 #endif
     }
     if ((currentCounter * 16 + originalHashLen) < MAX_SPECULATIVE_KEY_SIZE_PER_CLIENT && clientList_.at(clientID).offlineFlag == 1) {

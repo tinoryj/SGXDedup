@@ -795,8 +795,12 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     cryptoObj_->sha256Hmac(recvBuffer, CHUNK_HASH_SIZE * batchNumber, hmac, keyExchangeKey_, 32);
     if (memcmp(hmac, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32) != 0) {
         cerr << "KeyClient : recved keys hmac error" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "KeyClient : recv key exchange hmac = " << endl;
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + CHUNK_HASH_SIZE * batchNumber, 32);
+        cerr << "KeyClient : client computed key exchange hmac = " << endl;
         PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, hmac, 32);
-        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32);
+#endif
         return false;
     }
     keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchNumber);
@@ -832,7 +836,13 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     u_char hmac[32];
     cryptoObj->sha256Hmac(recvBuffer, CHUNK_HASH_SIZE * batchNumber, hmac, keyExchangeKey_, 32);
     if (memcmp(hmac, recvBuffer + batchNumber * CHUNK_HASH_SIZE, 32) != 0) {
-        cerr << "KeyClient : recved keys hmac error" << endl;
+    cerr << "KeyClient : recved keys hmac error" << endl;
+#if SYSTEM_DEBUG_FLAG == 1
+        cerr << "KeyClient : recv key exchange hmac = " << endl;
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, recvBuffer + CHUNK_HASH_SIZE * batchNumber, 32);
+        cerr << "KeyClient : client computed key exchange hmac = " << endl;
+        PRINT_BYTE_ARRAY_KEY_CLIENT(stderr, hmac, 32);
+#endif
         return false;
     }
     keyExchangeXOR(batchKeyList, recvBuffer, keyExchangeXORBase + batchNumber * CHUNK_HASH_SIZE, batchNumber);

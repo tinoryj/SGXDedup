@@ -612,6 +612,11 @@ void DataSR::runKeyServerSessionKeyUpdate()
 #endif
     while (true) {
         if (!keyExchangeKeySetFlag_) {
+            boost::xtime xt;
+            boost::xtime_get(&xt, boost::TIME_UTC_);
+            xt.sec = 10;
+            boost::thread::sleep(xt);
+            cerr << "DataSR : key server session key update thread waiting" << endl;
             continue;
         }
         if (keyServerSession_ != nullptr) {
