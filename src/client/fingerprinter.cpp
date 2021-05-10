@@ -36,10 +36,8 @@ Fingerprinter::Fingerprinter(KeyClient* keyClientObjTemp)
 Fingerprinter::~Fingerprinter()
 {
     delete cryptoObj_;
-#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
-#endif
 }
 
 void Fingerprinter::run()

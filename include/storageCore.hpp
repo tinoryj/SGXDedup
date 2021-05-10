@@ -1,9 +1,6 @@
 #ifndef SGXDEDUP_STORAGECORE_HPP
 #define SGXDEDUP_STORAGECORE_HPP
 
-#if STORAGE_CORE_READ_CACHE == 1
-#include "cache.hpp"
-#endif
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -37,7 +34,7 @@ private:
     uint64_t maxContainerSize_;
     bool writeContainer(keyForChunkHashDB_t& key, char* data);
     bool readContainer(keyForChunkHashDB_t key, char* data);
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE && SYSTEM_BREAK_DOWN == 1
+#if SYSTEM_BREAK_DOWN == 1
     double storeChunkInsertDBTime = 0;
     double restoreChunkQueryDBTime = 0;
     double readContainerTime = 0;
@@ -55,19 +52,7 @@ private:
 public:
     StorageCore();
     ~StorageCore();
-#if STORAGE_CORE_READ_CACHE == 1
-    Cache containerCache;
-#endif
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
-    bool saveChunks(NetworkHeadStruct_t& networkHead, char* data);
-    bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);
-    bool restoreChunks(char* recipeBuffer, uint32_t recipeBufferSize, uint32_t startID, uint32_t endID, ChunkList_t& restoredChunkList);
-    bool restoreRecipeList(char* fileNameHash, char* recipeBuffer, uint32_t recipeBufferSize);
-    bool saveChunk(std::string chunkHash, char* chunkData, int chunkSize);
-    bool restoreChunk(std::string chunkHash, std::string& chunkData);
-    bool checkRecipeStatus(Recipe_t recipeHead, RecipeList_t recipeList);
-    bool restoreRecipeHead(char* fileNameHash, Recipe_t& restoreRecipe);
-#elif RECIPE_MANAGEMENT_METHOD == ENCRYPT_WHOLE_RECIPE_FILE
+
     bool restoreChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool storeRecipes(char* fileNameHash, u_char* recipeContent, uint64_t recipeSize);
     bool restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint32_t endID, char* restoredChunkList, int& restoredChunkNumber, int& restoredChunkSize);
@@ -78,7 +63,6 @@ public:
     bool restoreRecipesSize(char* fileNameHash, uint64_t& recipeSize);
 #if SYSTEM_BREAK_DOWN == 1
     bool clientExitSystemStatusOutput(bool type); // type true == upload, false == download
-#endif
 #endif
 };
 

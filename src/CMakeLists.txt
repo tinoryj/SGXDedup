@@ -1,4 +1,7 @@
 #/
+set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
+list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
+find_package(SGX REQUIRED)
 
 find_package(Boost 1.36.0 REQUIRED COMPONENTS thread system serialization)
 if(Boost_FOUND)
@@ -6,17 +9,10 @@ if(Boost_FOUND)
   link_directories(${BOOST_LIBRARY_DIR})
 endif()
 
-set(OPENSSL_INCLUDE_PATH /usr/include/)
-set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
-
-set(LEVELDB_INCLUDE_PATH ../lib/leveldb/include)
-set(LEVELDB_LIBRARY_PATH ../lib/leveldb/)
-
 set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
-set(POW_INCLUDE_PATH pow/include)
+set(ENCLAVE_INCLUDE_PATH enclave/include)
 
-include_directories(${SGX_INCLUDE_PATH} ${POW_INCLUDE_PATH})
-include_directories(${ENCLAVE_INCLUDE_PATH} ${BOOST_INCLUDE_DIR} ${LEVELDB_INCLUDE_PATH} ../include)
+include_directories(${SGX_INCLUDE_PATH} ${ENCLAVE_INCLUDE_PATH} ../include)
 link_directories(${BOOST_LIBRARY_DIR} ${LEVELDB_LIBRARY_PATH} util)
 
 set(BOOST_LIBRARY_OBJ boost_thread boost_system boost_serialization)
@@ -24,19 +20,12 @@ set(SYSTEM_LIBRARY_OBJ pthread rt dl)
 set(OPENSSL_LIBRARY_OBJ ssl crypto)
 set(LEVELDB_LIBRARY_OBJ pthread leveldb)
 set(UTIL_OBJ configure cryptoPrimitive SSL_TLS database)
-# set(UTIL_OBJ configure cryptoPrimitive SSL_TLS database cache)
 
-set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ}
-        ${BOOST_LIBRARY_OBJ} ${UTIL_OBJ} ${SYSTEM_LIBRARY_OBJ})
+set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ} ${UTIL_OBJ} ${SYSTEM_LIBRARY_OBJ})
 
-set(CLIENT_OBJ chunker fingerprinter keyClient encoder powClient sender recvDecode  retriever)
+set(CLIENT_OBJ chunker fingerprinter keyClient encoder powClient sender recvDecode retriever)
 set(SERVER_OBJ dataSR  dedupCore powServer storage kmServer) 
 set(KEYSERVER_OBJ keyServer kmClient sgxErrorSupport)
-
-#-fno-builtin-memset
-set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
-list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
-find_package(SGX REQUIRED)
 
 set (CMAKE_SYSTEM_NAME Linux )
 if (NOT CMAKE_BUILD_TYPE)
@@ -60,7 +49,7 @@ set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
 # SET (CMAKE_OBJDUMP "/usr/bin/llvm-objdump")
 # SET (CMAKE_RANLIB  "/usr/bin/llvm-ranlib")
 
-add_subdirectory(pow)
+add_subdirectory(enclave)
 add_subdirectory(client)
 add_subdirectory(server)
 add_subdirectory(keymanage)

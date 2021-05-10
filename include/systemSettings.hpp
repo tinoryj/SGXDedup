@@ -14,26 +14,7 @@
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
-#define KEY_GEN_SERVER_MLE_NO_OPRF 2
-#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
-
-/* Storage Core Settings: 0-disable; 1-enable */
-#define STORAGE_SERVER_VERIFY_UPLOAD 0
-#define STORAGE_CORE_READ_CACHE 0
-
-#define KEY_GEN_SGX_MULTITHREAD_ENCLAVE 1
-
-/* Message Queue Settings: QUEUE_TYPE to setup the default message queue*/
-#define QUEUE_TYPE_LOCKFREE_SPSC_QUEUE 0
-#define QUEUE_TYPE_LOCKFREE_QUEUE 1
-#define QUEUE_TYPE_READ_WRITE_QUEUE 2
-#define QUEUE_TYPE_CONCURRENT_QUEUE 3
-#define QUEUE_TYPE QUEUE_TYPE_LOCKFREE_SPSC_QUEUE
-
-/* Recipe Management Settings: 0-disable; 1-enable */
-#define ENCRYPT_WHOLE_RECIPE_FILE 0
-#define ENCRYPT_ONLY_KEY_RECIPE_FILE 1
-#define RECIPE_MANAGEMENT_METHOD ENCRYPT_WHOLE_RECIPE_FILE
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CFB
 
 /* System Running Type Settings */
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
