@@ -34,6 +34,7 @@ Here we give the download and installation method of each dependency. At the sam
 4. Intel® SGX SSL version lin_2.5_1.1.1d [Download Link](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip)
 5. OpenSSL version 1.1.1d [Donwload Link](https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz)
 6. The cmake module used to compile the sgx program in the cmake system: `FindSGX.cmake` [Download Link](https://github.com/xzhangxa/SGX-CMake/blob/master/cmake/FindSGX.cmake)
+
 #### Packages installed through package management tools such as `atp`
 
 1. libssl-dev
@@ -52,9 +53,10 @@ Here we give the download and installation method of each dependency. At the sam
 2. [Intel SGX Environment Install Guide](Docs/Guides/Intel_SGX_Installation_Guide_Linux_2.7_Open_Source.pdf)
 3. [Intel SGX SSL Install Guide](Docs/Guides/Intel-SGX-SSL.md)
 
-### Install Compilation Environment
+### Manual installation
+#### Install Compilation Environment
 
-SGXDedup is compiled and generated through the cmake system. We first install the compiler and other environments required for compilation and execution: 
+SGXDedup is compiled and generated through the CMake system. We first install the compiler and other environments required for compilation and execution: 
 
 ```shell 
 sudo apt install build-essential cmake wget libssl-dev libcurl4-openssl-dev libprotobuf-dev libboost-all-dev libleveldb-dev libsnappy-dev
@@ -66,7 +68,7 @@ Then we put the downloaded `FindSGX.cmake` into the modules directory under the 
 cp FindSGX.cmake /usr/share/cmake-3.10/Modules/
 ```
 
-### Install SGX Related Packages
+#### Install SGX Related Packages
 
 In the current version (v1.0) of SGXDedup, we use the 2.7 version of the SGX SDK and the corresponding drivers and tools. These packages can be downloaded from [01.org (click here)](https://01.org/intel-softwareguard-extensions/downloads/intel-sgx-linux-2.7-release) 
 
@@ -78,7 +80,7 @@ Here, we download and install the following three software packages according to
 
 After the three software packages are installed, we install the intel-sgx-ssl software package needed by SGXDedup according to the [official guide (click here to see)](https://github.com/intel/intel-sgx-ssl/tree/lin_2.5_1.1.1d). We use the [Linux 2.5 SGX SDK, OpenSSL 1.1.1d (click here to download)](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip) version.
 
-#### Example to Install SGX Environment with Ubuntu 18.04 LTS
+##### Example to Install SGX Environment with Ubuntu 18.04 LTS
 
 For example, in ubuntu 18.04, we install the driver and PSW package according to the following commands. The packages will be installed into `/opt/intel` by default.
 
@@ -96,9 +98,9 @@ sudo ./sgx_linux_x64_sdk_2.7.100.4.bin
 source /opt/intel/sgxsdk/environment
 ```
 
-Note that the default installation path of the SDK is the current path where the SDK package is located. The install program will alert you with 'Do you want to install in current directory? [yes/no]'. Here we enter `no` when selecting the installation path, and then give the installation path `/opt/intel` to make sure that the three software packages are installed in the same path.
+Note that the default installation path of the SDK is the current path where the SDK package is located. The install program will alert you with 'Do you want to install in the current directory? [yes/no]'. Here we enter `no` when selecting the installation path, and then give the installation path `/opt/intel` to make sure that the three software packages are installed in the same path.
 
-#### Example to Install SGX SSL with Ubuntu 18.04 LTS
+##### Example to Install SGX SSL with Ubuntu 18.04 LTS
 
 First, we follow the steps of the official tutorial to install. In the first step, we decompress the downloaded intel-sgx-ssl package:
 
@@ -131,8 +133,154 @@ sudo sed -i '415c #include \"sgxpthread.h\"' /opt/intel/sgxssl/include/openssl/c
 
 These commands modify the imported `pthread.h` file name to avoid the compilation error of SGXDedup.
 
-## Installation Guide
+### Automatic Configuration
 
-## Usage
+In order to simplify the cumbersome installation and configuration process, we provide a one-step script for installation. After confirming that the hardware environment supports SGX and the operating system is Ubuntu 18.04LTS, execute the following script to complete all configuration tasks.
 
-### Uasge Samples
+```shell
+./Scripts/environmentInstall.sh
+```
+
+## SGXDedup Running Guide
+
+### Configuration
+
+SGXDedup is configured based on JSON. You can change its configuration without rebuilding. We show the default configuration (`./config.json`) of SGXDedup as follows.
+
+```json
+{
+    "ChunkerConfig": {
+        "_chunkingType": 1, // 0: fixed size chunking; 1: variable size chunking; 2: FSL dataset hash list; 3: MS dataset hash list
+        "_minChunkSize": 4096, // The smallest chunk size in variable size chunking, Uint: Byte (Maximum size 16KB)
+        "_avgChunkSize": 8192, // The average chunk size in variable size chunking and chunk size in fixed size chunking, Uint: Byte (Maximum size 16KB)
+        "_maxChunkSize": 16384, // The biggest chunk size in variable size chunking, Uint: Byte (Maximum size 16KB)
+        "_slidingWinSize": 256, // The sliding window size in variable size chunking, Uint: MB
+        "_ReadSize": 256 // System read input file size every I/O operation, Uint: MB
+    },
+    "KeyServerConfig": {
+        "_keyBatchSize": 4096, // Maximum number of keys obtained per communication
+        "_keyEnclaveThreadNumber": 1, // Maximum thread number for key enclave
+        "_keyServerRArequestPort": 1559, // Key server host port for receive key enclave remote attestation request 
+        "_keyServerIP": [
+            "127.0.0.1"
+        ], // Key server host IP ()
+        "_keyServerPort": [
+            6666
+        ], // Key server host port for client key generation
+        "_keyRegressionMaxTimes": 1048576, // Key regression maximum numbers `n`
+        "_keyRegressionIntervals": 25920000 // Time interval for key regression (Unit: seconds), used for key enclave. Should be consistent with "server._keyRegressionIntervals"
+    },
+    "SPConfig": {
+        "_storageServerIP": [
+            "127.0.0.1"
+        ], // Storage server host IP
+        "_storageServerPort": [
+            6668
+        ], // Storage server host port for client upload or download files
+        "_maxContainerSize": 8388608 // Maximum space for one-time persistent chunk storage, Uint: Byte (Maximum size 8MB)
+    },
+    "pow": {
+        "_quoteType": 0, // Enclave quote type, do not modify it 
+        "_iasVersion": 3, // Enclave IAS version, do not modify it 
+        "_iasServerType": 0, // Server IAS version, do not modify it
+        "_batchSize": 4096, // POW enclave batch size (Unit: chunks)
+        "_ServerPort": 6669, // The port on storage server for remote attestation
+        "_enclave_name": "pow_enclave.signed.so", // The enclave library name to create the target enclave
+        "_SPID": "", // Your SPID for remote attseation service
+        "_PriSubscriptionKey": "", // Your Intel remote attestation service primary subscription key
+        "_SecSubscriptionKey": "" // Your Intel remote attestation service secondary subscription key
+    },
+    "km": {
+        "_quoteType": 0, // Enclave quote type, do not modify it 
+        "_iasVersion": 3, // Enclave IAS version, do not modify it 
+        "_iasServerType": 0, // Server IAS version, do not modify it
+        "_ServerPort": 6676, // The port on storage server for remote attestation
+        "_enclave_name": "km_enclave.signed.so", // The enclave library name to create the target enclave
+        "_SPID": "", // Your SPID for remote attseation service
+        "_PriSubscriptionKey": "", // Your Intel remote attestation service primary subscription key
+        "_SecSubscriptionKey": "" // Your Intel remote attestation service secondary subscription key
+    },
+    "server": {
+        "_RecipeRootPath": "Recipes/", // Path to the file recipe storage directory
+        "_containerRootPath": "Containers/", // Path to the unique chunk storage directory
+        "_fp2ChunkDBName": "db1", // Path to the chunk database directory
+        "_fp2MetaDBame": "db2" // Path to the file recipe database directory
+        "_raSessionKeylifeSpan": 259200000 // Time interval for key regression (Unit: seconds), used for storage server. Should be consistent with "KeyServerConfig._keyRegressionIntervals"
+    },
+    "client": {
+        "_clientID": 1, // Current client ID 
+        "_sendChunkBatchSize": 1000, // Maximum number of chunks sent per communication
+        "_sendRecipeBatchSize": 100000 // Maximum number of file recipe entry sent per communication
+    }
+}
+```
+
+Note that before starting, you need to fill in the following content in `./config.json` (this information comes from intel, see [Registration in Intel for Remote Attestation Service](#Prerequisites))
+
+```json
+...
+"pow": {
+    ...
+    "_SPID": "", // Your SPID for remote attseation service
+    "_PriSubscriptionKey": "", // Your Intel remote attestation service primary subscription key
+    "_SecSubscriptionKey": "" // Your Intel remote attestation service secondary subscription key
+},
+"km": {
+    ...
+    "_SPID": "", // Your SPID for remote attseation service
+    "_PriSubscriptionKey": "", // Your Intel remote attestation service primary subscription key
+    "_SecSubscriptionKey": "" // Your Intel remote attestation service secondary subscription key
+},
+...
+```
+
+### Build
+
+Compile SGXDedup as follows. 
+
+```shell
+mkdir -p bin && mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release .. && make
+
+cd ..
+cp lib/*.a bin/
+cp ./lib/pow_enclave.signed.so ./bin
+cp ./lib/km_enclave.signed.so ./bin
+cp config.json bin/
+cp -r key/ bin/
+mkdir -p bin/Containers && mkdir -p bin/Recipes
+```
+
+Alternatively, we provide a script for a quick build and clean up, and you can use it.
+
+```shell
+chmod +x ./ShellScripts/*.sh
+# Build SGXDedup in release mode
+./ShellScripts/buildReleaseMode.sh
+# Build SGXDedup in debug mode
+./ShellScripts/buildDebugMode.sh
+# Clean up build result
+./ShellScripts/cleanBuild.sh
+```
+
+### Usage
+
+You can test SGXDedup in a single machine, and connect the key manager, server (e.g., the cloud in the paper), and client instances via the local loopback interface. To this end, switch your current working directory to `bin/`, and start each instance in an independent terminal. Note that since the key enclave in the keymanager needs to perform remote attestation to the cloud before it can be used, the user needs to start the server (`server-sgx`) first, then start the keymanager (`keymanager-sgx`), and wait for `KeyServer : keyServer session key update done` log to appear on the keymanager before starting the client.
+
+```shell
+./server-sgx
+```
+
+```shell
+./keymanager-sgx
+```
+
+SGXDedup provides store and restores interfaces to clients.
+
+```shell
+# store file
+./client -s file
+
+# restore file
+./client -r file
+```
