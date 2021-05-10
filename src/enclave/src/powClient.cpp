@@ -82,7 +82,7 @@ void powClient::run()
         }
         if (extractMQ(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-#if POW_TEST == 0
+#if POW_TEST_MODE == 0
                 senderObj_->insertMQ(tempChunk);
 #endif
                 continue;
@@ -148,7 +148,7 @@ void powClient::run()
                 PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, CHUNK_HASH_SIZE);
                 break;
             } else {
-#if POW_TEST == 0
+#if POW_TEST_MODE == 0
                 int totalNeedChunkNumber;
                 memcpy(&totalNeedChunkNumber, serverResponse, sizeof(int));
                 bool requiredChunksList[currentBatchChunkNumber];

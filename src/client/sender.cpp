@@ -264,7 +264,7 @@ bool Sender::sendEnclaveSignedHash(u_char* clientMac, u_char* hashList, int requ
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
     if (status == SUCCESS) {
-#if POW_TEST == 0
+#if POW_TEST_MODE == 0
         memcpy(respond, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int) + sizeof(bool) * requestNumber);
 #endif
         return true;

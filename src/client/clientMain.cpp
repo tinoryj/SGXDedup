@@ -137,7 +137,7 @@ int main(int argv, char* argc[])
         delete retrieverObj;
 
         cout << "System : total work time is " << second << " s" << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         cout << "System : start work time is " << timestart.tv_sec << " s, " << timestart.tv_usec << " us" << endl;
         cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
 #endif
@@ -203,7 +203,7 @@ int main(int argv, char* argc[])
         delete keyClientObj;
 
         cout << "System : total work time is " << second << " s" << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         cout << "System : start work time is " << timestart.tv_sec << " s, " << timestart.tv_usec << " us" << endl;
         cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
 #endif
@@ -242,26 +242,16 @@ int main(int argv, char* argc[])
         cout << "System : recved key enclave session key = " << endl;
         PRINT_BYTE_ARRAY_CLIENT_MAIN(stderr, sessionKey, 32);
 #endif
-#if ENCODER_MODULE_ENABLED == 1
-        encoderObj = new Encoder(powClientObj);
-        keyClientObj = new KeyClient(encoderObj, sessionKey);
-#else
         keyClientObj = new KeyClient(powClientObj, sessionKey);
-#endif
-#if FINGERPRINTER_MODULE_ENABLE == 1
         fingerprinterObj = new Fingerprinter(keyClientObj);
         string inputFile(argc[2]);
         chunkerObj = new Chunker(inputFile, fingerprinterObj);
-#else
-        string inputFile(argc[2]);
-        chunkerObj = new Chunker(inputFile, keyClientObj);
-#endif
         gettimeofday(&timeend, NULL);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
         second = diff / 1000000.0;
         cout << "System : Init upload time is " << second << " s" << endl;
 
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         cerr << "System : input sync number for multi client test" << endl;
         int inputNumberUsedForSyncInMultiClientTest = 0;
         cin >> inputNumberUsedForSyncInMultiClientTest;
@@ -270,24 +260,17 @@ int main(int argv, char* argc[])
         //start chunking thread
         th = new boost::thread(attrs, boost::bind(&Chunker::chunking, chunkerObj));
         thList.push_back(th);
-#if FINGERPRINTER_MODULE_ENABLE == 1
         //start fingerprinting thread
         th = new boost::thread(attrs, boost::bind(&Fingerprinter::run, fingerprinterObj));
         thList.push_back(th);
-#endif
         //start key client thread
         th = new boost::thread(attrs, boost::bind(&KeyClient::run, keyClientObj));
         thList.push_back(th);
-#if ENCODER_MODULE_ENABLED == 1
-        //start encoder thread
-        th = new boost::thread(attrs, boost::bind(&Encoder::run, encoderObj));
-        thList.push_back(th);
-#endif
         //start pow thread
         th = new boost::thread(attrs, boost::bind(&powClient::run, powClientObj));
         thList.push_back(th);
 
-#if POW_TEST == 0
+#if POW_TEST_MODE == 0
         //start sender thread
         th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
         thList.push_back(th);
@@ -301,17 +284,12 @@ int main(int argv, char* argc[])
         second = diff / 1000000.0;
         delete senderObj;
         delete powClientObj;
-#if ENCODER_MODULE_ENABLED == 1
-        delete encoderObj;
-#endif
         delete keyClientObj;
-#if FINGERPRINTER_MODULE_ENABLE == 1
         delete fingerprinterObj;
-#endif
         delete chunkerObj;
 
         cout << "System : upload total work time is " << second << " s" << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         cout << "System : start work time is " << timestart.tv_sec << " s, " << timestart.tv_usec << " us" << endl;
         cout << "System : finish work time is " << timeend.tv_sec << " s, " << timeend.tv_usec << " us" << endl;
 #endif

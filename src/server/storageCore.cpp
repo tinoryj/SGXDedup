@@ -84,7 +84,7 @@ bool StorageCore::clientExitSystemStatusOutput(bool type)
         cout << "StorageCore : restore chunk query database time = " << restoreChunkQueryDBTime << " s" << endl;
         cout << "StorageCore : restore chunk read container time = " << readContainerTime << " s" << endl;
         cout << "StorageCore : restore chunk read container number = " << readContainerNumber << endl;
-#if TRACE_DRIVEN_TEST == 1
+#if SYSTEM_DEBUG_FLAG == 1
         cout << "StorageCore : trace not found chunk number = " << notFoundChunkNumber << endl;
         notFoundChunkNumber = 0;
 #endif
@@ -177,7 +177,7 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
 
     ofstream RecipeOut;
     string writeRecipeName, buffer, recipeName;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
     mutexContainerOperation_.lock();
 #endif
     string DBKey(fileNameHash, FILE_NAME_HASH_SIZE);
@@ -188,14 +188,14 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
         RecipeOut.open(writeRecipeName, ios::app | ios::binary);
         if (!RecipeOut.is_open()) {
             cerr << "StorageCore : Can not open Recipe file, name =  " << writeRecipeName << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
             mutexContainerOperation_.unlock();
 #endif
             return false;
         }
         RecipeOut.write((char*)recipeContent, recipeSize);
         RecipeOut.close();
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         mutexContainerOperation_.unlock();
 #endif
         return true;
@@ -212,14 +212,14 @@ bool StorageCore::storeRecipes(char* fileNameHash, u_char* recipeContent, uint64
         RecipeOut.open(writeRecipeName, ios::app | ios::binary);
         if (!RecipeOut.is_open()) {
             cerr << "StorageCore : Can not open Recipe file, name =  " << writeRecipeName << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
             mutexContainerOperation_.unlock();
 #endif
             return false;
         }
         RecipeOut.write((char*)recipeContent, recipeSize);
         RecipeOut.close();
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
         mutexContainerOperation_.unlock();
 #endif
         return true;
@@ -252,7 +252,6 @@ bool StorageCore::restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint
                 restoredChunkSize += chunkSize;
             }
         } else {
-#if TRACE_DRIVEN_TEST == 1
             uint32_t chunkID = startID + i;
             memcpy(restoredChunkList + index, &chunkID, sizeof(uint32_t));
             index += sizeof(uint32_t);
@@ -262,11 +261,9 @@ bool StorageCore::restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint
             index += chunkSize;
             notFoundChunkNumber++;
             restoredChunkSize += chunkSize;
-#else
-            cerr << "StorageCore : can not restore chunk " << startID + i << " , chunk size = " << chunkSize << " chunk hash = " << endl;
-            PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, &chunkHash[0], CHUNK_HASH_SIZE);
-            return false;
-#endif
+            // cerr << "StorageCore : can not restore chunk " << startID + i << " , chunk size = " << chunkSize << " chunk hash = " << endl;
+            // PRINT_BYTE_ARRAY_STORAGE_CORE(stderr, &chunkHash[0], CHUNK_HASH_SIZE);
+            // return false;
         }
     }
     return true;
@@ -357,7 +354,7 @@ bool StorageCore::restoreChunk(std::string chunkHash, std::string& chunkDataStr)
 
 bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
 {
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
     mutexContainerOperation_.lock();
 #endif
     if (key.length + currentContainer_.used_ < maxContainerSize_) {
@@ -372,7 +369,7 @@ bool StorageCore::writeContainer(keyForChunkHashDB_t& key, char* data)
         memcpy(key.containerName, &lastContainerFileName_[0], lastContainerFileName_.length());
     }
     key.offset = currentContainer_.used_;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
     mutexContainerOperation_.unlock();
 #endif
     return true;
@@ -423,7 +420,7 @@ bool Container::saveTOFile(string fileName)
         cerr << "ContainerManager : Can not open Container file : " << fileName << endl;
         return false;
     }
-#if MULTI_CLIENT_UPLOAD_TEST == 0
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 0
     containerOut.write(this->body_, this->used_);
 #endif
     cerr << "ContainerManager : save " << setbase(10) << this->used_ << " bytes to file system" << endl;

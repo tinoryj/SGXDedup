@@ -29,7 +29,7 @@ private:
     ssl* powSecurityChannel_;
     ssl* dataSecurityChannel_;
     uint64_t keyRegressionCurrentTimes_;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
     std::mutex mutexSessions_;
     std::mutex mutexCrypto_;
     std::mutex mutexRestore_;

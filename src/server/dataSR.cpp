@@ -195,11 +195,11 @@ void DataSR::runData(SSL* sslConnection)
                 break;
             }
             case CLIENT_DOWNLOAD_ENCRYPTED_RECIPE: {
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexRestore_.lock();
 #endif
                 bool restoreRecipeSizeStatus = storageObj_->restoreRecipesSize((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeSize);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexRestore_.unlock();
 #endif
                 if (restoreRecipeSizeStatus) {
@@ -210,11 +210,11 @@ void DataSR::runData(SSL* sslConnection)
                     memcpy(sendBuffer, &netBody, sizeof(NetworkHeadStruct_t));
                     dataSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
                     u_char* recipeBuffer = (u_char*)malloc(sizeof(u_char) * recipeSize);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexRestore_.lock();
 #endif
                     storageObj_->restoreRecipes((char*)recvBuffer + sizeof(NetworkHeadStruct_t), recipeBuffer, recipeSize);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexRestore_.unlock();
 #endif
                     char* sendRecipeBuffer = (char*)malloc(sizeof(char) * recipeSize + sizeof(NetworkHeadStruct_t));
@@ -248,11 +248,11 @@ void DataSR::runData(SSL* sslConnection)
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartDataSR, NULL);
 #endif
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexRestore_.lock();
 #endif
                     bool restoreChunkStatus = storageObj_->restoreRecipeAndChunk(restoredRecipeList + sizeof(NetworkHeadStruct_t) + startID_ * (CHUNK_HASH_SIZE + sizeof(int)), startID_, endID_, sendBuffer + sizeof(NetworkHeadStruct_t) + sizeof(int), restoredChunkNumber, restoredChunkSize);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexRestore_.unlock();
 #endif
                     if (restoreChunkStatus) {
@@ -382,7 +382,7 @@ void DataSR::runPow(SSL* sslConnection)
                 cout << "DataSR : client send login message, loading session" << endl;
                 clientID = netBody.clientID;
                 cout << "DataSR : connected client ID = " << clientID << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.lock();
 #endif
                 if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
@@ -410,7 +410,7 @@ void DataSR::runPow(SSL* sslConnection)
                         sendSize = sizeof(NetworkHeadStruct_t);
                     }
                 }
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.unlock();
 #endif
                 powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
@@ -418,11 +418,11 @@ void DataSR::runPow(SSL* sslConnection)
             }
             case CLIENT_SET_LOGOUT: {
                 cerr << "DataSR : client send logout message, clean up loged session" << endl;
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.lock();
 #endif
                 powServerObj_->closeSession(netBody.clientID);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.unlock();
 #endif
                 netBody.messageType = SUCCESS;
@@ -451,7 +451,7 @@ void DataSR::runPow(SSL* sslConnection)
             case SGX_RA_MSG01: {
                 memcpy(&msg01.msg0_extended_epid_group_id, recvBuffer + sizeof(NetworkHeadStruct_t), sizeof(msg01.msg0_extended_epid_group_id));
                 memcpy(&msg01.msg1, recvBuffer + sizeof(NetworkHeadStruct_t) + sizeof(msg01.msg0_extended_epid_group_id), sizeof(sgx_ra_msg1_t));
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.lock();
 #endif
                 if (!powServerObj_->process_msg01(clientID, msg01, msg2)) {
@@ -467,7 +467,7 @@ void DataSR::runPow(SSL* sslConnection)
                     memcpy(sendBuffer + sizeof(NetworkHeadStruct_t), &msg2, sizeof(sgx_ra_msg2_t));
                     sendSize = sizeof(NetworkHeadStruct_t) + sizeof(sgx_ra_msg2_t);
                 }
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.unlock();
 #endif
                 powSecurityChannel_->send(sslConnection, sendBuffer, sendSize);
@@ -476,7 +476,7 @@ void DataSR::runPow(SSL* sslConnection)
             case SGX_RA_MSG3: {
                 sgx_ra_msg3_t* msg3 = (sgx_ra_msg3_t*)malloc(netBody.dataSize);
                 memcpy(msg3, recvBuffer + sizeof(NetworkHeadStruct_t), netBody.dataSize);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.lock();
 #endif
                 if (powServerObj_->sessions.find(clientID) == powServerObj_->sessions.end()) {
@@ -505,7 +505,7 @@ void DataSR::runPow(SSL* sslConnection)
                         sendSize = sizeof(NetworkHeadStruct_t);
                     }
                 }
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                 mutexSessions_.unlock();
 #endif
                 free(msg3);
@@ -529,11 +529,11 @@ void DataSR::runPow(SSL* sslConnection)
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartDataSR, NULL);
 #endif
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexCrypto_.lock();
 #endif
                     bool powVerifyStatus = powServerObj_->process_signedHash(powServerObj_->sessions.at(clientID), clientMac, hashList, signedHashNumber);
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
                     mutexCrypto_.unlock();
 #endif
 #if SYSTEM_BREAK_DOWN == 1
@@ -542,7 +542,7 @@ void DataSR::runPow(SSL* sslConnection)
                     second = diff / 1000000.0;
                     verifyTime += second;
 #endif
-#if POW_TEST == 0
+#if POW_TEST_MODE == 0
                     if (powVerifyStatus) {
                         bool requiredChunkTemp[signedHashNumber];
                         int requiredChunkNumber = 0;

@@ -4,9 +4,7 @@
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
-#if FINGERPRINTER_MODULE_ENABLE == 1
 #include "fingerprinter.hpp"
-#else
 #include "keyClient.hpp"
 #endif
 #include "messageQueue.hpp"
@@ -14,11 +12,7 @@
 class Chunker {
 private:
     CryptoPrimitive* cryptoObj_;
-#if FINGERPRINTER_MODULE_ENABLE == 1
     Fingerprinter* FingerprinterObj_;
-#else
-    KeyClient* keyClientObj_;
-#endif
     // Chunker type setting (FIX_SIZE_TYPE or VAR_SIZE_TYPE)
     int ChunkerType_;
     /*chunk size setting*/
@@ -58,11 +52,7 @@ private:
     std::ifstream& getChunkingFile();
 
 public:
-#if FINGERPRINTER_MODULE_ENABLE == 1
-    Chunker(std::string path, Fingerprinter* FingerprinterObjTemp);
-#else
     Chunker(std::string path, KeyClient* keyClientObjTemp);
-#endif
     ~Chunker();
     bool chunking();
     Recipe_t getRecipeHead();

@@ -41,12 +41,10 @@ private:
     double writeContainerTime = 0;
     int readContainerNumber = 0;
     uint64_t uniqueChunkNumber = 0;
-#if TRACE_DRIVEN_TEST == 1
     uint64_t notFoundChunkNumber = 0;
 #endif
-#endif
 
-#if MULTI_CLIENT_UPLOAD_TEST == 1
+#if MULTI_CLIENT_UPLOAD_TEST_MODE == 1
     std::mutex mutexContainerOperation_;
 #endif
 public:
