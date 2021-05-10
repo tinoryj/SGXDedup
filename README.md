@@ -87,6 +87,7 @@ chmod +x sgx_linux_x64_driver_2.6.0_4f5bb63.bin
 sudo ./sgx_linux_x64_driver_2.6.0_4f5bb63.bin
 sudo dpkg -i ./libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb
 ```
+
 Finally, we install the SDK and configure environment variables by following commands.
 
 ```shell
@@ -95,14 +96,14 @@ sudo ./sgx_linux_x64_sdk_2.7.100.4.bin
 source /opt/intel/sgxsdk/environment
 ```
 
-Note that the default installation path of the SDK is the current path where the SDK package is located. We enter `no` when selecting the installation path, and then give the installation path `/opt/intel` to make sure that the three software packages are installed in the same path.
+Note that the default installation path of the SDK is the current path where the SDK package is located. The install program will alert you with 'Do you want to install in current directory? [yes/no]'. Here we enter `no` when selecting the installation path, and then give the installation path `/opt/intel` to make sure that the three software packages are installed in the same path.
 
 #### Example to Install SGX SSL with Ubuntu 18.04 LTS
 
 First, we follow the steps of the official tutorial to install. In the first step, we decompress the downloaded intel-sgx-ssl package:
 
 ```shell
-unzip lin_2.5_1.1.1d.zip
+unzip intel-sgx-ssl-lin_2.5_1.1.1d.zip
 ```
 
 In the second step, we copy the source code compression package of OpenSSL to the `intel-sgx-ssl-lin_2.5_1.1.1d/openssl_source/`, and enter the `intel-sgx-ssl-lin_2.5_1.1.1d/Linux/`
@@ -125,7 +126,7 @@ After the execution is complete, intel-sgx-ssl will be installed in the `/opt/in
 ```shell
 cd /opt/intel/sgxssl/include
 sudo mv pthread.h sgxpthread.h
-sudo sed -i '415c #include \"sgxpthread\"' /opt/intel/sgxssl/include/openssl/crypto.h
+sudo sed -i '415c #include \"sgxpthread.h\"' /opt/intel/sgxssl/include/openssl/crypto.h
 ```
 
 These commands modify the imported `pthread.h` file name to avoid the compilation error of SGXDedup.
