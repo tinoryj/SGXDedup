@@ -1,10 +1,14 @@
 # Accelerating Encrypted Deduplication via SGX
 
+[toc]
+
 ## Introduction
 
 Encrypted deduplication preserves the deduplication effectiveness on encrypted data and is attractive for outsourced storage.  However, existing encrypted deduplication approaches build on expensive cryptographic primitives that incur substantial performance slowdown.  We present SGXDedup, which leverages Intel SGX to speed up encrypted deduplication based on server-aided message-locked encryption (MLE) while preserving security via SGX.  SGXDedup implements a suite of secure interfaces to execute MLE key generation and proof-of-ownership operations in SGX enclaves.  It also proposes various designs to support secure and efficient enclave operations.  Evaluation of synthetic and real-world workloads shows that SGXDedup achieves significant speedups and maintains high bandwidth and storage savings.
 
 ## Publication
+
+* Yanjing Ren, Jingwei Li, Zuoru Yang, Patrick P. C. Lee, and Xiaosong Zhang. Accelerating Encrypted Deduplication via SGX. In Proc of USENIX Annual Technical Conference (USENIX ATC 2021), July 2021.
 
 ## Prerequisites
 
@@ -22,30 +26,30 @@ After completes the registration, you can obtain the required EPID and subscript
 
 ![RA-Subscription](Docs/img/InkedRA-Subscription.jpg)
 
-### Dependent Packages List
+### List of Dependents and Documents
 
 Here we give the download and installation method of each dependency. At the same time, in the `Packages/` directory of this project, the pre-downloaded version is provided. At the same time, in the `Docs/Guides/` directory, we give all the third-party documentation mentioned in this configuration guide.
 
 #### Packages that need to be manually configured 
 
-1. Intel® Software Guard Extensions (Intel® SGX) driver version 2.6.0_4f5bb53 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_4f5bb63.bin)
-2. Intel® SGX platform software (Intel® SGX PSW) version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb)
-3. Intel® SGX SDK version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.100.4.bin)
-4. Intel® SGX SSL version lin_2.5_1.1.1d [Download Link](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip)
-5. OpenSSL version 1.1.1d [Donwload Link](https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz)
-6. The cmake module used to compile the sgx program in the cmake system: `FindSGX.cmake` [Download Link](https://github.com/xzhangxa/SGX-CMake/blob/master/cmake/FindSGX.cmake)
+1. Intel® Software Guard Extensions (Intel® SGX) driver version 2.6.0_4f5bb53 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_4f5bb63.bin), [Local Address](./Packages/sgx_linux_x64_driver_2.6.0_4f5bb63.bin)
+2. Intel® SGX platform software (Intel® SGX PSW) version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb), [Local Address](./Packages/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb)
+3. Intel® SGX SDK version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.100.4.bin), [Local Address](./Packages/sgx_linux_x64_sdk_2.7.100.4.bin)
+4. Intel® SGX SSL version lin_2.5_1.1.1d [Download Link](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip), [Local Address](./Packages/lin_2.5_1.1.1d.zip)
+5. OpenSSL version 1.1.1d [Donwload Link](https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz), [Local Address](./Packages/openssl-1.1.1d.tar.gz)
+6. The cmake module used to compile the SGX program in the cmake system: [Download Link](https://github.com/xzhangxa/SGX-CMake/blob/master/cmake/FindSGX.cmake), [Local Address](./Packages/FindSGX.cmake)
 
-#### Packages installed through package management tools such as `atp`
+#### Packages installed through the package management tool
 
-1. libssl-dev
-2. libcurl4-openssl-dev
-3. libprotobuf-dev
-4. libboost-all-dev
-5. libleveldb-dev
-6. libsnappy-dev
-7. build-essential
-8. cmake
-9. wget
+1. libssl-dev (For SGXDedup encryption algorithm)
+2. libcurl4-openssl-dev (Required by SGX packages)
+3. libprotobuf-dev (Required by SGX packages)
+4. libboost-all-dev (For SGXDedup multithreading, message transmission, etc.)
+5. libleveldb-dev (For SGXDedup deduplication index based on LevelDB)
+6. libsnappy-dev (Required by LevelDB)
+7. build-essential (Basic program compilation environment)
+8. cmake (CMake automated build framework)
+9. wget (System components used for remote attestation requests)
 
 #### Third-party Documents
 
@@ -135,11 +139,13 @@ These commands modify the imported `pthread.h` file name to avoid the compilatio
 
 ### Automatic Configuration
 
-In order to simplify the cumbersome installation and configuration process, we provide a one-step script for installation. After confirming that the hardware environment supports SGX and the operating system is Ubuntu 18.04LTS, execute the following script to complete all configuration tasks.
+To simplify the installation and configuration process, we provide a one-step script for installation. After confirming that the hardware environment supports SGX and the operating system is Ubuntu 18.04LTS, execute the following script to complete all configuration tasks.
 
 ```shell
 ./Scripts/environmentInstall.sh
 ```
+
+**Note that after the installation is complete, you may need to restart the device. After restarting, check whether the `isgx` device appears in the `/dev` directory. If it does not appear, please reinstall the SGX driver manually, and restart the computer again until the `isgx` device appears.**
 
 ## SGXDedup Running Guide
 
@@ -251,7 +257,7 @@ cp -r key/ bin/
 mkdir -p bin/Containers && mkdir -p bin/Recipes
 ```
 
-Alternatively, we provide a script for a quick build and clean up, and you can use it.
+Alternatively, we provide a script for a quick build and clean-up, and you can use it.
 
 ```shell
 chmod +x ./ShellScripts/*.sh
@@ -265,7 +271,7 @@ chmod +x ./ShellScripts/*.sh
 
 ### Usage
 
-You can test SGXDedup in a single machine, and connect the key manager, server (e.g., the cloud in the paper), and client instances via the local loopback interface. To this end, switch your current working directory to `bin/`, and start each instance in an independent terminal. Note that since the key enclave in the keymanager needs to perform remote attestation to the cloud before it can be used, the user needs to start the server (`server-sgx`) first, then start the keymanager (`keymanager-sgx`), and wait for `KeyServer : keyServer session key update done` log to appear on the keymanager before starting the client.
+You can test SGXDedup in a single machine, and connect the key manager, server (e.g., the cloud in the paper), and client instances via the local loopback interface. To this end, switch your current working directory to `bin/`, and start each instance in an independent terminal. Note that since the key enclave in the key manager needs to perform remote attestation to the cloud before it can be used, the user needs to start the server (`server-sgx`) first, then start the key manager (`keymanager-sgx`), and wait for `KeyServer : keyServer session key update done` log to appear on the key manager before starting the client.
 
 ```shell
 ./server-sgx

@@ -1,8 +1,9 @@
 #ifndef SGXDEDUP_SYSTEMSETTINGS_HPP
 #define SGXDEDUP_SYSTEMSETTINGS_HPP
 /* System Test Settings: 0-disable; 1-enable */
-#define SYSTEM_BREAK_DOWN 1 // Compute and output system modules process time infomation
-#define SYSTEM_DEBUG_FLAG 1 // Debug flag for modify and output each step's content in system
+#define SYSTEM_BREAK_DOWN 0 // Compute and output system modules process time infomation
+#define SYSTEM_DEBUG_FLAG 0
+ // Debug flag for modify and output each step's content in system
 #define OPENSSL_V_1_0_2 0 // Compat to old version openssl, which has different API with OpenSSL 1.1 series
 #define ENCLAVE_SEALED_INIT_ENABLE 1 // Whether to use the client pow enclave local startup function (if closed, remote authentication is required for each startup) 
 
