@@ -803,6 +803,7 @@ void DataSR::runKeyServerSessionKeyUpdate()
 #endif
     while (true) {
         if (!keyExchangeKeySetFlag_) {
+            cerr << "";
             continue;
         }
         if (keyServerSession_ != nullptr) {
