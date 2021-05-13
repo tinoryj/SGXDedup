@@ -1,5 +1,5 @@
 #include "retriever.hpp"
-#include "../pow/include/hexutil.h"
+#include "../enclave/include/hexutil.h"
 
 struct timeval timestartRetriever;
 struct timeval timeendRetriever;

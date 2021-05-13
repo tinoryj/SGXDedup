@@ -1,7 +1,7 @@
 #ifndef SGXDEDUP_DATASR_HPP
 #define SGXDEDUP_DATASR_HPP
 
-#include "../src/pow/include/powServer.hpp"
+#include "../src/enclave/include/powServer.hpp"
 #include "boost/bind.hpp"
 #include "boost/thread.hpp"
 #include "configure.hpp"

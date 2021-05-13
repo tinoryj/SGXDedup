@@ -9,7 +9,7 @@
 #define ENCLAVE_SEALED_INIT_ENABLE 1
 #define MULTI_CLIENT_UPLOAD_TEST 0
 #define TRACE_DRIVEN_TEST 1
-#define POW_TEST 1
+#define POW_TEST 0
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0

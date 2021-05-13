@@ -1,4 +1,4 @@
-#src/pow
+#src/enclave
 
 include_directories(include)
 

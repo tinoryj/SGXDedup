@@ -1,4 +1,4 @@
-#src/pow/utils
+#src/enclave/utils
 add_library(common common.cpp)
 add_library(logfile logfile.c)
 add_library(agent_wget agent_wget.cpp)

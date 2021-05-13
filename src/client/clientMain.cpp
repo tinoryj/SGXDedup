@@ -1,4 +1,4 @@
-#include "../pow/include/powClient.hpp"
+#include "../enclave/include/powClient.hpp"
 #include "chunker.hpp"
 #include "configure.hpp"
 #include "encoder.hpp"

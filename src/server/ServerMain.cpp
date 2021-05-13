@@ -1,4 +1,4 @@
-#include "../pow/include/powServer.hpp"
+#include "../enclave/include/powServer.hpp"
 #include "boost/thread.hpp"
 #include "configure.hpp"
 #include "dataSR.hpp"

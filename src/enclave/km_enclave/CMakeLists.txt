@@ -1,4 +1,4 @@
-# src/pow/km_enclave
+# src/enclave/km_enclave
 
 set(SGXOPENSSL_INCLUDE_PATH /opt/intel/sgxssl/include)
 set(SGXOPENSSL_LIBRARY_PATH /opt/intel/sgxssl/lib64)

@@ -1,4 +1,4 @@
-#src/pow/src
+#src/enclave/src
 
 #add_library(powClient powClient.cpp)
 #target_link_libraries(powClient enclave_untrusted ${SGX_U_LIBRARY_OBJ} sender)

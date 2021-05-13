@@ -13,9 +13,9 @@ set(LEVELDB_INCLUDE_PATH ../lib/leveldb/include)
 set(LEVELDB_LIBRARY_PATH ../lib/leveldb/)
 
 set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
-set(POW_INCLUDE_PATH pow/include)
+set(ENCLAVE_INCLUDE_PATH enclave/include)
 
-include_directories(${SGX_INCLUDE_PATH} ${POW_INCLUDE_PATH})
+include_directories(${SGX_INCLUDE_PATH} ${ENCLAVE_INCLUDE_PATH})
 include_directories(${ENCLAVE_INCLUDE_PATH} ${BOOST_INCLUDE_DIR} ${LEVELDB_INCLUDE_PATH} ../include)
 link_directories(${BOOST_LIBRARY_DIR} ${LEVELDB_LIBRARY_PATH} util)
 
@@ -47,7 +47,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 set(CMAKE_C_FLAGS_DEBUG "-Wall -std=c1x -g -ggdb -g2") 
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -std=c++17 -g -ggdb -g2 -fno-omit-frame-pointer -fsanitize=leak") #-fsanitize=leak 
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -std=c++17 -g -ggdb -g2 -fno-omit-frame-pointer -fsanitize=leak")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -std=c1x") 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -std=c++11")
 set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
@@ -60,7 +60,7 @@ SET (CMAKE_NM      "/usr/bin/llvm-nm")
 SET (CMAKE_OBJDUMP "/usr/bin/llvm-objdump")
 SET (CMAKE_RANLIB  "/usr/bin/llvm-ranlib")
 
-add_subdirectory(pow)
+add_subdirectory(enclave)
 add_subdirectory(client)
 add_subdirectory(server)
 add_subdirectory(keymanage)
