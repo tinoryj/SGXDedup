@@ -2,12 +2,8 @@
 #define SGXDEDUP_KEYCLIENT_HPP
 
 #include "configure.hpp"
-#if ENCODER_MODULE_ENABLED == 1
-#include "encoder.hpp"
-#else
 #include "enclaveSession.hpp"
 #include "powClient.hpp"
-#endif
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "messageQueue.hpp"
@@ -16,11 +12,7 @@
 class KeyClient {
 private:
     messageQueue<Data_t>* inputMQ_;
-#if ENCODER_MODULE_ENABLED == 1
-    Encoder* encoderObj_;
-#else
     powClient* powObj_;
-#endif
     CryptoPrimitive* cryptoObj_;
     int keyBatchSize_;
     ssl* keySecurityChannel_;
@@ -38,12 +30,7 @@ private:
 
 public:
     double keyExchangeEncTime = 0;
-
-#if ENCODER_MODULE_ENABLED == 1
-    KeyClient(Encoder* encoderObjTemp, u_char* keyExchangeKey);
-#else
     KeyClient(powClient* powObjTemp, u_char* keyExchangeKey);
-#endif
     KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber, int batchSize);
     ~KeyClient();
     bool outputKeyGenSimulatorRunningTime();

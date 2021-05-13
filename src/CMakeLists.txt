@@ -1,4 +1,7 @@
 #/
+set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
+list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
+find_package(SGX REQUIRED)
 
 find_package(Boost 1.36.0 REQUIRED COMPONENTS thread system serialization)
 if(Boost_FOUND)
@@ -12,8 +15,8 @@ set(OPENSSL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 set(SGX_INCLUDE_PATH /opt/intel/sgxsdk/include)
 set(ENCLAVE_INCLUDE_PATH enclave/include)
 
-include_directories(${SGX_INCLUDE_PATH} ${ENCLAVE_INCLUDE_PATH} ${BOOST_INCLUDE_DIR} ${LEVELDB_INCLUDE_PATH} ../include)
-link_directories(${BOOST_LIBRARY_DIR} ${LEVELDB_LIBRARY_PATH} util)
+include_directories(${SGX_INCLUDE_PATH} ${ENCLAVE_INCLUDE_PATH} ../include)
+link_directories(util)
 
 set(BOOST_LIBRARY_OBJ boost_thread boost_system boost_serialization)
 set(SYSTEM_LIBRARY_OBJ pthread rt dl)
@@ -28,9 +31,6 @@ set(SERVER_OBJ dataSR  dedupCore powServer storage kmServer)
 set(KEYSERVER_OBJ keyServer kmClient sgxErrorSupport)
 
 #-fno-builtin-memset
-set(CMAKE_MODULE_PATH /usr/share/cmake-3.10/Modules/)
-list(APPEND CMAKE_MODULE_PATH ${PATH_TO_FindSGX.cmake_FILE})
-find_package(SGX REQUIRED)
 
 set (CMAKE_SYSTEM_NAME Linux )
 if (NOT CMAKE_BUILD_TYPE)

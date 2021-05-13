@@ -49,9 +49,6 @@ void Encoder::run()
     long diff;
     double second;
     double encryptChunkContentTime = 0;
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
-    double encryptChunkKeyTime = 0;
-#endif //RECIPE_MANAGEMENT_METHOD
 #endif // SYSTEM_BREAK_DOWN
     bool JobDoneFlag = false;
     while (true) {
@@ -85,22 +82,6 @@ void Encoder::run()
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartEncoder, NULL);
 #endif
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
-                    u_char cipherKey[CHUNK_ENCRYPT_KEY_SIZE];
-                    bool encryptChunkKeyStatus = cryptoObj_->encryptWithKey(tempChunk.chunk.encryptKey, CHUNK_ENCRYPT_KEY_SIZE, cryptoObj_->chunkKeyEncryptionKey_, cipherKey);
-#if SYSTEM_BREAK_DOWN == 1
-                    gettimeofday(&timeendEncoder, NULL);
-                    diff = 1000000 * (timeendEncoder.tv_sec - timestartEncoder.tv_sec) + timeendEncoder.tv_usec - timestartEncoder.tv_usec;
-                    second = diff / 1000000.0;
-                    encryptChunkKeyTime += second;
-#endif
-                    if (!encryptChunkKeyStatus) {
-                        cerr << "Encoder : cryptoPrimitive error, encrypt chunk key error" << endl;
-                        return;
-                    } else {
-                        memcpy(tempChunk.chunk.encryptKey, cipherKey, CHUNK_ENCRYPT_KEY_SIZE);
-                    }
-#endif
                     powObj_->insertMQ(tempChunk);
                 }
             }
@@ -114,9 +95,6 @@ void Encoder::run()
     }
 #if SYSTEM_BREAK_DOWN == 1
     cout << "Encoder : chunk content encryption work time = " << encryptChunkContentTime << " s" << endl;
-#if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
-    cout << "Encoder : chunk key encryption work time = " << encryptChunkKeyTime << " s" << endl;
-#endif
 #endif
     return;
 }

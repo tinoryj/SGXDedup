@@ -25,30 +25,6 @@ void PRINT_BYTE_ARRAY_KEY_CLIENT(
     fprintf(file, "0x%x ", array[i]);
     fprintf(file, "\n}\n");
 }
-#if ENCODER_MODULE_ENABLED == 1
-
-KeyClient::KeyClient(Encoder* encoderobjTemp, u_char* keyExchangeKey)
-{
-    inputMQ_ = new messageQueue<Data_t>;
-    encoderObj_ = encoderobjTemp;
-    cryptoObj_ = new CryptoPrimitive();
-    keyBatchSize_ = (int)config.getKeyBatchSize();
-    memcpy(keyExchangeKey_, keyExchangeKey, KEY_SERVER_SESSION_KEY_SIZE);
-    keySecurityChannel_ = new ssl(config.getKeyServerIP(), config.getKeyServerPort(), CLIENTSIDE);
-    sslConnection_ = keySecurityChannel_->sslConnect().second;
-    clientID_ = config.getClientID();
-#if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
-    bool initStatus = initClientCTRInfo();
-    if (initStatus != true) {
-        cerr << "KeyClient : init to key server error, client exit" << endl;
-        exit(0);
-    } else {
-        cerr << "KeyClient : init to key server success" << endl;
-    }
-#endif
-}
-
-#else
 
 KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
 {
@@ -61,7 +37,6 @@ KeyClient::KeyClient(powClient* powObjTemp, u_char* keyExchangeKey)
     sslConnection_ = keySecurityChannel_->sslConnect().second;
     clientID_ = config.getClientID();
 }
-#endif
 
 KeyClient::KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNumber, int batchSize)
 {
@@ -409,8 +384,6 @@ void KeyClient::runKeyGenSimulator(int clientID)
             counter += batchNumber * 4;
 #elif KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CFB
             bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection, cryptoObj);
-#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SERVER_MLE_NO_OPRF
-            bool keyExchangeStatus = keyExchange(chunkHash, batchNumber, chunkKey, batchedKeySize, keySecurityChannel, sslConnection);
 #endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendKeySimulator, NULL);
@@ -480,9 +453,6 @@ void KeyClient::run()
 #if SYSTEM_BREAK_DOWN == 1
     double keyGenTime = 0;
     double chunkContentEncryptionTime = 0;
-#if FINGERPRINTER_MODULE_ENABLE == 0
-    double generatePlainChunkHashTime = 0;
-#endif // FINGERPRINTER_MODULE_ENABLE
     long diff;
     double second;
 #endif // SYSTEM_BREAK_DOWN
@@ -513,36 +483,16 @@ void KeyClient::run()
         }
         if (extractMQ(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-#if ENCODER_MODULE_ENABLED == 1
-                encoderObj_->insertMQ(tempChunk);
-#else
                 powObj_->insertMQ(tempChunk);
-#endif
                 continue;
             }
             batchList.push_back(tempChunk);
-#if FINGERPRINTER_MODULE_ENABLE == 0
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timestartKey, NULL);
-#endif
-            bool generatePlainChunkHashStatus = cryptoObj_->generateHash(tempChunk.chunk.logicData, tempChunk.chunk.logicDataSize, tempChunk.chunk.chunkHash);
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timeendKey, NULL);
-            diff = 1000000 * (timeendKey.tv_sec - timestartKey.tv_sec) + timeendKey.tv_usec - timestartKey.tv_usec;
-            second = diff / 1000000.0;
-            generatePlainChunkHashTime += second;
-#endif
-#endif
             memcpy(chunkHash + batchNumber * CHUNK_HASH_SIZE, tempChunk.chunk.chunkHash, CHUNK_HASH_SIZE);
             batchNumber++;
         }
         if (batchNumber == keyBatchSize_ || JobDoneFlag) {
             if (batchNumber == 0) {
-#if ENCODER_MODULE_ENABLED == 1
-                bool editJobDoneFlagStatus = encoderObj_->editJobDoneFlag();
-#else
                 bool editJobDoneFlagStatus = powObj_->editJobDoneFlag();
-#endif
                 if (!editJobDoneFlagStatus) {
                     cerr << "KeyClient : error to set job done flag for encoder" << endl;
                 }
@@ -576,9 +526,6 @@ void KeyClient::run()
                     cerr << "KeyClient : chunk " << batchList[i].chunk.ID << ", encrypt key = " << endl;
                     PRINT_BYTE_ARRAY_KEY_CLIENT(stdout, batchList[i].chunk.encryptKey, 32);
 #endif
-#if ENCODER_MODULE_ENABLED == 1
-                    encoderObj_->insertMQ(batchList[i]);
-#else
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartKey, NULL);
 #endif
@@ -596,13 +543,7 @@ void KeyClient::run()
                     } else {
                         memcpy(batchList[i].chunk.logicData, ciphertext, batchList[i].chunk.logicDataSize);
                     }
-#if ENCODER_MODULE_ENABLED == 1
-                    encoderObj_->insertMQ(batchList[i]);
-#else
                     powObj_->insertMQ(batchList[i]);
-#endif
-
-#endif
                 }
                 batchList.clear();
                 memset(chunkHash, 0, CHUNK_HASH_SIZE * keyBatchSize_);
@@ -611,11 +552,7 @@ void KeyClient::run()
             }
         }
         if (JobDoneFlag) {
-#if ENCODER_MODULE_ENABLED == 1
-            bool editJobDoneFlagStatus = encoderObj_->editJobDoneFlag();
-#else
             bool editJobDoneFlagStatus = powObj_->editJobDoneFlag();
-#endif
             if (!editJobDoneFlagStatus) {
                 cerr << "KeyClient : error to set job done flag for encoder" << endl;
             }
@@ -623,17 +560,12 @@ void KeyClient::run()
         }
     }
 #if SYSTEM_BREAK_DOWN == 1
-#if FINGERPRINTER_MODULE_ENABLE == 0
-    cout << "KeyClient : plain chunk hash generate time = " << generatePlainChunkHashTime << " s" << endl;
-#endif
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     cout << "KeyClient : key exchange mask generate work time = " << keyExchangeMaskGenerateTime << " s" << endl;
 #endif
     cout << "KeyClient : key exchange encrypt/decrypt work time = " << keyExchangeEncTime << " s" << endl;
     cout << "KeyClient : key generate total work time = " << keyGenTime << " s" << endl;
-#if ENCODER_MODULE_ENABLED == 0
     cout << "KeyClient : chunk encryption work time = " << chunkContentEncryptionTime << " s" << endl;
-#endif
 #endif
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     bool saveStatus = saveClientCTRInfo();
@@ -907,58 +839,6 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
     //     mutexkeyGenerateSimulatorEncTime_.unlock();
     // #endif
     return true;
-}
-
-#elif KEY_GEN_METHOD_TYPE == KEY_GEN_SERVER_MLE_NO_OPRF
-
-bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber)
-{
-    if (!keySecurityChannel_->send(sslConnection_, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "KeyClient: send socket error" << endl;
-        return false;
-    }
-    u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
-    int recvSize;
-    if (!keySecurityChannel_->recv(sslConnection_, (char*)recvBuffer, recvSize)) {
-        cerr << "KeyClient: recv socket error" << endl;
-        return false;
-    }
-    if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
-        return false;
-    }
-    batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
-    if (batchkeyNumber == batchNumber) {
-        memcpy(batchKeyList, recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE);
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batchKeyList, int& batchkeyNumber, ssl* securityChannel, SSL* sslConnection)
-{
-    if (!securityChannel->send(sslConnection, (char*)batchHashList, CHUNK_HASH_SIZE * batchNumber)) {
-        cerr << "KeyClient: send socket error" << endl;
-        return false;
-    }
-    u_char recvBuffer[CHUNK_ENCRYPT_KEY_SIZE * batchNumber];
-    int recvSize;
-    if (!securityChannel->recv(sslConnection, (char*)recvBuffer, recvSize)) {
-        cerr << "KeyClient: recv socket error" << endl;
-        return false;
-    }
-    if (recvSize % CHUNK_ENCRYPT_KEY_SIZE != 0) {
-        cerr << "KeyClient: recv size % CHUNK_ENCRYPT_KEY_SIZE not equal to 0" << endl;
-        return false;
-    }
-    batchkeyNumber = recvSize / CHUNK_ENCRYPT_KEY_SIZE;
-    if (batchkeyNumber == batchNumber) {
-        memcpy(batchKeyList, recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE);
-        return true;
-    } else {
-        return false;
-    }
 }
 #endif
 
