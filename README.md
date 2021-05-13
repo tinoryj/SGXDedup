@@ -141,7 +141,7 @@ To simplify the installation and configuration process, we provide a one-step sc
 
 ```shell
 chmod +x Scripts/environmentInstall.sh
-./Scripts/environmentInstall.sh
+sudo ./Scripts/environmentInstall.sh
 ```
 
 **Note that after the installation is complete, you may need to restart the device. After restarting, check whether the `isgx` device appears in the `/dev` directory. If it does not appear, please reinstall the SGX driver manually, and restart the computer again until the `isgx` device appears.**
