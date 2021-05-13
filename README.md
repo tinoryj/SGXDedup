@@ -12,12 +12,12 @@ Encrypted deduplication preserves the deduplication effectiveness on encrypted d
 
 SGXDedup is tested on a machine that equips with a Gigabyte B250M-D3H motherboard and an Intel i5-7400 CPU and runs Ubuntu 18.04.5 LTS.
 
-Before running SGXDedup, check if your machine supports SGX. If there is an option as `SGX` or `Intel Software Guard Extensions` in BIOS, then enable the option; otherwise your machine does not support SGX. 
+Before running SGXDedup, check if your machine supports SGX. If there is an option as `SGX` or `Intel Software Guard Extensions` in BIOS, then enable the option; otherwise your machine does not support SGX.
 We strongly recommend to find the SGX-supported device in the [SGX hardware list](https://github.com/ayeks/SGX-hardware).
 
 ### Registration
 
-SGXDedup uses EPID-based remote attestation, and you need to register an EPID at the [EPID attestation page](https://api.portal.trustedservices.intel.com/EPID-attestation). Then, you can find your SPID and the corresponding subscription keys (both the primary and the secondary keys) at the [products page](https://api.portal.trustedservices.intel.com/products). Our test uses the `DEV Intel® Software Guard Extensions Attestation Service (Unlinkable)` product.
+SGXDedup uses EPID-based remote attestation, and you need to register at the [EPID attestation page](https://api.portal.trustedservices.intel.com/EPID-attestation). Then, you can find your SPID and the corresponding subscription keys (both the primary and the secondary keys) at the [products page](https://api.portal.trustedservices.intel.com/products). Our test uses the `DEV Intel® Software Guard Extensions Attestation Service (Unlinkable)` product.
 
 
 ### Dependencies
