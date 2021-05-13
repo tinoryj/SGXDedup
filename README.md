@@ -34,16 +34,16 @@ After completes the registration, you can obtain the required EPID and subscript
 
 ### List of Dependents and Documents
 
-Here we give the download and installation method of each dependency. At the same time, in the `Packages/` directory of this project, the pre-downloaded version is provided. At the same time, in the `Docs/Guides/` directory, we give all the third-party documentation mentioned in this configuration guide.
+Here we give the download and installation method of each dependency. At the same time, in the `Docs/Guides/` directory, we give all the third-party documentation mentioned in this configuration guide.
 
 #### Packages that need to be manually configured 
 
-1. Intel® Software Guard Extensions (Intel® SGX) driver version 2.6.0_4f5bb53 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_4f5bb63.bin), [Local Address](./Packages/sgx_linux_x64_driver_2.6.0_4f5bb63.bin)
-2. Intel® SGX platform software (Intel® SGX PSW) version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb), [Local Address](./Packages/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb)
-3. Intel® SGX SDK version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.100.4.bin), [Local Address](./Packages/sgx_linux_x64_sdk_2.7.100.4.bin)
-4. Intel® SGX SSL version lin_2.5_1.1.1d [Download Link](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip), [Local Address](./Packages/lin_2.5_1.1.1d.zip)
-5. OpenSSL version 1.1.1d [Donwload Link](https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz), [Local Address](./Packages/openssl-1.1.1d.tar.gz)
-6. The cmake module used to compile the SGX program in the cmake system: [Download Link](https://github.com/xzhangxa/SGX-CMake/blob/master/cmake/FindSGX.cmake), [Local Address](./Packages/FindSGX.cmake)
+1. Intel® Software Guard Extensions (Intel® SGX) driver version 2.6.0_4f5bb53 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_4f5bb63.bin)
+2. Intel® SGX platform software (Intel® SGX PSW) version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/libsgx-enclave-common_2.7.100.4-bionic1_amd64.deb)
+3. Intel® SGX SDK version 2.7.100.4 [Download Link](https://download.01.org/intel-sgx/sgx-linux/2.7/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.100.4.bin)
+4. Intel® SGX SSL version lin_2.5_1.1.1d [Download Link](https://github.com/intel/intel-sgx-ssl/archive/refs/tags/lin_2.5_1.1.1d.zip)
+5. OpenSSL version 1.1.1d [Donwload Link](https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz)
+6. The cmake module used to compile the SGX program in the cmake system: [Download Link](https://github.com/xzhangxa/SGX-CMake/blob/master/cmake/FindSGX.cmake)
 
 #### Packages installed through the package management tool
 
