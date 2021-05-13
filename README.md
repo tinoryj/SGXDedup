@@ -1,12 +1,4 @@
-# DedupSGX
-## Introduction
-## System Design
-## Installation Guide
-
-#### Message Queue
-* [Read Wtire Queue](https://github.com/cameron314/readerwriterqueue)
-
-## Uasge Samples# Accelerating Encrypted Deduplication via SGX
+# Accelerating Encrypted Deduplication via SGX
 
 ## Introduction
 
@@ -148,6 +140,7 @@ These commands modify the imported `pthread.h` file name to avoid the compilatio
 To simplify the installation and configuration process, we provide a one-step script for installation. After confirming that the hardware environment supports SGX and the operating system is Ubuntu 18.04LTS, execute the following script to complete all configuration tasks.
 
 ```shell
+chmod +x Scripts/environmentInstall.sh
 ./Scripts/environmentInstall.sh
 ```
 
@@ -183,7 +176,7 @@ SGXDedup is configured based on JSON. You can change its configuration without r
         "_keyRegressionIntervals": 25920000 // Time interval for key regression (Unit: seconds), used for key enclave. Should be consistent with "server._keyRegressionIntervals"
     },
     "SPConfig": {
-        "_storageServerIP": [
+        "_storageServerIScriptsP": [
             "127.0.0.1"
         ], // Storage server host IP
         "_storageServerPort": [
@@ -266,13 +259,13 @@ mkdir -p bin/Containers && mkdir -p bin/Recipes
 Alternatively, we provide a script for a quick build and clean-up, and you can use it.
 
 ```shell
-chmod +x ./ShellScripts/*.sh
+chmod +x ./Scripts/*.sh
 # Build SGXDedup in release mode
-./ShellScripts/buildReleaseMode.sh
+./Scripts/buildReleaseMode.sh
 # Build SGXDedup in debug mode
-./ShellScripts/buildDebugMode.sh
+./Scripts/buildDebugMode.sh
 # Clean up build result
-./ShellScripts/cleanBuild.sh
+./Scripts/cleanBuild.sh
 ```
 
 ### Usage
@@ -291,8 +284,8 @@ SGXDedup provides store and restores interfaces to clients.
 
 ```shell
 # store file
-./client -s file
+./client-sgx -s file
 
 # restore file
-./client -r file
+./client-sgx -r file
 ```
