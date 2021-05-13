@@ -1,9 +1,6 @@
 #ifndef SGXDEDUP_STORAGECORE_HPP
 #define SGXDEDUP_STORAGECORE_HPP
 
-#if STORAGE_CORE_READ_CACHE == 1
-#include "cache.hpp"
-#endif
 #include "configure.hpp"
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
@@ -55,9 +52,6 @@ private:
 public:
     StorageCore();
     ~StorageCore();
-#if STORAGE_CORE_READ_CACHE == 1
-    Cache containerCache;
-#endif
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
     bool saveChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool saveRecipe(std::string recipeName, Recipe_t recipeHead, RecipeList_t recipeList, bool status);

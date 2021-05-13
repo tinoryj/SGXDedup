@@ -82,9 +82,7 @@ void powClient::run()
         }
         if (extractMQ(tempChunk)) {
             if (tempChunk.dataType == DATA_TYPE_RECIPE) {
-#if POW_TEST == 0
                 senderObj_->insertMQ(tempChunk);
-#endif
                 continue;
             } else {
                 batchChunk.push_back(tempChunk);
@@ -148,7 +146,6 @@ void powClient::run()
                 PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, CHUNK_HASH_SIZE);
                 break;
             } else {
-#if POW_TEST == 0
                 int totalNeedChunkNumber;
                 memcpy(&totalNeedChunkNumber, serverResponse, sizeof(int));
                 bool requiredChunksList[currentBatchChunkNumber];
@@ -165,7 +162,6 @@ void powClient::run()
                 for (int i = 0; i < batchChunkSize; i++) {
                     senderObj_->insertMQ(batchChunk[i]);
                 }
-#endif
             }
             currentBatchChunkNumber = 0;
             currentBatchSize = 0;
@@ -528,10 +524,8 @@ powClient::powClient(Sender* senderObjTemp)
 
 powClient::~powClient()
 {
-#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
-#endif
     delete cryptoObj_;
 #if ENCLAVE_SEALED_INIT_ENABLE == 1
     if (startMethod_ == 2) {

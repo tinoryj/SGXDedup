@@ -79,10 +79,8 @@ KeyClient::KeyClient(u_char* keyExchangeKey, int threadNumber, uint64_t keyGenNu
 KeyClient::~KeyClient()
 {
     delete cryptoObj_;
-#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
-#endif
 }
 
 bool KeyClient::outputKeyGenSimulatorRunningTime()

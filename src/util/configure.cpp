@@ -23,12 +23,10 @@ void Configure::readConf(std::string path)
     _maxChunkSize = root.get<uint64_t>("ChunkerConfig._maxChunkSize");
     _minChunkSize = root.get<uint64_t>("ChunkerConfig._minChunkSize");
     _slidingWinSize = root.get<uint64_t>("ChunkerConfig._slidingWinSize");
-    _segmentSize = root.get<uint64_t>("ChunkerConfig._segmentSize");
     _averageChunkSize = root.get<uint64_t>("ChunkerConfig._avgChunkSize");
     _ReadSize = root.get<uint64_t>("ChunkerConfig._ReadSize");
 
     //Key Server Congigure
-    _keyServerNumber = root.get<uint64_t>("KeyServerConfig._keyServerNumber");
     _keyEnclaveThreadNumber = root.get<uint64_t>("KeyServerConfig._keyEnclaveThreadNumber");
     _keyBatchSize = root.get<uint64_t>("KeyServerConfig._keyBatchSize");
     _keyServerRArequestPort = root.get<int>("KeyServerConfig._keyServerRArequestPort");
@@ -44,7 +42,6 @@ void Configure::readConf(std::string path)
     _keyRegressionIntervals = root.get<uint32_t>("KeyServerConfig._keyRegressionIntervals");
 
     //SP Configure
-    _storageServerNumber = root.get<uint64_t>("SPConfig._storageServerNumber");
     _maxContainerSize = root.get<uint64_t>("SPConfig._maxContainerSize");
     _storageServerIP.clear();
     for (ptree::value_type& it : root.get_child("SPConfig._storageServerIP")) {
@@ -121,23 +118,12 @@ uint64_t Configure::getSlidingWinSize()
     return _slidingWinSize;
 }
 
-uint64_t Configure::getSegmentSize()
-{
-
-    return _segmentSize;
-}
-
 uint64_t Configure::getReadSize()
 {
     return _ReadSize;
 }
 
 // key management settings
-uint64_t Configure::getKeyServerNumber()
-{
-    return _keyServerNumber;
-}
-
 uint64_t Configure::getKeyEnclaveThreadNumber()
 {
     return _keyEnclaveThreadNumber;
@@ -186,12 +172,6 @@ uint32_t Configure::getKeyRegressionIntervals()
     return _keyRegressionIntervals;
 }
 // storage management settings
-uint64_t Configure::getStorageServerNumber()
-{
-
-    return _storageServerNumber;
-}
-
 std::string Configure::getStorageServerIP()
 {
 

@@ -39,19 +39,8 @@ bool DedupCore::dedupByHash(u_char* inputHashList, int chunkNumber, bool* out, i
         if (fp2ChunkDBQueryStatus) {
             continue;
         } else {
-#if STORAGE_SERVER_VERIFY_UPLOAD == 1
-            string dbValue = "";
-            bool status = fp2ChunkDB.insert(in.hash_[i], dbValue);
-            if (status) {
-                out[i] = true;
-            } else {
-                cerr << "DedupCore : dedup by hash error at chunk " << i << endl;
-                return false;
-            }
-#else
             out[i] = true;
             requiredChunkNumber++;
-#endif
         }
     }
     return true;

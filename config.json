@@ -5,12 +5,10 @@
 		"_avgChunkSize": 8192,
 		"_maxChunkSize": 16384,
 		"_slidingWinSize": 256,
-		"_ReadSize": 256,
-		"_segmentSize": 0
+		"_ReadSize": 256
 	},
 	"KeyServerConfig": {
 		"_keyBatchSize": 4096,
-		"_keyServerNumber": 1,
 		"_keyEnclaveThreadNumber": 1,
 		"_keyServerRArequestPort": 1559,
 		"_keyServerIP": [
@@ -23,7 +21,6 @@
 		"_keyRegressionIntervals": 25920000
 	},
 	"SPConfig": {
-		"_storageServerNumber": 1,
 		"_storageServerIP": [
 			"127.0.0.1"
 		],

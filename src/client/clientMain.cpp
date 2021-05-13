@@ -287,11 +287,10 @@ int main(int argv, char* argc[])
         th = new boost::thread(attrs, boost::bind(&powClient::run, powClientObj));
         thList.push_back(th);
 
-#if POW_TEST == 0
         //start sender thread
         th = new boost::thread(attrs, boost::bind(&Sender::run, senderObj));
         thList.push_back(th);
-#endif
+        
         for (auto it : thList) {
             it->join();
         }

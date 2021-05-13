@@ -86,10 +86,8 @@ RecvDecode::~RecvDecode()
     delete dataSecurityChannel_;
     delete powSecurityChannel_;
     delete cryptoObj_;
-#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     outPutMQ_->~messageQueue();
     delete outPutMQ_;
-#endif
 }
 
 bool RecvDecode::recvFileHead(Recipe_t& fileRecipe, u_char* fileNameHash)

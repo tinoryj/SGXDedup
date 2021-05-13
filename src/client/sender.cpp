@@ -45,10 +45,8 @@ Sender::~Sender()
     delete dataSecurityChannel_;
     delete powSecurityChannel_;
     delete cryptoObj_;
-#if QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_SPSC_QUEUE || QUEUE_TYPE == QUEUE_TYPE_LOCKFREE_QUEUE
     inputMQ_->~messageQueue();
     delete inputMQ_;
-#endif
 }
 
 #if RECIPE_MANAGEMENT_METHOD == ENCRYPT_ONLY_KEY_RECIPE_FILE
@@ -320,9 +318,7 @@ bool Sender::sendEnclaveSignedHash(u_char* clientMac, u_char* hashList, int requ
     memcpy(&respondBody, respondBuffer, sizeof(NetworkHeadStruct_t));
     status = respondBody.messageType;
     if (status == SUCCESS) {
-#if POW_TEST == 0
         memcpy(respond, respondBuffer + sizeof(NetworkHeadStruct_t), sizeof(int) + sizeof(bool) * requestNumber);
-#endif
         return true;
     } else {
         return false;

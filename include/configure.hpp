@@ -17,11 +17,9 @@ private:
     uint64_t _minChunkSize;
     uint64_t _averageChunkSize;
     uint64_t _slidingWinSize;
-    uint64_t _segmentSize; // if exist segment function
     uint64_t _ReadSize; //128M per time
 
     // key management settings
-    uint64_t _keyServerNumber;
     uint64_t _keyEnclaveThreadNumber;
     std::vector<std::string> _keyServerIP;
     std::vector<int> _keyServerPort;
@@ -52,7 +50,6 @@ private:
     std::string _KMSecSubscriptionKey;
 
     // storage management settings
-    uint64_t _storageServerNumber;
     std::vector<std::string> _storageServerIP;
     std::vector<int> _storageServerPort;
     uint64_t _maxContainerSize;
