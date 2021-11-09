@@ -23,12 +23,13 @@ void PRINT_BYTE_ARRAY_DATA_SR(
     fprintf(file, "\n}\n");
 }
 
-DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp)
+DataSR::DataSR(StorageCore* storageObj, DedupCore* dedupCoreObj, powServer* powServerObj, kmServer* kmServerObj, ssl* powSecurityChannelTemp, ssl* dataSecurityChannelTemp)
 {
     restoreChunkBatchNumber_ = config.getSendChunkBatchSize();
     storageObj_ = storageObj;
     dedupCoreObj_ = dedupCoreObj;
     powServerObj_ = powServerObj;
+    kmServerObj_ = kmServerObj;
     keyExchangeKeySetFlag_ = false;
     powSecurityChannel_ = powSecurityChannelTemp;
     dataSecurityChannel_ = dataSecurityChannelTemp;
@@ -669,8 +670,7 @@ void DataSR::runKeyServerRemoteAttestation()
             time_t timep;
             time(&timep);
             cout << asctime(gmtime(&timep));
-            kmServer server(sslRAListen, sslRAListenConnection);
-            keyServerSession_ = server.authkm();
+            keyServerSession_ = kmServerObj_->authkm(sslRAListen, sslRAListenConnection);
             if (keyServerSession_ != nullptr) {
                 cerr << "DataSR : keyServer enclave trusted" << endl;
                 keyExchangeKeySetFlag_ = true;

@@ -10,14 +10,14 @@
 #include <bits/stdc++.h>
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
-#define KEYMANGER_PRIVATE_KEY "key/sslKeys/server-key.pem"
+#define KEYMANGER_PRIVATE_KEY "key/sslKeys/server_rsa_private.pem"
 
 class keyServer {
 private:
     RSA* rsa_;
     BIO* key_;
     const BIGNUM *keyN_, *keyD_;
-    kmClient* client;
+    kmClient* keyEnclaveHost_;
     std::mutex multiThreadMutex_;
     std::mutex multiThreadCountMutex_;
     std::mutex clientThreadNumberCountMutex_;
@@ -30,6 +30,7 @@ private:
     bool offlineGenerateFlag_ = false;
 #endif
     ssl* keySecurityChannel_;
+
 public:
     keyServer(ssl* keySecurityChannelTemp);
     ~keyServer();

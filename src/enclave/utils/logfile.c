@@ -29,17 +29,17 @@ FILE* create_logfile(const char* filename)
     FILE* fp;
 
 #ifdef _WIN32
-    if (fopen_s(&fp, filename, "w") != 0) {
-        fprintf(stderr, "fopen_s: ");
+        if (fopen_s(&fp, filename, "w") != 0) {
+            fprintf(stderr, "fopen_s: ");
 #else
-    if ((fp = fopen(filename, "w")) == NULL) {
-        fprintf(stderr, "fopen: ");
+        if ((fp = fopen(filename, "w")) == NULL) {
+            fprintf(stderr, "fopen: ");
 #endif
-        perror(filename);
-        exit(1);
-    }
+                perror(filename);
+                exit(1);
+        }
 
-    return fp;
+        return fp;
 }
 
 void close_logfile(FILE* fp)

@@ -16,7 +16,9 @@
 #include "sgx_urts.h"
 #include "types.h"
 #include <bits/stdc++.h>
-#include <sgx_uae_service.h>
+#include <sgx_uae_epid.h>
+#include <sgx_uae_launch.h>
+#include <sgx_uae_quote_ex.h>
 #include <sgx_ukey_exchange.h>
 
 //server public key

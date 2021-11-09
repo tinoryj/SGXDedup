@@ -8,6 +8,7 @@
 #include "cryptoPrimitive.hpp"
 #include "dataStructure.hpp"
 #include "enclaveSession.hpp"
+#include "hexutil.h"
 #include "iasrequest.h"
 #include "json.hpp"
 #include "messageQueue.hpp"

@@ -15,25 +15,18 @@ in the License.
 
 */
 
-#ifndef __HEXUTIL__H
-#define __HEXUTIL__H
-
-#include <stdio.h>
-#include <sys/types.h>
+#ifndef _QUOTE_SIZE_H
+#define _QUOTE_SIZE_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int from_hexstring(unsigned char* dest, const void* src, size_t len);
-
-void print_hexstring(FILE* fp, const void* src, size_t len);
-void print_hexstring_nl(FILE* fp, const void* src, size_t len);
-
-const char* hexstring(const void* src, size_t len);
+int get_quote_size(sgx_status_t *status, uint32_t *quote_size);
 
 #ifdef __cplusplus
 };
 #endif
 
 #endif
+

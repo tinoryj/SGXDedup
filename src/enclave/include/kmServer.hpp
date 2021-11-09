@@ -5,18 +5,19 @@
 #ifndef SGXDEDUP_KMSERVER_HPP
 #define SGXDEDUP_KMSERVER_HPP
 
-#include "../../../include/configure.hpp"
-#include "../../../include/cryptoPrimitive.hpp"
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
-#include "../../../include/ssl.hpp"
 #include "base64.h"
 #include "byteorder.h"
+#include "configure.hpp"
 #include "crypto.h"
+#include "cryptoPrimitive.hpp"
 #include "enclaveSession.hpp"
+#include "hexutil.h"
 #include "iasrequest.h"
 #include "json.hpp"
+#include "messageQueue.hpp"
+#include "protocol.hpp"
 #include "sgx_quote.h"
+#include "ssl.hpp"
 #include <iostream>
 
 #define CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
@@ -68,12 +69,10 @@ private:
     bool derive_kdk(EVP_PKEY* Gb, unsigned char kdk[16], sgx_ec256_public_t g_a);
     bool get_sigrl(sgx_epid_group_id_t gid, char* sig_rl, uint32_t* sig_rl_size);
     bool get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc_t secprop, ra_msg4_t* msg4);
-    ssl* raSecurityChannel_;
-    SSL* sslConnection_;
 
 public:
-    kmServer(ssl* raSecurityChannel, SSL* sslConnection);
-    enclaveSession* authkm();
+    kmServer();
+    enclaveSession* authkm(ssl* raSecurityChannel, SSL* sslConnection);
 };
 
 #endif //SGXDEDUP_KMSERVER_HPP

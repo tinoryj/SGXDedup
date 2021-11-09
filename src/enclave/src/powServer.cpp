@@ -1,5 +1,7 @@
 #include "powServer.hpp"
-#include "sgx_uae_service.h"
+#include <sgx_uae_epid.h>
+#include <sgx_uae_launch.h>
+#include <sgx_uae_quote_ex.h>
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
 // -A AttestationReportSigningCACert.pem -C client.crt

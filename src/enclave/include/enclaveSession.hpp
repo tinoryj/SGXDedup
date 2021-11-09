@@ -1,17 +1,17 @@
 #ifndef SGXDEDUP_ENCLAVESESSION_HPP
 #define SGXDEDUP_ENCLAVESESSION_HPP
 
-#include "../../../include/configure.hpp"
-#include "../../../include/cryptoPrimitive.hpp"
-#include "../../../include/messageQueue.hpp"
-#include "../../../include/protocol.hpp"
-#include "../../../include/ssl.hpp"
 #include "base64.h"
 #include "byteorder.h"
+#include "configure.hpp"
 #include "crypto.h"
+#include "cryptoPrimitive.hpp"
 #include "enclaveSession.hpp"
 #include "iasrequest.h"
 #include "json.hpp"
+#include "messageQueue.hpp"
+#include "protocol.hpp"
+#include "ssl.hpp"
 #include <iostream>
 
 struct sgx_msg01_t {

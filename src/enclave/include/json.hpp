@@ -1,5 +1,10 @@
-#ifndef POW_JSON
-#define POW_JSON
+/**********************************************************************************
+* Obtained from https://github.com/nbsdx/SimpleJSON , under the terms of the WTFPL.
+***********************************************************************************/
+#ifndef SGX_JSON_H
+#define SGX_JSON_H
+
+#pragma once
 
 #include <cctype>
 #include <cmath>
@@ -55,7 +60,7 @@ namespace {
                 output += str[i];
                 break;
             }
-        return output;
+        return std::move(output);
     }
 }
 
@@ -270,7 +275,7 @@ public:
         return ret;
     }
 
-    static JSON Load(const string&);
+    static JSON Load(const string& str);
 
     template <typename T>
     void append(T arg)
@@ -385,12 +390,12 @@ public:
     string ToString() const
     {
         bool b;
-        return ToString(b);
+        return std::move(ToString(b));
     }
     string ToString(bool& ok) const
     {
         ok = (Type == Class::String);
-        return ok ? json_escape(*Internal.String) : string("");
+        return ok ? std::move(json_escape(*Internal.String)) : string("");
     }
 
     double ToFloat() const
@@ -564,6 +569,30 @@ private:
 };
 
 namespace {
+    JSON Array()
+    {
+        return std::move(JSON::Make(JSON::Class::Array));
+    }
+
+    template <typename... T>
+    JSON Array(T... args)
+    {
+        JSON arr = JSON::Make(JSON::Class::Array);
+        arr.append(args...);
+        return std::move(arr);
+    }
+
+    JSON Object()
+    {
+        return std::move(JSON::Make(JSON::Class::Object));
+    }
+
+    std::ostream& operator<<(std::ostream& os, const JSON& json)
+    {
+        os << json.dump();
+        return os;
+    }
+
     JSON parse_next(const string&, size_t&);
 
     void consume_ws(const string& str, size_t& offset)
@@ -580,7 +609,7 @@ namespace {
         consume_ws(str, offset);
         if (str[offset] == '}') {
             ++offset;
-            return Object;
+            return std::move(Object);
         }
 
         while (true) {
@@ -607,7 +636,7 @@ namespace {
             }
         }
 
-        return Object;
+        return std::move(Object);
     }
 
     JSON parse_array(const string& str, size_t& offset)
@@ -619,7 +648,7 @@ namespace {
         consume_ws(str, offset);
         if (str[offset] == ']') {
             ++offset;
-            return Array;
+            return std::move(Array);
         }
 
         while (true) {
@@ -634,11 +663,11 @@ namespace {
                 break;
             } else {
                 std::cerr << "ERROR: Array: Expected ',' or ']', found '" << str[offset] << "'\n";
-                return JSON::Make(JSON::Class::Array);
+                return std::move(JSON::Make(JSON::Class::Array));
             }
         }
 
-        return Array;
+        return std::move(Array);
     }
 
     JSON parse_string(const string& str, size_t& offset)
@@ -680,7 +709,7 @@ namespace {
                             val += c;
                         else {
                             std::cerr << "ERROR: String: Expected hex character in unicode escape, found '" << c << "'\n";
-                            return JSON::Make(JSON::Class::String);
+                            return std::move(JSON::Make(JSON::Class::String));
                         }
                     }
                     offset += 4;
@@ -694,7 +723,7 @@ namespace {
         }
         ++offset;
         String = val;
-        return String;
+        return std::move(String);
     }
 
     JSON parse_number(const string& str, size_t& offset)
@@ -726,14 +755,14 @@ namespace {
                     exp_str += c;
                 else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
                     std::cerr << "ERROR: Number: Expected a number for exponent, found '" << c << "'\n";
-                    return JSON::Make(JSON::Class::Null);
+                    return std::move(JSON::Make(JSON::Class::Null));
                 } else
                     break;
             }
             exp = std::stol(exp_str);
         } else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
             std::cerr << "ERROR: Number: unexpected character '" << c << "'\n";
-            return JSON::Make(JSON::Class::Null);
+            return std::move(JSON::Make(JSON::Class::Null));
         }
         --offset;
 
@@ -745,7 +774,7 @@ namespace {
             else
                 Number = std::stol(val);
         }
-        return Number;
+        return std::move(Number);
     }
 
     JSON parse_bool(const string& str, size_t& offset)
@@ -757,10 +786,10 @@ namespace {
             Bool = false;
         else {
             std::cerr << "ERROR: Bool: Expected 'true' or 'false', found '" << str.substr(offset, 5) << "'\n";
-            return JSON::Make(JSON::Class::Null);
+            return std::move(JSON::Make(JSON::Class::Null));
         }
         offset += (Bool.ToBool() ? 4 : 5);
-        return Bool;
+        return std::move(Bool);
     }
 
     JSON parse_null(const string& str, size_t& offset)
@@ -768,10 +797,10 @@ namespace {
         JSON Null;
         if (str.substr(offset, 4) != "null") {
             std::cerr << "ERROR: Null: Expected 'null', found '" << str.substr(offset, 4) << "'\n";
-            return JSON::Make(JSON::Class::Null);
+            return std::move(JSON::Make(JSON::Class::Null));
         }
         offset += 4;
-        return Null;
+        return std::move(Null);
     }
 
     JSON parse_next(const string& str, size_t& offset)
@@ -781,19 +810,19 @@ namespace {
         value = str[offset];
         switch (value) {
         case '[':
-            return parse_array(str, offset);
+            return std::move(parse_array(str, offset));
         case '{':
-            return parse_object(str, offset);
+            return std::move(parse_object(str, offset));
         case '\"':
-            return parse_string(str, offset);
+            return std::move(parse_string(str, offset));
         case 't':
         case 'f':
-            return parse_bool(str, offset);
+            return std::move(parse_bool(str, offset));
         case 'n':
-            return parse_null(str, offset);
+            return std::move(parse_null(str, offset));
         default:
             if ((value <= '9' && value >= '0') || value == '-')
-                return parse_number(str, offset);
+                return std::move(parse_number(str, offset));
         }
         std::cerr << "ERROR: Parse: Unknown starting character '" << value << "'\n";
         return JSON();
@@ -802,4 +831,4 @@ namespace {
 
 } // End Namespace json
 
-#endif
+#endif // SGX_JSON_H

@@ -15,22 +15,19 @@ in the License.
 
 */
 
-#ifndef __HEXUTIL__H
-#define __HEXUTIL__H
+#ifndef __FILEIO__H
+#define __FILEIO__H
 
-#include <stdio.h>
 #include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int from_hexstring(unsigned char* dest, const void* src, size_t len);
+int from_file(unsigned char *dest, char *file, off_t *len);
 
-void print_hexstring(FILE* fp, const void* src, size_t len);
-void print_hexstring_nl(FILE* fp, const void* src, size_t len);
-
-const char* hexstring(const void* src, size_t len);
+int from_hexstring_file(unsigned char *dest, char *file, size_t len);
+int to_hexstring_file(unsigned char *dest, char *file, size_t len);
 
 #ifdef __cplusplus
 };

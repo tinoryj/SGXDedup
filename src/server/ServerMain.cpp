@@ -1,11 +1,12 @@
-#include "../enclave/include/powServer.hpp"
-#include "boost/thread.hpp"
 #include "configure.hpp"
 #include "dataSR.hpp"
 #include "database.hpp"
 #include "dedupCore.hpp"
+#include "kmServer.hpp"
 #include "messageQueue.hpp"
+#include "powServer.hpp"
 #include "storageCore.hpp"
+#include <boost/thread.hpp>
 #include <signal.h>
 Configure config("config.json");
 
@@ -16,6 +17,7 @@ DataSR* dataSRObj;
 StorageCore* storageObj;
 DedupCore* dedupCoreObj;
 powServer* powServerObj;
+kmServer* kmServerObj;
 
 vector<boost::thread*> thList;
 
@@ -60,7 +62,8 @@ int main()
     dedupCoreObj = new DedupCore();
     storageObj = new StorageCore();
     powServerObj = new powServer();
-    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
+    kmServerObj = new kmServer();
+    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, kmServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
 
     boost::thread* th;
     th = new boost::thread(boost::bind(&DataSR::runKeyServerRemoteAttestation, dataSRObj));

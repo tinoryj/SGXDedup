@@ -24,7 +24,7 @@ in the License.
 extern "C" {
 #endif
 
-void reverse_bytes(void *dest, void *src, size_t n);
+void reverse_bytes(void* dest, void* src, size_t n);
 
 #ifdef __cplusplus
 };

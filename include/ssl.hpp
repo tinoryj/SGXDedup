@@ -14,11 +14,11 @@
 #define SERVERSIDE 0
 #define CLIENTSIDE 1
 
-#define SECRT "key/sslKeys/server-cert.pem"
-#define SEKEY "key/sslKeys/server-key.pem"
-#define CLCRT "key/sslKeys/client-cert.pem"
-#define CLKEY "key/sslKeys/client-key.pem"
-#define CACRT "key/sslKeys/ca-cert.pem"
+#define SECRT "key/sslKeys/server.crt"
+#define SEKEY "key/sslKeys/server_rsa_private.pem"
+#define CLCRT "key/sslKeys/client.crt"
+#define CLKEY "key/sslKeys/client_rsa_private.pem"
+#define CACRT "key/sslKeys/ca.crt"
 
 using namespace std;
 
@@ -37,5 +37,6 @@ public:
     std::pair<int, SSL*> sslListen();
     bool send(SSL* connection, char* data, int dataSize);
     bool recv(SSL* connection, char* data, int& dataSize);
+    bool getSSLErrorMessage(SSL* connection, int ret);
 };
 #endif //SGXDEDUP_SSL_HPP

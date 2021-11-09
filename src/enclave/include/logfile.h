@@ -18,18 +18,18 @@ in the License.
 #ifndef __LOGFILE__H
 #define __LOGFILE__H
 
-#include <stdio.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern FILE* fplog;
+extern FILE *fplog;
 
-FILE* create_logfile(const char* filename);
+FILE *create_logfile(const char *filename);
 
-void close_logfile(FILE* fp);
+void close_logfile (FILE *fp);
 
 #ifdef __cplusplus
 };

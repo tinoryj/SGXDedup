@@ -35,7 +35,7 @@ public:
     static string name;
 
     AgentWget(IAS_Connection* conn)
-        : Agent(conn){};
+        : Agent(conn) {};
     int request(string const& url, string const& post, Response& response);
 };
 

@@ -1,12 +1,15 @@
-#include "../include/powClient.hpp"
-#include <sys/time.h>
+#include "powClient.hpp"
+#include "sgxErrorSupport.h"
+// #include <sys/time.h>
 
 using namespace std;
 
 extern Configure config;
 
+#if SYSTEM_BREAK_DOWN == 1
 struct timeval timestartPowClient;
 struct timeval timeendPowClient;
+#endif
 
 void print(const char* mem, uint32_t len, uint32_t type)
 {
@@ -254,7 +257,9 @@ bool powClient::powEnclaveSealedInit()
         sgxErrorReport(status);
         return false;
     } else {
+#if SYSTEM_DEBUG_FLAG == 1
         cerr << "PowClient : create enclave done" << endl;
+#endif
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestartEnclave, NULL);
 #endif
@@ -354,7 +359,7 @@ powClient::powClient(Sender* senderObjTemp)
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
     second = diff / 1000000.0;
     if (loadSealedDataStatus == true) {
-        cout << "PowClient : load sealed information time = " << second << " s" << endl;
+        cout << "PowClient : load sealed information time = " << fixed << second << " s" << endl;
     }
 #endif
     if (loadSealedDataStatus == true) {
@@ -369,7 +374,9 @@ powClient::powClient(Sender* senderObjTemp)
         cout << "PowClient : sealed init total work time = " << second << " s" << endl;
 #endif
         if (powEnclaveSealedInitStatus == true) {
+#if SYSTEM_DEBUG_FLAG == 1
             cerr << "PowClient : enclave init via sealed data done" << endl;
+#endif
             startMethod_ = 1;
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestartEnclave, NULL);
@@ -382,7 +389,9 @@ powClient::powClient(Sender* senderObjTemp)
             cout << "PowClient : sealed init login ot storage server work time = " << second << " s" << endl;
 #endif
             if (loginToServerStatus) {
+#if SYSTEM_DEBUG_FLAG == 1
                 cerr << "PowClient : login to storage service provider success" << endl;
+#endif
             } else {
                 cerr << "PowClient : login to storage service provider error" << endl;
             }
@@ -411,7 +420,9 @@ powClient::powClient(Sender* senderObjTemp)
         cout << "PowClient : remote attestation init login ot storage server work time = " << second << " s" << endl;
 #endif
         if (sendLoginMessageStatus) {
+#if SYSTEM_DEBUG_FLAG == 1
             cerr << "PowClient : login to storage service provider success" << endl;
+#endif
         } else {
             cerr << "PowClient : login to storage service provider error" << endl;
         }
@@ -469,7 +480,9 @@ powClient::powClient(Sender* senderObjTemp)
     cout << "PowClient : remote attestation init login ot storage server work time = " << second << " s" << endl;
 #endif
     if (sendLoginToStorageServerStatus) {
+#if SYSTEM_DEBUG_FLAG == 1
         cerr << "PowClient : login to storage service provider success" << endl;
+#endif
     } else {
         cerr << "PowClient : login to storage service provider error" << endl;
     }

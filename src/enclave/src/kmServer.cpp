@@ -1,4 +1,7 @@
 #include "kmServer.hpp"
+#include <sgx_uae_epid.h>
+#include <sgx_uae_launch.h>
+#include <sgx_uae_quote_ex.h>
 extern Configure config;
 //./sp -s 928A6B0E3CDDAD56EB3BADAA3B63F71F -A ./client.crt
 // -C ./client.crt --ias-cert-key=./client.pem -x -d -v
@@ -24,7 +27,7 @@ void PRINT_BYTE_ARRAY_KMS(
     fprintf(file, "\n}\n");
 }
 
-kmServer::kmServer(ssl* raSecurityChannel, SSL* sslConnection)
+kmServer::kmServer()
 {
     if (!cert_load_file(&_signing_ca, IAS_SIGNING_CA_FILE_KM)) {
         cerr << "KmServer : can not load IAS Signing Cert CA" << endl;
@@ -67,24 +70,32 @@ kmServer::kmServer(ssl* raSecurityChannel, SSL* sslConnection)
     _quote_type = config.getKMQuoteType();
     _service_private_key = key_private_from_bytes(def_service_private_key_km);
     _iasVersion = config.getKMIASVersion();
-    raSecurityChannel_ = raSecurityChannel;
-    sslConnection_ = sslConnection;
 }
 
 bool kmServer::process_msg01(enclaveSession* session, sgx_msg01_t& msg01, sgx_ra_msg2_t& msg2)
 {
-
-    EVP_PKEY* Gb;
+    size_t blen = 0;
+    char* buffer = NULL;
     unsigned char digest[32], r[32], s[32], gb_ga[128];
+    EVP_PKEY* Gb;
+    int rv;
+    memset(&msg2, 0, sizeof(sgx_ra_msg2_t));
 
-    msg01.msg0_extended_epid_group_id = 0;
     if (msg01.msg0_extended_epid_group_id != 0) {
         cerr << "KmServer : msg0 Extended Epid Group ID is not zero.  Exiting." << endl;
         return false;
     }
 
     memcpy(&session->msg1, &msg01.msg1, sizeof(sgx_ra_msg1_t));
-
+#if SYSTEM_DEBUG_FLAG == 1
+    cerr << "Msg1 Details (from Client)" << endl;
+    cerr << "msg1.g_a.gx = " << endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &session->msg1.g_a.gx, sizeof(session->msg1.g_a.gx));
+    cerr<<"msg1.g_a.gy = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &session->msg1.g_a.gy, sizeof(session->msg1.g_a.gy));
+    cerr<<"msg1.gid    = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &session->msg1.gid, sizeof(session->msg1.gid));
+#endif
     Gb = key_generate();
     if (Gb == nullptr) {
         cerr << "KmServer : can not create session key" << endl;
@@ -124,6 +135,25 @@ bool kmServer::process_msg01(enclaveSession* session, sgx_msg01_t& msg01, sgx_ra
     reverse_bytes(&msg2.sign_gb_ga.y, s, 32);
 
     cmac128(session->smk, (unsigned char*)&msg2, 148, (unsigned char*)&msg2.mac);
+#if SYSTEM_DEBUG_FLAG == 1
+    cerr << "Msg2 Details" << endl;
+    cerr<<"msg2.g_b.gx      = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.g_b.gx, sizeof(msg2.g_b.gx));
+    cerr<<"msg2.g_b.gy      = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.g_b.gy, sizeof(msg2.g_b.gy));
+    cerr<<"msg2.spid        = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.spid, sizeof(msg2.spid));
+    cerr<<"msg2.quote_type  = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.quote_type, sizeof(msg2.quote_type));
+    cerr<<"msg2.kdf_id      = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.kdf_id, sizeof(msg2.kdf_id));
+    cerr<<"msg2.sign_ga_gb  = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.sign_gb_ga, sizeof(msg2.sign_gb_ga));
+    cerr<<"msg2.mac         = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.mac, sizeof(msg2.mac));
+    cerr<<"msg2.sig_rl_size = "<<endl;
+    PRINT_BYTE_ARRAY_KMS(stderr, &msg2.sig_rl_size, sizeof(msg2.sig_rl_size));
+#endif
     free(Gb);
     return true;
 }
@@ -335,7 +365,7 @@ bool kmServer::get_attestation_report(const char* b64quote, sgx_ps_sec_prop_desc
     messages.clear();
     return true;
 }
-enclaveSession* kmServer::authkm()
+enclaveSession* kmServer::authkm(ssl* raSecurityChannel, SSL* sslConnection)
 {
     enclaveSession* ans = new enclaveSession();
     sgx_msg01_t msg01;
@@ -344,7 +374,7 @@ enclaveSession* kmServer::authkm()
 
     char msg01Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg01RecvSize;
-    if (!raSecurityChannel_->recv(sslConnection_, msg01Buffer, msg01RecvSize)) {
+    if (!raSecurityChannel->recv(sslConnection, msg01Buffer, msg01RecvSize)) {
         cerr << "KmServer : error socket reading msg01" << endl;
         return nullptr;
     }
@@ -357,14 +387,19 @@ enclaveSession* kmServer::authkm()
     int msg2SendSize = sizeof(msg2) + msg2.sig_rl_size;
     char msg2Buffer[msg2SendSize];
     memcpy(msg2Buffer, &msg2, sizeof(msg2) + msg2.sig_rl_size);
-    if (!raSecurityChannel_->send(sslConnection_, msg2Buffer, msg2SendSize)) {
+    if (!raSecurityChannel->send(sslConnection, msg2Buffer, msg2SendSize)) {
         cerr << "KmServer : error socket writing msg2" << endl;
         return nullptr;
     }
+#if SYSTEM_DEBUG_FLAG == 1
+    else {
+        cerr << "Send back msg 2 size = " << msg2SendSize << endl;
+    }
+#endif
 
     int msg3RecvSize;
     char msg3Buffer[SGX_MESSAGE_MAX_SIZE];
-    if (!raSecurityChannel_->recv(sslConnection_, msg3Buffer, msg3RecvSize)) {
+    if (!raSecurityChannel->recv(sslConnection, msg3Buffer, msg3RecvSize)) {
         cerr << "KmServer : error msg01" << endl;
         return nullptr;
     }
@@ -378,7 +413,7 @@ enclaveSession* kmServer::authkm()
     int msg4SendSize = sizeof(msg4);
     char msg4Buffer[SGX_MESSAGE_MAX_SIZE];
     memcpy(msg4Buffer, &msg4, sizeof(msg4));
-    if (!raSecurityChannel_->send(sslConnection_, msg4Buffer, msg4SendSize)) {
+    if (!raSecurityChannel->send(sslConnection, msg4Buffer, msg4SendSize)) {
         cerr << "KmServer : error socket writing msg4" << endl;
         return nullptr;
     }

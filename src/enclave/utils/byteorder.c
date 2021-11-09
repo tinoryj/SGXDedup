@@ -15,34 +15,34 @@ in the License.
 
 */
 
-
-#include <sys/types.h>
-#include <inttypes.h>
 #include "byteorder.h"
+#include <inttypes.h>
+#include <sys/types.h>
 
 /*
  * Reverse the bytes in an array. Can do this in-place (src == dest)
  * but any other overlapping gives undefined behavior so don't do it.
  */
 
-void reverse_bytes(void *dest, void *src, size_t len)
+void reverse_bytes(void* dest, void* src, size_t len)
 {
-	size_t i;
-	char *sp= (char *)src;
+    size_t i;
+    char* sp = (char*)src;
 
-	if ( len < 2 ) return;
+    if (len < 2)
+        return;
 
-	if ( src == dest ) {
-		size_t j;
+    if (src == dest) {
+        size_t j;
 
-		for (i= 0, j= len-1; i<j; ++i, --j) {
-			char t= sp[j];
-			sp[j]= sp[i];
-			sp[i]= t;
-		}
-	} else {
-		char *dp= (char *) dest + len - 1;
-		for (i= 0; i< len; ++i, ++sp, --dp) *dp= *sp;
-	}
+        for (i = 0, j = len - 1; i < j; ++i, --j) {
+            char t = sp[j];
+            sp[j] = sp[i];
+            sp[i] = t;
+        }
+    } else {
+        char* dp = (char*)dest + len - 1;
+        for (i = 0; i < len; ++i, ++sp, --dp)
+            *dp = *sp;
+    }
 }
-

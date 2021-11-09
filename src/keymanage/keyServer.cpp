@@ -41,7 +41,7 @@ keyServer::keyServer(ssl* keyServerSecurityChannelTemp)
     lenKeyd = BN_bn2bin(keyD_, keydBuffer);
     string keyd((char*)keydBuffer, lenKeyd);
     sessionKeyRegressionMaxNumber_ = config.getKeyRegressionMaxTimes();
-    client = new kmClient(keyd, sessionKeyRegressionMaxNumber_);
+    keyEnclaveHost_ = new kmClient(keyd, sessionKeyRegressionMaxNumber_);
     sessionKeyRegressionCurrentNumber_ = sessionKeyRegressionMaxNumber_;
     clientThreadCount_ = 0;
     keyGenerateCount_ = 0;
@@ -54,7 +54,7 @@ keyServer::~keyServer()
 {
     BIO_free_all(key_);
     RSA_free(rsa_);
-    delete client;
+    delete keyEnclaveHost_;
     delete keySecurityChannel_;
 }
 
@@ -65,8 +65,8 @@ bool keyServer::getRASetupFlag()
 
 bool keyServer::initEnclaveViaRemoteAttestation(ssl* raSecurityChannel, SSL* sslConnection)
 {
-    if (!client->init(raSecurityChannel, sslConnection)) {
-        cerr << "keyServer : enclave not truster" << endl;
+    if (!keyEnclaveHost_->init(raSecurityChannel, sslConnection)) {
+        cerr << "keyServer : enclave not trust" << endl;
         return false;
     } else {
         raSetupFlag_ = true;
@@ -146,9 +146,13 @@ bool keyServer::runRemoteAttestationInit()
         char sendBuffer[sendSize];
         NetworkHeadStruct_t netHead;
         netHead.messageType = KEY_SERVER_RA_REQUES;
+        netHead.clientID = config.getClientID();
         netHead.dataSize = 0;
         memcpy(sendBuffer, &netHead, sizeof(NetworkHeadStruct_t));
-        raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize);
+        if (!raSecurityChannelTemp->send(sslConnection, sendBuffer, sendSize)) {
+            cerr << "KeyServer : error send ra request to cloud" << endl;
+            return false;
+        }
         bool remoteAttestationStatus = initEnclaveViaRemoteAttestation(raSecurityChannelTemp, sslConnection);
         if (remoteAttestationStatus) {
             delete raSecurityChannelTemp;
@@ -171,9 +175,9 @@ bool keyServer::runRemoteAttestationInit()
 
 void keyServer::runSessionKeyUpdate()
 {
+#if SYSTEM_BREAK_DOWN == 1
     struct timeval timestart;
     struct timeval timeend;
-#if SYSTEM_BREAK_DOWN == 1
     long diff;
     double second;
 #endif
@@ -191,7 +195,7 @@ void keyServer::runSessionKeyUpdate()
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestart, 0);
 #endif
-            bool enclaveSessionKeyUpdateStatus = client->sessionKeyUpdate();
+            bool enclaveSessionKeyUpdateStatus = keyEnclaveHost_->sessionKeyUpdate();
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeend, 0);
             diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -244,7 +248,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
 #endif
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            cerr << "keyServer : Thread exit due to keyEnclaveHost_ disconnect， current keyEnclaveHost_ counter = " << clientThreadCount_ << endl;
             multiThreadCountMutex_.unlock();
             return;
         }
@@ -257,7 +261,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
 #endif
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            cerr << "keyServer : Thread exit due to keyEnclaveHost_ disconnect， current keyEnclaveHost_ counter = " << clientThreadCount_ << endl;
             multiThreadCountMutex_.unlock();
             return;
         }
@@ -270,7 +274,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash, recvSize, key, recvSize);
+        keyEnclaveHost_->request(hash, recvSize, key, recvSize);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -282,14 +286,14 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
         if (!keySecurityChannel_->send(connection, (char*)key, recvSize)) {
-            cerr << "KeyServer : error send back chunk key to client" << endl;
+            cerr << "KeyServer : error send back chunk key to keyEnclaveHost_" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
 #if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
 #endif
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            cerr << "keyServer : Thread exit due to keyEnclaveHost_ disconnect， current keyEnclaveHost_ counter = " << clientThreadCount_ << endl;
             multiThreadCountMutex_.unlock();
             return;
         }
@@ -318,7 +322,7 @@ void keyServer::runCTRModeMaskGenerate()
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timestart, 0);
 #endif
-            client->maskGenerate();
+            keyEnclaveHost_->maskGenerate();
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeend, 0);
             diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -362,11 +366,11 @@ void keyServer::runKeyGenerateThread(SSL* connection)
             memcpy(hmacbuffer, initInfoBuffer + sizeof(NetworkHeadStruct_t) + 16, 32);
             multiThreadMutex_.lock();
 #if SYSTEM_DEBUG_FLAG == 1
-            cout << "KeyServer : modify client info for client = " << netHead.clientID << endl;
+            cout << "KeyServer : modify keyEnclaveHost_ info for keyEnclaveHost_ = " << netHead.clientID << endl;
 #endif
-            int modifyClientInfoStatus = client->modifyClientStatus(netHead.clientID, cipherBuffer, hmacbuffer);
+            int modifyClientInfoStatus = keyEnclaveHost_->modifyClientStatus(netHead.clientID, cipherBuffer, hmacbuffer);
 #if SYSTEM_DEBUG_FLAG == 1
-            cout << "KeyServer : modify client info done for client = " << netHead.clientID << endl;
+            cout << "KeyServer : modify keyEnclaveHost_ info done for keyEnclaveHost_ = " << netHead.clientID << endl;
 #endif
             multiThreadMutex_.unlock();
             if (modifyClientInfoStatus == SUCCESS || modifyClientInfoStatus == CLIENT_COUNTER_REST) {
@@ -389,11 +393,11 @@ void keyServer::runKeyGenerateThread(SSL* connection)
                 memcpy(responseBuffer, &responseHead, sizeof(NetworkHeadStruct_t));
                 keySecurityChannel_->send(connection, responseBuffer, sendSize);
             } else if (modifyClientInfoStatus == -1) {
-                cerr << "KeyServer : error init client messages, ecall not correct" << endl;
+                cerr << "KeyServer : error init keyEnclaveHost_ messages, ecall not correct" << endl;
                 return;
             }
         } else {
-            cerr << "KeyServer : error recv client init messages" << endl;
+            cerr << "KeyServer : error recv keyEnclaveHost_ init messages" << endl;
             return;
         }
     }
@@ -401,7 +405,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
     gettimeofday(&timeend, 0);
     diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
     second = diff / 1000000.0;
-    cout << "KeyServer : setup client init messages time = " << second << " s" << endl;
+    cout << "KeyServer : setup key enclave nonce init messages time = " << second << " s" << endl;
 #endif
     //done
     while (true) {
@@ -414,7 +418,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            cerr << "keyServer : Thread exit due to keyEnclaveHost_ disconnect， current keyEnclaveHost_ counter = " << clientThreadCount_ << endl;
 #endif
             multiThreadCountMutex_.unlock();
             return;
@@ -428,7 +432,7 @@ void keyServer::runKeyGenerateThread(SSL* connection)
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timestart, 0);
 #endif
-        client->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize * CHUNK_HASH_SIZE + 32, key, netHead.dataSize * CHUNK_HASH_SIZE + 32, netHead.clientID);
+        keyEnclaveHost_->request(hash + sizeof(NetworkHeadStruct_t), netHead.dataSize * CHUNK_HASH_SIZE + 32, key, netHead.dataSize * CHUNK_HASH_SIZE + 32, netHead.clientID);
 #if SYSTEM_BREAK_DOWN == 1
         gettimeofday(&timeend, 0);
         diff = 1000000 * (timeend.tv_sec - timestart.tv_sec) + timeend.tv_usec - timestart.tv_usec;
@@ -443,20 +447,20 @@ void keyServer::runKeyGenerateThread(SSL* connection)
         multiThreadMutex_.unlock();
         currentThreadkeyGenerationNumber += recvNumber;
         if (!keySecurityChannel_->send(connection, (char*)key, recvNumber * CHUNK_ENCRYPT_KEY_SIZE + 32)) {
-            cerr << "KeyServer : error send back chunk key to client" << endl;
+            cerr << "KeyServer : error send back chunk key to keyEnclaveHost_" << endl;
             multiThreadCountMutex_.lock();
             clientThreadCount_--;
 #if SYSTEM_BREAK_DOWN == 1
             cout << "KeyServer : total key generation time = " << keyGenTime << " s" << endl;
             cout << "KeyServer : total key generation number = " << currentThreadkeyGenerationNumber << endl;
-            cerr << "keyServer : Thread exit due to client disconnect， current client counter = " << clientThreadCount_ << endl;
+            cerr << "keyServer : Thread exit due to keyEnclaveHost_ disconnect， current keyEnclaveHost_ counter = " << clientThreadCount_ << endl;
 #endif
             multiThreadCountMutex_.unlock();
             return;
         }
 #if SYSTEM_DEBUG_FLAG == 1
         else {
-            cout << "KeyServer : send key to client " << netHead.clientID << " done for hash number = " << recvNumber << endl;
+            cout << "KeyServer : send key to keyEnclaveHost_ " << netHead.clientID << " done for hash number = " << recvNumber << endl;
         }
 #endif
     }

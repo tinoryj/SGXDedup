@@ -6,22 +6,24 @@
 #include "stdlib.h"
 #include "string.h"
 #include "systemSettings.hpp"
-#include <sgx_tae_service.h>
 #include <sgx_tcrypto.h>
 #include <sgx_tkey_exchange.h>
 #include <sgx_utils.h>
 #include <stdio.h>
-// static const sgx_ec256_public_t def_service_public_key = {
-//     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
-//         0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
-//         0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
-//         0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38 },
-//     { 0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
-//         0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
-//         0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
-//         0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06 }
+#include <string>
+#include <unordered_map>
 
-// }; //little endding/hard coding
+static const sgx_ec256_public_t def_service_public_key = {
+    { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
+        0x85, 0xd0, 0x3a, 0x62, 0x37, 0x30, 0xae, 0xad,
+        0x3e, 0x3d, 0xaa, 0xee, 0x9c, 0x60, 0x73, 0x1d,
+        0xb0, 0x5b, 0xe8, 0x62, 0x1c, 0x4b, 0xeb, 0x38 },
+    { 0xd4, 0x81, 0x40, 0xd9, 0x50, 0xe2, 0x57, 0x7b,
+        0x26, 0xee, 0xb7, 0x41, 0xe7, 0xc6, 0x14, 0xe2,
+        0x24, 0xb7, 0xbd, 0xc9, 0x03, 0xf2, 0x9a, 0x28,
+        0xa8, 0x3c, 0xc8, 0x10, 0x11, 0x14, 0x5e, 0x06 }
+
+};
 
 #define PSE_RETRIES 5 /* Arbitrary. Not too long, not too short. */
 
@@ -33,39 +35,9 @@ sgx_status_t enclave_ra_init(sgx_ec256_public_t key, int b_pse,
     sgx_ra_context_t* ctx, sgx_status_t* pse_status)
 {
     sgx_status_t ra_status;
-
-    /*
-     * If we want platform services, we must create a PSE session
-     * before calling sgx_ra_init()
-     */
-
-    if (b_pse) {
-        int retries = PSE_RETRIES;
-        do {
-            *pse_status = sgx_create_pse_session();
-            if (*pse_status != SGX_SUCCESS)
-                return SGX_ERROR_UNEXPECTED;
-        } while (*pse_status == SGX_ERROR_BUSY && retries--);
-        if (*pse_status != SGX_SUCCESS)
-            return SGX_ERROR_UNEXPECTED;
-    }
-
-    ra_status = sgx_ra_init(&key, b_pse, ctx);
-
-    if (b_pse) {
-        int retries = PSE_RETRIES;
-        do {
-            *pse_status = sgx_create_pse_session();
-            if (*pse_status != SGX_SUCCESS)
-                return SGX_ERROR_UNEXPECTED;
-        } while (*pse_status == SGX_ERROR_BUSY && retries--);
-        if (*pse_status != SGX_SUCCESS)
-            return SGX_ERROR_UNEXPECTED;
-    }
-
+    ra_status = sgx_ra_init(&key, 0, ctx);
     return ra_status;
 }
-
 sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
 {
     sgx_status_t ret;
@@ -81,48 +53,14 @@ sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
     return ret_status;
 }
 
-/*
- * work load pow_enclave
- * */
-sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t* chunkHashList)
-{
-    sgx_sha256_hash_t chunkHash;
-    sgx_cmac_state_handle_t cmac_ctx;
-    sgx_status_t ret_status;
-
-    sgx_cmac128_init(&powSessionKey, &cmac_ctx);
-    uint32_t it, sz = 0, index = 0;
-    for (it = 0; it < srcLen; it = it + sz) {
-        if (srcLen - sizeof(int) < it) {
-            memset(cmac, 0, 16);
-            return SGX_ERROR_UNEXPECTED;
-        }
-        memcpy(&sz, &src[it], sizeof(int));
-        it = it + 4;
-        if (srcLen - it < sz) {
-            memset(cmac, 0, 16);
-            return SGX_ERROR_UNEXPECTED;
-        }
-        ret_status = sgx_sha256_msg(&src[it], sz, &chunkHash);
-        if (ret_status != SGX_SUCCESS) {
-            return ret_status;
-        }
-        sgx_cmac128_update((uint8_t*)&chunkHash, 32, cmac_ctx);
-        memcpy(chunkHashList + index * 32, chunkHash, 32);
-        index++;
-    }
-
-    sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t*)cmac);
-    sgx_cmac128_close(cmac_ctx);
-    return SGX_SUCCESS;
-}
-
+// Debug for PoW enclave
 sgx_status_t ecall_getCurrentSessionKey(char* currentSessionKeyResult)
 {
     memcpy(currentSessionKeyResult, powSessionKey, 16);
     return SGX_SUCCESS;
 }
 
+// enclave init
 sgx_status_t enclave_sealed_init(uint8_t* sealed_buf)
 {
     uint32_t sgxCalSealedLen = sgx_calc_sealed_data_size(0, sizeof(sgx_ra_key_128_t));
@@ -222,42 +160,50 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
         // Backup the sealed data to outside bufferret
         memcpy_s(sealed_buf, sgxCalSealedLen, temp_sealed_buf, sgxCalSealedLen);
         return SGX_SUCCESS;
-        // uint32_t decryptSize = sgx_get_encrypt_txt_len(temp_sealed_buf);
-        // uint8_t* unsealed_data = (uint8_t*)malloc(decryptSize);
-        // snprintf(output, 256, "unseal data size = %u\n", decryptSize);
-        // print(output, 27, 2);
-        // if (sgx_is_outside_enclave(unsealed_data, decryptSize)) {
-        //     print("ocall close : unseal data space error\n", 39, 1);
-        //     free(temp_sealed_buf);
-        //     free(unsealed_data);
-        //     free(output);
-        //     return 5;
-        // }
-        // uint32_t unsealed_data_length = decryptSize;
-        // uint32_t plain_text_length = 0;
-        // ret = sgx_unseal_data((sgx_sealed_data_t*)temp_sealed_buf, NULL, &plain_text_length, unsealed_data, &unsealed_data_length);
-        // if (ret != SGX_SUCCESS) {
-        //     print("ocall close : unseal error\n", 28, 1);
-        //     free(temp_sealed_buf);
-        //     free(unsealed_data);
-        //     free(output);
-        //     return ret;
-        // } else {
-        //     if (unsealed_data_length != decryptSize) {
-        //         snprintf(output, 256, "unseal data size = %u, decrypt size = %u\n", unsealed_data_length, decryptSize);
-        //         print(output, 46, 1);
-        //         free(temp_sealed_buf);
-        //         free(unsealed_data);
-        //         free(output);
-        //         return 7;
-        //     } else {
-        //         print("Unsealed key = ", 16, 1);
-        //         print(unsealed_data, 16, 2);
-        //         free(temp_sealed_buf);
-        //         free(unsealed_data);
-        //         free(output);
-        //         return 0;
-        //     }
-        // }
     }
+}
+
+/*
+ * work load pow_enclave
+ * */
+#if DETECT_FAKE_CHUNKS == 1
+std::unordered_map<std::string, int> prefixList;
+int prefixListCounter = 0;
+#endif
+
+sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t* chunkHashList)
+{
+    sgx_sha256_hash_t chunkHash;
+#if DETECT_FAKE_CHUNKS == 1
+    sgx_sha256_hash_t prefixHash;
+#endif
+    sgx_cmac_state_handle_t cmac_ctx;
+    sgx_status_t ret_status;
+
+    sgx_cmac128_init(&powSessionKey, &cmac_ctx);
+    bool detectFlag = false;
+    uint32_t it, sz = 0, index = 0;
+    for (it = 0; it < srcLen; it = it + sz) {
+        if (srcLen - sizeof(int) < it) {
+            memset(cmac, 0, 16);
+            return SGX_ERROR_UNEXPECTED;
+        }
+        memcpy(&sz, &src[it], sizeof(int));
+        it = it + 4;
+        if (srcLen - it < sz) {
+            memset(cmac, 0, 16);
+            return SGX_ERROR_UNEXPECTED;
+        }
+        ret_status = sgx_sha256_msg(&src[it], sz, &chunkHash);
+        if (ret_status != SGX_SUCCESS) {
+            return ret_status;
+        }
+        sgx_cmac128_update((uint8_t*)&chunkHash, 32, cmac_ctx);
+        memcpy(chunkHashList + index * 32, chunkHash, 32);
+        index++;
+    }
+
+    sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t*)cmac);
+    sgx_cmac128_close(cmac_ctx);
+    return SGX_SUCCESS;
 }

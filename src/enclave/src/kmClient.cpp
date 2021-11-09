@@ -1,11 +1,14 @@
 #include "kmClient.hpp"
 #include "sgxErrorSupport.h"
+// #include <sys/time.h>
 
 using namespace std;
 extern Configure config;
 
+#if SYSTEM_BREAK_DOWN == 1
 struct timeval timestartkmClient;
 struct timeval timeendKmClient;
+#endif
 
 void PRINT_BYTE_ARRAY_KM(
     FILE* file, void* mem, uint32_t len)
@@ -204,12 +207,12 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
     long diff;
     double second;
 #endif
-    _ctx = 0xdeadbeef;
+    ra_ctx_ = 0xdeadbeef;
     raSecurityChannel_ = raSecurityChannel;
     sslConnection_ = sslConnection;
     sgx_status_t status;
     sgx_status_t retval;
-    raclose(_eid, _ctx);
+    raclose(_eid, ra_ctx_);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartkmClient, NULL);
 #endif
@@ -261,7 +264,7 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
                 gettimeofday(&timestartkmClient, NULL);
 #endif
                 status = ecall_setSessionKey(_eid,
-                    &retval, &_ctx);
+                    &retval, &ra_ctx_);
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendKmClient, NULL);
                 diff = 1000000 * (timeendKmClient.tv_sec - timestartkmClient.tv_sec) + timeendKmClient.tv_usec - timestartkmClient.tv_usec;
@@ -311,96 +314,6 @@ bool kmClient::init(ssl* raSecurityChannel, SSL* sslConnection)
     }
 }
 
-bool kmClient::createEnclave(sgx_enclave_id_t& eid,
-    sgx_ra_context_t& ctx,
-    string enclaveName)
-{
-    sgx_status_t status, retval, pse_status;
-
-    status = sgx_create_enclave(enclaveName.c_str(),
-        SGX_DEBUG_FLAG,
-        &_token,
-        &updated,
-        &eid,
-        0);
-    if (status != SGX_SUCCESS) {
-        cerr << "KmClient : create enclave error, status = " << endl;
-        sgxErrorReport(status);
-        return false;
-    }
-    status = enclave_ra_init(eid,
-        &retval,
-        def_service_public_key,
-        false,
-        &ctx,
-        &pse_status);
-    if (status != SGX_SUCCESS) {
-        cerr << "KmClient : remote attestation ecall error, status = " << endl;
-        sgxErrorReport(status);
-        return false;
-    } else if (!(retval && pse_status)) {
-        cerr << "KmClient : remote attestation init enclave error" << endl;
-        return false;
-    }
-
-    return true;
-}
-
-bool kmClient::getMsg01(sgx_enclave_id_t& eid,
-    sgx_ra_context_t& ctx,
-    string& msg01)
-{
-    uint32_t msg0;
-    sgx_ra_msg1_t msg1;
-
-    if (sgx_get_extended_epid_group_id(&msg0) != SGX_SUCCESS) {
-        goto error;
-    }
-
-    if (sgx_ra_get_msg1(ctx, eid, sgx_ra_get_ga, &msg1) != SGX_SUCCESS) {
-        goto error;
-    }
-
-    msg01.resize(sizeof msg0 + sizeof msg1);
-    memcpy(&msg01[0], &msg1, sizeof msg1);
-    memcpy(&msg01[sizeof msg1], &msg0, sizeof msg0);
-    return true;
-
-error:
-    raclose(eid, ctx);
-    return false;
-}
-
-bool kmClient::processMsg2(sgx_enclave_id_t& eid,
-    sgx_ra_context_t& ctx,
-    string& Msg2,
-    string& Msg3)
-{
-    sgx_ra_msg3_t* msg3;
-    uint32_t msg3_sz;
-    sgx_ra_msg2_t* msg2 = (sgx_ra_msg2_t*)new uint8_t[Msg2.length()];
-    memcpy(msg2, &Msg2[0], Msg2.length());
-    if (sgx_ra_proc_msg2(ctx,
-            eid,
-            sgx_ra_proc_msg2_trusted,
-            sgx_ra_get_msg3_trusted,
-            msg2,
-            sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size,
-            &msg3,
-            &msg3_sz)
-        != SGX_SUCCESS) {
-        goto error;
-    }
-
-    Msg3.resize(msg3_sz);
-    memcpy(&Msg3[0], msg3, msg3_sz);
-    return true;
-
-error:
-    raclose(eid, ctx);
-    return false;
-}
-
 void kmClient::raclose(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx)
 {
     sgx_status_t status;
@@ -411,15 +324,16 @@ bool kmClient::doAttestation()
 {
     sgx_status_t status, sgxrv, pse_status;
     sgx_msg01_t msg01;
-    sgx_ra_msg2_t* msg2;
-    sgx_ra_msg3_t* msg3;
+    sgx_ra_msg1_t msg1;
+    sgx_ra_msg2_t* msg2 = NULL;
+    sgx_ra_msg3_t* msg3 = NULL;
     ra_msg4_t* msg4 = NULL;
     uint32_t msg0_extended_epid_group_id = 0;
     uint32_t msg3_sz;
 
     string enclaveName = config.getKMEnclaveName();
     cerr << "KmClient : start to create enclave" << endl;
-    status = sgx_create_enclave(enclaveName.c_str(), SGX_DEBUG_FLAG, &_token, &updated, &_eid, 0);
+    status = sgx_create_enclave(enclaveName.c_str(), SYSTEM_DEBUG_FLAG, &_token, &updated, &_eid, 0);
     if (status != SGX_SUCCESS) {
         cerr << "KmClient : Can not launch km_enclave : " << enclaveName << endl;
         sgxErrorReport(status);
@@ -427,67 +341,87 @@ bool kmClient::doAttestation()
     }
 
     status = enclave_ra_init(_eid, &sgxrv, def_service_public_key, false,
-        &_ctx, &pse_status);
+        &ra_ctx_, &pse_status);
     if (status != SGX_SUCCESS) {
-        cerr << "KmClient : pow_enclave ra init failed, status =  " << endl;
+        cerr << "KmClient : pow_enclave ra init ecall failed, status =  " << endl;
         sgxErrorReport(status);
         return false;
     }
     if (sgxrv != SGX_SUCCESS) {
-        cerr << "KmClient : sgx ra init failed : " << sgxrv << endl;
+        cerr << "KmClient : pow_enclave ra init failed, status =  " << endl;
+        sgxErrorReport(status);
         return false;
     }
-
     /* Generate msg0 */
 
     status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
     if (status != SGX_SUCCESS) {
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         cerr << "KmClient : sgx ge epid failed, status = " << endl;
         sgxErrorReport(status);
         return false;
     }
 
     /* Generate msg1 */
-
-    status = sgx_ra_get_msg1(_ctx, _eid, sgx_ra_get_ga, &msg01.msg1);
+    status = sgx_ra_get_msg1(ra_ctx_, _eid, sgx_ra_get_ga, &msg1);
     if (status != SGX_SUCCESS) {
-        enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "KmClient : sgx error get msg1, status = " << endl;
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
+        cerr << "KmClient : sgx error get msg1 ecall, status = " << endl;
         sgxErrorReport(status);
         return false;
     }
-
-    char msg01Buffer[sizeof(msg01)];
-    memcpy(msg01Buffer, &msg01, sizeof(msg01));
+    msg01.msg0_extended_epid_group_id = msg0_extended_epid_group_id;
+    char msg01Buffer[sizeof(sgx_msg01_t)];
+    memcpy(msg01Buffer, &msg0_extended_epid_group_id, sizeof(msg0_extended_epid_group_id));
+    memcpy(msg01Buffer + sizeof(msg0_extended_epid_group_id), &msg1, sizeof(sgx_ra_msg1_t));
     char msg2Buffer[SGX_MESSAGE_MAX_SIZE];
     int msg2RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg01Buffer, sizeof(msg01))) {
         cerr << "KmClient : msg01 send socket error" << endl;
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         return false;
     }
     if (!raSecurityChannel_->recv(sslConnection_, msg2Buffer, msg2RecvSize)) {
         cerr << "KmClient : msg2 recv socket error" << endl;
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         return false;
     }
     msg2 = (sgx_ra_msg2_t*)malloc(msg2RecvSize);
     memcpy(msg2, msg2Buffer, msg2RecvSize);
 #if SYSTEM_DEBUG_FLAG == 1
-    cout << "KmClient : Send msg01 and Recv msg2 success" << endl;
+    cerr << "KmClient : Send msg01 and Recv msg2 success" << endl;
+    fprintf(stderr, "msg2.g_b.gx      = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->g_b.gx, sizeof(msg2->g_b.gx));
+    fprintf(stderr, "\nmsg2.g_b.gy      = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->g_b.gy, sizeof(msg2->g_b.gy));
+    fprintf(stderr, "\nmsg2.spid        = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->spid, sizeof(msg2->spid));
+    fprintf(stderr, "\nmsg2.quote_type  = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->quote_type, sizeof(msg2->quote_type));
+    fprintf(stderr, "\nmsg2.kdf_id      = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->kdf_id, sizeof(msg2->kdf_id));
+    fprintf(stderr, "\nmsg2.sign_ga_gb  = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->sign_gb_ga, sizeof(msg2->sign_gb_ga));
+    fprintf(stderr, "\nmsg2.mac         = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->mac, sizeof(msg2->mac));
+    fprintf(stderr, "\nmsg2.sig_rl_size = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->sig_rl_size, sizeof(msg2->sig_rl_size));
+    fprintf(stderr, "\nmsg2.sig_rl      = ");
+    PRINT_BYTE_ARRAY_KM(stderr, &msg2->sig_rl, msg2->sig_rl_size);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "+++ msg2_size = %zu\n", sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size);
 #endif
     /* Process Msg2, Get Msg3  */
     /* object msg3 is malloc'd by SGX SDK, so remember to free when finished */
 
-    status = sgx_ra_proc_msg2(_ctx, _eid,
+    status = sgx_ra_proc_msg2(ra_ctx_, _eid,
         sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2,
         sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size,
         &msg3, &msg3_sz);
 
     if (status != SGX_SUCCESS) {
-        enclave_ra_close(_eid, &sgxrv, _ctx);
-        cerr << "KmClient : sgx_ra_proc_msg2 error, status = " << endl;
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
+        cerr << "KmClient : sgx_ra_proc_msg2 error, status = " << fixed << status << endl;
         sgxErrorReport(status);
         if (msg2 != nullptr) {
             free(msg2);
@@ -507,13 +441,13 @@ bool kmClient::doAttestation()
     int msg4RecvSize = 0;
     if (!raSecurityChannel_->send(sslConnection_, msg3Buffer, msg3_sz)) {
         cerr << "KmClient : msg3 send socket error" << endl;
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         return false;
     }
 
     if (!raSecurityChannel_->recv(sslConnection_, msg4Buffer, msg4RecvSize)) {
         cerr << "KmClient : msg4 recv socket error" << endl;
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         return false;
     }
     msg4 = (ra_msg4_t*)malloc(msg4RecvSize);
@@ -530,7 +464,7 @@ bool kmClient::doAttestation()
 #endif
     } else if (!msg4->status) {
         cerr << "KmClient : Enclave NOT TRUSTED" << endl;
-        enclave_ra_close(_eid, &sgxrv, _ctx);
+        enclave_ra_close(_eid, &sgxrv, ra_ctx_);
         free(msg4);
         return false;
     }

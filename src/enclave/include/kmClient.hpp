@@ -9,7 +9,9 @@
 #include "sender.hpp"
 #include "ssl.hpp"
 #include <bits/stdc++.h>
-#include <sgx_uae_service.h>
+#include <sgx_uae_epid.h>
+#include <sgx_uae_launch.h>
+#include <sgx_uae_quote_ex.h>
 #include <sgx_ukey_exchange.h>
 #include <sgx_urts.h>
 
@@ -29,7 +31,7 @@ class kmClient {
 private:
     bool enclave_trusted;
     sgx_enclave_id_t _eid;
-    sgx_ra_context_t _ctx;
+    sgx_ra_context_t ra_ctx_;
     string _keyd, _keyn;
     sgx_launch_token_t _token = { 0 };
     int updated;

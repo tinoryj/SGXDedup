@@ -25,10 +25,17 @@ in the License.
 #include <openssl/x509.h>
 #include <stdio.h>
 #include <string.h>
-
+#ifdef _WIN32
+#define AGENT_WINHTTP
+#else
 #define AGENT_WGET
-
+#endif
+#ifdef AGENT_WINHTTP
+#include "win32/agent_winhttp.h"
+#endif
+#ifdef AGENT_WGET
 #include "agent_wget.h"
+#endif
 #include "base64.h"
 #include "hexutil.h"
 #include "httpparser/response.h"
@@ -42,8 +49,7 @@ using namespace httpparser;
 #include <exception>
 #include <string>
 
-char verbose_ias = 0;
-char debug_ias = 0;
+int debugIAS = 1, verboseIAS = 0;
 
 static string ias_servers[2] = {
     IAS_SERVER_DEVELOPMENT_HOST,
@@ -138,7 +144,7 @@ int IAS_Connection::setSubscriptionKey(SubscriptionKeyID id, char* subscriptionK
     memset(subscription_key_xor[id], 0, sizeof(subscription_key_xor[id]));
 
     if (subscriptionKeyPlainText == NULL || (strlen(subscriptionKeyPlainText) != IAS_SUBSCRIPTION_KEY_SIZE) || (id == SubscriptionKeyID::Last)) {
-        if (debug_ias)
+        if (debugIAS)
             eprintf("Error Setting subscriptionKey\n");
         return 0;
     }
@@ -150,7 +156,7 @@ int IAS_Connection::setSubscriptionKey(SubscriptionKeyID id, char* subscriptionK
     for (int i = 0; i < IAS_SUBSCRIPTION_KEY_SIZE; i++)
         subscription_key_enc[id][i] = (unsigned char)subscriptionKeyPlainText[i] ^ subscription_key_xor[id][i];
 
-    if (debug_ias && verbose_ias) {
+    if (debugIAS && verboseIAS) {
         eprintf("\n+++ IAS Subscription Key[%d]:\t'%s'\n", id, subscriptionKeyPlainText);
         eprintf("+++ IAS Subscription Key[%d] (Hex):\t%s\n", id, hexstring(subscriptionKeyPlainText, IAS_SUBSCRIPTION_KEY_SIZE));
         eprintf("+++ One-time pad:\t\t\t%s\n", hexstring(subscription_key_xor[id], sizeof(subscription_key_xor[id])));
@@ -174,7 +180,7 @@ string IAS_Connection::getSubscriptionKey()
 
     string subscriptionKeyBuff(keyBuff);
 
-    if (debug_ias) {
+    if (debugIAS) {
         eprintf("\n+++ Reconstructed Subscription Key:\t'%s'\n", subscriptionKeyBuff.c_str());
         eprintf("+++ IAS Subscription Key (Hex):\t\t%s\n", hexstring(keyBuff, IAS_SUBSCRIPTION_KEY_SIZE));
         eprintf("+++ One-time pad:\t\t\t%s\n", hexstring(subscription_key_xor[currentKeyID], sizeof(subscription_key_xor[currentKeyID])));
@@ -245,7 +251,7 @@ Agent* IAS_Connection::new_agent()
         // order of preference.
 #ifdef AGENT_WGET
         if (newagent == NULL) {
-            if (debug_ias)
+            if (debugIAS)
                 eprintf("+++ Trying agent_wget\n");
             try {
                 newagent = (Agent*)new AgentWget(this);
@@ -258,7 +264,7 @@ Agent* IAS_Connection::new_agent()
 #endif
 #ifdef AGENT_WINHTTP
         if (newagent == NULL) {
-            if (debug_ias)
+            if (debugIAS)
                 eprintf("+++ Trying agent_winhttp\n");
             try {
                 newagent = (Agent*)new AgentWinHttp(this);
@@ -309,14 +315,14 @@ ias_error_t IAS_Request::sigrl(uint32_t gid, string& sigrl)
     url += "/sigrl/";
     url += sgid;
 
-    if (verbose_ias) {
+    if (verboseIAS) {
         edividerWithText("IAS sigrl HTTP Request");
         eprintf("HTTP GET %s\n", url.c_str());
         edivider();
     }
 
     if (agent->request(url, "", response)) {
-        if (verbose_ias) {
+        if (verboseIAS) {
             edividerWithText("IAS sigrl HTTP Response");
             eputs(response.inspect().c_str());
             edivider();
@@ -382,14 +388,14 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         return IAS_QUERY_FAILED;
     }
 
-    if (verbose_ias) {
+    if (verboseIAS) {
         edividerWithText("IAS report HTTP Request");
         eprintf("HTTP POST %s\n", url.c_str());
         edivider();
     }
 
     if (agent->request(url, body, response)) {
-        if (verbose_ias) {
+        if (verboseIAS) {
             edividerWithText("IAS report HTTP Response");
             eputs(response.inspect().c_str());
             edivider();
@@ -446,7 +452,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         cend = certchain.find("-----BEGIN", cstart + 1);
         len = ((cend == string::npos) ? certchain.length() : cend) - cstart;
 
-        if (verbose_ias) {
+        if (verboseIAS) {
             edividerWithText("Certficate");
             eputs(certchain.substr(cstart, len).c_str());
             eprintf("\n");
@@ -464,7 +470,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
     }
 
     count = certvec.size();
-    if (debug_ias)
+    if (debugIAS)
         eprintf("+++ Found %lu certificates in chain\n", count);
 
     certar = (X509**)malloc(sizeof(X509*) * (count + 1));
@@ -496,7 +502,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         status = IAS_BAD_CERTIFICATE;
         goto cleanup;
     } else {
-        if (debug_ias)
+        if (debugIAS)
             eprintf("+++ certificate chain verified\n", rv);
     }
 
@@ -516,7 +522,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         goto cleanup;
     }
 
-    if (verbose_ias) {
+    if (verboseIAS) {
         edividerWithText("Report Signature");
         print_hexstring(stderr, sig, sigsz);
         if (fplog != NULL)
@@ -533,7 +539,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
 	 * verify the signature.
 	 */
 
-    if (debug_ias)
+    if (debugIAS)
         eprintf("+++ Extracting public key from signing cert\n");
     pkey = X509_get_pubkey(sign_cert);
     if (pkey == NULL) {
@@ -544,7 +550,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
 
     content = response.content_string();
 
-    if (debug_ias) {
+    if (debugIAS) {
         eprintf("+++ Verifying signature over report body\n");
         edividerWithText("Report");
         eputs(content.c_str());
@@ -562,7 +568,7 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         status = IAS_BAD_SIGNATURE;
     } else {
         if (rv) {
-            if (verbose_ias)
+            if (verboseIAS)
                 eprintf("+++ Signature verified\n");
             status = IAS_OK;
         } else {
@@ -571,17 +577,20 @@ ias_error_t IAS_Request::report(map<string, string>& payload, string& content,
         }
     }
 
-    /*
-	 * Check for advisory headers
-	 */
+    if (r_api_version == 3) {
+        /*
+	 	 * Check for advisory headers in a v3 response. In v4 these
+		 * are part of the report.
+	 	 */
 
-    header = response.headers_as_string("Advisory-URL");
-    if (header.length())
-        messages.push_back(header);
+        header = response.headers_as_string("Advisory-URL");
+        if (header.length())
+            messages.push_back(header);
 
-    header = response.headers_as_string("Advisory-IDs");
-    if (header.length())
-        messages.push_back(header);
+        header = response.headers_as_string("Advisory-IDs");
+        if (header.length())
+            messages.push_back(header);
+    }
 
 cleanup:
     if (pkey != NULL)
