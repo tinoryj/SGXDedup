@@ -11,7 +11,7 @@
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
-#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CFB
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
 
 /* System Running Type Settings */
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker
@@ -20,11 +20,12 @@
 #define CHUNKER_TRACE_DRIVEN_TYPE_UBC 3 //macro for the type of ms dataset chunk generator
 
 /* System Infomation Size Settings */
+
 #define CHUNK_HASH_SIZE 32
 #define CHUNK_ENCRYPT_KEY_SIZE 32
 #define FILE_NAME_HASH_SIZE 32
 #define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker
-#define NETWORK_MESSAGE_DATA_SIZE 18 * 1000 * 1000
+#define NETWORK_MESSAGE_DATA_SIZE 18 * 1024 * 1024
 #define SGX_MESSAGE_MAX_SIZE 1024 * 1024
 #define CRYPTO_BLOCK_SZIE 16
 #define KEY_SERVER_SESSION_KEY_SIZE 32

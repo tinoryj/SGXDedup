@@ -628,6 +628,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
         return false;
     }
+    batchKeyNumber = batchNumber;
     cryptoObj_->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendKey_enc, NULL);
@@ -685,6 +686,7 @@ bool KeyClient::keyExchange(u_char* batchHashList, int batchNumber, u_char* batc
 #endif
         return false;
     }
+    batchKeyNumber = batchNumber;
     cryptoObj->keyExchangeDecrypt(recvBuffer, batchkeyNumber * CHUNK_ENCRYPT_KEY_SIZE, keyExchangeKey_, keyExchangeKey_, batchKeyList);
     // #if SYSTEM_BREAK_DOWN == 1
     //     gettimeofday(&timeendKey_enc, NULL);
