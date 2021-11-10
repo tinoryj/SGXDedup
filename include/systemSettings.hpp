@@ -11,7 +11,7 @@
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
 #define KEY_GEN_SGX_CTR 1
-#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CTR
+#define KEY_GEN_METHOD_TYPE KEY_GEN_SGX_CFB
 
 /* System Running Type Settings */
 #define CHUNKER_FIX_SIZE_TYPE 0 //macro for the type of fixed-size chunker

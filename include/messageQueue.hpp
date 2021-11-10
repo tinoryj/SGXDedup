@@ -11,7 +11,7 @@
 
 template <class T>
 class messageQueue {
-    boost::lockfree::spsc_queue<T, boost::lockfree::capacity<5000>> lockFreeQueue_;
+    boost::lockfree::queue<T, boost::lockfree::capacity<5000>> lockFreeQueue_;
 
 public:
     boost::atomic<bool> done_;
