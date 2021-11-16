@@ -330,6 +330,7 @@ bool Sender::sendEndFlag()
 
 void Sender::run()
 {
+    uint64_t totalUniqueChunkNumber = 0;
     Data_t tempChunk;
     RecipeList_t recipeList;
     Recipe_t fileRecipe;
@@ -377,6 +378,7 @@ void Sender::run()
                 continue;
             } else {
                 if (tempChunk.chunk.type == CHUNK_TYPE_NEED_UPLOAD) {
+                    totalUniqueChunkNumber++;
 #if SYSTEM_BREAK_DOWN == 1
                     gettimeofday(&timestartSender, NULL);
 #endif
@@ -485,6 +487,7 @@ void Sender::run()
 #endif
     free(sendChunkBatchBuffer);
     bool serverJobDoneFlag = sendEndFlag();
+    cout << "Sender : total unique chunk number = " << totalUniqueChunkNumber << endl;
     if (serverJobDoneFlag) {
         return;
     } else {
