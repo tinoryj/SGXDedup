@@ -51,6 +51,9 @@ StorageCore::StorageCore()
         currentContainer_.used_ = 0;
     }
     cryptoObj_ = new CryptoPrimitive();
+#if STORAGE_CORE_READ_CACHE == 1
+    containerCache = new Cache();
+#endif
 }
 
 StorageCore::~StorageCore()
@@ -65,6 +68,9 @@ StorageCore::~StorageCore()
     currentContainer_.saveTOFile(writeContainerName);
 
     delete cryptoObj_;
+#if STORAGE_CORE_READ_CACHE == 1
+    delete containerCache;
+#endif
 }
 
 #if SYSTEM_BREAK_DOWN == 1
@@ -386,10 +392,10 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
         return true;
     } else {
 #if STORAGE_CORE_READ_CACHE == 1
-        bool cacheHitStatus = containerCache.existsInCache(containerNameStr);
+        bool cacheHitStatus = containerCache->existsInCache(containerNameStr);
         if (cacheHitStatus) {
-            string containerDataStr = containerCache.getFromCache(containerNameStr);
-            memcpy(data, &containerDataStr[0] + key.offset, key.length);
+            uint8_t* containerDataStr = containerCache->getFromCache(containerNameStr);
+            memcpy(data, containerDataStr + key.offset, key.length);
             return true;
         } else {
             containerIn.open(readName, std::ifstream::in | std::ifstream::binary);
@@ -407,8 +413,7 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
                 return false;
             }
             memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
-            string containerDataStrTemp(currentReadContainer_.body_, containerSize);
-            containerCache.insertToCache(containerNameStr, containerDataStrTemp);
+            containerCache->insertToCache(containerNameStr, (uint8_t*)currentReadContainer_.body_, containerSize);
             return true;
         }
 #else
@@ -432,7 +437,9 @@ bool StorageCore::readContainer(keyForChunkHashDB_t key, char* data)
             }
             memcpy(data, currentReadContainer_.body_ + key.offset, key.length);
             currentReadContainerFileName_ = containerNameStr;
+#if SYSTEM_BREAK_DOWN == 1
             readContainerNumber++;
+#endif
             return true;
         }
 #endif

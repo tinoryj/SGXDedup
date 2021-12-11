@@ -8,6 +8,9 @@
 #include "messageQueue.hpp"
 #include "protocol.hpp"
 #include <bits/stdc++.h>
+#if STORAGE_CORE_READ_CACHE == 1
+#include "cache.hpp"
+#endif
 
 using namespace std;
 
@@ -52,6 +55,9 @@ private:
 public:
     StorageCore();
     ~StorageCore();
+#if STORAGE_CORE_READ_CACHE == 1
+    Cache* containerCache;
+#endif
     bool restoreChunks(NetworkHeadStruct_t& networkHead, char* data);
     bool storeRecipes(char* fileNameHash, u_char* recipeContent, uint64_t recipeSize);
     bool restoreRecipeAndChunk(char* recipeList, uint32_t startID, uint32_t endID, char* restoredChunkList, int& restoredChunkNumber, int& restoredChunkSize);

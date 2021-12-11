@@ -148,7 +148,6 @@ void Chunker::ChunkerInit(string path)
         /*note: power(2, numOfanchorMaskBits) = avgChunkSize_*/
         numOfMaskBits_ = 1;
         while ((avgChunkSize_ >> numOfMaskBits_) != 1) {
-
             numOfMaskBits_++;
         }
         anchorMask_ = (1 << numOfMaskBits_) - 1;

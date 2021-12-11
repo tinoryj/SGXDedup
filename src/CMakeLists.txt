@@ -23,7 +23,7 @@ set(SYSTEM_LIBRARY_OBJ pthread rt dl)
 set(OPENSSL_LIBRARY_OBJ ssl crypto)
 set(LEVELDB_LIBRARY_OBJ pthread leveldb)
 set(SGX_SDK_LIBRARY_OBJ sgx_uae_launch sgx_uae_quote_ex sgx_uae_epid sgx_uae_service)
-set(UTIL_OBJ configure cryptoPrimitive SSL_TLS database)
+set(UTIL_OBJ configure cryptoPrimitive SSL_TLS database cache)
 set(ENCLAVE_UTILS_OBJ common logfile agent_wget base64 byteorder sgx_crypto sgx_json hexutil sgxErrorSupport iasrequest)
 
 set(LINK_OBJ ${UTIL_OBJ} ${OPENSSL_LIBRARY_OBJ} ${LEVELDB_LIBRARY_OBJ} ${BOOST_LIBRARY_OBJ} ${SYSTEM_LIBRARY_OBJ})

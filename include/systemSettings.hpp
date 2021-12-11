@@ -7,6 +7,7 @@
 #define ENCLAVE_SEALED_INIT_ENABLE 1 // set to 0 means do remote attestation every startup
 #define MULTI_CLIENT_UPLOAD_TEST 0 // set to 1 means not write content to disk on server side
 #define TRACE_DRIVEN_TEST 1
+#define STORAGE_CORE_READ_CACHE 1
 
 /* Key Generation method Settings: 0-disable; 1-enable */
 #define KEY_GEN_SGX_CFB 0
