@@ -3,7 +3,7 @@
 
 Cache::Cache()
 {
-    cacheSize_ = 512;
+    cacheSize_ = 128;
     this->Cache_ = new lru11::Cache<string, uint32_t>(cacheSize_, 0);
     containerPool_ = (uint8_t**)malloc(cacheSize_ * sizeof(uint8_t*));
     for (size_t i = 0; i < cacheSize_; i++) {
