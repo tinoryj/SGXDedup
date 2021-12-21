@@ -34,15 +34,11 @@ private:
     sgx_ra_context_t ra_ctx_;
     string _keyd, _keyn;
     sgx_launch_token_t _token = { 0 };
-    int updated;
-    ssl* raSecurityChannel_;
-    SSL* sslConnection_;
-    uint64_t keyRegressionMaxTimes_;
 
 public:
-    kmClient(string keyd, uint64_t keyRegressionMaxTimes);
+    kmClient(string keyd);
     ~kmClient();
-    bool init(ssl* raSecurityChannel, SSL* sslConnection);
+    bool init();
     bool trusted();
 #if KEY_GEN_METHOD_TYPE == KEY_GEN_SGX_CTR
     bool request(u_char* hash, int hashSize, u_char* key, int keySize, int clientID);
@@ -52,10 +48,7 @@ public:
     bool request(u_char* hash, int hashSize, u_char* key, int keySize);
 #endif
     bool doAttestation();
-    bool sessionKeyUpdate();
     bool createEnclave(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string enclaveName);
-    bool getMsg01(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string& msg01);
-    bool processMsg2(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx, string& Msg2, string& msg3);
     void raclose(sgx_enclave_id_t& eid, sgx_ra_context_t& ctx);
 };
 

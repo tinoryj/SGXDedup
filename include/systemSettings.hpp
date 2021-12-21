@@ -23,6 +23,7 @@
 /* System Infomation Size Settings */
 
 #define CHUNK_HASH_SIZE 32
+#define SYSTEM_CIPHER_SIZE 32
 #define CHUNK_ENCRYPT_KEY_SIZE 32
 #define FILE_NAME_HASH_SIZE 32
 #define MAX_CHUNK_SIZE 16384 //macro for the max size of variable-size chunker

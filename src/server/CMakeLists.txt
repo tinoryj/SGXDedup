@@ -3,7 +3,7 @@ add_library(dataSR STATIC dataSR.cpp)
 add_library(dedupCore STATIC dedupCore.cpp)
 add_library(storage STATIC storageCore.cpp)
 
-set(SERVER_OBJ dataSR  dedupCore powServer storage kmServer) 
+set(SERVER_OBJ dataSR  dedupCore powServer storage) 
 
 add_executable(server-sgx ServerMain.cpp)
 

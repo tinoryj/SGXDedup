@@ -57,7 +57,7 @@ public:
     bool loadSealedData();
     bool outputSealedData();
 
-    bool do_attestation();
+    bool startEnclave();
     void run();
 
     bool insertMQ(Data_t& newChunk);

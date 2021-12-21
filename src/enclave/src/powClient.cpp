@@ -101,8 +101,8 @@ void powClient::run()
             gettimeofday(&timestartPowClient, NULL);
 #endif
             uint8_t clientMac[16];
-            uint8_t chunkHashList[currentBatchChunkNumber * CHUNK_HASH_SIZE];
-            memset(chunkHashList, 0, currentBatchChunkNumber * CHUNK_HASH_SIZE);
+            uint8_t chunkHashList[currentBatchChunkNumber * SYSTEM_CIPHER_SIZE];
+            memset(chunkHashList, 0, currentBatchChunkNumber * SYSTEM_CIPHER_SIZE);
             powRequestStatus = this->request(batchChunkLogicDataCharBuffer, currentBatchSize, clientMac, chunkHashList);
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
@@ -118,7 +118,7 @@ void powClient::run()
                 gettimeofday(&timestartPowClient, NULL);
 #endif
                 for (int i = 0; i < currentBatchChunkNumber; i++) {
-                    memcpy(batchChunk[i].chunk.chunkHash, chunkHashList + i * CHUNK_HASH_SIZE, CHUNK_HASH_SIZE);
+                    memcpy(batchChunk[i].chunk.chunkHash, chunkHashList + i * SYSTEM_CIPHER_SIZE, SYSTEM_CIPHER_SIZE);
                 }
 #if SYSTEM_BREAK_DOWN == 1
                 gettimeofday(&timeendPowClient, NULL);
@@ -133,9 +133,9 @@ void powClient::run()
             u_char serverResponse[sizeof(int) + sizeof(bool) * currentBatchChunkNumber];
             senderObj_->sendEnclaveSignedHash(clientMac, chunkHashList, currentBatchChunkNumber, serverResponse, netstatus);
 #if SYSTEM_DEBUG_FLAG == 1
-            cout << "PowClient : send signed hash list data = " << endl;
+            cerr << "PowClient : send signed hash list data = " << endl;
             PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
-            PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, currentBatchChunkNumber * CHUNK_HASH_SIZE);
+            // PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, currentBatchChunkNumber * SYSTEM_CIPHER_SIZE);
 #endif
 #if SYSTEM_BREAK_DOWN == 1
             gettimeofday(&timeendPowClient, NULL);
@@ -146,7 +146,7 @@ void powClient::run()
             if (netstatus != SUCCESS) {
                 cerr << "PowClient : server pow signed hash verify error, client mac = " << endl;
                 PRINT_BYTE_ARRAY_POW_CLIENT(stderr, clientMac, 16);
-                PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, CHUNK_HASH_SIZE);
+                PRINT_BYTE_ARRAY_POW_CLIENT(stderr, chunkHashList, SYSTEM_CIPHER_SIZE);
                 break;
             } else {
                 int totalNeedChunkNumber;
@@ -154,7 +154,7 @@ void powClient::run()
                 bool requiredChunksList[currentBatchChunkNumber];
                 memcpy(requiredChunksList, serverResponse + sizeof(int), sizeof(bool) * currentBatchChunkNumber);
 #if SYSTEM_DEBUG_FLAG == 1
-                cout << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success, Server need " << totalNeedChunkNumber << " over all " << batchChunk.size() << endl;
+                cerr << "PowClient : send pow signed hash for " << currentBatchChunkNumber << " chunks success, Server need " << totalNeedChunkNumber << " over all " << batchChunk.size() << endl;
 #endif
                 for (int i = 0; i < totalNeedChunkNumber; i++) {
                     if (requiredChunksList[i] == true) {
@@ -211,7 +211,9 @@ bool powClient::loadSealedData()
     }
     sealDataFile.open("pow-enclave.sealed", std::ios::binary);
     if (!sealDataFile.is_open()) {
+#if SYSTEM_LOG_FLAG == 1
         cerr << "PowClient : no sealed infomation, start remote attestation login" << endl;
+#endif
         return false;
     } else {
         sealDataFile.seekg(0, ios_base::end);
@@ -249,7 +251,7 @@ bool powClient::powEnclaveSealedInit()
     gettimeofday(&timeendEnclave, NULL);
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
     second = diff / 1000000.0;
-    cout << "PowClient : create enclave time = " << second << " s" << endl;
+    cout << "PowClient : create enclave time = " << setprecision(8) << second << " s" << endl;
 #endif
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : create enclave error, eid = " << eid_ << endl;
@@ -268,7 +270,7 @@ bool powClient::powEnclaveSealedInit()
         gettimeofday(&timeendEnclave, NULL);
         diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
         second = diff / 1000000.0;
-        cout << "PowClient : sealed init enclave time = " << second << " s" << endl;
+        cout << "PowClient : sealed init enclave time = " << setprecision(8) << second << " s" << endl;
 #endif
 #if SYSTEM_DEBUG_FLAG == 1
         cerr << "PowClient : unseal data size = " << sealedLen_ << "\t retval = " << retval << "\t status = " << status << endl;
@@ -346,192 +348,23 @@ powClient::powClient(Sender* senderObjTemp)
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartPowClient, NULL);
 #endif
-#if ENCLAVE_SEALED_INIT_ENABLE == 1
-    sealedLen_ = sizeof(sgx_sealed_data_t) + sizeof(sgx_ra_key_128_t);
-    sealedBuffer_ = (char*)malloc(sealedLen_);
-    memset(sealedBuffer_, -1, sealedLen_);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartEnclave, NULL);
 #endif
-    bool loadSealedDataStatus = loadSealedData();
+    bool remoteAttestationStatus = this->startEnclave();
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendEnclave, NULL);
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
     second = diff / 1000000.0;
-    if (loadSealedDataStatus == true) {
-        cout << "PowClient : load sealed information time = " << fixed << second << " s" << endl;
-    }
+    cout << "PowClient : remote attestation init total work time = " << setprecision(8) << second << " s" << endl;
 #endif
-    if (loadSealedDataStatus == true) {
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timestartEnclave, NULL);
-#endif
-        bool powEnclaveSealedInitStatus = powEnclaveSealedInit();
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendEnclave, NULL);
-        diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-        second = diff / 1000000.0;
-        cout << "PowClient : sealed init total work time = " << second << " s" << endl;
-#endif
-        if (powEnclaveSealedInitStatus == true) {
-#if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : enclave init via sealed data done" << endl;
-#endif
-            startMethod_ = 1;
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timestartEnclave, NULL);
-#endif
-            bool loginToServerStatus = senderObj_->sendLogInMessage(CLIENT_SET_LOGIN_WITH_SEAL);
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timeendEnclave, NULL);
-            diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-            second = diff / 1000000.0;
-            cout << "PowClient : sealed init login ot storage server work time = " << second << " s" << endl;
-#endif
-            if (loginToServerStatus) {
-#if SYSTEM_DEBUG_FLAG == 1
-                cerr << "PowClient : login to storage service provider success" << endl;
-#endif
-            } else {
-                cerr << "PowClient : login to storage service provider error" << endl;
-            }
-#if SYSTEM_DEBUG_FLAG == 1
-            sgx_status_t status, retval;
-            cerr << "PowClient : ecall get session key success, key = " << endl;
-            char currentSessionKey[16];
-            status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
-            PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
-#endif
-        } else {
-            cerr << "PowClient : enclave init via sealed data error" << endl;
-            sgx_destroy_enclave(eid_);
-            exit(0);
-        }
-    } else {
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timestartEnclave, NULL);
-#endif
-        senderObj_->sendLogOutMessage();
-        bool sendLoginMessageStatus = senderObj_->sendLogInMessage(CLIENT_SET_LOGIN);
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendEnclave, NULL);
-        diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-        second = diff / 1000000.0;
-        cout << "PowClient : remote attestation init login ot storage server work time = " << second << " s" << endl;
-#endif
-        if (sendLoginMessageStatus) {
-#if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : login to storage service provider success" << endl;
-#endif
-        } else {
-            cerr << "PowClient : login to storage service provider error" << endl;
-        }
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timestartEnclave, NULL);
-#endif
-        bool remoteAttestationStatus = this->do_attestation();
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendEnclave, NULL);
-        diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-        second = diff / 1000000.0;
-        cout << "PowClient : remote attestation init total work time = " << second << " s" << endl;
-#endif
-        if (!remoteAttestationStatus) {
-            cerr << "PowClient : enclave init via remote attestation error" << endl;
-            exit(0);
-        } else {
-            sgx_status_t retval;
-            sgx_status_t status;
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timestartEnclave, NULL);
-#endif
-            status = ecall_setSessionKey(eid_, &retval, &ctx_, SGX_RA_KEY_SK);
-#if SYSTEM_BREAK_DOWN == 1
-            gettimeofday(&timeendEnclave, NULL);
-            diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-            second = diff / 1000000.0;
-            cout << "PowClient : set up remote attestation session key time = " << second << " s" << endl;
-#endif
-            if (status != SGX_SUCCESS) {
-                cerr << "PowClient : ecall set session key failed, status = " << endl;
-                sgxErrorReport(status);
-                exit(0);
-            } else {
-                startMethod_ = 2;
-#if SYSTEM_DEBUG_FLAG == 1
-                cerr << "PowClient : ecall set session key success, key = " << endl;
-                char currentSessionKey[16];
-                status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
-                PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
-#endif
-            }
-        }
-    }
-#else
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestartEnclave, NULL);
-#endif
-    senderObj_->sendLogOutMessage();
-    bool sendLoginToStorageServerStatus = senderObj_->sendLogInMessage(CLIENT_SET_LOGIN);
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendEnclave, NULL);
-    diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-    second = diff / 1000000.0;
-    cout << "PowClient : remote attestation init login ot storage server work time = " << second << " s" << endl;
-#endif
-    if (sendLoginToStorageServerStatus) {
-#if SYSTEM_DEBUG_FLAG == 1
-        cerr << "PowClient : login to storage service provider success" << endl;
-#endif
-    } else {
-        cerr << "PowClient : login to storage service provider error" << endl;
-    }
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timestartEnclave, NULL);
-#endif
-    bool remoteAttestationStatus = this->do_attestation();
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendEnclave, NULL);
-    diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-    second = diff / 1000000.0;
-    cout << "PowClient : remote attestation init total work time = " << second << " s" << endl;
-#endif
-    if (!remoteAttestationStatus) {
-        cerr << "PowClient : enclave init via remote attestation error" << endl;
-        exit(0);
-    } else {
-        sgx_status_t retval;
-        sgx_status_t status;
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timestartEnclave, NULL);
-#endif
-        status = ecall_setSessionKey(eid_, &retval, &ctx_, SGX_RA_KEY_SK);
-#if SYSTEM_BREAK_DOWN == 1
-        gettimeofday(&timeendEnclave, NULL);
-        diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-        second = diff / 1000000.0;
-        cout << "PowClient : set up remote attestation session key time = " << second << " s" << endl;
-#endif
-        if (status != SGX_SUCCESS) {
-            cerr << "PowClient : ecall set session key failed, status = " << endl;
-            sgxErrorReport(status);
-            exit(0);
-        } else {
-            startMethod_ = 2;
-#if SYSTEM_DEBUG_FLAG == 1
-            cerr << "PowClient : ecall set session key success, key = " << endl;
-            char currentSessionKey[16];
-            status = ecall_getCurrentSessionKey(eid_, &retval, currentSessionKey);
-            PRINT_BYTE_ARRAY_POW_CLIENT(stdout, currentSessionKey, 16);
-#endif
-        }
-    }
-#endif
+    sgx_status_t status, retval;
+    status = ecall_setSessionKey(eid_, &retval, &ctx_, SGX_RA_KEY_SK);
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timeendPowClient, NULL);
     diff = 1000000 * (timeendPowClient.tv_sec - timestartPowClient.tv_sec) + timeendPowClient.tv_usec - timestartPowClient.tv_usec;
     second = diff / 1000000.0;
-    cout << "PowClient : enclave init time = " << second << " s" << endl;
+    cout << "PowClient : enclave init time = " << setprecision(8) << second << " s" << endl;
 #endif
 }
 
@@ -540,20 +373,6 @@ powClient::~powClient()
     inputMQ_->~messageQueue();
     delete inputMQ_;
     delete cryptoObj_;
-#if ENCLAVE_SEALED_INIT_ENABLE == 1
-    if (startMethod_ == 2) {
-        if (powEnclaveSealedColse() == true) {
-            if (outputSealedData() == true) {
-                cerr << "PowClient : enclave sealing done" << endl;
-            } else {
-                cerr << "PowClient : enclave sealing error" << endl;
-            }
-        } else {
-            cerr << "PowClient : enclave sealing error" << endl;
-        }
-    }
-    free(sealedBuffer_);
-#endif
     sgx_status_t ret;
     ret = sgx_destroy_enclave(eid_);
     if (ret != SGX_SUCCESS) {
@@ -561,7 +380,7 @@ powClient::~powClient()
     }
 }
 
-bool powClient::do_attestation()
+bool powClient::startEnclave()
 {
 #if SYSTEM_BREAK_DOWN == 1
     struct timeval timestartEnclave;
@@ -569,15 +388,8 @@ bool powClient::do_attestation()
     long diff;
     double second;
 #endif
-    sgx_status_t status, sgxrv, pse_status;
-    sgx_ra_msg1_t msg1;
-    sgx_ra_msg2_t* msg2;
-    sgx_ra_msg3_t* msg3;
-    ra_msg4_t* msg4 = NULL;
-    uint32_t msg0_extended_epid_group_id = 0;
-    uint32_t msg3Size;
+    sgx_status_t status;
     string enclaveName = config.getPOWEnclaveName();
-
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartEnclave, NULL);
 #endif
@@ -586,9 +398,11 @@ bool powClient::do_attestation()
     gettimeofday(&timeendEnclave, NULL);
     diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
     second = diff / 1000000.0;
-    cout << "PowClient : create enclave time = " << second << " s" << endl;
+    cout << "PowClient : create enclave time = " << setprecision(8) << second << " s" << endl;
 #endif
+#if SYSTEM_LOG_FLAG == 1
     cerr << "PowClient : create pow enclave done" << endl;
+#endif
     if (status != SGX_SUCCESS) {
         cerr << "PowClient : Can not launch pow_enclave : " << enclaveName << endl;
         sgxErrorReport(status);
@@ -597,76 +411,7 @@ bool powClient::do_attestation()
 #if SYSTEM_BREAK_DOWN == 1
     gettimeofday(&timestartEnclave, NULL);
 #endif
-    status = enclave_ra_init(eid_, &sgxrv, def_service_public_key, false, &ctx_, &pse_status);
-    if (status != SGX_SUCCESS) {
-        cerr << "PowClient : pow_enclave ra init failed, status =  " << endl;
-        sgxErrorReport(status);
-        return false;
-    }
-
-    if (sgxrv != SGX_SUCCESS) {
-        cerr << "PowClient : sgx ra init failed : " << sgxrv << endl;
-        return false;
-    }
-
-    /* Generate msg0 */
-
-    status = sgx_get_extended_epid_group_id(&msg0_extended_epid_group_id);
-    if (status != SGX_SUCCESS) {
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-        cerr << "PowClient : sgx get epid failed, status = " << endl;
-        sgxErrorReport(status);
-        return false;
-    }
-    /* Generate msg1 */
-
-    status = sgx_ra_get_msg1(ctx_, eid_, sgx_ra_get_ga, &msg1);
-    if (status != SGX_SUCCESS) {
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-        cerr << "PowClient : sgx error get msg1, status = " << endl;
-        sgxErrorReport(status);
-        return false;
-    }
-
-    int netstatus;
-    if (!senderObj_->sendSGXmsg01(msg0_extended_epid_group_id, msg1, msg2, netstatus)) {
-        cerr << "PowClient : send msg01 error : " << netstatus << endl;
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-        return false;
-    }
-
-    status = sgx_ra_proc_msg2(ctx_, eid_, sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2, sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size, &msg3, &msg3Size);
-
-    if (status != SGX_SUCCESS) {
-        cerr << "PowClient : error process msg 2, status = " << endl;
-        sgxErrorReport(status);
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-    }
-
-    free(msg2);
-
-    if (!senderObj_->sendSGXmsg3(msg3, msg3Size, msg4, netstatus)) {
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-        cerr << "PowClient : error send msg3 & get back msg4: " << netstatus << endl;
-        return false;
-    }
-    free(msg3);
-#if SYSTEM_BREAK_DOWN == 1
-    gettimeofday(&timeendEnclave, NULL);
-    diff = 1000000 * (timeendEnclave.tv_sec - timestartEnclave.tv_sec) + timeendEnclave.tv_usec - timestartEnclave.tv_usec;
-    second = diff / 1000000.0;
-    cout << "PowClient : remote attestation init enclave time = " << second << " s" << endl;
-#endif
-    if (!msg4->status) {
-        cerr << "PowClient : Enclave NOT TRUSTED" << endl;
-        enclave_ra_close(eid_, &sgxrv, ctx_);
-        free(msg4);
-        return false;
-    } else {
-        enclaveIsTrusted_ = msg4->status;
-        free(msg4);
-        return true;
-    }
+    return true;
 }
 
 bool powClient::editJobDoneFlag()

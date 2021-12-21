@@ -4,14 +4,24 @@
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
 #include "stdlib.h"
-#include "string.h"
 #include "systemSettings.hpp"
+#include <algorithm>
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
+#include <mutex>
 #include <sgx_tcrypto.h>
 #include <sgx_tkey_exchange.h>
 #include <sgx_utils.h>
-#include <stdio.h>
 #include <string>
+#include <tuple>
+#include <typeinfo>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 static const sgx_ec256_public_t def_service_public_key = {
     { 0x72, 0x12, 0x8a, 0x7a, 0x17, 0x52, 0x6e, 0xbf,
@@ -48,9 +58,10 @@ sgx_status_t enclave_ra_close(sgx_ra_context_t ctx)
 sgx_ra_key_128_t powSessionKey;
 sgx_status_t ecall_setSessionKey(sgx_ra_context_t* ctx, sgx_ra_key_type_t type)
 {
-    sgx_status_t ret_status;
-    ret_status = sgx_ra_get_keys(*ctx, type, &powSessionKey);
-    return ret_status;
+    // sgx_status_t ret_status;
+    // ret_status = sgx_ra_get_keys(*ctx, type, &powSessionKey);
+    memset(&powSessionKey, 0, 16);
+    return SGX_SUCCESS;
 }
 
 // Debug for PoW enclave
@@ -166,41 +177,33 @@ sgx_status_t enclave_sealed_close(uint8_t* sealed_buf)
 /*
  * work load pow_enclave
  * */
-#if DETECT_FAKE_CHUNKS == 1
-std::unordered_map<std::string, int> prefixList;
-int prefixListCounter = 0;
-#endif
 
 sgx_status_t ecall_calcmac(uint8_t* src, uint32_t srcLen, uint8_t* cmac, uint8_t* chunkHashList)
 {
-    sgx_sha256_hash_t chunkHash;
-#if DETECT_FAKE_CHUNKS == 1
-    sgx_sha256_hash_t prefixHash;
-#endif
     sgx_cmac_state_handle_t cmac_ctx;
-    sgx_status_t ret_status;
-
     sgx_cmac128_init(&powSessionKey, &cmac_ctx);
-    bool detectFlag = false;
-    uint32_t it, sz = 0, index = 0;
-    for (it = 0; it < srcLen; it = it + sz) {
-        if (srcLen - sizeof(int) < it) {
+    uint32_t size = 0, chunkIndex = 0;
+    sgx_sha256_hash_t chunkHash;
+
+    for (uint32_t offset = 0; offset < srcLen; offset = offset + size) {
+
+        if (srcLen - offset < sizeof(int)) {
             memset(cmac, 0, 16);
             return SGX_ERROR_UNEXPECTED;
         }
-        memcpy(&sz, &src[it], sizeof(int));
-        it = it + 4;
-        if (srcLen - it < sz) {
+        memcpy(&size, &src[offset], sizeof(int));
+        offset = offset + sizeof(int);
+        if (srcLen - offset < size) {
             memset(cmac, 0, 16);
             return SGX_ERROR_UNEXPECTED;
         }
-        ret_status = sgx_sha256_msg(&src[it], sz, &chunkHash);
+        sgx_status_t ret_status = sgx_sha256_msg(&src[offset], size, &chunkHash);
         if (ret_status != SGX_SUCCESS) {
             return ret_status;
         }
-        sgx_cmac128_update((uint8_t*)&chunkHash, 32, cmac_ctx);
-        memcpy(chunkHashList + index * 32, chunkHash, 32);
-        index++;
+        sgx_cmac128_update((uint8_t*)&chunkHash, SYSTEM_CIPHER_SIZE, cmac_ctx);
+        memcpy(chunkHashList + chunkIndex * SYSTEM_CIPHER_SIZE, chunkHash, SYSTEM_CIPHER_SIZE);
+        chunkIndex++;
     }
 
     sgx_cmac128_final(cmac_ctx, (sgx_cmac_128bit_tag_t*)cmac);

@@ -2,7 +2,6 @@
 #include "dataSR.hpp"
 #include "database.hpp"
 #include "dedupCore.hpp"
-#include "kmServer.hpp"
 #include "messageQueue.hpp"
 #include "powServer.hpp"
 #include "storageCore.hpp"
@@ -17,8 +16,6 @@ DataSR* dataSRObj;
 StorageCore* storageObj;
 DedupCore* dedupCoreObj;
 powServer* powServerObj;
-kmServer* kmServerObj;
-
 vector<boost::thread*> thList;
 
 void CTRLC(int s)
@@ -62,19 +59,11 @@ int main()
     dedupCoreObj = new DedupCore();
     storageObj = new StorageCore();
     powServerObj = new powServer();
-    kmServerObj = new kmServer();
-    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, kmServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
+    dataSRObj = new DataSR(storageObj, dedupCoreObj, powServerObj, powSecurityChannelTemp, dataSecurityChannelTemp);
 
     boost::thread* th;
-    th = new boost::thread(boost::bind(&DataSR::runKeyServerRemoteAttestation, dataSRObj));
-    thList.push_back(th);
-    th->detach();
-    th = new boost::thread(boost::bind(&DataSR::runKeyServerSessionKeyUpdate, dataSRObj));
-    thList.push_back(th);
-    th->detach();
-
     boost::thread::attributes attrs;
-    attrs.set_stack_size(100 * 1024 * 1024);
+    attrs.set_stack_size(1000 * 1024 * 1024);
     while (true) {
         SSL* sslConnectionData = dataSecurityChannelTemp->sslListen().second;
         th = new boost::thread(attrs, boost::bind(&DataSR::runData, dataSRObj, sslConnectionData));
