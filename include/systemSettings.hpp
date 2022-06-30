@@ -1,11 +1,11 @@
 #ifndef SGXDEDUP_SYSTEMSETTINGS_HPP
 #define SGXDEDUP_SYSTEMSETTINGS_HPP
 /* System Test Settings: 0-disable; 1-enable */
-#define SYSTEM_BREAK_DOWN 1
+#define SYSTEM_BREAK_DOWN 0
 #define SYSTEM_DEBUG_FLAG 0
 #define OPENSSL_V_1_0_2 0
 #define ENCLAVE_SEALED_INIT_ENABLE 1 // set to 0 means do remote attestation every startup
-#define MULTI_CLIENT_UPLOAD_TEST 0 // set to 1 means not write content to disk on server side
+#define MULTI_CLIENT_UPLOAD_TEST 1 // set to 1 means not write content to disk on server side
 #define TRACE_DRIVEN_TEST 1
 #define STORAGE_CORE_READ_CACHE 1
 

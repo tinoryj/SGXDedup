@@ -12,7 +12,7 @@
         "_keyEnclaveThreadNumber": 1,
         "_keyServerRArequestPort": 1559,
         "_keyServerIP": [
-            "127.0.0.1"
+            "192.168.5.106"
         ],
         "_keyServerPort": [
             6666
@@ -22,7 +22,7 @@
     },
     "SPConfig": {
         "_storageServerIP": [
-            "127.0.0.1"
+            "192.168.5.106"
         ],
         "_storageServerPort": [
             6668
@@ -34,21 +34,21 @@
         "_iasVersion": 3,
         "_ServerPort": 6669,
         "_enclave_name": "pow_enclave.signed.so",
-        "_SPID": "",
+        "_SPID": "6F8714DBCA251B114F308C708AAE9205",
         "_iasServerType": 0,
         "_batchSize": 4096,
-        "_PriSubscriptionKey": "",
-        "_SecSubscriptionKey": ""
+        "_PriSubscriptionKey": "b912a65603f64aee9c974a4ce218162c",
+        "_SecSubscriptionKey": "482aaca3b1664d6a8757321743adef64"
     },
     "km": {
         "_quoteType": 0,
         "_iasVersion": 3,
         "_ServerPort": 6676,
         "_enclave_name": "km_enclave.signed.so",
-        "_SPID": "",
+        "_SPID": "6F8714DBCA251B114F308C708AAE9205",
         "_iasServerType": 0,
-        "_PriSubscriptionKey": "",
-        "_SecSubscriptionKey": ""
+        "_PriSubscriptionKey": "b912a65603f64aee9c974a4ce218162c",
+        "_SecSubscriptionKey": "482aaca3b1664d6a8757321743adef64"
     },
     "server": {
         "_RecipeRootPath": "Recipes/",
